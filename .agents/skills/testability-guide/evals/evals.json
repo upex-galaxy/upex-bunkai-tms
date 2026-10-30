@@ -14,6 +14,20 @@
       "prompt": "The /qa page already exists in our Next.js + Supabase project from a previous run last week. Its snapshot comment reads: stack=next-15.0.3, ui-kit=shadcn, icons=lucide-react, auth=authjs-5.0.0, db=supabase-postgres, orm=drizzle, language=es, publisher=jira-epic, credentials-source=https://upex.atlassian.net/browse/UPEX-321, openapi-spec=/api/openapi.json, default-branch=staging, generated=2026-05-08, content-hash=sha256:abc123. The stack has not changed since then. Re-run the skill — verify it detects no drift and reports a no-op instead of regenerating anything.",
       "expected_output": "The skill reads the existing snapshot, re-runs pre-flight discovery, builds a fresh field map, diffs against the snapshot, finds only `generated` would differ, and reports: '/qa is up to date with the current stack snapshot. Nothing to do.' No files are modified. No external publish call is made. The audit trail records the no-op outcome.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "adopted-supabase-app-db-layer-from-stack",
+      "prompt": "Our app was adopted into agentic-dev last week (stack block filled by project-adoption: provider supabase, migrations_tool supabase-cli, app_root apps/web). Generate the /qa page and publish the credentials to Jira. Testers should be able to query the database from their agent.",
+      "expected_output": "Reads `.agents/project.yaml` → `stack:` first and confirms it in pre-flight. Places the page under `apps/web` per `stack.framework`. Resolves the DB layer per `references/mcp-and-env-setup.md` §4.0: DBHub (`type = \"postgres\"`, session pooler) logged in as a `qa_*` read-only role as Way 1, plus a read-only Supabase MCP tab (`--read-only --project-ref <ref>` / `read_only=true`) only for team members with their own Supabase account. Never publishes `SUPABASE_ACCESS_TOKEN` or any service key. If no `qa_*` role exists, STOPS and hands over the SQL with the route db-change-doctrine assigns to `supabase-cli` (role NOLOGIN + grants as one named `apply_migration` mirrored into the migrations directory, on an environment the user confirms; the password set by a person outside the migration history), and does not apply it itself.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "greenfield-plain-postgres-unchanged-dbhub",
+      "prompt": "Fresh Next.js project on plain Postgres (stack.database.provider: other) with a qa_inspector_ro role already created. Build the /qa page; credentials go to a Confluence page.",
+      "expected_output": "Same flow as a fresh scaffold: DBHub with `type = \"postgres\"` as the only DB way (no Supabase MCP tab, because `stack.database.provider` is `other`), logged in as `qa_inspector_ro`; snapshot `db` field records the choice. Publishes through the Confluence adapter. No new dependency, no credential value in the page.",
+      "files": []
     }
   ]
 }

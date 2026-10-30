@@ -25,12 +25,14 @@ Cold start? Read these files in this exact order before proposing anything. Each
 9. `.context/PRD/user-journeys.md` — flow-level expectations.
 10. `.context/SRS/functional-specs.md` — FR catalog (source of `**Source spec:**` references).
 11. `.context/SRS/non-functional-specs.md` — NFRs (performance, security, a11y).
-12. `.context/business/business-data-map.md` — entity graph (source of entity-level dependencies).
-13. `.context/business/business-feature-map.md` — CRUD matrix by domain.
-14. `.context/business/business-api-map.md` — endpoint catalog (auth model, journeys).
+12. `bun run context:map business-data-context` — entity graph (source of entity-level dependencies).
+13. `bun run context:map business-feature-context` — CRUD matrix by domain.
+14. `bun run context:map business-api-context` — endpoint catalog (auth model, journeys).
 15. `.context/PBI/epic-tree.md` — current backlog state.
 
-**Optional inputs.** Some mature projects also produce business maps via `/business-*-map`. If they are absent (typically at early seed time), proceed without them but flag the gap.
+**No PRD/SRS (existing app documented by its business maps):** inputs 7-11 have substitutes, listed in `../SKILL.md` → "Product docs: PRD/SRS or business maps". Never write a PRD or SRS to fill them.
+
+**Optional inputs.** Some mature projects also produce business maps via `/project-context` modes `data` / `features` / `api`. If they are absent (typically at early seed time), proceed without them but flag the gap.
 
 ---
 
@@ -49,7 +51,7 @@ Jira numeric IDs (`customfield_NNNNN`) vary per workspace and DO NOT live in thi
 - `{{jira.weblink}}` — app/feature URL. Populate ONLY when the domain is known with certainty; when in doubt, omit.
 - `{{jira.story_points}}` — **OPT-IN ONLY**. Leave EMPTY by default. Populate only when the user explicitly requests estimation in this session. PO/BA do not estimate; the team that will build it does (Design + Dev + Test). When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
 
-**Operation → tool layer.** Every read/write against Jira is expressed as `[ISSUE_TRACKER_TOOL]` pseudo-code. The consuming skill (AI runtime) resolves the tool via the `AGENTS.md` §6 table (primary `/acli`, fallback Atlassian MCP, last resort REST). For the operation → tool-layer matrix, see `references/jira-operations.md`. For rich-text (ADF) publishing gotchas, see `references/jira-publishing-gotchas.md`.
+**Operation → tool layer.** Every read/write against Jira is expressed as `[ISSUE_TRACKER_TOOL]` pseudo-code. The consuming skill (AI runtime) resolves the tool via the `.agents/instructions/agent-tool-resolution.md` §6 table (primary `/acli`, fallback Atlassian MCP, last resort REST). For the operation → tool-layer matrix, see `references/jira-operations.md`. For rich-text (ADF) publishing gotchas, see `references/jira-publishing-gotchas.md`.
 
 > **Note on `{{jira.weblink}}`.** It is optional and should only be populated when: (a) the AI knows the app domain under test with certainty (system prompt or explicit project context), or (b) the user provided the URL. When in doubt → DO NOT populate.
 
@@ -208,7 +210,7 @@ Before classifying, ask yourself:
 **Existing epic (if applicable):** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name} or "N/A — requires a new epic"
 
 **Identified dependencies:**
-[List dependencies with other epics or systems — sources: PRD/SRS sequencing, master-plan Master Sprints, business-data-map. Never invent.]
+[List dependencies with other epics or systems — sources: PRD/SRS sequencing, master-plan Master Sprints, the data map (`business-data-context`). Never invent.]
 ```
 
 ---
@@ -283,9 +285,9 @@ If the project's workflow does not offer that transition from the initial status
 Anti-pattern `I18` requires an **active** discovery pass before any link is created.
 
 1. Read `.context/PBI/epic-tree.md` — stories of the same epic + related epics.
-2. Read `.context/business/business-data-map.md` if present — entity-level relations.
+2. Read the data map (`bun run context:map business-data-context`) when it is generated (a placeholder notice means no map) — entity-level relations.
 3. Query via `[ISSUE_TRACKER_TOOL]` the current link graph of the new story and of its possible neighbors in the parent epic.
-4. Build a candidate matrix `(from, to, link_type_slug, source-of-decision)` where `source-of-decision` ∈ `{prd-sequencing, srs-sequencing, master-implementation-plan, business-data-map, local-declaration}`.
+4. Build a candidate matrix `(from, to, link_type_slug, source-of-decision)` where `source-of-decision` ∈ `{prd-sequencing, srs-sequencing, master-implementation-plan, business-data-context, author-intent}`.
 5. **Filter noise**: discard candidates whose only justification is a global / infrastructural prerequisite (auth exists, DB exists, framework is wired up). Those are properties of the project, not dependencies between stories.
 6. **Heuristic**: does the candidate dependency disappear if we reorder sprints? YES → global noise, drop. NO → real feature-level dependency, keep.
 7. Surface the filtered matrix to the user and wait for confirmation before creating any link in Step 4.
@@ -300,8 +302,8 @@ Anti-pattern `I18` requires an **active** discovery pass before any link is crea
 
 - Explicit sequencing in PRD / SRS / functional-specs.
 - Master Sprint ordering in `.context/master-implementation-plan.md`.
-- Entity-level relations in `.context/business/business-data-map.md`.
-- Explicit `Blocked By` / `Blocks` declarations in the local `story.md` (Step 5).
+- Entity-level relations in the data map (`bun run context:map business-data-context`).
+- Explicit `Blocked By` / `Blocks` dependencies the author stated in this session (`author-intent`).
 
 **How:**
 
@@ -316,7 +318,7 @@ Anti-pattern `I18` requires an **active** discovery pass before any link is crea
 
 ### Step 5: Materialize the Local Story Cache (sync, do NOT hand-write)
 
-**Action:** The story already lives in Jira (Step 2 created it; Step 4 linked it). The local `.md` is a **read-only cache** — never hand-authored (`AGENTS.md` §9; `references/jira-operations.md` → "No local authoring"). Materialize it with the sync script:
+**Action:** The story already lives in Jira (Step 2 created it; Step 4 linked it). The local `.md` is a **read-only cache** — never hand-authored (`.agents/instructions/agent-local-context-pbi.md` §9; `references/jira-operations.md` → "No local authoring"). Materialize it with the sync script:
 
 ```
 bun run jira:sync-issues get {PROJECT_KEY}-{ISSUE_NUM}
@@ -574,15 +576,15 @@ The regenerated tree reflects the live Jira backlog graph (epics → child stori
 
 ---
 
-### Step 4: Create Local Epic Folder
+### Step 4: Local Epic Folder Name (the sync in Step 5 creates it)
 
-**Naming:** `EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{descriptive-name}/`
+**Naming:** `EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{descriptive-name}/`. Never `mkdir` it: the folder is part of the `.context/PBI/` cache (`.agents/instructions/agent-local-context-pbi.md` §9).
 
 **Example:**
 
 If PROJECT_KEY = "MYM" and Jira assigned issue number = 50, the full Jira Key is "MYM-50".
 
-Create folder:
+The sync writes:
 
 ```
 .context/PBI/epics/EPIC-MYM-50-{name-per-domain}/
@@ -594,7 +596,7 @@ Create folder:
 
 ### Step 5: Materialize the Epic Cache (sync, do NOT hand-write)
 
-**Action:** The Epic already lives in Jira (Step 2). `epic.md` is a read-only mirror — never hand-authored (`AGENTS.md` §9; `references/jira-operations.md` → "No local authoring"). Materialize it with the sync script:
+**Action:** The Epic already lives in Jira (Step 2). `epic.md` is a read-only mirror — never hand-authored (`.agents/instructions/agent-local-context-pbi.md` §9; `references/jira-operations.md` → "No local authoring"). Materialize it with the sync script:
 
 ```
 bun run jira:sync-issues get {PROJECT_KEY}-{EPIC_NUM}
@@ -646,7 +648,7 @@ This emits the canonical `.context/PBI/epics/EPIC-{PROJECT_KEY}-{EPIC_NUM}-{slug
 Anti-pattern `I18` requires an **active** discovery pass before any internal link of the newly created epic is created.
 
 1. Read `.context/PBI/epic-tree.md` — stories of the newly created epic + related epics that already exist.
-2. Read `.context/business/business-data-map.md` if present — entity-level relations between the entities these stories touch.
+2. Read the data map (`bun run context:map business-data-context`) when it is generated (a placeholder notice means no map) — entity-level relations between the entities these stories touch.
 3. Query via `[ISSUE_TRACKER_TOOL]` the current link graph of every story created in Step 6.
 4. Build the candidate matrix `(from, to, link_type_slug, source-of-decision)`.
 5. **Filter noise**: discard candidates justified only by global / infrastructural prerequisites. Keep only feature-level dependencies between specific stories of the epic (or cross-epic when explicit).
@@ -663,7 +665,7 @@ Anti-pattern `I18` requires an **active** discovery pass before any internal lin
 
 - Explicit sequencing in PRD / SRS / functional-specs.
 - Master Sprint ordering in `.context/master-implementation-plan.md`.
-- Entity-level relations in `.context/business/business-data-map.md`.
+- Entity-level relations in the data map (`bun run context:map business-data-context`).
 - Explicit author-intent `Blocked By` / `Blocks` dependencies surfaced during this session (these become Jira issue links here, then sync back into each `story.md` in Step 11).
 
 **How:**
@@ -757,7 +759,7 @@ The regenerated `.context/PBI/epic-tree.md` reflects the live Jira backlog graph
 
 Full details (Kahn algorithm, cycle detection, output schema) → `references/sprint-sequencing.md`.
 
-**Output:** this step invokes `/dev-roadmap` to write the execution-sprint sort to `.context/dev-roadmap.md` §4 (which also preserves the hand-authored backbone/edges/gates) — it DELEGATES the write, it no longer authors the file itself. §4 is regenerated (overwritten) on re-run; §2/§3/§5/§6 are surgically preserved.
+**Output:** this step invokes `/project-context dev-roadmap` to write the execution-sprint sort to `.context/dev-roadmap.md` §4 (which also preserves the hand-authored backbone/edges/gates) — it DELEGATES the write, it no longer authors the file itself. §4 is regenerated (overwritten) on re-run; §2/§3/§5/§6 are surgically preserved.
 
 **When to re-run:** whenever the dependency graph changes (new stories, new links, removed links).
 
@@ -774,17 +776,15 @@ Full details (Kahn algorithm, cycle detection, output schema) → `references/sp
 **Result:**
 
 - ✅ Epic created in Jira with real ID and transitioned to `{{jira.statuses.epic_default}}`
-- ✅ Local epic folder created
-- ✅ `epic.md` file complete (no AC/Scope duplicated when they live in epic custom fields)
+- ✅ Local epic cache materialized via sync (no AC/Scope duplicated when they live in epic custom fields)
 - ✅ All stories created in Jira with real IDs
 - ✅ Stories transitioned to `{{jira.statuses.story_default}}`
 - ✅ Dependencies published as issue links (matrix reported)
 - ✅ Scope overlap check completed (alerts resolved by the user)
-- ✅ Local story folders created
-- ✅ `story.md` files complete (no AC/Scope/OOS duplicated)
-- ✅ `epic.md` updated with real IDs
-- ✅ `epic-tree.md` updated
-- ✅ Sprint sequencing executed and written via `/dev-roadmap` to `.context/dev-roadmap.md` §4
+- ✅ Local story caches materialized via sync (no AC/Scope/OOS duplicated)
+- ✅ `epic.md` re-synced with real IDs
+- ✅ `epic-tree.md` regenerated via sync
+- ✅ Sprint sequencing executed and written via `/project-context dev-roadmap` to `.context/dev-roadmap.md` §4
 
 ---
 
@@ -1058,10 +1058,10 @@ STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
 3. Create story in Jira → Capture ID
 4. Transition story to {{jira.statuses.story_default}}
 5. Link dependencies (when applicable) → see dependency-linking.md
-6. Create local folder STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}/
-7. Create story.md (no AC/Scope/OOS duplicated)
-8. Update parent epic.md
-9. Update epic-tree.md
+6. Sync the story cache (bun run jira:sync-issues get <KEY>) — never hand-write it
+7. Read back the synced story.md (no AC/Scope/OOS duplicated)
+8. Re-sync the parent epic.md
+9. Re-sync epic-tree.md
 ✅ Completed
 ```
 
@@ -1072,17 +1072,17 @@ STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
  2. Define epic and decompose into stories
  3. Create epic in Jira → Capture ID
  4. Transition epic to {{jira.statuses.epic_default}}
- 5. Create local folder EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}/
- 6. Create epic.md
+ 5. Sync the epic cache (bun run jira:sync-issues get <EPIC_KEY>)
+ 6. Read back the synced epic.md
  7. Create every story in Jira → Capture IDs
  8. Transition stories to {{jira.statuses.story_default}}
  9. Link internal dependencies → see dependency-linking.md
 10. Cross-story Scope overlap check (pairwise)
-11. Create local story folders
-12. Create story.md files (no AC/Scope/OOS duplicated)
-13. Update epic.md with real IDs
-14. Update epic-tree.md
-15. Sprint sequencing (final) → invoke /dev-roadmap → .context/dev-roadmap.md §4
+11. Sync the story caches — never hand-write them
+12. Read back the synced story.md files (no AC/Scope/OOS duplicated)
+13. Re-sync epic.md with real IDs
+14. Re-sync epic-tree.md
+15. Sprint sequencing (final) → invoke /project-context dev-roadmap → .context/dev-roadmap.md §4
 ✅ Completed
 ```
 
@@ -1110,7 +1110,7 @@ STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
 - ✅ Is the summary free of the functional-spec prefix (e.g. `FR-XXX` with em-dash and title)?
 - ✅ Are acceptance criteria in Gherkin format **wrapped in a ```gherkin code-fence** (anti-pattern `I17`)?
 - ✅ **Voice gate**: do AC / Scope / Out-of-Scope / Workflow describe persona-observable behavior, with no endpoints, HTTP status codes, table names, framework names, or internal algorithms (anti-pattern `I15`)? Exception: persona = API consumer.
-- ✅ **Persona grounding**: does the `As a` name a persona that exists in `.context/PRD/user-personas.md` (anti-pattern `I19`)?
+- ✅ **Persona grounding**: does the `As a` name a persona that exists in `.context/PRD/user-personas.md`, or on a business-maps project in the glossary / the data map's `access-control` roles (anti-pattern `I19`)?
 - ✅ **Story Points policy**: is `{{jira.story_points}}` left EMPTY unless the user explicitly requested estimation in this session (anti-pattern `I16`)?
 - ✅ **Active Dependency Discovery executed**: did the active pass run (Step 3.5 or 7.5), was global noise filtered out, and did the user confirm the matrix before any link (anti-pattern `I18`)?
 - ✅ Does the parent epic (when applicable) actually exist?
@@ -1124,20 +1124,18 @@ STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
 - ✅ Did you transition to the default status (`story_default` / `epic_default`)?
 - ✅ Did you publish the dependencies as issue links?
 - ✅ (Level 2) Did the Scope overlap check pass?
-- ✅ (Level 2) Did you run sprint-sequencing and did it write `.context/dev-roadmap.md` §4 via `/dev-roadmap`?
+- ✅ (Level 2) Did you run sprint-sequencing and did it write `.context/dev-roadmap.md` §4 via `/project-context dev-roadmap`?
 
-### When Creating Local Files
+### After Syncing the Local Cache (read-back, never hand-edit)
 
-- ✅ Does the folder naming use the real Jira ID?
-- ✅ Is the format EPIC-{PROJECT}-{NUM}-{name}?
-- ✅ Did you use kebab-case in the descriptive name?
-- ✅ Do the `.md` files carry every required piece of information AND not duplicate AC/Scope/OOS?
+- ✅ Did the sync name the folders with the real Jira ID (`EPIC-{PROJECT}-{NUM}-{name}`, kebab-case)?
+- ✅ Do the synced `.md` files carry every required piece of information AND not duplicate AC/Scope/OOS? A gap is fixed in Jira, then re-synced.
 
 ---
 
 ## 📚 GENERATED FILES
 
-Depending on the level, the following are generated:
+Depending on the level, `bun run jira:sync-issues` materializes the following read-only cache (`.agents/instructions/agent-local-context-pbi.md` §9: never hand-written):
 
 ### Level 1 (Individual Story)
 
@@ -1171,7 +1169,7 @@ Depending on the level, the following are generated:
 **Updated files:**
 
 - `epic-tree.md`
-- `.context/dev-roadmap.md` §4 (produced by invoking `/dev-roadmap`; §2/§3/§5/§6 preserved)
+- `.context/dev-roadmap.md` §4 (produced by invoking `/project-context dev-roadmap`; §2/§3/§5/§6 preserved)
 
 ---
 
@@ -1183,7 +1181,7 @@ Depending on the level, the following are generated:
 
 **Next files (after the split):**
 
-- Multiple epics will be created via Level 2 (each one writes the execution-sprint sort to `.context/dev-roadmap.md` §4 via `/dev-roadmap`).
+- Multiple epics will be created via Level 2 (each one writes the execution-sprint sort to `.context/dev-roadmap.md` §4 via `/project-context dev-roadmap`).
 
 ---
 
@@ -1192,7 +1190,7 @@ Depending on the level, the following are generated:
 **Required:**
 
 - Existing and configured Jira project.
-- `[ISSUE_TRACKER_TOOL]` resolved and operational (primary `/acli`, fallback Atlassian MCP — see `AGENTS.md` §6).
+- `[ISSUE_TRACKER_TOOL]` resolved and operational (primary `/acli`, fallback Atlassian MCP — see `.agents/instructions/agent-tool-resolution.md` §6).
 - `.agents/project.yaml`, `.agents/jira-required.yaml`, `.agents/jira-fields.json`, `.agents/jira-workflows.json` present and synced (`bun run jira:sync-fields` executed at least once).
 - `.context/PBI/epic-tree.md` up to date (to review existing epics).
 
@@ -1203,7 +1201,7 @@ Depending on the level, the following are generated:
 - `.context/PRD/mvp-scope.md` — product context.
 - `.context/SRS/functional-specs.md` — technical context and FR catalog.
 - `.context/SRS/architecture-specs.md` — validation of architectural changes.
-- `.context/business/business-data-map.md` — to infer real entity-level dependencies.
+- `bun run context:map business-data-context` — to infer real entity-level dependencies.
 
 ---
 
@@ -1242,13 +1240,11 @@ Depending on the level, the following are generated:
 - `references/jira-operations.md` — operation → tool-layer matrix (Primary / Fallback / Last resort). Consult before any Jira write.
 - `references/dependency-linking.md` — directionality table, link-type semantics, valid dependency sources, reporting.
 - `references/description-custom-field-dedup.md` — body ↔ custom fields contract and audit procedure.
-- `references/sprint-sequencing.md` — Kahn topological sort, output schema, cycle detection; the sort result is written via `/dev-roadmap` into `.context/dev-roadmap.md` §4.
+- `references/sprint-sequencing.md` — Kahn topological sort, output schema, cycle detection; the sort result is written via `/project-context dev-roadmap` into `.context/dev-roadmap.md` §4.
 - `references/jira-publishing-gotchas.md` — two known ADF bugs (combined `code` + `strong` marks; MCP batched custom fields) and workarounds.
 
 ---
 
 **Format:** Markdown files + Jira issues ready for implementation.
-
-**Last update:** 2026-05-22 — slug-based catalog refactor (custom fields + statuses + link types), dependency-linking phase, sprint sequencing, scope overlap check, dedup audit, Source spec convention.
 
 **Complements:** `product-backlog-seed.md` (initial MVP setup), `epic-creation.md`, `story-refinement.md`.

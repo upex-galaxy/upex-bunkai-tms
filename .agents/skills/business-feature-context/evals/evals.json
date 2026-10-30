@@ -1,0 +1,26 @@
+{
+  "skill_name": "business-feature-context",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm picking up the story that adds bulk archive to the projects list. Where does that fit in the product: which screen, which roles can archive today, and what other features touch archived projects?",
+      "expected_output": "Loads business-feature-context, reads the map with `bun run context:map business-feature-context --section <projects feature id>` (never the raw HTML), answers from the CRUD matrix and the UI inventory with the section id and data-updated date, and points to the master design plan for how the screen looks. If the map is a placeholder it says so and hands over `project-context` mode `features`.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "la pantalla de facturas tiene un botón de duplicar que el mapa de features no menciona, ¿lo agregamos al mapa?",
+      "expected_output": "Loads business-feature-context and follows references/refresh.md: locates the section via --list / --section, PROPOSES a one-section edit in the fixed proposal shape with the observed evidence and waits for an explicit yes before editing only that section of references/business-feature-map.html and bumping data-updated. Answers in Spanish. Touches no file outside the skill's references/.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Which RLS policy hides archived projects from viewers, and is there a trigger that sets archived_at?",
+      "expected_output": "Should NOT be answered from business-feature-context: RLS policies and triggers belong to business-data-context (plus [DB_TOOL]). At most business-feature-context is cited for which screen offers the archive action.",
+      "should_trigger": false,
+      "files": []
+    }
+  ]
+}

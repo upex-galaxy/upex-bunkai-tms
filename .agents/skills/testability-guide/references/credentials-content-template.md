@@ -33,8 +33,8 @@ The artifact goes straight to the point: what the credentials are and which `.en
 2. **Environments** — a TABLE (per env: web URL, API base, OpenAPI spec, status). From `.agents/project.yaml` `environments`. (No prose architecture summary — see #drop below.)
 3. **Auth at the UI layer (browser)** — the system roles, and how each tester self-provisions. Two variants, conditional (see §UI variants).
 4. **Auth at the DB layer** — raw connection-string (SQL-editor only) VS the DB MCP driver's split-field `.env` block (read-only + read-write). The "two formats, NOT interchangeable" callout.
-5. **Auth at the API layer** — a copy-paste `.env` block (base URL / spec path / token); token left BLANK, tester-minted.
-6. **Activate the MCPs** — inject the `.env` into the agent (wrapper / source / direnv) + the verification trio.
+5. **Auth at the API layer** — a copy-paste `.env` block with the base URL and the spec path only (no token slot: the OpenAPI MCP is schema-read-only); each tester mints a personal token and uses it by name with curl.
+6. **Activate the MCPs** — open the agent bare; each MCP server reads `.env` through the loader; a command needing a value runs as `bunx varlock run -- sh -c '...'` + the verification trio.
 7. **Security** — what never to publish; rotate-on-leak.
 8. **Footer** — one-line pointer to the `/qa` page (this REPLACES the dropped architecture summary).
 
@@ -78,7 +78,7 @@ If detection is ambiguous, ask the lead; do not silently pick B (shared accounts
 | `<<SIGNUP_MODEL>>` | DETECTED: self-serve / magic-link / invite-only / seeded — drives the UI variant choice |
 | `<<API_LOGIN_ENDPOINT>>` | DETECTED `<METHOD> <path>` for headless login (e.g. `POST <path>`). NEVER baked-in `/signin` or `/signup`. |
 | `<<TOKEN_PREFIX>>` | DETECTED token prefix shape (e.g. `<token-prefix>_<...>`). NEVER a literal `bk_pat_`. |
-| `<<OPENAPI_SPEC_URL>>` | DETECTED spec route (`/api/openapi`, `/api/swagger.json`, …) |
+| `<<OPENAPI_SPEC_URL>>` | FULL spec URL of the row's environment: the origin that serves the spec + the DETECTED route (e.g. `http://localhost:3000/api/openapi`; the route itself is `/api/openapi`, `/api/swagger.json`, …). In the `.env` block it is the staging one. NEVER the route alone: the openapi MCP reads a value that is not a URL as a file path, finds no `/api/openapi` on disk and exits at start. A repo-root-relative synced file (e.g. `./api/openapi.json`) is the only other valid form. |
 | `<<API_LOGIN_HELPER>>` | the project's api-login mini-CLI IF present (e.g. `bun run api:login`), adapted per-project. Else omit the line and keep only the manual path. |
 | `<<DB_MCP>>` | DETECTED DB MCP name (e.g. DBHub, Postgres MCP) + its config style (toml `${VAR}` / env-only) |
 | `<<DB_ENV_PREFIX>>` | DETECTED env-var prefix the DB MCP reads (e.g. `DBHUB_`) |
@@ -146,7 +146,7 @@ Two dedicated inspection roles (read-only + read-write). **There are TWO formats
 <<DB_URI_SCHEME>>://<see secrets store>@<<DB_HOST>>:<<DB_PORT>>/<<DB_NAME>>?sslmode=require
 ```
 
-**2) Driver split fields — what the <<DB_MCP>> MCP reads.** The MCP config is committed with `${VAR}` placeholders; you set these in your `.env` (read-only role):
+**2) Driver split fields — what the <<DB_MCP>> MCP reads.** The MCP config is committed with variable names only (the `.env` loader's `--filter` list; DBHub reads them as `${VAR}` in `dbhub.toml`); you set these in your `.env` (read-only role):
 
 ```bash
 # .env — <<DB_MCP>> read-only (<<DB_RO_ROLE>>)
@@ -169,38 +169,40 @@ For read-write, change the last two to the <<DB_RW_ROLE>> credentials:
 
 ## Auth at the API layer
 
-Set in your `.env` (pointing at staging):
+Set in your `.env` (pointing at staging). Both values are non-secret; the OpenAPI MCP reads only these two, to list endpoints and read their schemas:
 
 ```bash
-# .env — API / OpenAPI MCP
+# .env — API / OpenAPI MCP (schema-read-only)
 API_BASE_URL={{environments.staging.api_url}}
 OPENAPI_SPEC_PATH=<<OPENAPI_SPEC_URL>>
-API_TOKEN=
 ```
 
-`API_TOKEN` is left BLANK on purpose — it is PERSONAL. Do NOT copy anyone else's. Mint your own with YOUR user:
+`OPENAPI_SPEC_PATH` is the FULL spec URL (origin + route) or a repo-root-relative synced file. A bare route such as `/api/openapi` is read as a file path and the MCP exits at start.
 
-- Helper (if present): `<<API_LOGIN_HELPER>>` — the project's api-login mini-CLI; mints your token and writes it into your `.env` as `API_TOKEN=`. Restart the terminal/agent after (the MCP caches env at spawn).
-- Manual: `<<API_LOGIN_ENDPOINT>>` with your credentials → returns a token (`<<TOKEN_PREFIX>>…`). Paste it into `API_TOKEN`.
+Authenticated calls run with curl and YOUR personal token, never through the MCP. The token is a secret: it never goes into this artifact, a chat, a committed config or an MCP block, and the AI never types it. Mint your own with YOUR user and keep it where your testing project's token flow stores it:
 
-## Activate the MCPs (inject the `.env`)
+- Helper (if present): `<<API_LOGIN_HELPER>>` — the project's api-login mini-CLI; mints your token and stores it for curl to read by name. No agent restart needed: no MCP holds it.
+- Manual: `<<API_LOGIN_ENDPOINT>>` with your credentials → returns a token (`<<TOKEN_PREFIX>>…`). Store it the same way, then use it by name (`bunx varlock run -- sh -c '<curl using "$VAR">'`).
 
-The MCP config files carry `${VAR}` / `{env:VAR}` placeholders — no secrets. Real values live in your `.env` (gitignored). The agent reads vars when it spawns each MCP, so the `.env` must be injected into the process that launches the agent:
+## Activate the MCPs (the `.env` loader)
+
+Real values live in your `.env` (gitignored); the MCP config files carry no secrets. Open the agent bare, in the project folder (or its desktop app): it holds no `.env` value. Each MCP server that needs one starts through the `.env` loader in its committed config entry, which reads `.env` when the server spawns and hands it only its own variables:
 
 ```bash
-bun run claude      # agent with the .env injected (= dotenv -e .env -- claude)
-bun run opencode
+claude      # or: opencode. No wrapper, no env loader in front of the agent
 ```
 
-Verify the vars are actually present BEFORE launching. The wrapper injects the `.env` into the agent CHILD process, NOT your parent shell — so a bare `env | grep <PREFIX>` in your terminal comes back empty even when everything is correct. Use the right check:
+A command that needs a value (a `curl` with your token) runs through the loader for that one process: `bunx varlock run -- sh -c '<command using "$VAR">'`. Never export `.env` into your shell.
+
+A bare `env | grep <PREFIX>` in your terminal comes back empty even when everything is correct: the loader hands the values to each MCP server process, never to the agent or your shell. Use the right check:
 
 ```bash
-grep <PREFIX> .env                       # is it in the file?
-dotenv -e .env -- env | grep <PREFIX>    # is it injected (what the MCP will see)?
-set -a; source .env; set +a              # load into THIS shell, then run claude/opencode bare
+grep -E '^<PREFIX>[A-Z0-9_]*=.' .env | cut -d= -f1   # set in the file? (names only)
+bunx varlock run -- env | grep '^<PREFIX>' | cut -d= -f1   # loadable? (what the MCP will see, names only)
+bunx varlock load --agent                # every value passes the schema? (redacted)
 ```
 
-Any change to `.env` → restart the agent (env cached at spawn). Mac/Linux alternative: `direnv allow` with the repo `.envrc`.
+Any change to `.env` → restart the agent (env cached at MCP spawn).
 
 ## Security
 

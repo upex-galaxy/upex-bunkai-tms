@@ -11,12 +11,14 @@
 | Command | Reads host | Writes host | Writes yaml | Exit |
 | --- | --- | --- | --- | --- |
 | `bun run git:policy plan` | no | no | no | 0 |
-| `bun run git:policy verify` | yes | no | no | **1 on drift**, 0 in parity |
-| `bun run git:policy verify --stamp` | yes | no | `meta.policy_verified` + `policy_source` when clean | same |
-| `bun run git:policy apply` | yes | no (dry run) | no | 0 |
+| `bun run git:policy verify` | yes | no | no | **1 on unaccepted drift**; 0 in parity, when every drift is ACCEPTED (§2b), or when the host is unreachable (warned, not verified) |
+| `bun run git:policy verify --stamp` | yes | no | `meta.policy_verified` + `policy_source` (`verified`, or `accepted` when accepted divergences exist) when clean | same |
+| `bun run git:policy apply` | yes | no (dry run) | no | 0 / 1 (unreachable host is fatal: an empty reading would derive a payload that drops every host rule) |
 | `bun run git:policy apply --yes` | yes | **yes** | no | 0 / 1 |
 
 `apply` is a dry run by default. `--yes` is what writes. `--allow-loosening` is additionally required for any change that removes a guard or lowers the bar (see §4).
+
+An unreachable host (offline, no `gh`, no auth) makes `verify` warn and exit 0: absence of data is not drift. The same law covers a ruleset whose `bypass_actors` the active `gh` account may not read (GitHub omits the key for non-admins): `verify` reports it as `UNKNOWN`, names the account, and never counts it as drift.
 
 ---
 
@@ -40,11 +42,36 @@ Derived from the strategy shape, then **unioned** with whatever `protected:` alr
 | `deletion` | always | every strategy protects against branch deletion |
 | `non_fast_forward` | always | blocks force-push |
 | `creation` | always | |
-| `pull_request` | **omitted** when `policy.direct_push_to_protected: allowed` | the `pull_request` rule IS what blocks a direct push. Declaring `allowed` while shipping the rule is the exact contradiction this tool exists to catch. |
+| `pull_request` | **omitted** when `policy.direct_push_to_protected: allowed` | the `pull_request` rule IS what blocks a direct push. Declaring `allowed` while shipping the rule is the exact contradiction this tool exists to catch, unless that exact divergence is listed in `policy.accepted_divergences` (§2b), in which case the host's rule is **carried forward as-is**. |
 | `pull_request.required_approving_review_count` | `policy.require_pr_reviews` (`null` → `0`) | |
 | `pull_request.require_code_owner_review` | **derived** from whether a `CODEOWNERS` file exists | never declared — see §3 |
 | `pull_request.allowed_merge_methods` | `decisions.feature_merge` | `merge-commit`→`[merge]`, `squash`→`[squash]`, `rebase-merge`→`[rebase]`. On `n/a` the host's current value is **preserved**, because a non-decision must not widen what the repo permits. |
 | `required_signatures`, `required_status_checks`, anything else | **preserved from the existing ruleset** | not derivable from `git_strategy`; dropping a guard the tool has no opinion about is a silent loosening |
+
+### 2b. Accepted divergences: intended disagreement, formally declared
+
+Sometimes BOTH sides are right on purpose. This boilerplate declares `direct_push_to_protected: allowed` (how work actually lands: the admin credential is on the bypass list) while the host keeps a `pull_request` rule (protecting every non-bypass contributor). That is not drift to fix; it is a decision to record.
+
+Declare it in `.agents/project.yaml`:
+
+```yaml
+git_strategy:
+  policy:
+    accepted_divergences:
+      - field: main.direct_push_to_protected   # the verify finding's field, verbatim
+        enforced: blocked (pull_request rule)  # what the host does (informational)
+        accepted: 2026-08-21                   # when it was signed off
+        reason: >
+          Why both sides are intentionally different.
+```
+
+Effects:
+
+- **`verify`** reports the matching finding under `ACCEPTED (n)` with its reason, exits 0, and `--stamp` records `policy_source: accepted` (a distinct value: `verified` still means "host matches the yaml exactly").
+- **`verify` flags stale entries**: an accepted divergence that no longer matches any drift is reported as a NOTE, so the list cannot accumulate dead exceptions. A field whose host side could not be read is never called stale.
+- **`apply`** preserves the host's side of the accepted field instead of deriving its own (for `direct_push_to_protected`: the host's `pull_request` rule is carried forward verbatim), so applying never bulldozes an accepted divergence.
+
+Acceptance is per-field and needs a reason. The yaml entry is what the tool reads; the project's `.agents/instructions/agent-project.md` → `## Git Strategy (this repository)` may carry the prose context.
 
 ---
 
@@ -68,7 +95,7 @@ Derived from the strategy shape, then **unioned** with whatever `protected:` alr
 - removes the `pull_request` rule entirely (direct pushes become possible);
 - lowers `required_approving_review_count`;
 - turns off `require_code_owner_review`;
-- permits a merge method the host currently forbids.
+- permits a merge method the host forbids.
 
 A tool that can silently open `main` is a worse problem than the drift it fixes. The flag exists because some of these are legitimate and intended — turning off an unsatisfiable code-owner requirement, for instance — but each one has to be asked for.
 
@@ -80,7 +107,7 @@ A tool that can silently open `main` is a worse problem than the drift it fixes.
 
 **`apply` right after Strategy Setup**, and after any deliberate change to `git_strategy.policy`. Always read the dry run before passing `--yes`.
 
-**Never `apply` to fix a `verify` failure you have not read.** Drift has three legitimate resolutions and only one of them is "change the host": the yaml may be the wrong side, or the divergence may be intended and belong in the project's own `AGENTS.md` → `## Git Strategy`.
+**Never `apply` to fix a `verify` failure you have not read.** Drift has three legitimate resolutions and only one of them is "change the host": the yaml may be the wrong side, or the divergence may be intended: record it in `git_strategy.policy.accepted_divergences` (§2b) with a reason, and summarize the WHY in the project's `.agents/instructions/agent-project.md` → `## Git Strategy (this repository)` if it needs prose context.
 
 ---
 
@@ -94,4 +121,4 @@ direct_push_to_protected:   declared allowed  enforced blocked (pull_request rul
 require_code_owner_review:  n/a               enforced true, with no CODEOWNERS anywhere
 ```
 
-The first two were fixed in the yaml (the host was right). The third was fixed on the host: with no `CODEOWNERS` file the requirement was unsatisfiable, so every merge had to bypass the ruleset. `apply` refused the change until `--allow-loosening` was passed, printed the payload first, preserved `required_signatures` and the `[merge]`-only method list, and left the bypass list untouched.
+The first was fixed in the yaml (the host was right). The second is INTENDED on both sides and was later formalized as an accepted divergence (§2b): `allowed` describes how work lands via the bypass list, the host rule protects everyone else. The third was fixed on the host: with no `CODEOWNERS` file the requirement was unsatisfiable, so every merge had to bypass the ruleset. `apply` refused the change until `--allow-loosening` was passed, printed the payload first, preserved `required_signatures` and the `[merge]`-only method list, and left the bypass list untouched.

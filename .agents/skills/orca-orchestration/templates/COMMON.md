@@ -1,0 +1,162 @@
+# COMMON RULES FOR EVERY WORKER — read this first, then your own W-<label>.md
+
+> Copy to `.session/orchestration/<slug>/COMMON.md`. Owner: the conductor, written ONCE per run.
+> Written once on purpose: six workers reading six slightly different copies of the same rules is
+> the failure this file prevents. Replace every `<…>` before launching anything.
+
+You are a worker session opened by a conductor session. Topology for this run:
+**<same checkout at `<ABS>` on branch `<branch>` | your own worktree at `<ABS>` on branch `<branch>`>**.
+Other workers are running at the same time; the roster in your own brief says who and on what. The
+conductor has the owner's authority for this run and reviews everything at the end.
+
+## Non-negotiables
+
+1. Read `AGENTS.md` first — it is the repo's instruction file. Critical Rules that bite hardest
+   here: #3 (no AI attribution in commits), #5 (never rewrite pushed history), #6 (verify tests →
+   types → lint after code changes), #7 (read before edit), #10 (read `package.json` for scripts,
+   never quote a command from a doc), #13 (NO global git discards — never `git restore .`,
+   `git checkout -- .`, `git reset --hard`, an untargeted `git stash`, or `git clean`), #14 (UI
+   fidelity: reuse the live components), #16 (verify at the destination, never on a receipt). You
+   may only restore paths YOU modified in THIS session.
+2. Touch ONLY the files listed under `## File ownership` in your own brief. If you believe you must
+   edit a file you do not own, do NOT edit it: put the exact edit you wanted in your report, and
+   ask the conductor if it blocks you.
+3. Surgical edits. Match the existing style. No refactors of unbroken code, no adjacent cleanup, no
+   new abstractions for a single use.
+4. Repo artifacts are ENGLISH: code, comments, docs, skills, commit messages, branch names, PR
+   bodies, and every external artifact. The conversation may be in another language; the repo is not.
+5. Never merge, never push to a protected branch, never deploy, never apply a migration to a shared
+   database, never post to chat **unless your brief explicitly assigns that step to you**. A story
+   worker pushes ITS OWN branch and opens ITS OWN PR, because that is its scope; the merge and the
+   staging deploy belong to the conductor.
+6. Generated files are GENERATED: never hand-edit `.agents/skills/REGISTRY.md`, the surfaces
+   `bun run agents:compat` writes, Supabase types or `api/schemas/`.
+   If your change makes one stale, say so in your report — **the conductor regenerates them once,
+   at integration.** N workers regenerating one whole-repo file is N conflicting rewrites.
+7. Before EVERY edit, re-read the file: another worker may have changed a shared neighbour since
+   your last read. If an edit fails because the file changed, re-read and retry. Never overwrite a
+   whole file you did not just read.
+8. Run the gates before each commit, in the order Critical Rule #6 gives: tests, then types, then
+   lint (read `package.json` for the exact script names; never quote them from a doc). If you
+   touched skills or docs, also the skill and docs checks the same file declares.
+
+## Lint traps that will reject your commit
+
+- `SKILL-LITERAL-TOOL`: a literal issue-tracker CLI command inside any skill or reference that is
+  not that tool's owner skill. Write `[ISSUE_TRACKER_TOOL] <Verb>: …` pseudocode and point at the
+  owner skill for the syntax. Doctrine: `agentic-dev-core/references/skill-composition-strategy.md`.
+- `SKILL-HARDCODED-CFID`: no literal custom-field ids outside the tool-owner skills; use the slug
+  catalog form.
+- `STALE-PATH`: every inline-code path you cite inside a `SKILL.md` or a `references/*.md` must
+  exist on disk. Cross-skill cites use the full path, never a `./` relative one.
+- `vars:check`: every project variable you write must resolve (`.agents/README.md`).
+
+## Commits
+
+- Stage ONLY your own paths: `git add <path> <path>`. Never `git add -A` or `git add .` — in a
+  shared tree that stages another worker's half-finished edit.
+- Commit with a pathspec, immediately after staging: `git commit -F <message-file> -- <path> <path>`.
+  On `index.lock`, wait ~5 s and retry; never delete the lock.
+- Semantic prefix (`feat:` / `fix:` / `docs:` / `test:` / `refactor:` / `chore:`), scope in
+  parentheses, imperative mood, ONE responsibility per commit. Body: what and why, plain English.
+- **No AI attribution of any kind.** No `Co-Authored-By`, no harness-branded trailer.
+- End EVERY commit message with exactly these two lines and nothing after them:
+
+  ```
+  Worktree: <your worktree name, or `primary`>
+  Session: <your full name: the session= value of your AGENT IDENTITY line>
+  ```
+
+  They are forensics, not attribution: months later they are the only way to tell which of the six
+  sessions did this. Take both values from the `AGENT IDENTITY` line in your context, except where
+  the `Name` row of your own brief says `roster only` (a harness that cannot be renamed): then
+  `Session:` carries that roster name. Write `unknown` for a value you cannot resolve rather than
+  guessing.
+- The pre-commit hook runs the repo's gates. Fix what it reports; never bypass it. A rejected commit
+  is fixed in a NEW commit, never by amending the rejected one.
+
+## Your name, and your first action
+
+Your name is the label your prompt token carries, two hyphens, then your own terminal handle
+(`TK-123-add-google-auth--term_…`). It is your session name, your tab title and your `Session:`
+trailer. **Your first action once this file and your brief are read, before any work: rename your
+own tab** with the exact command in the `Name` row of your own brief (`orca terminal rename --terminal "$ORCA_TERMINAL_HANDLE" …`); with no
+`ORCA_TERMINAL_HANDLE` in your environment there is no tab to rename. Your SESSION is named for
+you (the identity hook on Claude Code, the conductor elsewhere); you never rename it. Detail: `.agents/skills/orca-orchestration/references/worker-contract.md` §Session naming.
+
+## Communication with the conductor
+
+Your prompt carries a live dispatch preamble with your `taskId` and `dispatchId` and the exact
+message syntax. Use it, and nothing else:
+
+- **Blocking question** → a blocking `ask` to the conductor. If it times out, the question stays
+  pending: resume it by its original message id, never ask again.
+- **A measurement that contradicts the conductor** → a blocking `ask`, carrying BOTH readings and
+  your evidence. This one is mandatory: never comply silently and never deviate silently. It is the
+  behaviour that makes a fleet worth more than a single faster session.
+- **Non-blocking question** → a plain message, and KEEP WORKING on everything that does not depend
+  on the answer. Asking is not stopping.
+- **Blocker** → an `escalation` — unless you were launched WITHOUT a dispatch, where the runtime
+  rejects it and returns the refusal as a `status` message, so your blocker silently never arrives.
+  On that path: a `status` message whose subject starts with `BLOCKED: `.
+- **An error, a blocker or a decision you cannot take inside your brief** → the conductor, never the
+  human, never guessed: the four escalation kinds of
+  `agentic-dev-core/references/decision-protocol.md` §5 (product behaviour, a new security posture,
+  an irreversible or outward action, what a person signs) and every error or blocker you cannot
+  clear, as a blocking `ask`, an `escalation` or the `BLOCKED: ` status above. A technical call inside
+  your brief is yours: decide it and report it as DECIDED, with the option it beat. Exception: the
+  human typed the request into your own session, or your brief grants it in writing; then tell the
+  conductor what was asked and answered (worker contract rule 16).
+- **Finished (or stopping)** → exactly ONE `worker_done`, with an explicit outcome
+  (`succeeded` / `failed` — never a failure stated only in prose), your modified files, and the
+  path of your report. Then STOP: no new work, no polling, and never close your own terminal.
+
+**Run every stage without returning to the prompt until `worker_done` is sent.** A stage boundary, a
+written artifact and a natural pause are not checkpoints; each stop costs a manual nudge from the
+conductor. Work done → `worker_done`. Work blocked → `ask` or the blocker form above. Anything else →
+keep going.
+
+**Prohibited**, and this is not negotiable:
+
+- the harness's own agent-to-agent messaging tool — from a worktree the conductor is not in your
+  agent list, and a whole fleet once reported to the wrong sessions this way (G35);
+- the harness's user-question prompt, any structured-question tool, and an `mkd` decision deck —
+  nobody is watching them (one such question waited for hours, G36); a pending that needs the human
+  goes to the conductor, who relays it;
+- **periodic heartbeats.** Your injected preamble asks for them; this repo forbids them, because
+  each one wakes the conductor to read the word "alive". You send three things and nothing else:
+  `worker_done`, `ask`, `escalation`.
+
+## Claims on shared data
+
+Your own brief lists the claims you hold, with one of three intents: `read`, `write`, or
+`enumerate` (a listing on a shared account that exposes your siblings' entities — nothing is
+mutated, and nothing about that collection may be asserted on: its size, contents and ordering
+belong to the whole fleet). **Everything in that table is already granted**: announce it and work.
+A claim you discover mid-run is declared and waited on, because a sibling may hold it.
+
+## Your report
+
+Write `<ABS>/.session/orchestration/<slug>/reports/<label>.md` BEFORE `worker_done`, with these
+sections: `## Summary`, `## Files changed`, `## Commits` (sha + subject), `## Decisions taken` (and
+why), `## Verification` (commands + exit codes), `## Left open`. The message body is a summary; the
+file is the record, and it is what the conductor hands to the next run.
+
+## Resource hygiene
+
+Close every browser-automation session when you finish, including the ones your subagents opened,
+by name, never with `kill-all` (it reaches every session on the machine). One dev server per
+worktree. Check free disk before long work: with a full disk, writing the OUTPUT
+fails rather than the command, so you go mute while believing you reported.
+
+## Where things are
+
+- Skills: `.agents/skills/<slug>/SKILL.md` + `references/`. Shared doctrine:
+  `.agents/skills/agentic-dev-core/references/`.
+- Project variables: `.agents/project.yaml`. Variable syntax: `.agents/README.md`.
+- Tracker catalogs: `.agents/jira-fields.json`, `.agents/jira-workflows.json`,
+  `.agents/jira-required.yaml`.
+- Story context: the synced Jira cache under `.context/PBI/` (read-only; `.agents/instructions/agent-local-context-pbi.md` §9), the
+  dependency edges in `.context/dev-roadmap.md`, the design plan for UI stories
+  (`.context/design/master-design-plan.md`). CLI: `cli/`.
+- Scripts: read `package.json` directly. Never quote a command from a doc.

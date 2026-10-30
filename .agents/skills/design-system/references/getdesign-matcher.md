@@ -54,7 +54,7 @@ Save the resulting object to a temp file (e.g. `/tmp/design-context.json`) so th
 
 ## 3. Catalog fetch
 
-The `getdesign` CLI emits **plain text** (one line per brand: `slug - description`); the documented `--json` flag is silently ignored as of v0.6.17. Pipe through a small Bun parser to produce the JSON shape the matcher expects:
+The `getdesign` CLI emits **plain text** (one line per brand: `slug - description`); the documented `--json` flag is silently ignored (release checked in `.context/ADR/ADR-0003-forensic-measurements-ledger.md`; re-check after an upgrade). Pipe through a small Bun parser to produce the JSON shape the matcher expects:
 
 ```bash
 npx --yes getdesign list 2>/dev/null | bun -e '
@@ -179,7 +179,7 @@ npx --yes getdesign add <slug>
 By default, `getdesign` writes to `./DESIGN.md`. If `.agents/project.yaml` has a non-default `design_md_path`, pass `--out`:
 
 ```bash
-DESIGN_MD_PATH=$(yq '.design_md_path // "./DESIGN.md"' .agents/project.yaml)
+DESIGN_MD_PATH=$(yq '.frontend.design_md_path // "./DESIGN.md"' .agents/project.yaml)
 npx --yes getdesign add <slug> --out "$DESIGN_MD_PATH"
 ```
 

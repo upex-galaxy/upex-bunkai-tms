@@ -1,4 +1,4 @@
-# Git Worktrees — Isolated Parallel Work (manual + Claude Code harness)
+# Git Worktrees — Isolated Parallel Work
 
 A **worktree** is a second working directory wired to the **same `.git`**. Git normally
 gives you one working tree; with worktrees you get several — each with its **own
@@ -41,6 +41,34 @@ locally at once.
 
 ---
 
+## The lifecycle in THIS repo (canon, every host, every creation path)
+
+However the worktree is created (plain `git worktree add`, Orca, a harness tool, a Codex-managed
+worktree), the same three repo steps wrap it:
+
+```
+create  ──→  bun run worktree:provision  ──→  work  ──→  bun run worktree:audit <wt> --rescue  ──→  remove
+```
+
+- **Provision before working.** A fresh worktree holds only tracked files. `bun run
+  worktree:provision` (no argument = the cwd) copies the gitignored inputs it cannot rebuild from
+  the primary checkout (`.env`, `.vercel/`, local settings), installs dependencies and creates the
+  `.claude/skills` alias. The list lives in code, never in prose: `PROVISION_COPIES` in
+  `cli/lib/worktree.ts`. It installs with bun only: an app on pnpm / npm / yarn
+  (`stack.package_manager`, else its lockfiles) is refused with the reason before anything is
+  copied (`provisionPackageManager`, same file), because `bun install` would write a second lockfile.
+- **`.session/` is never copied.** Durable gitignored state (plans, progress, locks, run reports)
+  lives at `<<PRIMARY_ROOT>>` (`.agents/README.md` §"Checkout roots") and is cited by absolute path
+  from inside the worktree. A copy diverges silently and dies with the worktree.
+- **Audit before removing.** `bun run worktree:audit <wt>` is read-only and exits 1 while state lives
+  only in the worktree; `--rescue` copies it to the primary, never overwriting.
+- **Orca does both steps for you.** The committed `orca.yaml` runs `worktree:provision` as the setup
+  hook and `worktree:audit --rescue` as the archive hook. Supervised fleets (a conductor launching
+  workers into worktrees) are owned by `/orca-orchestration` (`references/provisioning.md`), not by
+  this skill.
+
+---
+
 ## Approach A — Manual git (portable, works with any tool or agent)
 
 This is plain git. It works the same in any terminal, any editor, any coding agent.
@@ -52,6 +80,7 @@ git worktree list                                   # show every worktree + its 
 # create: new directory + NEW branch, based on a ref
 git worktree add ../proj-feature -b feat/x main     # branch feat/x from main, in ../proj-feature
 git worktree add ../proj-hotfix hotfix/y            # check out an EXISTING branch hotfix/y
+bun run worktree:provision ../proj-feature          # repo step: gitignored inputs + deps + skills alias
 
 # work — both directories live simultaneously
 cd ../proj-feature
@@ -61,6 +90,7 @@ git push -u origin feat/x
 cd ../proj                                          # hop back to the primary tree any time
 
 # clean up after the branch is merged
+bun run worktree:audit ../proj-feature --rescue     # repo step: rescue gitignored state to the primary
 git worktree remove ../proj-feature                 # delete the dir (refuses if uncommitted; --force overrides)
 git branch -d feat/x                                # delete the branch once merged
 git worktree prune                                  # drop stale registrations (if a dir was rm'd by hand)
@@ -83,13 +113,14 @@ git worktree move ../proj-feature ../proj-feature2  # relocate a worktree
 
 ---
 
-## Approach B — Claude Code harness (`EnterWorktree` / `ExitWorktree`)
+## Approach B — a harness's own worktree tool (harness path only)
 
-> **Claude-Code-specific.** `EnterWorktree`/`ExitWorktree` are native **Claude Code**
-> tools that orchestrate `git worktree` *and move the agent's session into it*. Other
-> coding agents (Cursor, Copilot, Codex, Aider, …) do **not** have these — there, use
-> **Approach A** (manual git) or that tool's own equivalent. The underlying git mechanics
-> are identical regardless.
+> **Harness-specific, never the repo canon.** Some hosts create the worktree and move the
+> session into it for you: Claude Code (`EnterWorktree` / `ExitWorktree`, `claude --worktree`),
+> Codex (its managed worktrees). OpenCode has no equivalent: use **Approach A**. Whatever
+> the host, the repo lifecycle above still applies: run `bun run worktree:provision` right
+> after entering, and `bun run worktree:audit <wt> --rescue` before the tool removes it.
+> The Claude Code tools are described below because their limits bite.
 
 **`EnterWorktree`** — creates a worktree under `.claude/worktrees/<name>/` on a new
 branch and switches the session's working directory into it.
@@ -107,6 +138,7 @@ branch and switches the session's working directory into it.
   or unmerged commits it **refuses** unless `discard_changes: true`.
 - Only operates on worktrees **this session** created via `EnterWorktree` — it will not
   touch one you made by hand (`git worktree add`).
+- `remove` deletes gitignored state with the directory: audit first.
 
 **Subagents** — the `Agent` tool (and workflow agents) accept `isolation: "worktree"`,
 which runs each subagent in its own temporary, auto-cleaned worktree. Use that only when
@@ -117,10 +149,11 @@ session.
 
 | | `git worktree` (manual) | `EnterWorktree` (Claude Code) |
 | --- | --- | --- |
-| Portability | any tool / agent | Claude Code only |
+| Portability | any tool / agent / host | Claude Code only |
 | Directory location | anywhere you choose (`../dir`) | fixed under `.claude/worktrees/` |
 | Base ref | whatever you pass | setting: `fresh`=origin/default or `head` |
 | Moves the agent's session | no (you `cd`) | yes, automatically |
+| Repo steps | `worktree:provision` after add, `worktree:audit --rescue` before remove | the same two, around the tool |
 | Cleanup | manual (`remove`/`prune`) | `ExitWorktree remove` |
 | Branch naming | you choose | derived from the name (rename with `git branch -m`) |
 
@@ -176,56 +209,27 @@ Rule of thumb: **one session = one worktree = one branch.**
   `info/exclude` lives in the shared git-common dir (one copy for all worktrees) and is
   never committed — so it cannot leak into another branch's history.
 
-### Worktree registry — `.session/worktrees.json`
+### Provenance: which session owns a worktree
 
-`one session = one worktree = one branch` is only auditable after the fact if somebody
-recorded which session owned which worktree. The registry is that record. Without it, an
-orphaned worktree or branch has no path back to the conversation that created it — even
-though the transcript is sitting on disk.
+The record is the commit itself, not a side file. Every agent commit ends with the forensic
+trailers `Worktree: <name|primary>` and `Session: <label>` (SKILL.md §3.2, Critical Rule #3), copied
+from the `AGENT IDENTITY:` line the prompt hook injects. Given an orphaned worktree or branch:
+`git log <branch> --format=%B | grep -E '^(Worktree|Session):'` names the worktree and the session
+that wrote it; under orchestration the Orca run (`/orca-orchestration`) also records which worker
+held which worktree. Rules that still hold:
 
-**Write on create, update on remove.** When a session creates a worktree (either
-approach), append an entry to `.session/worktrees.json`; when it removes one, fill
-`removed_at`. Fields per entry:
-
-```json
-{
-  "path": ".claude/worktrees/feat-upex-123",
-  "branch": "feat/UPEX-123-bulk-assign",
-  "session_id": "0f3d9a12-4b6e-4c2f-9e1d-7a8b5c3d2e1f",
-  "created_at": "2026-08-18T14:02:11Z",
-  "removed_at": null,
-  "ticket": "UPEX-123"
-}
-```
-
-(`removed_at` stays `null` while the worktree is live; `ticket` is the issue key when
-there is one, else `null`.)
-
-Design constraints, all deliberate:
-
-- **It lives under `.session/`** because that tree is gitignored. A registry that
-  generated commit noise on every parallel agent would be deleted by the first person it
-  annoyed.
-- **It is a RECORD, never a lock.** Locking is already solved (a branch checks out in one
-  worktree only; mode locks guard scheduled runs). A registry that starts gating behaviour
-  becomes a second, weaker lock that disagrees with the first one. Never refuse or delay
-  an operation because of what the registry says.
-- **A stale entry is DIAGNOSTIC, not an error to auto-repair.** Worktree path gone from
-  disk while `removed_at` is still `null` → report it and let a human decide. Do NOT
-  delete another session's worktree — the multi-session rules above stand unchanged
-  (`ExitWorktree` only touches worktrees its own session created; the same discipline
-  applies to manual `git worktree remove`).
-- **The recovery recipe this registry exists to enable:** given an orphaned worktree or
-  branch, look up its entry, take the `session_id`, and read
-  `~/.claude/projects/<cwd-slug>/<session_id>.jsonl` — where `<cwd-slug>` is the working
-  directory with `/` replaced by `-`. That transcript is the conversation that explains
-  why the worktree exists and what state it was left in.
+- **A stale worktree is DIAGNOSTIC, not something to auto-repair.** Report it and let a human
+  decide. Do NOT delete another session's worktree (`ExitWorktree` only touches worktrees its own
+  session created; the same discipline applies to manual `git worktree remove`).
+- **A worktree with no commits has no trailer to read.** That is the case `worktree:audit` exists
+  for: run it before deciding anything.
 
 ---
 
 ## Cleanup checklist
 
 - [ ] Branch's work is committed and pushed (or deliberately discarded).
+- [ ] `bun run worktree:audit <path> --rescue` exits 0 (no state left only in the worktree).
 - [ ] `git worktree remove <path>` (or `ExitWorktree remove`) — succeeds only when clean.
 - [ ] `git branch -d <branch>` once the branch is merged.
 - [ ] `git worktree prune` if any directory was removed by hand.
@@ -240,8 +244,9 @@ Design constraints, all deliberate:
 | Clean tree, one linear task | Just a branch (`git switch -c`) — no worktree |
 | Risky WIP on current branch, need to build something unrelated | Worktree on a new branch |
 | Two AI sessions in parallel | One worktree + one branch **each** |
-| Claude Code, want the session moved for you | `EnterWorktree` (base `fresh` for independence) |
-| Any other agent / portable script | `git worktree add … -b …` (Approach A) |
+| Any host, portable script | `git worktree add … -b …` + `bun run worktree:provision` (Approach A) |
+| A conductor launching supervised workers | `/orca-orchestration` (Orca creates the worktree; `orca.yaml` provisions and audits) |
+| Claude Code, want the session moved for you | `EnterWorktree` (base `fresh`), then `bun run worktree:provision` (Approach B) |
 | Parallel subagents mutating files | `Agent`/workflow `isolation: "worktree"` |
 
 ---
@@ -250,12 +255,14 @@ Design constraints, all deliberate:
 
 When an AI session needs isolation from in-progress work on another branch:
 
-1. Prefer `EnterWorktree` (Claude Code) with base `fresh` so the new branch is independent
-   of the current branch's local WIP; rename the branch to convention (`git branch -m feat/<slug>`).
-2. **Move** any untracked WIP into the worktree (it will not be there automatically).
-3. Keep the primary repo's `git status` **clean** — verify with `git -C <primary> status`.
-4. Hide the nested worktree from the primary tree via local `info/exclude`.
-5. Do all further work (edits, verifies, commits) in the worktree; the other branch stays
-   untouched.
-6. On completion, commit on the worktree's branch → open its own PR → `ExitWorktree`
-   (`keep` to preserve, `remove` when merged/abandoned).
+1. Create the worktree on a new branch off the strategy's base: Approach A on any host, or the
+   host's own tool where it has one (Approach B); rename the branch to convention
+   (`git branch -m feat/<slug>`) when the tool derived it.
+2. Run `bun run worktree:provision` inside it before anything else.
+3. **Move** any untracked WIP into the worktree (it will not be there automatically). Never copy
+   `.session/`: cite `<<PRIMARY_ROOT>>/.session/...` by absolute path.
+4. Keep the primary repo's `git status` **clean** — verify with `git -C <primary> status`.
+5. Hide a worktree nested inside the repo from the primary tree via local `info/exclude`.
+6. Do all further work (edits, verifies, commits with the forensic trailers) in the worktree.
+7. On completion, commit on the worktree's branch → open its own PR → `bun run worktree:audit
+   <wt> --rescue` → remove it (`git worktree remove`, or the harness tool's own remove).

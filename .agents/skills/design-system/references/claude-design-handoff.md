@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Use este camino cuando el user tiene **Claude Pro / Max / Team / Enterprise** y quiere la mejor calidad visual disponible — Claude Design (Anthropic Labs, research preview launched 2026-04-17, powered by Opus 4.7) es UI-only en `claude.ai/design`, two-pane chat+canvas, lee el codebase / design files del user durante el onboarding y arma un design system que todos los proyectos posteriores heredan automáticamente. No hay CLI, API ni MCP oficial — la invocación es 100% manual en el browser. La skill no puede triggerearla programáticamente; lo único que puede hacer es esperar al user, ingestar el bundle exportado y convertirlo al spec Google Labs vía Path E.
+Use este camino cuando el user tiene **Claude Pro / Max / Team / Enterprise** y quiere la mejor calidad visual disponible — Claude Design (Anthropic Labs) es UI-only en `claude.ai/design`, two-pane chat+canvas, lee el codebase / design files del user durante el onboarding y arma un design system que todos los proyectos posteriores heredan automáticamente. No hay CLI, API ni MCP oficial — la invocación es 100% manual en el browser. La skill no puede triggerearla programáticamente; lo único que puede hacer es esperar al user, ingestar el bundle exportado y convertirlo al spec Google Labs vía Path E.
 
 ## Prerequisites
 

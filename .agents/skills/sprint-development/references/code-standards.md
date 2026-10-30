@@ -2,6 +2,8 @@
 
 > **Para**: Fases 6-7 (Implementation + Code Review)
 > **Propósito**: Estándares de código para mantener calidad y consistencia
+>
+> **Existing conventions win**: these are the DEFAULTS for an app with no convention of its own. Where the app already has one (folder layout, naming, import alias `{{stack.conventions.import_alias}}`, component shape), follow the app's and note a disagreement as tech debt, never as a rewrite inside a story (`../SKILL.md` → `## Stack parameters`).
 
 ---
 

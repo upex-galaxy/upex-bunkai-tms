@@ -27,7 +27,8 @@ app/qa/
 ├── qa-config.ts             # the detection→render bridge (typed; codegen fills it)
 ├── _lib/
 │   ├── highlight.ts         # server-only Shiki bridge — memoized highlighter, dual theme
-│   └── prepare.ts           # server one-shot: highlight every client-bound snippet
+│   ├── prepare.ts           # server one-shot: highlight every client-bound snippet
+│   └── build.ts             # server-only: resolves the deployed commit SHA at runtime
 └── _components/
     ├── QaShell.tsx          # async SERVER orchestrator: layout + prepareQa() + sections
     ├── Toc.tsx              # 'use client' — sticky nav, active-section, copy-link
@@ -38,7 +39,7 @@ app/qa/
     ├── RequestCards.tsx     # 'use client' — tab group over RequestCards (§5 auth)
     ├── ArchDiagram.tsx      # boxes-and-arrows + MCP layer + Repos (mono/poly)
     ├── TwoWayTabs.tsx       # reusable 2-way tabs (DB: toml|URI · API: OpenAPI|Postman)
-    └── EnvSetup.tsx         # .env slots + activation (3 paths) + missing-var table
+    └── EnvSetup.tsx         # .env slots + activation (per process) + missing-var table
 ```
 
 > **Why the `_lib/` split**: the highlighter is server-only (it loads WASM + grammars — expensive, and must never ship to the browser). Client components (`AgentCodeBlock`, `RequestCard`) cannot import it, so the SERVER pre-highlights every snippet into html-string props (`prepare.ts`) and passes them down. Server components highlight inline via the async `<CodeBlock>`.
@@ -75,11 +76,20 @@ export interface ApiRequest {
 
 export interface DbRole { name: string; access: string; }   // e.g. "read-only (SELECT). BYPASSRLS."
 
+// WHERE the deployed commit lives, never WHAT it is. Codegen writes env var
+// NAMES only; `_lib/build.ts` reads their values at runtime. A SHA literal in
+// this file is a defect: it goes stale on the next deploy.
+export interface BuildSource {
+  shaEnvVars: string[];                   // DETECTED, priority order, e.g. ["VERCEL_GIT_COMMIT_SHA"]
+  repoUrl: string | null;                 // from .agents/project.yaml (frontend/backend repo) → commit link
+}
+
 export interface QaConfig {
   lang: "es" | "en";
   project: { name: string; reposShape: "mono" | "poly"; backendRepo: string | null; frontendRepo: string | null };
   stack: { framework: string; ui: string; db: string; orm: string | null; auth: string[] };
   credentialsSource: { label: string; url: string } | null;   // Jira Epic / Confluence / Notion …
+  build: BuildSource | null;                                   // null ⇒ no SHA source detected → hero shows the fallback
   docs: { ui: "scalar" | "redoc" | "swagger" | null; route: string | null; specUrl: string | null };
   api: {
     baseUrl: string | null;
@@ -101,7 +111,7 @@ export interface QaConfig {
   };
   mcp: { agents: AgentKey[]; dbhub: Record<AgentKey, string>; openapi: Record<AgentKey, string>;
          postman: Record<AgentKey, string> };        // playwright driven by CLI, not an MCP record (Q7)
-  env: { strategy: "expansion" | "literal"; activation: ("wrapper" | "source-shell" | "direnv" | "auto")[]; slots: string[] };
+  env: { strategy: "expansion" | "literal"; activation: ("mcp-loader" | "varlock-run" | "auto")[]; slots: string[] };
   demoUsers: { email: string; note: string }[];               // emails only on the page; passwords gated
   playwright: {                                       // §6 fixtures + agentic CLI (Q7)
     loginTestIds: { id: string; purpose: string }[];
@@ -115,7 +125,7 @@ export interface QaConfig {
 export const qaConfig: QaConfig = {/* DETECTED — filled by the skill */} as QaConfig;
 ```
 
-> The golden's whole point: reviewers can see at a glance that the page contains **no literal endpoint, host, or token** — only `qaConfig.*` reads. The `apiRequests`, `db.roles`, `db.poolerNote`, and `db.rlsProbe` fields are ALL detection-driven: render only what the project actually exposes, with `null`/empty rendering a gap. The sample-project values (signup/signin/tokens, BYPASSRLS roles, Supabase pooler) are EXAMPLES — never bake them into a fresh run.
+> The golden's whole point: reviewers can see at a glance that the page contains **no literal endpoint, host, token, or commit SHA** — only `qaConfig.*` reads. The `apiRequests`, `db.roles`, `db.poolerNote`, and `db.rlsProbe` fields are ALL detection-driven: render only what the project actually exposes, with `null`/empty rendering a gap. The sample-project values (signup/signin/tokens, BYPASSRLS roles, Supabase pooler) are EXAMPLES — never bake them into a fresh run.
 
 ---
 
@@ -170,12 +180,14 @@ import { prepareQa } from "../_lib/prepare";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { KeyRound, ExternalLink, Database, Plug, MousePointerClick, Network } from "lucide-react";
+import { KeyRound, ExternalLink, Database, Plug, MousePointerClick, Network, GitCommit } from "lucide-react";
+import { resolveBuild } from "../_lib/build";
 import type { QaConfig } from "../qa-config";
 
 export async function QaShell({ config }: { config: QaConfig }) {
   const t = config.lang === "es" ? es : en;
   const prepared = await prepareQa(config);               // highlight everything once, server-side
+  const build = resolveBuild(config.build);               // runtime env read, never a codegen literal
   return (
     <div data-testid="qa-page" className="mx-auto max-w-7xl px-4 py-10">
       {/* Hero */}
@@ -184,6 +196,16 @@ export async function QaShell({ config }: { config: QaConfig }) {
           Software Testability Guide for QA
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">{t.subtitle}</p>
+        {/* Build stamp: which deploy this page describes. Always rendered; fallback copy when no SHA. */}
+        <p data-testid="qa-build-sha" data-sha={build?.full ?? ""}
+           className="mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-xs text-muted-foreground">
+          <GitCommit className="h-3.5 w-3.5" aria-hidden />
+          {build
+            ? (build.href
+                ? <a href={build.href} target="_blank" rel="noopener noreferrer" className="underline">{build.short}</a>
+                : build.short)
+            : t.buildGap}
+        </p>
       </header>
 
       <div className="lg:grid lg:grid-cols-[16rem_1fr] lg:gap-10">
@@ -276,7 +298,9 @@ export async function QaShell({ config }: { config: QaConfig }) {
 }
 ```
 
-> `Section` is a tiny local wrapper (Card + accent border + anchor heading + a copy-link button). `TrinityCards` renders the three-card grid from `mcp-and-env-setup.md` §3. The §4 DB section also renders the roles table + REVOKE callout + pooler + RLS-probe callouts (see "DB-roles depth" in `page-structure.md` §4) — all conditional on the detected `config.db.*` fields. `es`/`en` are copy dictionaries (Spanish default).
+> `t.buildGap` is the fallback copy for the build stamp (es: `build local, sin SHA de despliegue`; en: `local build, no deploy SHA`).
+>
+> `Section` is a tiny local wrapper (Card + accent border + anchor heading + a copy-link button). `TrinityCards` renders the three-card grid from `mcp-and-env-setup.md` §3. The §4 DB section also renders the roles table + REVOKE callout + pooler + RLS-probe callouts (see "DB-roles depth" in `page-structure.md` §4) — all conditional on the detected `config.db.*` fields. `es`/`en` are copy dictionaries; `qaConfig.lang` (Q5) picks the active one.
 
 ---
 
@@ -365,6 +389,39 @@ export async function prepareQa(config: QaConfig) {
 ```
 
 > `QaShell` is an **async Server Component** that calls `await prepareQa(config)` once and threads the prepared html into the client components. See the QaShell golden above (it is async; `'use client'` is gone from the shell).
+
+---
+
+## Build stamp (`_lib/build.ts`)
+
+The hero tells a tester WHICH deploy the page describes, so a finding can be pinned to a commit and "is my fix live?" is answered on the page itself. The value is read from the platform at RUNTIME; codegen only writes the env var NAMES into `qaConfig.build` (detected in `pre-flight-discovery.md`). Writing the SHA as a literal would be stale on the next deploy, and it would put a per-deploy value inside a file the idempotency diff reads.
+
+```ts
+// app/qa/_lib/build.ts — server-only. Never import from a 'use client' module.
+// Resolves the deployed commit from the env var NAMES detection wrote into
+// qaConfig.build. On Vercel the system var is present at build AND runtime;
+// in local dev it is absent, so the stamp falls back to the gap copy.
+import type { QaConfig } from "../qa-config";
+
+export interface BuildStamp { full: string; short: string; href: string | null; }
+
+export function resolveBuild(build: QaConfig["build"]): BuildStamp | null {
+  if (!build) return null;
+  const full = build.shaEnvVars
+    .map((name) => process.env[name])
+    .find((v): v is string => !!v && /^[0-9a-f]{7,40}$/i.test(v));
+  if (!full) return null;
+  const href = build.repoUrl ? `${build.repoUrl.replace(/\/$/, "")}/commit/${full}` : null;
+  return { full, short: full.slice(0, 7), href };
+}
+```
+
+Rules:
+
+- **Server-side read only.** `resolveBuild` runs in the server `QaShell`. A statically prerendered `/qa` still shows the right commit, because every deploy rebuilds from its own commit. Keep the page on the Node runtime (dynamic `process.env[name]` lookups are a server feature).
+- **No server model?** (Vite SPA and similar) read the framework-prefixed build-time copy instead, e.g. `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` / `VITE_*` injected at build. Same rule: a build-time injection, never a value the skill writes.
+- **Fallback is visible, never silent.** No source detected (`build: null`) or the var is unset (local dev, a deploy without git metadata) → `t.buildGap`. The `qa-build-sha` node always renders so automation can read it; `data-sha` carries the full SHA (empty on fallback).
+- **Only the SHA.** Never render other platform env values next to it (`security-rules.md`).
 
 ---
 
@@ -701,7 +758,7 @@ export function TwoWayTabs({ config, domain }: { config: QaConfig; domain: "db" 
 ```
 
 ```tsx
-// EnvSetup.tsx — .env slots (names only) + the THREE activation paths + the
+// EnvSetup.tsx — .env slots (names only) + the per-process activation paths + the
 // CORRECT env verification. Server component (renders <CodeBlock> server-side).
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
@@ -709,15 +766,13 @@ import { CodeBlock } from "./CodeBlock";
 import type { QaConfig } from "../qa-config";
 
 // <PREFIX> = the project's MCP env prefix (e.g. DBHUB) — DETECTED, never baked in.
-const wrapperBlock = `# Wrapper (dotenv-cli, cross-platform) — launches the agent with .env preloaded:
-bun run claude       # = dotenv -e .env -- claude
-bun run opencode     # = dotenv -e .env -- opencode`;
-const sourceShellBlock = `# Source .env into your CURRENT shell — must be SOURCED (a 'bun run' wrapper
-# runs in a subshell and won't persist). Mac/Linux/Git Bash:
-set -a; source .env; set +a
-# then launch bare 'claude' / 'opencode' with the vars already exported.`;
-const direnvBlock = `# direnv + .envrc (Mac/Linux) — auto-loads .env on cd into the repo:
-direnv allow         # once; every cd then exports .env automatically`;
+const openBareBlock = `# Open the agent bare, in the project folder (or its desktop app). It holds no .env value:
+claude
+opencode`;
+const mcpLoaderBlock = `# Each MCP server that needs a value starts through the .env loader (its committed config entry):
+bunx varlock run --filter <ITS_VARS> -- <server command>`;
+const varlockRunBlock = `# A command that needs a value: loads .env for THAT process only (never into your shell):
+bunx varlock run -- sh -c '<command using "$VAR">'`;
 
 export function EnvSetup({ config }: { config: QaConfig }) {
   return (
@@ -726,14 +781,14 @@ export function EnvSetup({ config }: { config: QaConfig }) {
         {config.env.slots.map(s => <Badge key={s} variant="secondary" className="font-mono">{s}</Badge>)}
       </div>
 
-      {/* Activation — three paths (render only the ones DETECTED in env.activation) */}
+      {/* Activation — per process (render only the ones DETECTED in env.activation) */}
       <div className="space-y-3">
-        <p className="text-sm font-semibold">Activate <code>.env</code> before launching the agent — three paths:</p>
-        {config.env.activation.includes("wrapper") && <CodeBlock language="bash" code={wrapperBlock} title="wrapper" />}
-        {config.env.activation.includes("source-shell") && <CodeBlock language="bash" code={sourceShellBlock} title="source .env (current shell)" />}
-        {config.env.activation.includes("direnv") && <CodeBlock language="bash" code={direnvBlock} title="direnv" />}
+        <p className="text-sm font-semibold">Open the agent bare; <code>.env</code> reaches only the process that needs it (never the agent, never your shell):</p>
+        <CodeBlock language="bash" code={openBareBlock} title="open the agent" />
+        {config.env.activation.includes("mcp-loader") && <CodeBlock language="bash" code={mcpLoaderBlock} title="MCP .env loader" />}
+        {config.env.activation.includes("varlock-run") && <CodeBlock language="bash" code={varlockRunBlock} title="varlock run" />}
         {config.env.activation.includes("auto") && (
-          <p className="text-sm text-muted-foreground">The runtime auto-loads <code>.env</code> (still export the vars for the MCP launcher).</p>
+          <p className="text-sm text-muted-foreground">The project's own scripts auto-load <code>.env</code> (e.g. Bun); the MCP servers still get theirs through the loader.</p>
         )}
       </div>
 
@@ -743,13 +798,13 @@ export function EnvSetup({ config }: { config: QaConfig }) {
         <p className="mt-1 text-muted-foreground">
           The MCP returns 401/403 (or DBHub: a cryptic auth error because it substitutes the literal <code>{"${VAR}"}</code>).
           Exit the agent, fix <code>.env</code>, re-enter — vars are read once at MCP spawn. A bare
-          {" "}<code>env | grep &lt;PREFIX&gt;</code> comes back EMPTY even when correct, because the wrapper
-          injects vars into the agent CHILD process, not your parent shell. Verify with the trio:
+          {" "}<code>env | grep &lt;PREFIX&gt;</code> comes back EMPTY even when correct, because the loader
+          hands the vars to each MCP server process at spawn, never to the agent or your shell. Verify with the trio:
         </p>
         <ul className="ml-5 mt-1 list-disc text-muted-foreground">
-          <li><code>grep &lt;PREFIX&gt; .env</code> — is the var in the file?</li>
-          <li><code>dotenv -e .env -- env | grep &lt;PREFIX&gt;</code> — what the MCP actually sees.</li>
-          <li><code>set -a; source .env; set +a</code> — load into your current shell to inspect.</li>
+          <li><code>grep -E '^&lt;PREFIX&gt;[A-Z0-9_]*=.' .env | cut -d= -f1</code> — is the var set in the file? (names only)</li>
+          <li><code>bunx varlock run -- env | grep '^&lt;PREFIX&gt;' | cut -d= -f1</code> — what the MCP actually sees (names only).</li>
+          <li><code>bunx varlock load --agent</code> — does every value pass the schema? (redacted).</li>
         </ul>
       </div>
     </div>
@@ -761,7 +816,7 @@ export function EnvSetup({ config }: { config: QaConfig }) {
 
 ## data-testid conventions
 
-- Page root: `qa-page`. Title: `qa-title`.
+- Page root: `qa-page`. Title: `qa-title`. Build stamp: `qa-build-sha` (carries `data-sha="<full sha>"`, empty on fallback).
 - Sections: `qa-section-<name>` (`-trinity`, `-database`, `-api`, `-ui`, `-reference`). **One id per node** — never two on the same element.
 - Credentials: `qa-credentials-card`, `qa-credentials-button`. Docs: `qa-docs-button`.
 - Code: `qa-code-block` (carries `data-variant="terminal|editor"`), `qa-copy-code-button`. Agent tabs: `qa-agent-tabs`, `qa-agent-tab-<agent>`.
@@ -783,12 +838,13 @@ export function EnvSetup({ config }: { config: QaConfig }) {
 ## Adapt-don't-copy checklist
 
 - [ ] `qaConfig` filled entirely from detection; grep the page for literal hosts/endpoints/tokens → must be zero.
+- [ ] **Build stamp is runtime-only.** `qaConfig.build.shaEnvVars` holds env var NAMES; grep `app/qa/**` for a 7-40 char hex commit literal → must be zero.
 - [ ] UI primitives = the detected host kit (not shadcn if the host uses MUI/Mantine/Chakra).
 - [ ] **Missing primitive ≠ missing dep.** If the golden needs a primitive the host kit has not scaffolded yet (e.g. Tabs, Badge) but the underlying dep already exists (`@radix-ui/*`) or none is needed (`cva`), scaffold the local `components/ui/<x>.tsx` in the host's style. Adding a local component file is NOT "adding a dependency" — it is allowed. The "never add a dep" rule is about `package.json`, not about local files.
 - [ ] **Custom token vocabulary?** The golden is coded against shadcn-neutral tokens (`text-muted-foreground`, `bg-card`, `border`). If the host uses a CUSTOM token system (e.g. `fg-0..4` / `surface-0..2` / `stroke-*` / `accent`), READ an existing host component (`components/ui/card.tsx`, a real page) for the real vocabulary and MAP the golden's classes onto it — do not emit raw shadcn-neutral classes the host app doesn't use. Domain-accent hues (amber/emerald/violet/cyan/pink/slate) come from default Tailwind and are safe regardless. Mirror the host's dark mechanism (`darkMode:'class'` vs `next-themes`); do not add `next-themes` if absent.
 - [ ] Icons = the detected icon lib (lucide here; swap if host differs; inline SVG if none).
 - [ ] Dark/light uses the host mechanism.
-- [ ] Visible copy in `qaConfig.lang` (Spanish default in this ecosystem); identifiers + `data-testid`s stay English.
+- [ ] Visible copy in `qaConfig.lang` (Q5, the host's language signal); identifiers + `data-testid`s stay English.
 - [ ] Agent tabs include only `qaConfig.mcp.agents`; the 4-tab set is the documentation default.
 - [ ] **Highlighter (Q6).** If the host already ships one (Shiki / Prism / highlight.js / `rehype-pretty-code`), adapt the `_lib/highlight.ts` bridge onto it instead of adding Shiki. Shiki is added ONLY when the host has none (the single sanctioned dep — `SKILL.md` Notes). NEVER import `highlight()` from a `'use client'` module — highlight server-side, pass html down. If the framework has no server model, run it at build / in the route loader.
 - [ ] **Request viewer (Q8).** `apiRequests[]` is filled from the project's DETECTED auth requests (`<METHOD> <path>` placeholders) — never the example signup/signin/token shapes. Fall back to plain-curl `AuthMethods` only when the host kit can't render tabs/tables.

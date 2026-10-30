@@ -1,18 +1,18 @@
 # TypeScript Patterns — Full Reference
 
-> Loaded on demand. AGENTS.md §10 holds the 5-row quick-reference + 3-bullet DRY block. Full conventions and rationale live here. If a feature dev-guide (produced by `/project-foundation` Discovery) exists, prefer that — this file is the always-present fallback.
+> Loaded on demand. `.agents/instructions/agent-code-quickref.md` §10 holds the 5-row quick-reference + 3-bullet DRY block. Full conventions and rationale live here. If a feature dev-guide (produced by `/project-foundation` Discovery) exists, prefer that — this file is the always-present fallback.
 
 ---
 
 ## Core patterns
 
-| Pattern        | Rule                                                                           |
-| -------------- | ------------------------------------------------------------------------------ |
-| **Parameters** | Max 2 positional. 3+ → use object parameter                                    |
-| **Utilities**  | Agnostic utilities only — no domain coupling in shared modules                 |
-| **Imports**    | Always use aliases (`@api/`, `@schemas/`, `@utils/`). No deep relative imports |
-| **Types**      | Define interfaces at top of file, after imports                                |
-| **Errors**     | Public methods: fail fast. Utilities: silent fail (return null)                |
+| Pattern        | Rule                                                                                                                                           |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Parameters** | Max 2 positional. 3+ → use object parameter                                                                                                    |
+| **Utilities**  | Agnostic utilities only — no domain coupling in shared modules                                                                                 |
+| **Imports**    | Always use the aliases `tsconfig.json` `paths` declares (Next.js `@/`, or per-layer `@api/`, `@schemas/`, `@utils/`). No deep relative imports |
+| **Types**      | Define interfaces at top of file, after imports                                                                                                |
+| **Errors**     | Public methods: fail fast. Utilities: silent fail (return null)                                                                                |
 
 ---
 
@@ -51,7 +51,7 @@ import { UserRepo } from '../../../api/repos/user-repo';
 import { UserRepo } from '@api/repos/user-repo';
 ```
 
-Deep relative imports break under refactor and hide module boundaries. Aliases (`@api/`, `@schemas/`, `@utils/`, `@db/`, `@features/`) make the dependency graph readable.
+Deep relative imports break under refactor and hide module boundaries. Aliases make the dependency graph readable. Use the ones `tsconfig.json` `paths` declares: a Next.js app usually has the single `@/` root (`@/components/ui/button`, `@/types/supabase`), a layered backend may add per-layer prefixes (`@api/`, `@schemas/`, `@utils/`, `@db/`, `@features/`). Never invent a prefix the config lacks.
 
 ---
 

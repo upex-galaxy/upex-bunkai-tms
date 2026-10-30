@@ -15,6 +15,17 @@ Configurar un sistema completo de **documentación de APIs** que incluye:
 
 ---
 
+## 🧭 PASO PREVIO: LEER EL BLOQUE `stack:`
+
+Esta add-on corre igual en un proyecto greenfield y en una app existente (veredicto `existing-app` del guard de entrada, `SKILL.md` → Phase 3). Antes del primer paso, leer `.agents/project.yaml` → `stack:` (contrato: `.agents/README.md` → `stack`) y resolver con él todo lo que esta referencia escribe como literal:
+
+- Las rutas de ejemplo (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) son el default greenfield: se resuelven bajo `{{stack.app_root}}`; el archivo de tipos es `{{stack.database.types_path}}`; con `stack.framework: nextjs-pages` la API vive en `pages/api/`.
+- Los comandos de la app son `{{stack.package_manager}} run <script>` con el NOMBRE de `stack.scripts`; un script en `null` se salta y se dice, nunca se inventa. Las dependencias se instalan con ese package manager, sin cambiarlo.
+- Lo que la app ya tiene gana: una UI de docs, un contrato de error, un esquema de auth, la ubicación de los Supabase clients o la versión mayor de una dependencia (Zod, Next) se leen y se extienden, nunca se reemplazan ni se actualizan desde esta add-on. Un choque se le muestra al usuario con las dos formas.
+- El Supabase project ref es `environments.<env>.db_project_ref`; todo toque a la base sigue `agentic-dev-core/references/db-change-doctrine.md`.
+
+---
+
 ## 📥 INPUT REQUERIDO
 
 ### 1. Contexto del Proyecto
@@ -22,7 +33,7 @@ Configurar un sistema completo de **documentación de APIs** que incluye:
 **Leer estos archivos:**
 
 - `.context/PRD/executive-summary.md` - Nombre y descripción del proyecto
-- `AGENTS.md` - Configuración de Supabase Project ID
+- `.agents/project.yaml` → `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` del ambiente activo) - Supabase project ref
 - `src/lib/config.ts` - Configuración existente
 - `src/lib/urls.ts` - URLs por ambiente (si existe)
 - `src/app/api/` - Endpoints existentes (si hay)
@@ -317,14 +328,14 @@ fi
 # Nombre del proyecto
 grep -i "title\|name\|proyecto" .context/PRD/executive-summary.md | head -3
 
-# Supabase Project ID
-grep -i "project.*id\|supabase" AGENTS.md | grep -E "[a-z]{20,}"
+# Supabase project ref (`.agents/instructions/agent-project-variables.md` §7: la identidad del proyecto vive en el yaml)
+yq '.environments.<env>.db_project_ref' .agents/project.yaml
 ```
 
 **Guardar:**
 
 - `PROJECT_NAME` - Nombre para título de API
-- `SUPABASE_PROJECT_ID` - Para cookie name (ej: `ionevzckjyxtpmyenbxc`)
+- `SUPABASE_PROJECT_ID` - Para cookie name (el ref de 20 caracteres; si el yaml lo tiene en `null`, preguntar al usuario y guardarlo ahí con su OK)
 
 **Paso 0.3: Verificar URLs**
 
@@ -702,11 +713,11 @@ const handler = ApiReference({
   // Multi-documento nativo de Scalar. El primero (o `default: true`) es el activo.
   sources: [
     { title: "Next.js API", slug: "nextjs", url: "/api/openapi", default: true },
-    // Opcional — Supabase REST (la anon key es pública por diseño):
+    // Opcional — Supabase REST (la publishable key es pública por diseño):
     // {
     //   title: "Supabase REST",
     //   slug: "supabase",
-    //   url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/?apikey=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+    //   url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/?apikey=${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
     // },
   ],
   theme: "purple", // matchear brand (Redoc usaba #7c3aed)
@@ -973,7 +984,7 @@ grep -r "\.openapi\(" src/lib/openapi/schemas/ --include="*.ts" | grep -v "commo
 **Paso 6.1: TypeScript check**
 
 ```bash
-bun run typecheck
+bun run types:check
 ```
 
 **Paso 6.2: Verificar endpoint**

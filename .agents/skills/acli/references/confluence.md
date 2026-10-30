@@ -1,6 +1,6 @@
 # Confluence Cloud (`acli confluence`)
 
-Confluence surface added in `acli` v1.x. Coverage as of v1.3.18:
+Confluence surface of `acli`. Coverage in the release this skill was checked against (recorded in `.context/ADR/ADR-0003-forensic-measurements-ledger.md`; re-check `acli confluence --help` after an upgrade):
 
 | Group   | Subcommands                                       | Completeness                                       |
 | ------- | ------------------------------------------------- | -------------------------------------------------- |

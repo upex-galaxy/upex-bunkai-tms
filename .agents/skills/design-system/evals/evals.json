@@ -5,19 +5,61 @@
       "id": 1,
       "prompt": "Acabo de terminar el PRD para un B2B fintech bastante serio orientado a CFOs. Tiene que verse premium, data-dense, oscuro tipo Linear o Vercel. ¿Podés bajarme un design system?",
       "expected_output": "DESIGN.md en root, generado vía default flow (getdesign-matcher), brand elegido del cluster 'dark/serious/dashboard' (probable: linear-app, vercel, o similar). Lint pasa con WCAG AA OK. Reporte menciona el brand elegido y la razón del match.",
-      "files": [".context/business/business-model.md", ".context/PRD/personas.md"]
+      "files": [
+        ".context/business/business-model.md",
+        ".context/PRD/personas.md"
+      ]
     },
     {
       "id": 2,
       "prompt": "Tengo un proyecto wellness B2C, super amigable, warm tones, ilustraciones suaves. Quiero rebrandar — el DESIGN.md actual es muy corporate. Volver a generar.",
       "expected_output": "DESIGN.md sobreescrito (con confirmación previa via AskUserQuestion: skip/overwrite/variant), brand del cluster 'warm/friendly/consumer' (probable: notion-warm, calm, headspace). Lint pasa. Reporte menciona que era un rebrand y el brand viejo vs nuevo.",
-      "files": ["DESIGN.md"]
+      "files": [
+        "DESIGN.md"
+      ]
     },
     {
       "id": 3,
       "prompt": "Necesito un design system completamente custom — el negocio es muy específico (plataforma de educación STEM para niños 8-12 años), ninguno de los off-the-shelf va a matchear. Generámelo desde cero.",
       "expected_output": "DESIGN.md generado vía llm-authored path (Path E), con las 8 secciones del spec, paleta y typography adaptadas al contexto kids/STEM (alegre + accesible + alto contraste + tipografía rounded). Lint pasa. Reporte menciona que se usó Path E y enumera las decisiones de diseño tomadas.",
-      "files": [".context/business/business-model.md", ".context/PRD/personas.md"]
+      "files": [
+        ".context/business/business-model.md",
+        ".context/PRD/personas.md"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Adoptamos agentic-dev en nuestra app Next.js que ya está en producción. Usa shadcn con Tailwind v3 y las variables HSL en app/globals.css. El DESIGN.md es todavía el stub. No quiero elegir ninguna marca nueva: sacá el design system de lo que ya tenemos.",
+      "expected_output": "Modo extract (references/extract-from-code.md), sin npx getdesign ni catálogo ni Q&A de industria/tono. Ubica el tema vivo con evidencia (components.json tailwind.css + el import del root layout). Los canales HSL sueltos (`270 91% 65%`) se re-envuelven como `hsl(270 91% 65%)` según el wrapper del tailwind.config; cada token lleva comentario de procedencia `# app/globals.css :root --primary`. El radio derivado se calcula (nunca `calc(...)`). Sobrescribe el stub, lint con errors 0; una advertencia contrast-ratio del botón primario se reporta y se anota en Do's and Don'ts sin cambiar el token. `git status` no muestra ningún archivo de la app modificado.",
+      "files": [
+        "components.json",
+        "tailwind.config.ts",
+        "app/globals.css",
+        "app/layout.tsx",
+        "components/ui/button.tsx",
+        "DESIGN.md"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/design-system extract — la app es Tailwind v4, tema en @theme inline con colores oklch, y tiene un bloque .dark. Además quedó un styles/globals.css viejo que nadie importa.",
+      "expected_output": "Modo extract. Resuelve `--color-*: var(--x)` del @theme inline al literal de :root y conserva el formato oklch() tal cual (sin convertir a hex). styles/globals.css se lista como archivo de tema muerto y no aporta tokens. Ofrece DESIGN.dark.md desde el bloque .dark y solo lo escribe si el usuario acepta. Tipos de token que el código no define (p. ej. elevation) se omiten y aparecen como Discovery Gaps. Lint errors 0. Ningún cambio fuera de DESIGN.md / la variante aceptada / .session/design-system/.",
+      "files": [
+        "app/globals.css",
+        "styles/globals.css",
+        "components.json",
+        "app/layout.tsx"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Ya tenemos un DESIGN.md con contenido real, pero creo que quedó desactualizado respecto del código. Extraelo de nuevo desde el tema.",
+      "expected_output": "Modo extract sobre un DESIGN.md con contenido: muestra un diff a nivel de token (extraído vs actual) y pregunta upsert / variant (DESIGN.extracted.md) / skip, recomendando upsert porque el código es lo que ven los usuarios; con upsert reemplaza valores cambiados y agrega tokens nuevos conservando la prosa vigente (D3). Nunca regenera desde cero ni toca tailwind.config ni globals.css, y no deriva a /project-bootstrap frontend-setup.",
+      "files": [
+        "DESIGN.md",
+        "tailwind.config.ts",
+        "app/globals.css"
+      ]
     }
   ]
 }

@@ -75,7 +75,7 @@ Logging in produces session material. It is bound by the ephemeral-artifact cont
 - Report carries `secrets_materialized:` + `cleaned:`.
 - The password NEVER appears in a script committed to the repo, a screenshot, a log line, a plan, a PR body, or a tracker comment. Scripts read `process.env.<NAME>`; the name is committable, the value is not.
 
-Screenshots are evidence and DO belong in the story's `evidence/` folder — but capture them on screens that do not display the credential, and never photograph a filled password field.
+Screenshots are evidence and DO belong in the story's evidence (working copy in `.session/sprint-development/<KEY>/evidence/`, durable copy on the PR or the Jira issue) — but capture them on screens that do not display the credential, and never photograph a filled password field.
 
 ---
 
@@ -86,8 +86,9 @@ Live-UI work is normally done by a stage subagent, which does not read this file
 1. The resolved identity, BY VARIABLE NAME (`log in with process.env.<EMAIL_VAR> / <PASSWORD_VAR>`), never the value.
 2. The §3 prohibition list, restated — at minimum: "never obtain a session through a privileged key, an admin/user-management API, a generated link, a hand-crafted token, or any account other than the declared identity; if the declared identity fails, STOP and report".
 3. The §4 hygiene contract plus the two mandatory report fields.
+4. The browser-session rules: one named in-memory `/playwright-cli` session per identity, credentials typed only as `--raw fill <ref> "$VAR"`, every session closed before reporting with `playwright-cli list` as proof (`live-ui-validation.md` §3, §6).
 
-An orchestrator that dispatches live-UI work without these three lines has not delegated the rule, and the executor is free to improvise. That is the failure this contract exists to close.
+An orchestrator that dispatches live-UI work without these four lines has not delegated the rule, and the executor is free to improvise. That is the failure this contract exists to close.
 
 ---
 

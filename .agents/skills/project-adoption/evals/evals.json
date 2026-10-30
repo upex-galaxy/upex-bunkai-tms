@@ -1,0 +1,70 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-after-adopt-install",
+      "prompt": "I just ran update-boilerplate.ts --adopt on our Next.js app and committed it. Now set the agentic layer up for the app.",
+      "expected_behavior": "Activates project-adoption in mode adopt. Phase 0 reads .template/installer.lock.json (adopted: true) and git status (clean), runs the detection signals and prints the PENDING / ADOPTED table. Phase 1 runs `bun run agents:setup --stack --dry-run --non-interactive`, records the app's script names and the build/lint/types baseline, asks the questionnaire in one batch, then writes .context/reports/project-adoption-plan.md with Status: PENDING APPROVAL and WAITS. No tracked file other than the plan changes before approval.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-spanish-adoption",
+      "prompt": "La adopción quedó instalada en mi app existente, configurá el boilerplate sobre ella.",
+      "expected_behavior": "Activates project-adoption (mode adopt) and replies in Spanish while every artifact (plan file, yaml values) stays in English. Same sealed Phases 0-2, plan file, wait for approval.",
+      "category": "positive"
+    },
+    {
+      "name": "should-run-check-mode-read-only",
+      "prompt": "/project-adoption check",
+      "expected_behavior": "Runs mode check: the Phase 0 signal table plus the `bun run setup:doctor` stack section (drift between the stack: block and the repo). Writes nothing at all, not even the plan or progress.md. If any signal is PENDING it names mode adopt as the next step without starting it.",
+      "category": "positive"
+    },
+    {
+      "name": "should-stop-without-adopt-install",
+      "prompt": "Adopt this existing app into agentic-dev. I copied the .agents/skills folder over by hand.",
+      "expected_behavior": "Entry gate fails: no .template/installer.lock.json with adopted: true. STOPS before any analysis and names the fix: run `bun <boilerplate clone>/cli/update-boilerplate.ts --adopt` on a clean tree, commit, then rerun. Does not adopt by hand and does not suggest gitignoring .agents/.",
+      "category": "guard"
+    },
+    {
+      "name": "should-stop-on-unsupported-package-manager",
+      "prompt": "Run project adoption on this repo (it uses pnpm with a pnpm-lock.yaml).",
+      "expected_behavior": "Phase 1.2 v1 gate: package_manager pnpm is outside V1_SUPPORTED (cli/lib/stack-descriptor.ts). STOPS at analysis citing the field, the value, the lockfile as evidence and owner decision OD3. Writes nothing, not even the plan, and never proposes switching the app to bun.",
+      "category": "guard"
+    },
+    {
+      "name": "should-refuse-database-and-app-code-writes",
+      "prompt": "While you adopt the app, also generate the Supabase types and fix the eslint config so lint passes.",
+      "expected_behavior": "Refuses both inside the adoption: no database connection (types generation is handed off to /project-bootstrap supabase-types-setup in its own session) and no edit to the app's eslint config (refusal list). Records them in the plan as hand-off and team decision. Continues the adoption for the agentic surfaces only.",
+      "category": "guard"
+    },
+    {
+      "name": "should-apply-instruction-merge-only-on-own-approval",
+      "prompt": "Approve the adoption plan, but leave our CLAUDE.md as it is for now.",
+      "expected_behavior": "Executes Phases 3-5 and 7 from the approved plan and skips Phase 6: the saved .agents/prompts/adopt-instructions.md stays unapplied, CLAUDE.md untouched, the instructions signal reported PENDING with the note that a plain `bun sync` refuses at its preflight until the merge is applied.",
+      "category": "guard"
+    },
+    {
+      "name": "should-keep-app-instructions-out-of-always-on-file",
+      "prompt": "Paste our old CLAUDE.md rules back into AGENTS.md so the agent always sees them.",
+      "expected_behavior": "Refuses (anti-pattern A7): the app's text stays verbatim in the .agents/skills/<app>-context skill that one AGENTS.md router row reaches, so no session pays for it at start and the adopted L0 stays under the instructions:check ceiling. Offers instead to sharpen that skill's description so it routes by the app's domain, or to add a project-specific rule to .agents/instructions/agent-project.md.",
+      "category": "guard"
+    },
+    {
+      "name": "should-report-nothing-to-do-on-rerun",
+      "prompt": "Run project-adoption again on the repo we adopted last week.",
+      "expected_behavior": "Phase 0 signals all ADOPTED (plan Status: COMPLETED): reports 'Adoption already complete, nothing to do' with the table and stops. No plan rewrite, no write of any kind.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-greenfield",
+      "prompt": "Start a brand new project: define the PRD and scaffold the backend.",
+      "expected_behavior": "Does NOT activate project-adoption. Routes to /project-foundation then /project-bootstrap.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-business-maps",
+      "prompt": "Refresh the business data map from the schema.",
+      "expected_behavior": "Does NOT activate project-adoption. Routes to /project-context data.",
+      "category": "negative"
+    }
+  ]
+}

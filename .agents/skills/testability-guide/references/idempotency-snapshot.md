@@ -31,6 +31,7 @@ A single multi-line comment at the very top of the generated page file. Format i
    publisher=jira-epic
    credentials-source=https://upex.atlassian.net/browse/UPEX-321
    default-branch=staging
+   build-sha-source=VERCEL_GIT_COMMIT_SHA            // env var NAME(S), never the SHA value
    testability=UI:weak API:deficient DB:ok           // from testability-assessment.md
    generated=2026-05-28
    content-hash=sha256:8a2f7c…                        // or `sha256:… external-maintained` when human-owned
@@ -50,7 +51,7 @@ A single multi-line comment at the very top of the generated page file. Format i
 | `auth-method`        | pre-flight detection                            | §5 AuthMethods tabs (login curl, header name, body shape) + §6 Playwright login fixture. DETECTED list, never a default path. |
 | `docs-ui`            | pre-flight detection                            | §5 docs link renderer label (scalar/redoc/swagger).                                                              |
 | `docs-route`         | pre-flight detection                            | §5 docs link href.                                                                                              |
-| `db`                 | pre-flight detection                            | §4 (DBHub connection template + the VSCode URI scheme).                                                          |
+| `db`                 | `stack.database` + pre-flight detection         | §4 (the DB MCP `mcp-and-env-setup.md` §4.0 picked, its connection template + the VSCode URI scheme).                                                          |
 | `orm`                | pre-flight detection                            | Architecture table label only. No code drift.                                                                    |
 | `repos-shape`        | `.agents/project.yaml` (`backend_repo`/`frontend_repo`) | §2 architecture diagram Repos block (mono one row vs poly two rows).                                     |
 | `mcp-config-files`   | pre-flight detection                            | Which agent tabs render in §3–§6 (claude/opencode/codex/gemini).                                                 |
@@ -58,11 +59,24 @@ A single multi-line comment at the very top of the generated page file. Format i
 | `language`           | Q5 / pre-flight i18n signal                     | All visible copy. Code identifiers untouched.                                                                    |
 | `publisher`          | Q1                                              | Credentials CTA href + button copy.                                                                              |
 | `credentials-source` | publish step (Phase 6)                          | Credentials CTA href.                                                                                            |
-| `openapi-spec`       | pre-flight detection                            | §5 OpenAPI MCP `OPENAPI_SPEC_PATH` + docs UI link. DETECTED route, never assume `.json`.                         |
+| `openapi-spec`       | pre-flight detection                            | §5 OpenAPI MCP `OPENAPI_SPEC_PATH` (full URL: origin + DETECTED route) + docs UI link. Never assume `.json`.                         |
 | `default-branch`     | pre-flight `git` detection                      | `/git-flow-master` base branch for the patch PR.                                                                 |
+| `build-sha-source`   | pre-flight detection (deployed build SHA source) | Hero build stamp (`qaConfig.build.shaEnvVars`). Comma-separated env var NAMES, or `none`. See "Build stamp is runtime-only" below. |
 | `generated`          | wall-clock at write time                        | Audit field. Does NOT trigger patch.                                                                             |
 | `testability`        | `testability-assessment.md` (Phase 1)           | Audit field — compact per-layer score, e.g. `UI:weak API:deficient DB:ok`. A re-run compares it to report "testability improved / regressed". Does NOT trigger a page patch by itself. |
 | `content-hash`       | sha256 of the rendered credentials-content body, OR `external-maintained` (see below) | Drift in the credentials artifact triggers a re-publish (but NOT a page re-render unless the page also drifted). |
+
+---
+
+## Build stamp is runtime-only (excluded from drift and hash)
+
+The `/qa` hero shows the deployed commit SHA (`page-craft.md` → Build stamp), and that value changes on every deploy. It never enters anything this file diffs or hashes:
+
+- The page source holds env var NAMES (`qaConfig.build.shaEnvVars`); the value is read at runtime.
+- The snapshot records only `build-sha-source` (the names). Drift on that field means the platform or variable changed, never that a new commit shipped.
+- `content-hash` covers the credentials-content body, which never carries the SHA.
+
+So a redeploy reads as no-op on the next run. A snapshot from before this field existed has no `build-sha-source`: treat it as drift on that field alone and patch only the hero stamp.
 
 ---
 
@@ -111,7 +125,7 @@ A `page-features` change is **opt-in upgrade**, never a forced patch — it chan
 4. Build a fresh field map.
 5. Diff fresh vs snapshot. Categorize:
    - **No-op**: only `generated` and / or `skill-version` drifted (and the version drift is minor).
-   - **Surgical patch**: one or more code-affecting fields drifted (`stack`, `ui-kit`, `auth-method`, `docs-ui`, `docs-route`, `db`, `repos-shape`, `mcp-config-files`, `language`, `openapi-spec`).
+   - **Surgical patch**: one or more code-affecting fields drifted (`stack`, `ui-kit`, `auth-method`, `docs-ui`, `docs-route`, `db`, `repos-shape`, `mcp-config-files`, `language`, `openapi-spec`, `build-sha-source`).
    - **Re-publish only**: `publisher` or `credentials-source` drifted, code-affecting fields unchanged.
    - **Page-features upgrade (OFFER, not auto)**: `page-features` is absent or lower-fidelity than detection's default. Surface the offer (see "page-features upgrade" above); apply only on user opt-in.
    - **Full re-scaffold**: `skill-version` major bump OR three or more code-affecting fields drifted simultaneously (likely the project was rewritten — safer to ask).
@@ -169,6 +183,7 @@ When the diff says surgical patch, regenerate ONLY the sections whose driving fi
 | `language`                         | visible copy only. Code identifiers, `data-testid`s, snapshot fields untouched.                  |
 | `publisher` / `credentials-source` | credentials CTA `href` + button copy. Re-publish the artifact via the new channel adapter.       |
 | `openapi-spec`                     | §5 OpenAPI MCP `OPENAPI_SPEC_PATH` + docs UI link.                                               |
+| `build-sha-source`                 | hero build stamp only (`qaConfig.build` + the `qa-build-sha` node).                             |
 
 After the patch:
 

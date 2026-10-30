@@ -31,6 +31,66 @@
       "category": "positive"
     },
     {
+      "name": "should-accept-business-maps-without-prd-srs",
+      "prompt": "Implement BK-42 on our adopted app. We never wrote a PRD or SRS; the business maps, dev guide and glossary are generated.",
+      "expected_behavior": "Pre-requisites pass on the business-maps form: `.context/PRD/` and `.context/SRS/` hold only their READMEs, but `bun run context:map business-data-context` prints sections. No fast-fail and no suggestion to write a PRD or SRS. Stage 1 reads the architecture record from `business-api-context` `architecture` + `business-data-context` `overview` + `.context/business/project-dev-guide.md` and `.context/ADR/`; data model from the data map's `entities` / `access-control` / `migrations`; the API contract from the app's OpenAPI spec when present, else `auth-model` / `journey-<slug>` and the feature map's `route-inventory`; UI copy from the glossary and the live UI. A placeholder map the story needs is a `missing_input` that recommends `/project-context <mode>`.",
+      "category": "positive"
+    },
+    {
+      "name": "should-fast-fail-without-any-product-docs",
+      "prompt": "Implement BK-7. The repo has no PRD, no SRS and the business maps are still placeholders.",
+      "expected_behavior": "Fast-fails at Pre-requisites because neither product-doc set exists. Hands off to /project-foundation when the product is still being defined, or /project-context data when the app's code already exists. Does not write a PRD, an SRS or a map itself, and does not start Stage 1.",
+      "category": "positive"
+    },
+    {
+      "name": "should-keep-srs-inputs-when-prd-srs-exist",
+      "prompt": "Implement UPEX-310, a new backend endpoint. This project went through /project-foundation, so PRD and SRS are there.",
+      "expected_behavior": "PRD/SRS path, unchanged: Pre-requisites pass on the PRD/SRS form. Stage 1 reads `.context/SRS/architecture-specs.md` and `.context/ADR/` as input 9, Stage 2 reads `.context/SRS/api-contracts.yaml` for the backend contract, and UI copy follows the glossary plus the PRD `executive-summary.md` / `user-personas.md`. Business maps remain optional inputs; a missing one is a `missing_input` note, not a blocker.",
+      "category": "positive"
+    },
+    {
+      "name": "should-run-greenfield-verification-unchanged",
+      "prompt": "Implementa UPEX-210 en este proyecto recién creado desde el boilerplate (stack: con los defaults del schema).",
+      "expected_behavior": "Reads `stack:` from `.agents/project.yaml` with input 1. With the greenfield defaults the verification cap=3 resolves to exactly the commands the skill always ran: `bun run lint:check`, `bun run types:check`, `bun run test`, the dev server is `bun run dev`, the PR base is `git_strategy.branches.integration` (or production when null), and a schema change goes through the DB MCP (`migrations_tool: supabase-mcp`, `list_migrations` read first, no migration file). Nothing in the run differs from the pre-parametrization behaviour.",
+      "category": "positive"
+    },
+    {
+      "name": "should-use-the-adopted-apps-script-names",
+      "prompt": "Implement BK-77 on this adopted app. Its stack block says package_manager bun, scripts.lint: lint, scripts.types: null, scripts.test: test:unit, app_root: apps/web.",
+      "expected_behavior": "Runs verification from `apps/web` as `bun run lint` and `bun run test:unit`; the `types` role is null, so that check is skipped and named in the report as skipped (no invented `tsc` call, no script added to the app's package.json). The agentic tooling (`bun run jira:sync-issues`, `bun run context:map`) still runs from the repo root.",
+      "category": "positive"
+    },
+    {
+      "name": "should-target-production-when-integration-is-null",
+      "prompt": "Open the PR for UPEX-88 and take it through Stage 4. git_strategy is solo-main with branches.integration: null.",
+      "expected_behavior": "Opens the PR against `git_strategy.branches.production` through /git-flow-master, never against a literal `staging` or `develop`. Stage 4 verifies the PR's preview deployment instead of merging into an integration branch; the merge to production is Stage 5, gated.",
+      "category": "positive"
+    },
+    {
+      "name": "should-apply-schema-change-per-migrations-tool",
+      "prompt": "The story needs a new `invoices.due_date` column. stack.database.migrations_tool is prisma, migrations_dir prisma/migrations.",
+      "expected_behavior": "Loads /supabase + /supabase-postgres-best-practices, reads the migration history through the DB MCP (`list_migrations`) first, then lets the app's own Prisma tool generate the migration and asks before the team's pipeline applies it; the MCP stays read-only (an `apply_migration` around Prisma would never reach Prisma's migrations table). After it runs, the live column is re-read through the MCP and the database types are regenerated. Per `agentic-dev-core/references/db-change-doctrine.md`.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-stop-a-non-db-story-for-the-db-capability",
+      "prompt": "Implementa UPEX-301: cambiar el texto del botón de checkout. No hay DB MCP conectado en esta sesión.",
+      "expected_behavior": "Proceeds: the story's plan touches no schema, RLS, function or data, so capability `db` does not bind it (`## Stack parameters`; mcp-capabilities §4 optional steps). It would STOP only if the plan needed a database change.",
+      "category": "positive"
+    },
+    {
+      "name": "should-keep-the-apps-testid-convention",
+      "prompt": "Add the new filter dropdown for BK-90. The app already marks elements with data-test=\"kebab-case\" ids and stack.conventions.testid_style is null.",
+      "expected_behavior": "Follows the app's existing convention (`data-test`, kebab-case) for the new elements instead of the `data-testid` camelCase/snake_case defaults of references/data-testid-standards.md, and renames no existing test id. A reviewer flags a departure from the app's convention, not from the reference's default.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-overwrite-an-existing-ci-workflow",
+      "prompt": "Set up CI for this project (first time). The repo already has .github/workflows/ci.yml running lint and build on main.",
+      "expected_behavior": "Follows references/ci-cd-setup.md Paso 0: the existing `ci.yml` is never replaced, renamed or written over. It reports what the workflow covers, and proposes only the missing jobs (types, test, the integration deploy) as a NEW workflow with its own name or as a diff to approve; nothing is written without the user's OK.",
+      "category": "positive"
+    },
+    {
       "name": "should-not-trigger-ac-refinement",
       "prompt": "Refine the AC for UPEX-277 — the criteria are vague and I want them as Gherkin before we code.",
       "expected_behavior": "Does NOT activate sprint-development. Should route to /product-management (acceptance-criteria.md reference) because AC refinement happens BEFORE implementation. sprint-development assumes the story is Ready-For-Development; refining AC mid-flight is a sign the story shouldn't have been pulled into the sprint yet.",

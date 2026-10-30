@@ -27,7 +27,7 @@
     {
       "name": "should-not-trigger-memory-refresh",
       "prompt": "Refresh memory facts for this session — I changed my email and want it picked up.",
-      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to /sync-ai-memory because the request is about memory facts (not the foundation bootstrap). agentic-dev-core never touches user memory; it only writes repo-level scaffolding files.",
+      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to Engram memory (or, for a repo doc fact, the docs follow-through in agentic-dev-core/references/docs-follow-through.md) because the request is about memory facts (not the foundation bootstrap). agentic-dev-core never touches user memory; it only writes repo-level scaffolding files.",
       "category": "negative"
     },
     {

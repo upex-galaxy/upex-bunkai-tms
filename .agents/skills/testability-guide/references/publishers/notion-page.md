@@ -21,7 +21,7 @@
 1. List configured MCPs (`.mcp.json`, `opencode.jsonc`, or the host's MCP config file).
 2. Detect a Notion MCP. Common server names: `notion`, `notion-mcp`, `mcp-notion-server`.
 3. If no Notion MCP is configured → switch to `publishers/manual-paste.md` and tell the user.
-4. If a Notion MCP IS configured but returns `401` / `403` → STOP, fix env var, restart session (AGENTS.md Rule #11). Do NOT silently fall back to manual paste — that hides the real auth issue.
+4. If a Notion MCP IS configured but returns `401` / `403` → STOP, fix env var, restart session (AGENTS.md Critical Rule #9). Do NOT silently fall back to manual paste — that hides the real auth issue.
 5. Ask the user for the Notion parent page ID (or database ID). STOP and wait for the answer; do NOT guess or derive it. Use it inline as `<NOTION_PARENT_PAGE_ID>`.
 6. Run `security-rules.md` checklist.
 

@@ -16,6 +16,17 @@ Crear la **estructura base de custom API endpoints** en Next.js con:
 
 ---
 
+## 🧭 PASO PREVIO: LEER EL BLOQUE `stack:`
+
+Esta add-on corre igual en un proyecto greenfield y en una app existente (veredicto `existing-app` del guard de entrada, `SKILL.md` → Phase 3). Antes del primer paso, leer `.agents/project.yaml` → `stack:` (contrato: `.agents/README.md` → `stack`) y resolver con él todo lo que esta referencia escribe como literal:
+
+- Las rutas de ejemplo (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) son el default greenfield: se resuelven bajo `{{stack.app_root}}`; el archivo de tipos es `{{stack.database.types_path}}`; con `stack.framework: nextjs-pages` la API vive en `pages/api/`.
+- Los comandos de la app son `{{stack.package_manager}} run <script>` con el NOMBRE de `stack.scripts`; un script en `null` se salta y se dice, nunca se inventa. Las dependencias se instalan con ese package manager, sin cambiarlo.
+- Lo que la app ya tiene gana: una UI de docs, un contrato de error, un esquema de auth, la ubicación de los Supabase clients o la versión mayor de una dependencia (Zod, Next) se leen y se extienden, nunca se reemplazan ni se actualizan desde esta add-on. Un choque se le muestra al usuario con las dos formas.
+- El Supabase project ref es `environments.<env>.db_project_ref`; todo toque a la base sigue `agentic-dev-core/references/db-change-doctrine.md`.
+
+---
+
 ## 📥 INPUT REQUERIDO
 
 ### 1. Contexto del Proyecto
@@ -615,7 +626,7 @@ Los patterns de API ya están documentados en el código:
 
 ### Validaciones:
 
-- [ ] `bun run typecheck` pasa
+- [ ] `bun run types:check` pasa
 - [ ] `/api/health` retorna status
 - [ ] Endpoints protegidos requieren auth
 

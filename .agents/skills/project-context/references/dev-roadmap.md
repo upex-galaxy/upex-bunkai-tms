@@ -12,28 +12,28 @@ Generate or update `.context/dev-roadmap.md` — the **ticket-level dependency e
 A hand-curated-yet-regenerable document that converts the **Jira dependency-link graph + local design context** into an execution sequence the team can act on. It is the **sequence layer** in the 3-doc roadmap stack:
 
 ```
-.context/master-implementation-plan.md   EPIC / strategy   "what to build & why that order"   (owner: /master-implementation-plan)
-.context/dev-roadmap.md   ◄── THIS DOC    TICKET / sequence "what unblocks what, in what execution sprint"  (owner: /dev-roadmap)
+.context/master-implementation-plan.md   EPIC / strategy   "what to build & why that order"   (owner: /project-context master-plan)
+.context/dev-roadmap.md   ◄── THIS DOC    TICKET / sequence "what unblocks what, in what execution sprint"  (owner: /project-context dev-roadmap)
 .context/PBI/.../implementation-plan.md   STORY / files     "how to build one ticket"           (owner: /sprint-development)
 ```
 
 The output contains:
 
 - **§1 Authority split** — a plain-language "read me first" that tells an AI/human exactly what this doc owns vs delegates, and that status is queried, never frozen.
-- **§2 Epic backbone** — the schema-forced epic spine (which epic must ship before which), derived from `business-data-map.md` entity topology.
+- **§2 Epic backbone** — the schema-forced epic spine (which epic must ship before which), derived from the data map's entity topology (`business-data-context`).
 - **§3 Story dependency graph** — the hard/soft edge list with the *reason* for each edge. This is the part nothing else holds — Jira issue-links are sparse and carry no reason.
 - **§4 Execution sprints** — the topologically-sorted parallel-safe batches (Kahn's sort of the link graph). **This subsumes the former `.context/PBI/sprint-sequence.md`.**
-- **§5 Mockup-gate registry** — which stories cannot start until a mockup lands (Critical Rule #15 / `master-design-plan.md` §8).
-- **§6 Live status — query recipe** — NOT a status table. A recipe to fetch today's truth, plus the local-only knowledge Jira does not store (per-story pre-dev blockers, edge-mapping TODO).
+- **§5 Mockup-gate registry** — which stories cannot start until a mockup lands (Critical Rule #14, UI fidelity contract / `master-design-plan.md` §8).
+- **§6 Live status — query recipe** — NOT a status table. A recipe to fetch the live truth, plus the local-only knowledge Jira does not store (per-story pre-dev blockers, edge-mapping TODO).
 - **§7 Maintenance protocol** — who owns what, what is durable vs volatile, when to re-run.
 
-This is **NOT** the epic strategy (→ `/master-implementation-plan`), a per-story file plan (→ `/sprint-development`), a flow map (→ `business-data-map.md`), nor a feature catalog (→ `business-feature-map.md`).
+This is **NOT** the epic strategy (→ `/project-context master-plan`), a per-story file plan (→ `/sprint-development`), a flow map (→ the data map in `business-data-context`), nor a feature catalog (→ the feature map in `business-feature-context`).
 
 ---
 
 ## Subsumption note — this retires `sprint-sequence.md`
 
-Earlier boilerplate versions persisted the Kahn topological sort to `.context/PBI/sprint-sequence.md` (owned by `/product-management`). That pure machine-derived table is a **strict subset** of this doc's §4. As of this command, the execution-sprint sort lives in **`.context/dev-roadmap.md` §4** and `/product-management` delegates to `/dev-roadmap` instead of writing `sprint-sequence.md`.
+Earlier boilerplate versions persisted the Kahn topological sort to `.context/PBI/sprint-sequence.md` (owned by `/product-management`). That pure machine-derived table is a **strict subset** of this doc's §4. As of this command, the execution-sprint sort lives in **`.context/dev-roadmap.md` §4** and `/product-management` delegates to `/project-context dev-roadmap` instead of writing `sprint-sequence.md`.
 
 - The **sort algorithm** (Kahn) remains the single source of truth in `.agents/skills/product-management/references/sprint-sequencing.md` — this command reuses it for §4, it does not re-define it.
 - The reason for the merge: `sprint-sequence.md` was overwrite-on-rerun (clobber-safe, machine-only) and could not hold the hand-authored durable layers (§2 backbone, §3 edge reasons, §5 mockup-gates, §6 local blockers). One doc with a split mutation model (regenerate §4, surgically preserve §2/§3/§5/§6) solves that.
@@ -44,14 +44,15 @@ Earlier boilerplate versions persisted the Kahn topological sort to `.context/PB
 
 | Source | Status | What to extract | Tool |
 | ------ | ------ | --------------- | ---- |
-| Issue tracker — epics + child stories + **full `issuelinks` array** | **HARD REQUIREMENT** | Story membership, `dependencies` / `blocks` / `relates` links — the edges the §4 sort consumes | `[ISSUE_TRACKER_TOOL]` |
-| `.agents/jira-link-types.json` | **must be current** | Link-type slugs. Refresh with `bun run jira:sync-link-types` BEFORE sorting — a stale catalog silently misclassifies edges | Read + `bun run jira:sync-link-types` |
-| `.context/business/business-data-map.md` §2 | Soft — warn if missing | Entity topology → the §2 epic backbone (no entity ships before the entities + RLS it depends on) | Read file |
-| `.context/design/master-design-plan.md` §8 | Soft — warn if missing | US→Screen map + per-screen mockup status → the §5 mockup-gate registry (Critical Rule #15) | Read file |
+| Issue tracker — epics + child stories | **HARD REQUIREMENT** | Story membership and tracker rank | `[ISSUE_TRACKER_TOOL]` |
+| Issue tracker — the stories' full `issuelinks` array | Soft — warn if empty | `dependencies` / `blocks` / `relates` links — the edges the §4 sort consumes | `[ISSUE_TRACKER_TOOL]` |
+| `.agents/jira-link-types.json` | **must be current** when any story carries a link | Link-type slugs. Refresh with `bun run jira:sync-link-types` BEFORE sorting — a stale catalog silently misclassifies edges | Read + `bun run jira:sync-link-types` |
+| The data map (`business-data-context`), `entities` + `access-control` sections | Soft — warn if missing | Entity topology → the §2 epic backbone (no entity ships before the entities + RLS it depends on) | `bun run context:map business-data-context` |
+| `.context/design/master-design-plan.md` §8 | Soft — warn if missing | US→Screen map + per-screen mockup status → the §5 mockup-gate registry (Critical Rule #14, UI fidelity contract) | Read file |
 | `.context/master-implementation-plan.md` §4–§5 | Soft | Master Sprint grouping — to tag each Execution Sprint with its parent Master Sprint | Read file |
 | `.context/PBI/epic-tree.md` + `epics/` | If available | Local story-membership mirror + any hand-authored `context.md` notes (pre-dev blockers, open Qs) | Read files |
 
-**Golden rule**: every §3 edge MUST cite a real source — a Jira `dependencies`/`blocks` link, a `business-data-map.md` entity dependency, or a `master-design-plan.md` mockup-gate. NEVER invent an edge because it "feels like" a dependency — that is a refinement signal: go add the link in the tracker via `product-management/references/dependency-linking.md`, then re-run.
+**Golden rule**: every §3 edge MUST cite a real source — a Jira `dependencies`/`blocks` link, a data-map entity dependency, or a `master-design-plan.md` mockup-gate. A backlog with no links yields a sparse graph (§1.2b), never an invented one. NEVER invent an edge because it "feels like" a dependency — that is a refinement signal: go add the link in the tracker via `product-management/references/dependency-linking.md`, then re-run.
 
 ---
 
@@ -82,18 +83,24 @@ When the existing file was hand-authored (e.g. migrated from a project that wrot
 #### 1.1 Issue-tracker reachability (HARD)
 If no epic with child stories is reachable via `[ISSUE_TRACKER_TOOL]` → **STOP**:
 
-> This command needs at least one epic with child stories (and their dependency links) in the issue tracker to compute an execution sequence. Seed the backlog with `/product-management` first, then re-invoke `/dev-roadmap`.
+> This command needs at least one epic with child stories in the issue tracker to compute an execution sequence. Seed the backlog with `/product-management` first, then re-invoke `/project-context dev-roadmap`.
 
-#### 1.2 Link-catalog freshness (HARD-ish)
-Run `bun run jira:sync-link-types` so `.agents/jira-link-types.json` is current before building the graph. A stale catalog misclassifies `dependencies` vs `relates` and corrupts the sort.
+#### 1.2 Link-catalog freshness (HARD-ish, only when links exist)
+When any in-scope story carries an issue link, run `bun run jira:sync-link-types` so `.agents/jira-link-types.json` is current before building the graph. A stale catalog misclassifies `dependencies` vs `relates` and corrupts the sort.
+
+#### 1.2b No dependency links (SOFT)
+A backlog with epics and stories but no dependency links is normal for a team that never used them, and common in an app adopted mid-life. It is not a stop: WARN and proceed.
+- §3 holds only the edges a cited source forces (a data-map entity dependency, a `master-design-plan.md` mockup-gate); every in-scope story with no edge goes to §6 Edge-mapping TODO.
+- §4 is still the Kahn sort, over that sparse graph: stories with no upstream edges share the first Execution Sprint in tracker rank order, and the section says the sort ran without tracker links.
+- The report recommends linking the stories through `product-management/references/dependency-linking.md` before the next run. Never invent a link to make the graph look complete.
 
 #### 1.3 Soft-input checks
 For each missing soft input, WARN and proceed, logging the gap in §6 edge-mapping TODO:
-- No `business-data-map.md` → §2 epic backbone is built from Jira epic-links only (less reliable); note the limitation.
+- Data map not generated (placeholder notice) → §2 epic backbone is built from Jira epic-links only (less reliable); note the limitation. With neither a data map nor epic links, §2 lists the epics in tracker rank order and says no dependency forces that order.
 - No `master-design-plan.md` → §5 mockup-gate registry is empty; note that mockup-gating is unenforced until the design plan exists.
 
 ### Phase 2 — Epic backbone (§2)
-From `business-data-map.md` §2 entity topology, order epics by forced dependency: no epic ships before the entities + access-control it depends on. Cross-check against Jira epic-level links. Output the schema-forced spine.
+From the data map's entity topology (`bun run context:map business-data-context --section entities`), order epics by forced dependency: no epic ships before the entities + access-control it depends on. Cross-check against Jira epic-level links. Output the schema-forced spine.
 
 ### Phase 3 — Story dependency graph (§3)
 Fetch every in-scope story including its full `issuelinks`. For each edge, record: blocker → unblocked, hard/soft, and the **reason** (which shared entity, screen, or contract forces it). Hard = `dependencies`/`blocks`; soft = a real coupling that is buildable-but-low-value before the blocker (annotate, do not let it delay the sort).
@@ -102,7 +109,7 @@ Fetch every in-scope story including its full `issuelinks`. For each edge, recor
 Apply the topological sort defined in `.agents/skills/product-management/references/sprint-sequencing.md` (Kahn's algorithm, cycle detection, sequencing rules). The output table replaces what used to live in `sprint-sequence.md`. On a detected cycle: HALT, report participating keys, ask the user to re-orient a link. NEVER break cycles automatically.
 
 ### Phase 5 — Mockup-gate registry (§5)
-From `master-design-plan.md` §8 (US→Screen map) + §4 per-screen specs, list every story whose primary screen has no mockup yet. Each is 🔒-gated until the mockup lands or a spec-only departure is ratified (master-design-plan §5 + ADR) per Critical Rule #15.
+From `master-design-plan.md` §8 (US→Screen map) + §4 per-screen specs, list every story whose primary screen has no mockup yet. Each is 🔒-gated until the mockup lands or a spec-only departure is ratified (master-design-plan §5 + ADR) per Critical Rule #14, UI fidelity contract.
 
 ### Phase 6 — Local knowledge (§6)
 Collect the knowledge Jira does NOT store as queryable fields: per-story pre-dev blockers (gating Qs from shift-left refinement, found in `context.md` / shift-left docs), and the edge-mapping TODO (stories on the board not yet in the §3 graph, suspected supersedes). Preserve any of these already hand-written on UPDATE.
@@ -116,14 +123,14 @@ Write `.context/dev-roadmap.md` with this structure.
 ### 0. Header block
 ```markdown
 > **What this is**: the ticket-level dependency execution roadmap. "What unblocks what, in what execution sprint."
-> **Generated by**: `/dev-roadmap` — surgical UPDATE (preserves hand-authored edges/gates; regenerates only the §4 sort).
+> **Generated by**: `/project-context dev-roadmap` — surgical UPDATE (preserves hand-authored edges/gates; regenerates only the §4 sort).
 > **Edges last updated**: YYYY-MM-DD
 > **Mockup gates last updated**: YYYY-MM-DD
 > **Status snapshot**: none — status is queried per §6, never stored here.
 > **Authority**: dependency edges + execution sprints + mockup-gates are owned HERE. Live story status is owned by the issue tracker (see §6 — never frozen here).
 ```
 
-**Never emit a single undifferentiated "Last sync" date.** One timestamp invites the reader to treat everything on the page as fresh, including availability — and the durable layers (edges, gates) move on a completely different axis from a ticket's status today. Separate dates, plus the explicit "no status snapshot" line, keep those axes visibly apart. A recent edge date says nothing about whether PROJ-39 is still open.
+**Never emit a single undifferentiated "Last sync" date.** One timestamp invites the reader to treat everything on the page as fresh, including availability — and the durable layers (edges, gates) move on a completely different axis from a ticket's live status. Separate dates, plus the explicit "no status snapshot" line, keep those axes visibly apart. A recent edge date says nothing about whether PROJ-39 is still open.
 
 ### 1. How to read this — authority split
 Open with a **plain-language TL;DR** so any reader (especially an AI loading this cold) gets it in one breath:
@@ -153,12 +160,12 @@ The Kahn-sort output (Execution Sprint | parallel-safe count | story keys | note
 | Banned (reads as status) | Required (reads as order) |
 | ------------------------ | ------------------------- |
 | "PROJ-39 workable now" | "PROJ-39 workable once PROJ-38 is dev-done" |
-| "ready" / "unblocked" / "available" / "next up" / "can start today" | "unblocked by PROJ-38" / "no upstream edges" / "first in Execution Sprint 2" |
+| "ready" / "unblocked" / "available" / "next up" / "can start now" | "unblocked by PROJ-38" / "no upstream edges" / "first in Execution Sprint 2" |
 | "already done" / "shipped" | (say nothing about completion — that is §6) |
 
 Same rule in the user's language: any phrasing implying a ticket's CURRENT state is banned here. A story with no upstream edges is described as having no upstream edges, never as "ready to work" — whether it can actually be picked up depends on its live status, which this page does not know.
 
-### 5. Mockup-gate registry (Critical Rule #15)
+### 5. Mockup-gate registry (Critical Rule #14, UI fidelity contract)
 Table (Mockup needed | Screen ref | Blocks | Status). A story whose primary screen has no mockup cannot start until it lands or a spec-only departure is ratified.
 
 ### 6. Live status — query it, never freeze it
@@ -175,14 +182,14 @@ NO status table. Instead:
 - §4 sort: regenerated by this command from the live link graph — never hand-edited.
 - §6 live status: NEVER hand-maintained (it is a recipe). Only the local-only lists are hand-edited.
 - Header dates: bump `Edges last updated` only when §2/§3 changed, and `Mockup gates last updated` only when §5 changed. Never bump one to reflect the other, and never add a combined date.
-- Relation to `/master-implementation-plan`: intentionally separate — different inputs (strategy ← business-maps; this ← tracker links + design). Do not merge generators.
+- Relation to `/project-context master-plan`: intentionally separate — different inputs (strategy ← business-maps; this ← tracker links + design). Do not merge generators.
 - Triggers to re-run: a gate releases (story dev-done), a new story is refined + linked, a mockup lands (clears a 🔒), or a Master Sprint closes.
 
 ---
 
 ## After generation
 
-- Update `AGENTS.md` (never the `CLAUDE.md` shim) "Key paths" to reference `.context/dev-roadmap.md` (ticket-level sequence) alongside `.context/master-implementation-plan.md` (strategy), if not already present.
+- Key paths pointer: the shared Key paths in `.agents/instructions/agent-context-map.md` already name `.context/dev-roadmap.md` (ticket-level sequence) alongside `.context/master-implementation-plan.md` (strategy). Only when this project's copy lacks it, add it to `.agents/instructions/agent-project.md` (`## Key paths (this project)`); never write it into `AGENTS.md`, a shared section or the `CLAUDE.md` shim.
 - In UPDATE mode: show a diff summary scoped per section. Loudly flag any §3 edge or §5 gate that the regenerated graph would DROP — those are hand-authored and must be confirmed, never silently removed.
 - Report:
   - Epics in backbone: N

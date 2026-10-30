@@ -79,7 +79,7 @@ Two things to remember about the shape:
 
 This is asymmetric with `acli workitem create`, which **does** accept custom fields via `additionalAttributes`. Many users assume `edit` works the same way; it does not — and the failure is loud, not silent.
 
-**Fix — WORKAROUND via REST PUT** (the only working path as of v1.3.18).
+**Fix — WORKAROUND via REST PUT** (the only working path in the checked release; see `.context/ADR/ADR-0003-forensic-measurements-ledger.md`).
 
 Prerequisites: `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` are exported in the current shell. The host is NOT an env var — `bun run --silent jira:url` reads it from `.agents/project.yaml`.
 
@@ -123,7 +123,7 @@ curl -s -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
 
 ## <a id="no-admin"></a>6. No admin for workflows, issue types, priorities, resolutions, versions, components
 
-**The problem.** As of v1.3.18, `acli` has zero coverage for these admin/schema surfaces:
+**The problem.** `acli` has zero coverage (checked release in `.context/ADR/ADR-0003-forensic-measurements-ledger.md`) for these admin/schema surfaces:
 
 | Surface                | `acli` coverage                                                        |
 | ---------------------- | ---------------------------------------------------------------------- |

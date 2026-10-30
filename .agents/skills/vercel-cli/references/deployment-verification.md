@@ -26,7 +26,7 @@ Why this shape:
 - **`-m githubCommitSha=<sha>`** is the only filter that uniquely identifies "this commit's deploy". Branch filters mix old + new deploys; URL parsing is fragile.
 - **`--format json` + `jq`** sidesteps ANSI color codes and column-width truncation in the default human table.
 - **Outer poll loop** because Vercel takes 5–15 seconds after a push to register the deployment in `vercel ls`. Without the loop, the first call returns an empty array and the script aborts.
-- **`vercel inspect --wait`** blocks until terminal state. The default (no `--wait`) returns immediately with whatever state the deploy is in RIGHT NOW — usually `BUILDING`, which tells you nothing.
+- **`vercel inspect --wait`** blocks until terminal state. The default (no `--wait`) returns immediately with whatever state the deploy is in AT CALL TIME — usually `BUILDING`, which tells you nothing.
 - **`--timeout=10m`** because Next.js + Supabase builds occasionally exceed 5 minutes on first cold cache.
 
 ## Stream the build log while waiting
@@ -56,8 +56,8 @@ CANCELED      — superseded by a newer commit OR manually canceled
 Filter examples:
 
 ```bash
-# What's currently building on this branch?
-vercel ls -m githubCommitBranch=develop --status BUILDING --format json
+# What's currently building on this branch? (<branch> from git_strategy.branches, never a literal)
+vercel ls -m githubCommitBranch=<branch> --status BUILDING --format json
 
 # Last 5 production deploys that errored
 vercel ls --prod --status ERROR --format json | jq '.deployments[:5]'
@@ -102,7 +102,7 @@ A `READY` deploy that returns 5xx on every route usually means an env var is mis
 If the 60s poll loop completes with `URL=""`:
 
 1. **Vercel webhook didn't fire.** Check the GitHub Settings → Webhooks page for the Vercel webhook delivery. Re-deliver if it shows a 4xx/5xx.
-2. **Wrong branch in Vercel project settings.** If `develop` is set as the production branch but you pushed to `staging`, no preview is created.
+2. **Wrong branch in Vercel project settings.** If `staging` is set as the production branch in Vercel, a push to it builds a production deploy instead of a preview.
 3. **Vercel project not linked to the repo.** Check `.vercel/project.json` / `.vercel/repo.json` exist; if not, defer to `/deploy-to-vercel`.
 
 ## Reference

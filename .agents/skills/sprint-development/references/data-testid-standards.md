@@ -2,6 +2,8 @@
 
 > **Nota:** Este documento es un template genérico aplicable a cualquier proyecto. Los ejemplos usan diferentes dominios (e-commerce, SaaS, blog, etc.) para ilustrar los patrones. Adapta los nombres al dominio específico de tu proyecto.
 
+> **Existing conventions win**: este estándar es el default para una app sin convención de test ids. Si `{{stack.conventions.testid_style}}` está definido, o el código de la app ya usa otro atributo o case, se sigue el de la app. Un test id existente nunca se renombra, re-casea ni borra: otra herramienta (una suite de QA, un tag de analytics) puede seleccionar por él (`../SKILL.md` → `## Stack parameters`).
+
 Este documento define las convenciones para agregar atributos `data-testid` a los componentes y elementos UI. El objetivo es proveer **identidad estable** a cada elemento: un identificador semántico que sobrevive refactors visuales y permite que cualquier consumidor del DOM (devtools, scripts, automatización futura, herramientas de accesibilidad) localice el elemento de forma predecible.
 
 ---

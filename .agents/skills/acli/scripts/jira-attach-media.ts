@@ -20,8 +20,10 @@
  * Image dimensions are auto-detected for PNG / JPEG / GIF (zero-dependency header
  * reads); pass --width / --height to override or for formats / videos we cannot size.
  *
- * Credentials come from the shell env (loaded from .env by the project tooling):
+ * Credentials come from this process's env, which Bun fills from .env when the
+ * script runs from the repo root (nothing exports them into a shell):
  *   ATLASSIAN_EMAIL · ATLASSIAN_API_TOKEN
+ * A secret-manager-only value needs `bunx varlock run -- bun <this script>`.
  *
  * The INSTANCE HOST does not: it is read from `.agents/project.yaml` ->
  * issue_tracker.atlassian_url, with ATLASSIAN_URL as fallback only. See
@@ -56,7 +58,7 @@ function env(name: string): string {
   const v = process.env[name];
   if (!v) {
     throw new Error(
-      `missing env var ${name} — load it from .env (bun claude / bun opencode / direnv) and retry`,
+      `missing env var ${name} — set it in .env and run from the repo root (Bun loads .env itself; with a secret manager: bunx varlock run -- bun <this script>)`,
     );
   }
   return v;

@@ -11,7 +11,7 @@ piece of information becomes unfindable.
 | --- | --- | --- | --- |
 | `run-report.md` | one run | overwritten each run, archived with the session | what this run did, for a human catching up |
 | `handoff.md` | one run, written continuously | archived with the session | what the NEXT run cannot get anywhere else |
-| `escalation-log.md` | all runs, all modes | append-only, never archived | every stop, every ruling, every discrepancy |
+| `escalation-log.md` | all runs, all modes | append-only, never archived (it sits beside the `<mode>/` directories, not inside the one Phase 4 archives) | every stop, every ruling, every discrepancy |
 | `progress.md` | one run | append-only, archived | mechanical resume state |
 
 ---
@@ -152,8 +152,11 @@ Six sections. Only the last two are hard to write, and they are the two that mat
 
 ### Rescue before you write
 
-Session artifacts are gitignored and live inside the worktree. Copy them into the main checkout's session
-tree **before** writing the handoff and **before** the worktree is removed. Writing a beautiful handoff and
+This skill's own state already lives at `<<PRIMARY_ROOT>>/.session/autonomous-delivery/` (SKILL.md Phase 0a
+steps 1 and 5), so it has nothing of its own to rescue. What does need rescuing is a dispatched skill's
+worktree-local `.session/` (for example `/sprint-development`'s `.session/sprint-development/<KEY>/`): copy it
+into `<<PRIMARY_ROOT>>` with `bun run worktree:audit <path> --rescue` **before** writing the handoff and
+**before** the worktree is removed. Writing a beautiful handoff and
 then losing the underlying records is the exact failure this ordering prevents.
 
 ---

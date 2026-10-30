@@ -66,8 +66,8 @@ those four.
 **Symptom.** A local listing shows one number as last while peers have already applied later ones to the
 shared instance; conversely the live ledger holds a migration that exists in no file you can list, pushed
 from a branch that never merged.
-**Check.** Query the live ledger via `[DB_TOOL]` **immediately before writing the file**, not at planning
-time — a number chosen at planning time goes stale within minutes under concurrency. Cross-check the
+**Check.** Query the live ledger via `[DB_TOOL]` **immediately before composing the change** (and naming its
+file, when `{{stack.database.migrations_tool}}` keeps one), not at planning time — a number chosen at planning time goes stale within minutes under concurrency. Cross-check the
 integration branch's migration history and sibling branches.
 
 ### 2.2 Regenerating from a shared live instance imports a peer's unmerged schema
@@ -84,7 +84,7 @@ consumers in the diff. If hand-patching a generated file, disclose the reason in
 **Trigger.** A local error that "just needs" a live schema change.
 **Symptom.** Every other running agent's regeneration now carries your change; the run that caused it has
 no idea.
-**Check.** The migration gate in the parent skill. Writing the file is autonomous; applying is gated.
+**Check.** The migration gate in the parent skill. Composing the change is autonomous; applying is gated.
 Additive proceeds under `migrations: autonomous`; drop / rename / rewrite always stops. Never apply merely
 to clear a local error. If something wrong was applied: stop and report — do not self-author a corrective
 migration.
@@ -101,10 +101,10 @@ fast-follow) rather than a yes/no.
 
 ### 2.5 Hand-retyped migration SQL is its own drift source
 
-**Trigger.** Typing a migration's contents into an apply call rather than applying the file.
+**Trigger.** Typing a migration's contents into an apply call by hand rather than from the reviewed SQL (or the file).
 **Symptom.** A clause silently dropped. Caught only by habit.
 **Check.** After ANY apply — including re-applies where you believe nothing changed — re-read the live
-definition and diff it against the committed file.
+definition and diff it against the SQL you meant to apply (the committed file, when the tool keeps one).
 
 ### 2.6 Shared-instance fixtures produce races and permanent flakes
 
@@ -260,10 +260,12 @@ in the main checkout, never a blanket one.
 
 ### 5.4 Session files written inside a worktree die with it
 
-**Trigger.** Session state is gitignored and lives inside the worktree.
+**Trigger.** A dispatched skill writes its session state inside the worktree it ran in (this skill's own
+state lives at `<<PRIMARY_ROOT>>`, SKILL.md Phase 0a step 1, and is not at risk).
 **Symptom.** Per-ticket resume records stranded and unrecoverable once the worktree is removed.
-**Check.** Rescue them into the main checkout **before** removal. Writing a good handoff and then losing
-the underlying records is the failure this ordering exists to prevent.
+**Check.** Rescue them into the main checkout **before** removal: `bun run worktree:audit <path> --rescue`
+copies them to `<<PRIMARY_ROOT>>` and exits 0 only when nothing durable is left. Writing a good handoff and
+then losing the underlying records is the failure this ordering exists to prevent.
 
 ### 5.5 A background subagent outlives its dispatcher and shares its working directory
 
@@ -310,25 +312,28 @@ against whatever branch is actually current.
 
 **Trigger.** The scheduling app's own "Worktree" option is checked, so the session starts already inside a
 worktree the scheduler created — not one this session entered itself.
-**Symptom.** `ExitWorktree` is a documented no-op here: it only tracks worktrees entered via `EnterWorktree`
+**Symptom.** On Claude Code, `ExitWorktree` is a documented no-op here: it only tracks worktrees entered via `EnterWorktree`
 by this session. The run finishes, the branch is pushed, and the worktree it ran in is still on disk with no
 tool this session has left to remove it — indistinguishable, from the run's own vantage point, from having
 closed cleanly.
-**Check.** Leave the scheduler's "Worktree" option **unchecked**. The run calls `EnterWorktree` itself in
-Phase 0a and `ExitWorktree(remove)` itself in Phase 4 — the only sequence that gives this session a worktree
-it is actually allowed to close.
+**Check.** Leave the scheduler's "Worktree" option **unchecked**. The run creates its own worktree in Phase 0a
+and closes it in Phase 4 (SKILL.md Phase 0a step 4, Phase 4 step 7): `EnterWorktree` / `ExitWorktree(remove)`
+on Claude Code, `git worktree add` / `git worktree remove` on OpenCode and Codex. Either pair gives the run a
+worktree it is actually allowed to close.
 
-### 5.11 A fresh `EnterWorktree` branches from the wrong branch entirely, not merely a stale one
+### 5.11 A fresh worktree branches from the wrong branch entirely, not merely a stale one
 
-**Trigger.** `EnterWorktree`'s default base-ref behavior (`fresh`) branches from `origin/<the repo's default
-branch>`. A repo's default branch (what `origin/HEAD` points to) and its **integration** branch
+**Trigger.** On Claude Code, `EnterWorktree`'s default base-ref behavior (`fresh`) branches from
+`origin/<the repo's default branch>`; on OpenCode and Codex, a `git worktree add` given the default branch
+instead of `origin/<integration-branch>` does the same. A repo's default branch (what `origin/HEAD` points to) and its **integration** branch
 (`git_strategy.branches.integration`) are not always the same ref — in a `main-integration` strategy the
 default branch is typically `main` (production) while work is meant to branch from `staging`.
 **Symptom.** Distinct from 5.1 (a stale but correctly-chosen base): here the base is the WRONG branch outright,
 not an old commit on the right one. Every commit this run makes lands on top of `main` instead of `staging`,
 which either fails to merge cleanly against the real integration branch or, worse, opens a pull request
 against the wrong target without anyone noticing until review.
-**Check.** Immediately after `EnterWorktree` returns, before any other work:
+**Check.** Immediately after the worktree is created (`EnterWorktree` returns, or `git worktree add` exits),
+before any other work:
 `git fetch origin && git merge-base --is-ancestor origin/<integration-branch> HEAD`. If that reports the base
 is wrong, realign with `git checkout -B <this-worktree-branch> origin/<integration-branch>` — safe because
 nothing has been committed on the brand-new branch yet. **Not `git reset --hard`**: Critical Rule #13 forbids

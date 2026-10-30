@@ -1,7 +1,7 @@
 # Session Management — Long-Skill Resume Contract
 
 > Cited by: every long/medium official workflow skill in this repo. Loaded on demand at the start of every retrofitted skill (Phase 0 resume check) and at the end (Phase N archive).
-> Sibling references: `./orchestration-doctrine.md` (mandatory subagent dispatch), `./briefing-template.md` (6-component briefing format), `./dispatch-patterns.md` (Single / Sequential / Parallel / Background), `./topic-key-conventions.md` (file-first artifact tagging, Engram mirror).
+> Sibling references: `./orchestration-doctrine.md` (mandatory subagent dispatch), `./briefing-template.md` (7-component briefing format), `./dispatch-patterns.md` (Single / Sequential / Parallel / Background), `./topic-key-conventions.md` (file-first artifact tagging, Engram mirror).
 
 ## 1. Purpose & scope
 
@@ -21,7 +21,7 @@ The pattern composes with — does not replace — the existing orchestration do
 | Concern | Source of truth | What this doc adds |
 |---|---|---|
 | Subagent dispatch (when, why, anti-patterns) | `./orchestration-doctrine.md` | Per-phase progress checkpoints around each dispatch |
-| Briefing format (6 components per dispatch) | `./briefing-template.md` | A 7th implied component: "Session artifact path" — the orchestrator passes the absolute path to `plan.md` / `progress.md` so the subagent can read prior state |
+| Briefing format (7 components per dispatch) | `./briefing-template.md` | An 8th implied component: "Session artifact path" — the orchestrator passes the absolute path to `plan.md` / `progress.md` so the subagent can read prior state |
 | Pattern selection (Single / Sequential / Parallel / Background) | `./dispatch-patterns.md` | Each phase's pattern is recorded in `plan.md` §"Phase breakdown" so resume preserves the originally chosen pattern |
 | Artifact persistence (file-first + Engram mirror) | `./topic-key-conventions.md` | A new top-level topic prefix `session/...` (see §11) alongside the existing `pbi/...` |
 
@@ -29,7 +29,7 @@ When in doubt, the sibling doctrine doc is canonical for its concern. This file 
 
 ## 3. Storage layout
 
-Every retrofitted skill writes its session state under a single tree at the repo root:
+Every retrofitted skill writes its session state under a single tree at `<<PRIMARY_ROOT>>`, the PRIMARY checkout (`.agents/README.md` §"Checkout roots"). In the primary it is the repo root; in a linked worktree it is NOT the worktree's root, because everything git ignores inside a worktree is deleted with it. Every `.session/...` path in this document, and in every skill that cites it, resolves under `<<PRIMARY_ROOT>>` and is passed to a subagent as an absolute path. Before a worktree is removed, `bun run worktree:audit --rescue` copies any `.session/` file written there by mistake back to the primary:
 
 ```
 .session/
@@ -47,7 +47,7 @@ Rules:
 
 - `<skill-slug>` matches the skill's directory name under `.agents/skills/`.
 - `<scope>` is invocation-specific (see §9 for the naming convention per skill). Project-scope skills omit it entirely — files live directly at `.session/<skill-slug>/{plan.md, progress.md}`.
-- `.session/` is **gitignored** in both repos. The contents are work-in-progress orchestration scaffolding, not committed deliverables. Audit history lives in (a) Engram observations under the `session/...` topic prefix, (b) the canonical domain artifacts each skill already persists — Jira fields materialized as `[SYNC]` files under `.context/PBI/` (a gitignored cache; recovery = re-sync, per `AGENTS.md` §9), plus the committed docs elsewhere under `.context/`.
+- `.session/` is **gitignored** in both repos. The contents are work-in-progress orchestration scaffolding, not committed deliverables. Audit history lives in (a) Engram observations under the `session/...` topic prefix, (b) the canonical domain artifacts each skill already persists — Jira fields materialized as `[SYNC]` files under `.context/PBI/` (a gitignored cache; recovery = re-sync, per `.agents/instructions/agent-local-context-pbi.md` §9), plus the committed docs elsewhere under `.context/`.
 - `.session/.archive/` is also gitignored. The archive exists for local resume-replay and human inspection during the same session; long-term audit is delegated to Engram.
 - A skill MUST NOT write anywhere else under `.session/`. Sibling directories under `.session/` are reserved for future use.
 
@@ -56,7 +56,7 @@ Rules:
 Every retrofitted skill runs Phase 0 as the **first** thing it does, before any subagent dispatch, before any user prompt beyond the initial trigger. The decision tree is:
 
 1. Resolve `<scope>` for this invocation (see §9 for the skill's rule).
-2. Check whether `.session/<skill-slug>/<scope>/progress.md` exists.
+2. Check whether `<<PRIMARY_ROOT>>/.session/<skill-slug>/<scope>/progress.md` exists. When the session runs in a linked worktree (`<<REPO_ROOT>>` differs from `<<PRIMARY_ROOT>>`), say so in one line and look in the primary; a check against the worktree's own `.session/` finds nothing and silently restarts work that was already done.
 3. If it does NOT exist → proceed to Phase 1 (write a new `plan.md`).
 4. If it DOES exist:
    1. Read `.session/<skill-slug>/<scope>/plan.md` in full.
@@ -83,7 +83,6 @@ A small set of short skills bypass Phase 0 because they have no meaningful inter
 - Atomic operators: `git-flow-master`
 - Informational walkthroughs: `agentic-dev-onboard`
 - Inline TDD slices: `unit-testing`
-- Within-session-only operators: `judgment-day`
 - Meta / reference-only: `agentic-dev-core`
 
 A skill in this list MUST state its opt-out explicitly in its SKILL.md so future readers don't expect a `.session/` directory.
@@ -106,7 +105,7 @@ The choice is recorded in the skill's SKILL.md "Subagent Dispatch Strategy" tabl
 Some skills have a canonical plan artifact that already lives outside `.session/` (e.g. `sprint-development`'s story implementation plan). For those skills the canonical copy lives **in Jira** (the `spec_implementation_plan` field); the local file at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` is a `[SYNC]` cache materialized by `bun run jira:sync-issues` — gitignored, rebuilt on every sync. History and recovery go through Jira + re-sync, NOT git. For those skills:
 
 - The Jira-held artifact stays canonical; the synced file is how it is read.
-- `.session/<skill-slug>/<scope>/plan.md` MAY be omitted; the skill writes only `progress.md`.
+- `.session/<skill-slug>/<scope>/plan.md` MAY be omitted; the skill writes `progress.md` plus only the working artifacts its own SKILL.md names (§13).
 - `progress.md` §"Cross-references" cites the canonical plan by path.
 
 See §13 for the explicit list of skills that adopt this progress-only variant.
@@ -232,6 +231,8 @@ Every retrofitted SKILL.md MUST include this banner at the top of its "Subagent 
 
 > **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) and Phase 1 (plan write) are NOT optional.
 
+The banner's PREFIX (up to `archive on completion).`) is what the lint checks; its tail names the skill's own phase numbers. A skill whose walkthrough already owns a step numbered 1 (for example `project-bootstrap`, whose Phase 1 is the backend) names its plan phase **Phase 0.5** and writes `Phase 0.5 (plan write)` in the tail, so one number never means two things.
+
 The banner anchors both doctrines side by side so a skill author cannot adopt one without the other. The two contracts are designed to compose: orchestration says HOW to dispatch; session says HOW to persist around the dispatch.
 
 Skills that adopt the progress-only variant (§13) replace the banner's last sentence with:
@@ -277,7 +278,7 @@ The file-side state is always sufficient to resume.
 
 ## 12. Composition with `briefing-template.md`
 
-The 6-component briefing format in `./briefing-template.md` gets an implied 7th component for any dispatch that runs inside a session context: the orchestrator passes the absolute path of the session directory so the subagent can read prior state if it needs to.
+The 7-component briefing format in `./briefing-template.md` gets an implied 8th component for any dispatch that runs inside a session context: the orchestrator passes the absolute path of the session directory so the subagent can read prior state if it needs to.
 
 ```
 Goal: <one sentence>
@@ -301,7 +302,9 @@ The subagent treats `plan.md` and `progress.md` as read-only context. Only the o
 
 ### Skills adopting the progress-only variant (no plan.md)
 
-`sprint-development`. The canonical plan lives in the Jira `spec_implementation_plan` field, read locally via its `[SYNC]` cache at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (gitignored; recovery = re-sync). Only `progress.md` lives under `.session/`.
+`project-adoption`. The canonical plan is the committed `.context/reports/project-adoption-plan.md` (the team reviews it in the same PR as the adoption writes; recovery = git). Under `.session/project-adoption/` the skill writes `progress.md` only.
+
+`sprint-development`. The canonical plan lives in the Jira `spec_implementation_plan` field, read locally via its `[SYNC]` cache at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (gitignored; recovery = re-sync). No `plan.md` is written under `.session/`: besides `progress.md`, the session folder holds only Stage 2-3 working artifacts (`notes.md`, `bug-fix.md`, `review.md`, `compliance-matrix.md`, `evidence/`), whose durable copies live on the PR or in Jira.
 
 ### Skills explicitly excluded
 

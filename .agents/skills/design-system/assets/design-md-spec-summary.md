@@ -64,7 +64,7 @@ components:
 
 | Type                | Form             | Example                                    |
 | ------------------- | ---------------- | ------------------------------------------ |
-| **Color**           | hex sRGB string  | `"#1A1C1E"`                                |
+| **Color**           | any CSS color    | `"#1A1C1E"`, `"oklch(0.205 0 0)"`          |
 | **Dimension**       | number + unit    | `48px`, `1rem`, `0.5em`, `-0.02em`         |
 | **Token Reference** | curly-brace path | `{colors.primary}`, `{typography.body-md}` |
 | **Typography**      | object           | see below                                  |
@@ -192,7 +192,7 @@ Why three targets: covers the two dominant Tailwind versions plus the cross-tool
 
 1. **Frontmatter is the source of truth**. Markdown body explains; tokens decide.
 2. **Never invent token paths**. `{colors.foo}` must resolve to a defined token.
-3. **Hex values in sRGB only**. No `rgb()`, no `hsl()`, no `oklch()` (yet — spec is alpha).
+3. **Colors are CSS colors; author in hex**. The spec accepts any CSS color format and the linter converts to sRGB only for the contrast check, keeping the original for export. Authored paths (B-E) write hex for readability; the `extract` mode copies the live format verbatim (`oklch()`, `hsl()`) so the file matches the code. `calc(...)` is NOT a valid dimension: compute it.
 4. **Dimensions carry units**. `8px`, not `8`. Exception: spacing scale accepts bare numbers, but prefer units for clarity.
 5. **Component tokens reference, don't redefine**. A button's `backgroundColor` should be `{colors.primary}`, not `"#1A1C1E"` — otherwise rebrand breaks.
 

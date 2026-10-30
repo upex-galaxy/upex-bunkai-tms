@@ -1,0 +1,46 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-handoff-high-context",
+      "prompt": "Estamos cerca de los 500k de contexto, hagamos el handoff a otra sesión para seguir con la historia.",
+      "expected_behavior": "Activates session-handoff. Resolves <<PRIMARY_ROOT>> with git rev-parse --git-common-dir, lists <<PRIMARY_ROOT>>/.session/handoffs/ to pick the next NN, walks all ten capture-contract sections (empty ones as an explicit none line), labels claims measured or predicted, marks open PRs / deploys / running work PERISHABLE with the measured time and a re-verify command, writes the file, then launches or prints the successor launch line for the same worktree and harness.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-continue-in-fresh-session",
+      "prompt": "Write a handoff so a fresh session can continue this exactly where we stopped; the staging deploy is still building.",
+      "expected_behavior": "Activates session-handoff. Re-verifies the deployment state before writing §7, records the deployment id and pushed SHA verbatim as PERISHABLE with the poll command from /vercel-cli, and says in §7 that this item comes before the §8 priority list. The successor's first prompt names the handoff by absolute path.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-handoff-from-worktree",
+      "prompt": "I'm in a linked worktree. Hand this session over to a new one.",
+      "expected_behavior": "Activates session-handoff. Writes the file under the PRIMARY checkout's .session/handoffs/ (never the worktree's own .session/), counts NN from that directory, and launches the successor with the worktree root (git rev-parse --show-toplevel) as its working directory, with the harness's own bare binary (no wrapper, no env loader in front of it).",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-without-runtime",
+      "prompt": "pasa el contexto a otra sesión, no hay ningún orquestador corriendo",
+      "expected_behavior": "Activates session-handoff on the no-runtime path: writes the file first, then prints one launch line and the handoff path for the owner to paste, with a first prompt byte-identical to the runtime path. The printed instructions do not mention any specific orchestration product.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-delegate-task",
+      "prompt": "Dispatch a worker to implement UPEX-210 while I keep reviewing the other PR.",
+      "expected_behavior": "Does NOT activate session-handoff. This is delegating a scoped task while the session continues (orchestration or a briefed subagent per AGENTS.md §3), not transferring the whole session.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-story-resume",
+      "prompt": "Resume UPEX-145 where the last sprint-development run left it.",
+      "expected_behavior": "Does NOT activate session-handoff. Routes to /sprint-development Phase 0, which reads .session/sprint-development/UPEX-145/progress.md and offers resume / restart / abort.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-remember-decision",
+      "prompt": "Remember for next month that we chose RLS over app-level tenancy checks.",
+      "expected_behavior": "Does NOT activate session-handoff. A durable project decision goes to Engram (mem_save) and, if architectural and hard to reverse, an ADR in .context/ADR/; a handoff is disposable and gitignored.",
+      "category": "negative"
+    }
+  ]
+}

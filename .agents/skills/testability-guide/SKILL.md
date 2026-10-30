@@ -2,7 +2,7 @@
 name: testability-guide
 description: 'Generates a public in-app `/qa` page ("Software Testability Guide for QA") + a tool-agnostic credentials artifact (markdown body) the user publishes to Jira Epic (default), Confluence, Notion, any MCP/CLI-reachable tool, or via manual paste. Idempotent — re-runs detect host-stack drift via a snapshot comment in the generated page and propose surgical patches instead of rewriting. Invoke whenever the user asks to create, update, regenerate, or publish a QA testing guide, testability guide, /qa page, credentials Epic, or says "guía de testeabilidad", "credenciales para testing", "publish credentials artifact", "/testability-guide". Do NOT use for: PRD definition (`/project-foundation`), infrastructure scaffolding (`/project-bootstrap`), per-story implementation (`/sprint-development`), unit testing (`/unit-testing`), or formal QA test cases / TMS workflows (out of scope here).'
 license: MIT
-compatibility: [claude-code, copilot, cursor, codex, opencode]
+compatibility: [claude-code, codex, opencode]
 phase: foundation-extension
 complementary_categories:
   - frontend-framework
@@ -18,6 +18,13 @@ compact_rules: |
   - **T4.** NEVER include PII, real customer data, or production data examples in the testability guide. Demo users and sanitized fixtures only.
   - **T5.** NEVER duplicate the credentials-artifact body across multiple publisher targets. The markdown body in `references/credentials-content-template.md` is the single source of truth; publishers are thin adapters.
   - **T6.** NEVER assume idempotency without re-checking the snapshot comment. Re-runs MUST read the snapshot, diff against current detected stack, and only then decide no-op vs surgical patch vs fresh scaffold.
+  - **T7.** NEVER write the deployed commit SHA into the generated `/qa` source. The hero build stamp (`data-testid="qa-build-sha"`) reads it at RUNTIME from the platform env var whose NAME detection put in `qaConfig.build` (on Vercel `VERCEL_GIT_COMMIT_SHA`), with a visible fallback line when absent; the value stays out of the snapshot comment and the content-hash, so a redeploy is never drift (`references/page-craft.md` → Build stamp).
+  - **T8.** NEVER pick the testers' DB MCP from habit or hand them the agent's own `db` credential. The DB layer resolves from `stack.database` (`references/mcp-and-env-setup.md` §4.0): DBHub logged in as a `qa_*` read-only role by default; the Supabase MCP only as a `--read-only --project-ref` alternative for people who already hold a Supabase account; the `SUPABASE_ACCESS_TOKEN` personal access token is never published. Provisioning the read-only role is a database change on the route `stack.database.migrations_tool` names (`agentic-dev-core/references/db-change-doctrine.md`): this skill hands over the SQL and never applies it.
+  - **Capabilities** (`metadata.requires_capabilities`): resolve each by tool-name suffix, any prefix; none available at the step that needs it → STOP per `agentic-dev-core/references/mcp-capabilities.md` §4, never a silent substitute (built-in `WebSearch` / `WebFetch` only when the user chooses it).
+metadata:
+  kind: workflow
+  stage_owner: true
+  requires_capabilities: [library-docs, web-search]
 ---
 
 <!-- Model preferences (advisory; dispatchers may use to route) -->
@@ -34,7 +41,7 @@ model_preferences:
 
 `testability-guide` builds and maintains the bridge between a working app and the humans (and AI agents) who test it. It produces two artifacts:
 
-1. **A public `/qa` page inside the app** titled _"Software Testability Guide for QA"_ — explains the architecture, demo users, DB-level testing via DBHub MCP, API-level testing via OpenAPI MCP, UI-level testing via Playwright (scripted and agentic). The page links out to the real credentials but never inlines them.
+1. **A public `/qa` page inside the app** titled _"Software Testability Guide for QA"_ — explains the architecture, demo users, DB-level testing through the DB MCP the `stack:` block resolves (DBHub as a read-only role by default, `references/mcp-and-env-setup.md` §4.0), API-level testing via OpenAPI MCP, UI-level testing via Playwright (scripted and agentic). The page links out to the real credentials but never inlines them.
 2. **A tool-agnostic credentials artifact** (a markdown body) that holds the real DB connection, API login, demo passwords, OpenAPI spec URL, and Swagger UI link. The user picks where this artifact gets published: a Jira Epic (default), a Confluence page, a Notion page, any tool reachable via an MCP or a CLI, or — as a last resort — manual paste.
 
 > **Division of labor**: the credentials artifact (the Epic/page) holds the **real values** + a copy-paste `.env` block; the `/qa` page holds **placeholders + how-it-works** and never inlines a secret. Each artifact links to the other — the page's CTA opens the credentials destination, and the credentials body links back to `/qa`.
@@ -47,9 +54,9 @@ The skill is idempotent. On re-run it reads a snapshot comment at the top of the
 
 Canonical reading order for any AI starting cold on a testability-guide run. Read in order; stop earlier when the run is small enough (e.g. a snapshot no-op) that later inputs add no signal.
 
-1. `.agents/project.yaml` — project identity, env URLs, default branch, MCP names.
+1. `.agents/project.yaml` — project identity, env URLs, default branch, MCP names, and the `stack:` block (`stack.framework`, `stack.app_root`, `stack.database.*`, `stack.ui`, `stack.hosting`, `stack.scripts`): Phase 1 starts from it and confirms it against the code, never the other way round.
 2. `.mcp.json` — available MCP servers (Atlassian, Notion, etc.). Determines which publisher targets are reachable.
-3. `app/qa/page.tsx` snapshot (or framework-equivalent location) when present — current state of the `/qa` page; needed for the idempotency / drift-detection check (Phase 2).
+3. The `/qa` page snapshot under `{{stack.app_root}}` (`app/qa/page.tsx` on the App Router, `pages/qa.tsx` on Pages) when present — current state of the `/qa` page; needed for the idempotency / drift-detection check (Phase 2).
 4. The publisher target's API contract — varies by Q1 answer: Jira Epic via `[ISSUE_TRACKER_TOOL]`, Confluence page via `[KNOWLEDGE_BASE_TOOL]`, Notion page via Notion MCP, generic MCP / CLI per `references/publishers/`.
 5. `.env.example` — to know which credentials slots the credentials artifact should reference by name (NEVER quote the actual values).
 
@@ -72,23 +79,23 @@ Requires `agentic-dev-core`. Loads on demand from its references:
 Run once when this skill is invoked, before any phase. Follows the contract in `agentic-dev-core/references/skill-composition-strategy.md` §3.
 
 1. Read `complementary_categories` from this skill's frontmatter.
-2. Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.agents/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
+2. Scan the skills actually installed (strategy doc §3.1): the session's skill list plus every `.agents/skills/*/SKILL.md` on disk, git-ignored community folders included. `.agents/skills/REGISTRY.md` lists committed skills only, so it is never this scan.
 3. Classify tier per strategy doc §2.
 4. Apply threshold rule per strategy doc §3.2:
    - **T1 / T3** matches → load silently. Cache for the session.
    - **T4** matches → ASK user once: `"Detected <skill> (T4). Apply for this run? Y/N"`. Cache the answer.
-5. Inject a `## Composable Skills` block per strategy doc §6.2 into every sub-agent prompt.
+5. Inject a `## Composable Skills` block per strategy doc §5.2 into every sub-agent prompt.
 
 Expected matches on a Next.js + Supabase project (illustrative — actual list depends on what is installed):
 
 | Category             | Likely matches                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------- |
-| `frontend-framework` | `next-best-practices`, `next-cache-components`                                                 |
+| `frontend-framework` | `next-cache-components-adoption`, `next-cache-components-optimizer`                            |
 | `frontend-ui`        | `tailwind-css-patterns`, `shadcn`, `frontend-design`, `emil-design-eng`, `ui-ux-pro-max`       |
 | `issue-tracker`      | `acli` (T1) — used by the Jira Epic + Confluence publishers                                    |
 | `testing-e2e`        | `playwright-cli` — used during §verification                                                   |
 
-Skip only if the registry cache is missing AND no session-start skill list is available. When skipped, log `skill_resolution: "fallback-inline"` plus `missing: [<categories with no resolution>]` in the result envelope (per strategy doc §3.4).
+Skip only if neither the session skill list nor the `.agents/skills/` folder can be read. When skipped, log `skill_resolution: "fallback-inline"` plus `missing: [<categories with no resolution>]` in the result envelope (per strategy doc §3.4).
 
 ---
 
@@ -115,7 +122,9 @@ If the project still lacks a backend / frontend / auth scaffolding, surface that
 
 ## Session & Dispatch
 
-> **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) and Phase 1 (plan write) are NOT optional.
+> **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) and Phase 0.5 (plan write) are NOT optional.
+>
+> **Session close**: every stage ends with the light stage verifier and the session ends with the chat footer (tools used + dev surfaces touched), both per `agentic-dev-core/references/session-footer-contract.md`.
 
 This skill is **project-scope**: no `<scope>` segment. Session state lives directly at `.session/testability-guide/{plan.md, progress.md}` per `agentic-dev-core/references/session-management.md` §3 + §9.
 
@@ -131,7 +140,7 @@ Both stay. Phase 0 reads the session directory; Phase 2 (idempotency check) read
 Before any subagent dispatch and before Phase 1 (pre-flight discovery) runs, run the resume contract from `agentic-dev-core/references/session-management.md` §4:
 
 1. Check whether `.session/testability-guide/progress.md` exists.
-2. If it does NOT exist → proceed to Phase 1 (pre-flight discovery) which also writes `plan.md` after Phase 3 decisions land.
+2. If it does NOT exist → proceed to Phase 1 (pre-flight discovery); Phase 0.5 writes `plan.md` once the Phase 3 decisions land.
 3. If it DOES exist:
    1. Read `.session/testability-guide/plan.md` in full.
    2. Read the tail of `.session/testability-guide/progress.md` (last ~3 entries).
@@ -140,7 +149,7 @@ Before any subagent dispatch and before Phase 1 (pre-flight discovery) runs, run
 
 Phase 0 is inline — no subagent dispatch.
 
-## Phase 1 — Write `plan.md` (after Phase 3 batched decisions)
+## Phase 0.5 — Write `plan.md` (after Phase 3 batched decisions)
 
 Phase 3 below collects the user's batched answers to Q1–Q8 (credentials destination, DB role policy, page route, redirect of old route, language, and the detection-pre-answered page-craft trio: highlighter, agentic UI driver, request viewer). Immediately after those answers land, write `.session/testability-guide/plan.md` per the schema in `agentic-dev-core/references/session-management.md` §6:
 
@@ -159,7 +168,7 @@ Phases are mostly sequential, but page codegen and credentials-artifact authorin
 
 ### 1. Pre-flight discovery (read-only)
 
-Detect the host stack, UI kit, icon library, auth model, DB, existing `/qa` or `/guide` / `/docs` / `/integration` page, existing test infrastructure, available MCPs (Atlassian, Notion, etc.), i18n, OpenAPI / Swagger location, default branch.
+Read the `stack:` block first, then detect and confirm against the code: host stack, UI kit, icon library, auth model, DB, existing `/qa` or `/guide` / `/docs` / `/integration` page, existing test infrastructure, available MCPs (Atlassian, Notion, etc.), i18n, OpenAPI / Swagger location, default branch.
 
 Full checklist: `references/pre-flight-discovery.md`.
 
@@ -179,7 +188,7 @@ Question text + defaults + tradeoffs: `references/decision-questions.md`.
 
 ### 4. Page codegen — `/qa`
 
-Generate the page in the host framework's idiomatic location (Next App Router, Pages, Remix, Astro, SvelteKit, Vite+RR). Reuse the host UI kit and icon library — never add a new dependency. Apply the host language for visible copy (**Spanish is the default in this ecosystem** — the page is for QA); keep code identifiers + `data-testid`s in English. EVERY endpoint, host, spec URL, docs route, and MCP block comes from Phase-1 detection via the `qaConfig` object — zero hardcode (`pre-flight-discovery.md`).
+Generate the page in the host framework's idiomatic location (Next App Router, Pages, Remix, Astro, SvelteKit, Vite+RR). Reuse the host UI kit and icon library — never add a new dependency. Apply the Q5 language for visible copy: it follows the host's language signal, and with no signal Q5 asks, never assumes one; keep code identifiers + `data-testid`s in English. EVERY endpoint, host, spec URL, docs route, and MCP block comes from Phase-1 detection via the `qaConfig` object — zero hardcode (`pre-flight-discovery.md`).
 
 Section order + copy: `references/page-structure.md` (§1–§7).
 
@@ -208,13 +217,13 @@ Route the markdown body to the chosen destination:
 | Any other tool reachable via a CLI  | `references/publishers/generic-cli.md`     | detected CLI                                     |
 | None of the above is reachable      | `references/publishers/manual-paste.md`    | hand the user the markdown + the destination URL |
 
-If the chosen destination is not reachable (MCP missing, CLI absent), the skill **always falls back to manual paste** and tells the user exactly which tool to install or which URL to paste into. The artifact body is never lost.
+The security audit (§7) runs before the publish call below. If the chosen destination is not reachable (MCP missing, CLI absent), the skill **always falls back to manual paste** and tells the user exactly which tool to install or which URL to paste into. The artifact body is never lost.
 
 ### 7. Security audit before publish
 
-Before any external publish call fires, the skill runs the security rules in `references/security-rules.md`. Hard refusals include: admin / schema-owner credentials, session-signing secrets (`NEXTAUTH_SECRET`, JWT signing keys), and credentials already exposed in git history without prior rotation.
+Numbered after §6 for reading order, it RUNS before §6's publish call: before any external publish call fires, the skill runs the security rules in `references/security-rules.md`. Hard refusals include: admin / schema-owner credentials, session-signing secrets (`NEXTAUTH_SECRET`, JWT signing keys), and credentials already exposed in git history without prior rotation.
 
-If the only DB credential available is a superuser, the skill stops and asks the user to provision a `qa_*` read-only role first.
+If the only DB credential available is a superuser, the skill stops and asks the user to provision a `qa_*` read-only role first. It hands over the SQL and the route (`references/security-rules.md` Hard refusal 1): the role and its grants are a schema change on the route `stack.database.migrations_tool` names in `agentic-dev-core/references/db-change-doctrine.md`, and the role's password is set by a person outside the migration history. The skill never applies it.
 
 ### 8. Verification
 
@@ -231,9 +240,9 @@ If a step fails → fix and re-run from step 1. Never paper over a failure.
 
 ### 9. Commit + PR
 
-Delegate to `/git-flow-master`. This skill never invokes `git push`, `gh pr create`, or branch operations inline. The orchestrator hands `/git-flow-master` the branch name (`feature/testability-guide` if fresh, `fix/testability-guide-drift-YYYY-MM-DD` if surgical patch), the commit-message stems (one for page, one for redirect, one per dep bump), and the PR title `feat(qa): add Software Testability Guide for QA at /qa` (or `fix(qa): refresh testability guide after stack drift`).
+Delegate to `/git-flow-master`. This skill never invokes `git push`, `gh pr create`, or branch operations inline. The orchestrator hands `/git-flow-master` the branch name (`feat/testability-guide` if fresh, `fix/testability-guide-drift-YYYY-MM-DD` if surgical patch), the commit-message stems (one for page, one for redirect, one per dep bump), and the PR title `feat(qa): add Software Testability Guide for QA at /qa` (or `fix(qa): refresh testability guide after stack drift`).
 
-**Never push to `main` directly.** Always PR. AGENTS.md Rule #4 + Rule #11.
+**The work lands through that PR.** Whether anything may go straight to a protected branch is `/git-flow-master`'s call: it resolves `git_strategy.policy.direct_push_to_protected` (AGENTS.md Critical Rule #4). This skill never pushes and never decides the push policy itself.
 
 ---
 
@@ -245,7 +254,7 @@ Page codegen and credentials-artifact publish are independent once decisions are
 - Sub-agent B: credentials-artifact build (template) + publish (chosen channel).
 - Sequential after both: verification (Sub-agent C, browser smoke + lint/build) → `/git-flow-master` (branch, commit, PR).
 
-Each sub-agent briefing must follow the 6-component template in `agentic-dev-core/references/briefing-template.md` and cite the specific reference file the sub-agent must read.
+Each sub-agent briefing must follow the 7-component template in `agentic-dev-core/references/briefing-template.md` and cite the specific reference file the sub-agent must read.
 
 ---
 
@@ -253,9 +262,9 @@ Each sub-agent briefing must follow the 6-component template in `agentic-dev-cor
 
 After the skill completes, the page + artifact are live. Hand off to:
 
-- **`/sync-ai-memory`** — registers the new `/qa` page + credentials-artifact URL in the AI persistent memory so future skills know they exist.
+- **Docs follow-through** (`agentic-dev-core/references/docs-follow-through.md`) — adds the new `/qa` page + credentials-artifact location to `.agents/instructions/agent-project.md` (`## Key paths (this project)`; never `AGENTS.md` or a shared section) and to any doc that lists the app's pages, so future skills know they exist. Placement per `agentic-dev-core/references/instructions-doctrine.md` §4, closed by `bun run instructions:check`.
 - **`/sprint-development`** — QA-found bugs that touch the page itself become normal stories.
-- **`/business-feature-map`** — flag the `/qa` page so future map refreshes record it as an internal-only operational page (no PRD coverage required).
+- **`/project-context features`** — flag the `/qa` page so future map refreshes record it as an internal-only operational page (no PRD coverage required).
 
 ---
 
@@ -275,12 +284,14 @@ On successful completion (all eight verification items pass), the orchestrator r
 - **T4.** NEVER include PII, real customer data, or production data examples in the testability guide. Demo users and sanitized fixtures only.
 - **T5.** NEVER duplicate the credentials-artifact body across multiple publisher targets. The markdown body in `references/credentials-content-template.md` is the single source of truth; publishers are thin adapters.
 - **T6.** NEVER assume idempotency without re-checking the snapshot comment. Re-runs MUST read the snapshot, diff against current detected stack, and only then decide no-op vs surgical patch vs fresh scaffold.
+- **T7.** NEVER write the deployed commit SHA into the generated `/qa` source. The hero build stamp (`data-testid="qa-build-sha"`) reads it at RUNTIME from the platform env var whose NAME detection put in `qaConfig.build` (on Vercel `VERCEL_GIT_COMMIT_SHA`), with a visible fallback line when absent; the value stays out of the snapshot comment and the content-hash, so a redeploy is never drift (`references/page-craft.md` → Build stamp).
+- **T8.** NEVER pick the testers' DB MCP from habit or hand them the agent's own `db` credential. The DB layer resolves from `stack.database` (`references/mcp-and-env-setup.md` §4.0): DBHub logged in as a `qa_*` read-only role by default; the Supabase MCP only as a `--read-only --project-ref` alternative for people who already hold a Supabase account; the `SUPABASE_ACCESS_TOKEN` personal access token is never published. Provisioning the read-only role is a database change on the route `stack.database.migrations_tool` names (`agentic-dev-core/references/db-change-doctrine.md`): this skill hands over the SQL and never applies it.
 
 ---
 
 ## Notes
 
 - Security non-negotiables live in `references/security-rules.md`. Read it before any publish.
-- MCP credentials are cached at MCP-spawn time (AGENTS.md Rule #11). If a publish path fails on `401` / `403`, stop, point the user at the right `.env` variable, and ask them to restart the agent session. Do NOT work around.
-- This skill assumes English visible copy by default. Switch to the host language whenever the host app exposes a clear signal (root `lang` attribute, i18n config, copy already in another language). Code identifiers + `data-testid`s stay English regardless.
+- MCP credentials are cached at MCP-spawn time (AGENTS.md Critical Rule #9). If a publish path fails on `401` / `403`, stop, point the user at the right `.env` variable, and ask them to restart the agent session. Do NOT work around.
+- Visible copy follows the host app's language signal (root `lang` attribute, i18n config, copy already in a language); with no signal, Q5 asks. No language is assumed by default. Code identifiers + `data-testid`s stay English regardless.
 - **One sanctioned dependency — the syntax highlighter (the ONLY exception).** The skill adds **no other** dependencies. If the host UI kit lacks a `<CodeBlock>` component, create a minimal local one with a copy button — do not pull in a library for it. The single exception is a **server-only syntax highlighter (Shiki, or the host's existing equivalent)**: when the host has no highlighter, the skill MAY add Shiki because it runs server-side (build/request time), emits static dual-theme HTML, and ships **zero client JavaScript**. This is gated by Q6 (`decision-questions.md`) and detection — reuse the host's highlighter if one exists, and skip it entirely if the host has an explicit "no new deps" policy. Everything else still follows "no new deps": tabs, badges, request cards, and the highlight pipeline's framing components are local files in the host's style, not packages.

@@ -2,6 +2,8 @@
 
 > **Para**: Fases 6-7 (Implementation + Code Review)
 > **Propósito**: Manejo consistente de errores en todo el proyecto
+>
+> **Existing conventions win**: where the app already has an error-handling shape (its own error classes, result types, logger), follow it; these patterns are the default for an app that has none (`../SKILL.md` → `## Stack parameters`).
 
 ---
 

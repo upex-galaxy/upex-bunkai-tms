@@ -37,7 +37,7 @@ If you can't make it green in 5-10 minutes, the slice is too big. Step back, nar
 
 Now that the test is green, refactor freely. Extract helpers, rename variables, deduplicate. Tests catch regressions. Stop refactoring when no obvious smell remains — perfection is not the goal.
 
-Critical: refactor only when green. Refactoring while red means you're losing the safety net at the moment you need it most.
+Critical: refactor only when green. Refactoring while red means you're losing the safety net exactly when you need it most.
 
 ### Cycle pace
 

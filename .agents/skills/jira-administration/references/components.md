@@ -2,7 +2,7 @@
 name: jira-components
 description: Reconcile a Jira project's Components against the target application's real functional modules, driving `scripts/sync-jira-components.ts` through a plan file the user approves before anything is written. Do NOT use for setting components on an issue, Jira field/workflow catalogs, or repointing the instance (use `jira-administration` mode `instance-migration`).
 license: MIT
-compatibility: [claude-code, copilot, cursor, codex, opencode]
+compatibility: [claude-code, codex, opencode]
 ---
 
 # Jira Components Sync
@@ -12,8 +12,8 @@ Derive the target application's functional modules from its source, compare them
 **Inputs**: `$ARGUMENTS` — optionally the Jira project key and/or the path to the target application's source. Both may be omitted; Phase 1 resolves them (`{{PROJECT_KEY}}` from `.agents/project.yaml`, the target repo from the session or by asking).
 
 ```
-/jira-components                       # -> resolve key + target repo, then run the 4 phases
-/jira-components BK ../bunkai          # -> explicit key + target source
+/jira-administration components             # -> resolve key + target repo, then run the 4 phases
+/jira-administration components BK ../bunkai # -> explicit key + target source
 ```
 
 **Convention (binding)**: one component = one functional module of the *running application*, derived from the app's
@@ -33,7 +33,7 @@ Why the flow is plan-driven at all (from the script's own header): deriving modu
 
 `acli` cannot create, rename, or delete components — which is why the script speaks the REST API directly and why this command drives the script rather than `[ISSUE_TRACKER_TOOL]`.
 
-**Prerequisites**: `ATLASSIAN_EMAIL` + `ATLASSIAN_API_TOKEN` in `.env`, host resolved from `.agents/project.yaml` (`issue_tracker.atlassian_url`, env fallback). Missing credentials = STOP per Critical Rule #10 — name the variable, point at `.env.example`, no workaround.
+**Prerequisites**: `ATLASSIAN_EMAIL` + `ATLASSIAN_API_TOKEN` in `.env`, host resolved from `.agents/project.yaml` (`issue_tracker.atlassian_url`, env fallback). Missing credentials = STOP per Critical Rule #9 (MCP credential failure) — name the variable, point at `.env.example`, no workaround.
 
 ---
 
@@ -64,7 +64,7 @@ Forward-declaring is cheap and safe. `create` is additive, `rename` re-labels wi
 
 Show the module list with what each one absorbs — routes for existing modules, the Epic or Story for forward-declared ones — and mark which is which, so the user can see and correct the grouping. Also apply the naming-collision check below.
 
-**Naming-collision check.** While proposing, check whether the product's domain vocabulary overlaps QA's own — `Tests`, `Runs`, `Bugs`, `Suites` as product features. If it does, raise it and propose prefixing every component with the product name (`{{PROJECT_NAME}} Tests`, `{{PROJECT_NAME}} Runs`). This is the normal case for developer tools, testing products, and project-management products, and unnecessary where nothing collides. Do not apply the prefix silently — it is part of the plan the user approves.
+**Naming-collision check.** While proposing, check whether the product's domain vocabulary overlaps Jira's own process vocabulary — `Bugs`, `Tests`, `Stories`, `Sprints`, `Releases` as product features, where a component named `Bugs` reads as the issue type instead of the feature. If it does, raise it and propose prefixing every component with the product name (`{{PROJECT_NAME}} Bugs`, `{{PROJECT_NAME}} Sprints`). This is the normal case for developer tools, testing products, and project-management products, and unnecessary where nothing collides. Do not apply the prefix silently — it is part of the plan the user approves.
 
 ---
 

@@ -6,15 +6,15 @@ Vercel stores env vars per **environment** (Production / Preview / Development).
 
 | CLI flag value  | Dashboard label | Triggered for                                                                   |
 | --------------- | --------------- | ------------------------------------------------------------------------------- |
-| `production`    | Production      | The production branch (default `main`)                                          |
-| `preview`       | Preview         | Every other branch — feature branches, `develop`, hotfixes                      |
+| `production`    | Production      | The production branch (`git_strategy.branches.production`)                      |
+| `preview`       | Preview         | Every other branch: feature branches, the integration branch, hotfixes          |
 | `development`   | Development     | Local `vercel dev` / `vercel env pull` to `.env.local`                          |
 
 Use the **lowercase CLI form** in scripts. Dashboard labels are display-only.
 
 ## The canonical env-var set for this boilerplate
 
-This boilerplate's `.env.example` declares ~15 keys. Every key listed MUST exist in BOTH `production` and `preview` scopes before a deploy will run successfully. Mapping (current as of 2026-05; verify against the live `.env.example`):
+`.env.example` is the source of truth for the key set. Every app-runtime key it declares MUST exist in BOTH `production` and `preview` scopes before a deploy will run successfully. The mapping below is a snapshot to read alongside it; a key in `.env.example` that the table does not name follows the row of its family:
 
 | Key                                | Scope             | Source / notes                                                                                                                                          |
 | ---------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -24,6 +24,7 @@ This boilerplate's `.env.example` declares ~15 keys. Every key listed MUST exist
 | `SUPABASE_URL`                     | production + preview | Server-side mirror of `NEXT_PUBLIC_SUPABASE_URL`. Some Supabase libs require both spellings.                                                            |
 | `SUPABASE_ANON_KEY`                | production + preview | Server-side mirror of the public anon key.                                                                                                              |
 | `SUPABASE_PUBLISHABLE_KEY`         | production + preview | New-style publishable key. Browser-safe.                                                                                                                |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | production + preview | Browser-side copy of the publishable key, read by the Supabase browser client. NOT provisioned by the integration: set it by hand.                  |
 | `SUPABASE_SECRET_KEY`              | production + preview | New-style secret. **Server-only — never `NEXT_PUBLIC_`.**                                                                                              |
 | `SUPABASE_SERVICE_ROLE_KEY`        | production + preview | Legacy service-role. **Server-only.** Bypasses RLS — guard it.                                                                                          |
 | `SUPABASE_JWT_SECRET`              | production + preview | Used to verify / sign custom JWTs.                                                                                                                      |
@@ -38,9 +39,9 @@ This boilerplate's `.env.example` declares ~15 keys. Every key listed MUST exist
 | `ATLASSIAN_*`, `N8N_*`             | (skip)            | Devtime / agent-side only. Do NOT push these to Vercel scopes unless app code reads them at runtime.                                                    |
 | `SUPABASE_ACCESS_TOKEN`            | (skip)            | Supabase MCP admin-scope PAT — devtime only.                                                                                                            |
 
-> **Shortcut:** Vercel + Supabase have a first-party integration that auto-injects ALL `SUPABASE_*`, `NEXT_PUBLIC_SUPABASE_*`, and `POSTGRES_*` vars into both scopes at once. See `.env.example` lines 95–99 (the "Copy Snippet" tip). When that integration is wired, `vercel env pull` is the source of truth — your local `.env` mirrors Vercel, not the other way around.
+> **Shortcut:** Vercel + Supabase have a first-party integration that auto-injects ALL `SUPABASE_*`, `NEXT_PUBLIC_SUPABASE_*`, and `POSTGRES_*` vars into both scopes at once. See the "Copy Snippet" tip in `.env.example`. When that integration is wired, `vercel env pull` is the source of truth — your local `.env` mirrors Vercel, not the other way around.
 
-## Read what Vercel currently has
+## Read what Vercel has
 
 ```bash
 # Pull preview-scope vars into .env.local (gitignored)
@@ -71,16 +72,17 @@ vercel env add NEXT_PUBLIC_APP_URL preview production
 vercel whoami
 cat .vercel/project.json 2>/dev/null || cat .vercel/repo.json 2>/dev/null
 
-# Diff local keys against current Vercel preview keys
-LOCAL_KEYS=$(grep -oE '^[A-Z_][A-Z0-9_]+' .env | sort -u)
+# Diff documented keys against current Vercel preview keys (NAMES only:
+# `.env.example` lists them; `.env` itself is never opened, Critical Rule #1)
+LOCAL_KEYS=$(grep -oE '^[A-Z_][A-Z0-9_]+' .env.example | grep -vE '^(ATLASSIAN_|N8N_|SUPABASE_ACCESS_TOKEN$)' | sort -u)   # devtime credentials stay off Vercel (Hard rules)
 REMOTE_KEYS=$(vercel env ls preview --format json | jq -r '.envs[].key' | sort -u)
-comm -23 <(echo "$LOCAL_KEYS") <(echo "$REMOTE_KEYS")    # in local, not in Vercel
+comm -23 <(echo "$LOCAL_KEYS") <(echo "$REMOTE_KEYS")    # documented, not in Vercel
 
-# Push each missing key (review the list FIRST — never blind-push)
+# Push each missing key (review the list FIRST — never blind-push). varlock
+# reads .env inside a subprocess; `${!1}` expands the value by NAME and
+# pipes it to Vercel, so it never reaches the terminal or the transcript.
 for KEY in $(comm -23 <(echo "$LOCAL_KEYS") <(echo "$REMOTE_KEYS")); do
-  VALUE=$(grep -E "^${KEY}=" .env | head -1 | cut -d= -f2- | sed 's/^"//; s/"$//')
-  [ -z "$VALUE" ] && { echo "skip $KEY (empty value)"; continue; }
-  echo "$VALUE" | vercel env add "$KEY" preview
+  bunx varlock run -- bash -c 'v="${!1}"; [ -n "$v" ] || { echo "skip $1 (empty in .env)"; exit 0; }; printf "%s" "$v" | vercel env add "$1" preview' _ "$KEY"
 done
 ```
 
@@ -104,7 +106,8 @@ Env mutations do NOT automatically redeploy. To pick up new values:
 ## Hard rules
 
 - **NEVER commit `.env.local`** produced by `vercel env pull`. It's in `.gitignore` for a reason.
-- **NEVER put service-role / secret keys in `NEXT_PUBLIC_*` names.** Anything `NEXT_PUBLIC_` is bundled into the browser JS. The boilerplate's `NEXT_PUBLIC_SUPABASE_*` keys are deliberately the public anon key only.
+- **NEVER open `.env` / `.env.local` or print a value to diff or push** (Critical Rule #1). Diff NAMES; move values through the loader subprocess above (`agentic-dev-core/references/secret-hygiene.md`).
+- **NEVER put service-role / secret keys in `NEXT_PUBLIC_*` names.** Anything `NEXT_PUBLIC_` is bundled into the browser JS. The boilerplate's `NEXT_PUBLIC_SUPABASE_*` keys are deliberately the public publishable (or legacy anon) key only.
 - **NEVER push `ATLASSIAN_*`, `N8N_*`, `SUPABASE_ACCESS_TOKEN` to Vercel scopes** unless runtime app code reads them. These are devtime/agent-side credentials; they have no business sitting in production runtime env.
 - **Always re-run `vercel whoami` and check `.vercel/project.json` `orgId`** before bulk-pushing. A misrouted push to the wrong team's project is the most common foot-gun.
 

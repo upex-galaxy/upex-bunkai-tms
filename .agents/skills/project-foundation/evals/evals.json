@@ -9,19 +9,37 @@
     {
       "name": "should-trigger-prd-architecture",
       "prompt": "Define the PRD: executive summary, personas, user journeys and MVP scope. Then map the system architecture and API contracts.",
-      "expected_behavior": "Activates project-foundation in Architecture mode. Reads phase-2-prd references (executive-summary, user-personas, user-journeys, mvp-scope) and phase-3-srs references (system-architecture, api-contracts, data-model). Produces PRD/* and SRS/* artifacts. Coordinates the two phases sequentially and waits for user OK between PRD and SRS.",
+      "expected_behavior": "Activates project-foundation in Architecture mode. Reads the PRD references (prd-executive-summary, prd-personas, prd-user-journeys, prd-mvp-scope) and the SRS references (srs-functional, srs-non-functional, srs-architecture, srs-api-contracts). Produces PRD/* and SRS/* artifacts. Coordinates the two phases sequentially and waits for user OK between PRD and SRS.",
       "category": "positive"
     },
     {
       "name": "should-trigger-discovery-on-existing-codebase",
       "prompt": "Generate the business data map and api architecture for this codebase — I want the discovery context files.",
-      "expected_behavior": "Activates project-foundation in Discovery mode (Phase 4). Phase 4 is now an orchestrator that delegates to standalone commands: invokes /business-data-map (produces .context/business/business-data-map.md), /business-feature-map (produces .context/business/business-feature-map.md), /business-api-map (produces .context/business/business-api-map.md — note: replaces the legacy api-architecture.md filename), then executes references/project-dev-guide.md in-skill (produces .context/business/project-dev-guide.md), and optionally invokes /master-implementation-plan (produces .context/master-implementation-plan.md). Uses [DB_TOOL] and [API_TOOL] per AGENTS.md tool resolution. Final report lists artifacts created.",
+      "expected_behavior": "Activates project-foundation in Discovery mode (Phase 4). Phase 4 is now an orchestrator that delegates to project-context modes: invokes /project-context data (produces the data map inside the business-data-context skill), /project-context features (produces the feature map inside business-feature-context), /project-context api (produces the API map inside business-api-context — note: replaces the legacy api-architecture.md filename), then executes references/project-dev-guide.md in-skill (produces .context/business/project-dev-guide.md), and optionally invokes /project-context master-plan (produces .context/master-implementation-plan.md). Uses [DB_TOOL] and [API_TOOL] per AGENTS.md tool resolution. Final report lists artifacts created.",
       "category": "positive"
     },
     {
       "name": "should-trigger-srs-mapping",
       "prompt": "Mapear arquitectura del sistema y definir el SRS con data model y API contracts.",
-      "expected_behavior": "Activates project-foundation in Architecture mode (SRS phase). Reads phase-3-srs references (system-architecture.md, data-model.md, api-contracts.md, infrastructure.md). Produces SRS/* artifacts and asks the user whether to continue with discovery or hand off to /project-bootstrap for infrastructure scaffolding.",
+      "expected_behavior": "Activates project-foundation in Architecture mode (SRS phase). Reads the SRS references (srs-functional.md, srs-non-functional.md, srs-architecture.md, srs-api-contracts.md). Produces SRS/* artifacts and asks the user whether to continue with discovery or hand off to /project-bootstrap for infrastructure scaffolding.",
+      "category": "positive"
+    },
+    {
+      "name": "should-run-discovery-only-on-adopted-app",
+      "prompt": "We adopted our existing Next.js app last week and the maps are done. Write the dev guide and the domain glossary for it.",
+      "expected_behavior": "Detects an existing app (`.template/installer.lock.json` records `adopted: true`) and follows \"Existing app: Discovery-only foundation\". Phases 1, 2, 2.5 and 3 do not run: no Constitution, PRD or SRS is drafted (F9). Phase 0.5 writes the plan with `discovery-only` in Approach and Phase 4 alone in Phase breakdown. Checks the maps with `bun run context:map <skill> --list` and does not regenerate a generated one. Step 4 writes `.context/business/project-dev-guide.md` from the app's code, package.json and the `stack:` block; Step 6 seeds `.context/business/domain-glossary.md` from the maps, code identifiers, live UI copy, ADRs and the tracker's epic names (skipped if the file exists). Hands off to /product-management and /sprint-development, never /project-bootstrap; no missing-PRD/SRS gap is reported.",
+      "category": "positive"
+    },
+    {
+      "name": "should-keep-full-chain-on-new-product",
+      "prompt": "/project-foundation for a new marketplace we are designing from scratch; there is no code yet.",
+      "expected_behavior": "New-product path, unchanged: no installer lock with `adopted: true` and no existing code, so the Discovery-only section does not apply. Runs the full chain Phase 1 Constitution -> Phase 2 PRD -> Phase 2.5 /design-system hand-off -> Phase 3 SRS (with seeded ADRs) -> Phase 4 Steps 1-6, with the stakeholder brief as the seed input. Hand-off is /project-bootstrap then /product-management.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-stop-discovery-only-without-db-access",
+      "prompt": "Document this existing app (adopted, schema_source: migrations). There is no database MCP connected and no access to production.",
+      "expected_behavior": "Runs the Discovery-only path without stopping on capability `db`: the data map reads the migration files offline per `stack.database.schema_source`, and the missing live access is a Discovery Gap the data map names, never a STOP.",
       "category": "positive"
     },
     {

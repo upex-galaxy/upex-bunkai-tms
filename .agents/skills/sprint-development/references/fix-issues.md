@@ -20,8 +20,8 @@ Debuggear y corregir errores en la implementación de **STORY-{PROJECT_KEY}-{ISS
    - Archivo y línea
 
 2. **¿Cuándo ocurre?**
-   - Durante build (`npm run build`)
-   - Durante dev (`npm run dev`)
+   - Durante build (`{{stack.package_manager}} run {{stack.scripts.build}}`)
+   - Durante dev (`{{stack.package_manager}} run {{stack.scripts.dev}}`)
    - En navegador (runtime)
    - En servidor (API/backend)
 
@@ -131,7 +131,7 @@ Debuggear y corregir errores en la implementación de **STORY-{PROJECT_KEY}-{ISS
 
 1. **Build exitoso:**
 ```bash
-npm run build
+{{stack.package_manager}} run {{stack.scripts.build}}
 ````
 
 - ✅ Sin errores TypeScript
@@ -178,7 +178,7 @@ npm run build
 **Solución:**
 
 - Verifica ruta del import
-- Instala dependency si falta: `npm install [paquete]`
+- Instala dependency si falta: `{{stack.package_manager}} add [paquete]`
 - Verifica alias de paths (si usa `@/` o similar)
 
 ### 3. Error de Runtime (Navegador)

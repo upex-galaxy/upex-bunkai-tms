@@ -22,7 +22,7 @@ Generar una **guía conversacional** que oriente a cualquier desarrollador (huma
 
 **NO incluir:** Snippets de código, templates, comandos específicos
 
-**Prerequisito:** Debe existir `.context/business/business-data-map.md`
+**Prerequisito:** El mapa de datos (`business-data-context`) debe estar generado: `bun run context:map business-data-context` imprime secciones, no el aviso de placeholder
 
 **Output:** `.context/business/project-dev-guide.md`
 
@@ -33,14 +33,14 @@ Generar una **guía conversacional** que oriente a cualquier desarrollador (huma
 ### 0.1 Verificar Business Data Map
 
 ```
-¿Existe .context/business/business-data-map.md?
-  → NO: DETENER. Indicar que primero debe ejecutarse business-data-map.md
+¿Está generado el mapa de datos? (bun run context:map business-data-context)
+  → NO (imprime el aviso de placeholder): DETENER. Indicar que primero debe ejecutarse /project-context data
   → SÍ: Continuar
 ```
 
 ### 0.2 Comprender el Sistema
 
-Leer el business-data-map.md y comprender:
+Leer el mapa de datos (`bun run context:map business-data-context`) y comprender:
 
 - Entidades y sus roles de negocio
 - Flujos principales y cómo se conectan
@@ -76,7 +76,7 @@ El documento debe sentirse como una conversación con un compañero que conoce e
 ║ "Lo que necesitas saber para trabajar aquí" ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-> Este documento asume que ya leíste `.context/business/business-data-map.md` para
+> Este documento asume que ya leíste el mapa de datos (`bun run context:map business-data-context`) para
 > entender los flujos de negocio. Aquí te explico qué considerar al desarrollar.
 ```
 
@@ -129,7 +129,7 @@ lo que facilita testear y modificar sin romper otras cosas..."
 │ 🔄 TRABAJANDO CON CADA FLUJO │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-[Para cada flujo principal del business-data-map, explicar conversacionalmente
+[Para cada flujo principal del mapa de datos, explicar conversacionalmente
 qué tener en cuenta al trabajar con él]
 
 ---
@@ -312,7 +312,7 @@ sorprenden o causan problemas..."
 
 "Siempre es buena idea:
 
-- Revisar el business-data-map para entender el contexto...
+- Revisar el mapa de datos para entender el contexto...
 - Identificar qué flujos podrían verse afectados...
 - Verificar si hay procesos automáticos relacionados..."
 
@@ -320,8 +320,7 @@ sorprenden o causan problemas..."
 
 [Referencias a otros documentos o recursos del proyecto]
 
-- `.context/business/business-data-map.md` - Para entender los flujos
-- `.context/project-test-guide.md` - Para saber qué validar
+- `bun run context:map business-data-context` - Para entender los flujos
 - [Otros recursos relevantes]
 ```
 
@@ -357,7 +356,7 @@ Antes de guardar, verificar:
 - [ ] Cada flujo tiene su sección con consideraciones
 - [ ] Los diagramas ASCII ayudan a visualizar relaciones
 - [ ] Los puntos de atención son útiles y no obvios
-- [ ] Referencia al business-data-map
+- [ ] Referencia al mapa de datos (`business-data-context`)
 
 ---
 
@@ -372,7 +371,7 @@ Antes de guardar, verificar:
 
 ## Basado en:
 
-`.context/business/business-data-map.md`
+El mapa de datos (`business-data-context`)
 
 ## Contenido:
 
