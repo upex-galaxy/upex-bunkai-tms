@@ -1,16 +1,32 @@
 {
-  // OpenCode shared team config — committed to git.
-  // Secrets are NEVER stored here: every {env:VAR} placeholder is resolved
-  // from the developer's local environment (loaded from .env via `bun run opencode`,
-  // direnv, or a manually-sourced shell). See .env.example for required vars.
+  // OpenCode shared team config, committed to git.
+  // Secrets are NEVER stored here, and no plaintext copy of one is written for
+  // OpenCode to read. Every server that needs .env values starts through the
+  // .env loader:
+  //
+  //   bunx -p varlock@1.20.0 varlock run --no-redact-stdout --inject vars --filter A,B -- <server>
+  //
+  // which reads the varlock schema plus .env / .env.local (or the secret manager
+  // the schema names) from the project root at spawn time and hands the server
+  // ONLY the variables in its --filter. That works however OpenCode was started:
+  // a desktop or natively launched session has no process environment, and
+  // `{env:VAR}` would resolve to nothing there. `--no-redact-stdout` keeps the
+  // JSON-RPC stream byte-intact. The loader is the same on the three hosts
+  // (MCP_ENV_LOADER_* in cli/lib/agent-compatibility-contracts.ts, ADR-0012);
+  // never add `{env:}` or `{file:}` beside it: an empty value shadows .env.
+  // See .env.example for the variables themselves.
+  //
+  // OpenCode's background service caches the resolved config per directory, so
+  // a config change is not seen until it restarts (`opencode service restart`,
+  // or quit every OpenCode session).
   //
   // Syntax notes (OpenCode-specific, different from Claude Code's .mcp.json):
-  //   - Env var expansion uses {env:VAR_NAME}  (NOT ${VAR})
   //   - MCP root key is "mcp"                  (NOT "mcpServers")
   //   - MCP env field is "environment"         (NOT "env")
-  //   - Missing env vars resolve to empty string (no hard failure) — see AGENTS.md
-  //     Critical Reminder about stopping immediately when MCP credentials fail.
+  //   - An empty value fails later, at the first authenticated call: AGENTS.md
+  //     Critical Rule #9 (stop immediately when MCP credentials fail).
   "$schema": "https://opencode.ai/config.json",
+
   // Plugins:
   //   - `@warp-dot-dev/opencode-warp`: Warp terminal integration — surfaces
   //     OpenCode agent activity as native Warp notifications. Auto-installed
@@ -18,97 +34,117 @@
   //     Docs: https://docs.warp.dev/agent-platform/cli-agents/opencode/
   //   - `opencode-subagent-statusline`: renders an active-subagent statusline
   //     in the OpenCode TUI so multi-agent dispatch is visible at a glance.
-  "plugin": [
-    "@warp-dot-dev/opencode-warp",
-    "opencode-subagent-statusline"
-  ],
-  // MCP — the SAME six servers as .mcp.json and .codex/config.toml.
-  // `bun run agents:compat:check` normalizes the three files and compares them
-  // against the set .mcp.json declares: a server missing here, or present here
-  // only, fails the gate. Keep the .env variable names identical per server.
+  "plugin": ["@warp-dot-dev/opencode-warp", "opencode-subagent-statusline"],
+
+  // Local (stdio) servers only. Web search runs at harness level (your user
+  // config), never here: see .agents/skills/agentic-dev-core/references/mcp-capabilities.md.
   "mcp": {
     "context7": {
       "type": "local",
-      "command": [
-        "bunx",
-        "-y",
-        "@upstash/context7-mcp"
-      ],
-      "enabled": true
-    },
-    "tavily": {
-      "type": "local",
-      "command": [
-        "bunx",
-        "-y",
-        "mcp-remote",
-        "https://mcp.tavily.com/mcp/?tavilyApiKey={env:TAVILY_API_KEY}"
-      ],
-      "enabled": true
+      "command": ["bunx", "-y", "@upstash/context7-mcp"],
+      "enabled": true,
     },
     "supabase": {
       "type": "local",
       "command": [
         "bunx",
+        "-p",
+        "varlock@1.20.0",
+        "varlock",
+        "run",
+        "--no-redact-stdout",
+        "--inject",
+        "vars",
+        "--filter",
+        "SUPABASE_ACCESS_TOKEN",
+        "--",
+        "bunx",
         "-y",
         "@supabase/mcp-server-supabase@latest",
-        "--access-token",
-        "{env:SUPABASE_ACCESS_TOKEN}"
       ],
       "enabled": true,
-      "environment": {
-        "SUPABASE_URL": "{env:NEXT_PUBLIC_SUPABASE_URL}",
-        "SUPABASE_ANON_KEY": "{env:SUPABASE_PUBLISHABLE_KEY}",
-        "SUPABASE_SERVICE_ROLE_KEY": "{env:SUPABASE_SECRET_KEY}"
-      }
     },
     "n8n": {
       "type": "local",
       "command": [
+        "bunx",
+        "-p",
+        "varlock@1.20.0",
+        "varlock",
+        "run",
+        "--no-redact-stdout",
+        "--inject",
+        "vars",
+        "--filter",
+        "N8N_API_URL,N8N_API_KEY",
+        "--",
         "npx",
         "-y",
-        "n8n-mcp"
+        "n8n-mcp",
       ],
       "enabled": true,
       "environment": {
         "MCP_MODE": "stdio",
         "LOG_LEVEL": "error",
         "DISABLE_CONSOLE_OUTPUT": "true",
-        "N8N_API_URL": "{env:N8N_API_URL}",
-        "N8N_API_KEY": "{env:N8N_API_KEY}"
-      }
+      },
     },
-    "playwright": {
+    // Bunkai project-only: Tavily web search ([WEB_SEARCH_TOOL] primary here), stdio
+    // server reading TAVILY_API_KEY from the .env loader.
+    "tavily": {
       "type": "local",
       "command": [
         "bunx",
-        "@playwright/mcp@latest",
-        "--extension"
+        "-p",
+        "varlock@1.20.0",
+        "varlock",
+        "run",
+        "--no-redact-stdout",
+        "--inject",
+        "vars",
+        "--filter",
+        "TAVILY_API_KEY",
+        "--",
+        "bunx",
+        "-y",
+        "tavily-mcp@latest",
       ],
-      "enabled": true
+      "enabled": true,
     },
-    // DBHub reads dbhub.toml, which expands ${DBHUB_*} itself; the variables are
-    // forwarded explicitly so the .env contract is visible to the parity check.
+    // Bunkai project-only: browser automation through the Playwright MCP (`--extension`
+    // attaches to the running browser). No .env dependency.
+    "playwright": {
+      "type": "local",
+      "command": ["bunx", "@playwright/mcp@latest", "--extension"],
+      "enabled": true,
+    },
+    // Bunkai project-only: DBHub reads dbhub.toml (committed, ${VAR} placeholders only)
+    // and expands the DBHUB_* variables the loader hands it. Read-only SQL through the
+    // QA inspector role.
     "dbhub": {
       "type": "local",
       "command": [
         "bunx",
+        "-p",
+        "varlock@1.20.0",
+        "varlock",
+        "run",
+        "--no-redact-stdout",
+        "--inject",
+        "vars",
+        "--filter",
+        "DBHUB_TYPE,DBHUB_HOST,DBHUB_PORT,DBHUB_DATABASE,DBHUB_USER,DBHUB_PASSWORD",
+        "--",
+        "bunx",
         "-y",
         "@bytebase/dbhub@1.2.3",
         "--config",
-        "dbhub.toml"
+        "dbhub.toml",
       ],
       "enabled": true,
-      "environment": {
-        "DBHUB_TYPE": "{env:DBHUB_TYPE}",
-        "DBHUB_HOST": "{env:DBHUB_HOST}",
-        "DBHUB_PORT": "{env:DBHUB_PORT}",
-        "DBHUB_DATABASE": "{env:DBHUB_DATABASE}",
-        "DBHUB_USER": "{env:DBHUB_USER}",
-        "DBHUB_PASSWORD": "{env:DBHUB_PASSWORD}"
-      }
-    }
+    },
   },
+
   // Permissions — mirrors .claude/settings.json 1:1.
   // Rule precedence: last matching pattern wins, so deny entries are placed
   // AFTER the broad allows they override (e.g. `git *` allow, then
@@ -119,6 +155,7 @@
     "websearch": "allow",
     "bash": {
       "*": "ask",
+
       "bun *": "allow",
       "bunx *": "allow",
       "npm *": "allow",
@@ -126,8 +163,10 @@
       "pnpm *": "allow",
       "yarn *": "allow",
       "node *": "allow",
+
       "git *": "allow",
       "gh *": "allow",
+
       "ls *": "allow",
       "cat *": "allow",
       "echo *": "allow",
@@ -148,9 +187,11 @@
       "diff *": "allow",
       "jq *": "allow",
       "curl *": "allow",
+
       "acli *": "allow",
       "resend *": "allow",
       "supabase *": "allow",
+
       "rm -rf *": "deny",
       "sudo rm *": "deny",
       "sudo *": "deny",
@@ -164,7 +205,35 @@
       "truncate *": "deny",
       "shred *": "deny",
       "dd if=*": "deny",
-      "mkfs*": "deny"
-    }
-  }
+      "mkfs*": "deny",
+
+      // Secrets by NAME, never by value (Critical Rule #1). Same set as the
+      // Read/Bash denies in .claude/settings.json.
+      "cat *.env": "deny",
+      "cat *.env.local": "deny",
+      "cat *.env.*.local": "deny",
+      "cat *.auth/*": "deny",
+      "cat *settings.local.json": "deny",
+      "printenv*": "deny",
+      "env": "deny",
+      "varlock printenv*": "deny",
+      "varlock reveal*": "deny",
+      "bunx varlock printenv*": "deny",
+      "bunx varlock reveal*": "deny",
+    },
+    // OpenCode's own base policy already asks on `*.env` / `*.env.*` and
+    // allows `*.env.example`; these turn the secret-holding paths into a deny.
+    // The committed `.env*.schema` files stay readable without a prompt: they
+    // hold names, types and `op://` references only (Critical Rule #1).
+    "read": {
+      "*.env": "deny",
+      "*.env.local": "deny",
+      "*.env.*.local": "deny",
+      "*.envrc.local": "deny",
+      "*.auth/*": "deny",
+      "*settings.local.json": "deny",
+      "*.env.schema": "allow",
+      "*.env.*.schema": "allow",
+    },
+  },
 }
