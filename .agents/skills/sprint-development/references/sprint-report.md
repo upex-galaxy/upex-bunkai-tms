@@ -191,7 +191,7 @@ Triggered when sprint-dev opens the PR via `/git-flow-master` and Jira auto-tran
 
 Two sub-transitions: merge and CI smoke.
 
-- On the merge commit (`gh pr merge --merge`) landing: **Status** `IN_REVIEW` → `MERGED`. Session Log entry `### {date} — {ticket} MERGED`.
+- On the PR merge landing (method: `git_strategy.decisions.feature_merge`, through `/git-flow-master`): **Status** `IN_REVIEW` → `MERGED`. Session Log entry `### {date} — {ticket} MERGED`.
 - On staging CI smoke passing + auto-deploy fired: **Status** `MERGED` → `STAGING_DEPLOYED`. Session Log entry `### {date} — {ticket} STAGING_DEPLOYED`.
 - When Jira auto-transitions to `Ready For QA`: **move the row** from In-Flight to `Done — This Sprint` (preserve all column values; fill `Merged` / `Staging` date columns). Session Log entry confirming the hand-off.
 
@@ -219,7 +219,7 @@ State definitions:
 - **`PENDING`** — Ticket is in the sprint and queued; not yet pulled. Default state for Queue rows.
 - **`IN_PROGRESS`** — Sprint-dev Stage 1 entered; implementation plan being authored or code being written.
 - **`IN_REVIEW`** — PR opened; reviewer running.
-- **`MERGED`** — PR merge-committed into `staging`; CI not yet green.
+- **`MERGED`** — PR merged into the integration branch (`git_strategy.branches.integration`); CI not yet green.
 - **`STAGING_DEPLOYED`** — Staging CI smoke passed; staging environment auto-deployed; Jira at `Ready For QA`.
 - **`PROD_DEPLOYED`** — Stage 5 succeeded; production live.
 - **`BLOCKED`** — Any active state can move sideways to `BLOCKED` (deploy failure, rollback, dependency block). Fill the row's Blocking column with the cause.
