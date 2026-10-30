@@ -42,6 +42,7 @@ export interface TestDetail {
   canReorder: boolean
   // BK-34 — the project's environments (id + name) for the Start-run picker.
   environments: TestDetailEnvironment[]
+  environmentError: string | null
 }
 
 export const loadTestDetail = cache(async (projectSlug: string, testId: string): Promise<TestDetail> => {
@@ -72,43 +73,44 @@ export const loadTestDetail = cache(async (projectSlug: string, testId: string):
 
   const test = data as unknown as ExpandedTest;
 
-  // The self-row select is permitted by `workspace_members_select_self_or_admin`;
-  // viewers fall through to the read-only chain (no drag handles). The RPC's own
-  // write gate stays authoritative regardless of what the UI exposes.
-  const { data: memberRow } = await supabase
-    .from('workspace_members')
-    .select('role')
-    .eq('workspace_id', activeWorkspaceId)
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .maybeSingle();
-  const canReorder = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
-
   // Tests are workspace-scoped, so the project id isn't on the test; resolve it
   // from the route slug within the active workspace, then read its environments.
-  // The `project_environments` SELECT RLS is workspace-member gated, so this
-  // direct read is safe under the cookie client's `auth.uid()`.
-  const { data: project } = await supabase
+  const { data: project, error: projectError } = await supabase
     .from('projects')
-    .select('id')
+    .select('id, workspace_id')
     .eq('workspace_id', activeWorkspaceId)
     .eq('slug', projectSlug)
     .limit(1)
     .maybeSingle();
+  if (projectError || !project) { notFound(); }
 
-  const { data: envRows } = project
-    ? await supabase
-        .from('project_environments')
-        .select('id, name')
-        .eq('project_id', project.id)
-        .order('name', { ascending: true })
-    : { data: [] };
+  // The project is resolved in the same workspace as the project shell. Use its
+  // workspace id for the remaining reads so a stale active-workspace cookie cannot
+  // split the detail header from the project context.
+  const { data: memberRow, error: memberError } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', project.workspace_id)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (memberError) { throw new Error('Could not load Test permissions.'); }
+  const canReorder = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
+
+  // Environment loading is auxiliary to the Test detail. Keep the Test content
+  // visible if this read fails, but expose the failure to the run affordance.
+  const { data: envRows, error: environmentQueryError } = await supabase
+    .from('project_environments')
+    .select('id, name')
+    .eq('project_id', project.id)
+    .order('name', { ascending: true });
 
   return {
     userId: user.id,
-    activeWorkspaceId,
+    activeWorkspaceId: project.workspace_id,
     test,
     canReorder,
     environments: envRows ?? [],
+    environmentError: environmentQueryError ? 'Could not load environments.' : null,
   };
 });

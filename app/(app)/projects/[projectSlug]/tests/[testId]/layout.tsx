@@ -22,7 +22,7 @@ interface LayoutProps {
 // are unchanged and now guard the whole route group.
 export default async function TestDetailLayout({ children, params }: LayoutProps) {
   const { projectSlug, testId } = await params;
-  const { test, canReorder, environments } = await loadTestDetail(projectSlug, testId);
+  const { test, canReorder, environments, environmentError } = await loadTestDetail(projectSlug, testId);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-surface-1">
@@ -61,6 +61,7 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
                 testId={test.id}
                 projectSlug={projectSlug}
                 environments={environments}
+                environmentError={environmentError}
               />
             )}
             <span
