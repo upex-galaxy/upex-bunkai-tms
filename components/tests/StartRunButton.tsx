@@ -14,6 +14,7 @@ interface StartRunButtonProps {
   testId: string
   projectSlug: string
   environments: { id: string, name: string }[]
+  environmentError: string | null
 }
 
 interface RunCreatedBody {
@@ -27,7 +28,7 @@ interface ApiErrorBody {
   }
 }
 
-export function StartRunButton({ testId, projectSlug, environments }: StartRunButtonProps) {
+export function StartRunButton({ testId, projectSlug, environments, environmentError }: StartRunButtonProps) {
   const router = useRouter();
   const [envId, setEnvId] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -42,7 +43,7 @@ export function StartRunButton({ testId, projectSlug, environments }: StartRunBu
   if (environments.length === 0) {
     return (
       <span data-testid="start-run-empty" className="text-2xs italic text-fg-4">
-        No environments configured
+        {environmentError ?? 'No environments configured'}
       </span>
     );
   }
