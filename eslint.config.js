@@ -1,6 +1,10 @@
 import antfu from '@antfu/eslint-config';
 import nextPlugin from '@next/eslint-plugin-next';
 
+// Synced half (`bun sync` overwrites eslint.config.base.js): the cli/ import-closure
+// block guards the updater's self-update and must stay wired here (agents:compat:check).
+import { CLI_IMPORT_CLOSURE } from './eslint.config.base.js';
+
 export default antfu({
   // TypeScript configuration
   typescript: {
@@ -48,6 +52,11 @@ export default antfu({
     // MCP reference templates — syntax-sensitive opt-in configs. Linting them
     // (e.g. toml/array-bracket-newline) corrupts the layout users copy from.
     'docs/mcp/**',
+    // Synced e2e tests that do not type-check under Next.js's ProcessEnv (NODE_ENV
+    // required); excluded from tsconfig.json too, so the type-aware parser cannot
+    // load them. They still run under `bun test`.
+    'scripts/ui-setup-e2e.test.ts',
+    'scripts/ui-up-e2e.test.ts',
   ],
 
   // Custom rules
@@ -94,7 +103,7 @@ export default antfu({
       },
     ],
   },
-}).append({
+}, CLI_IMPORT_CLOSURE).append({
   name: 'next/core-web-vitals',
   plugins: { '@next/next': nextPlugin },
   rules: nextPlugin.configs['core-web-vitals'].rules,
