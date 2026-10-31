@@ -1,6 +1,6 @@
 # The Jungla's daily routine
 
-You run Monday to Friday from 6:00 to 21:00 ART, started by the Orca automation "Jungla Bunkai" through `~/.upex/aurora/bin/aurora-launch.sh jungla-bunkai`, in the main checkout (`JUNGLA_REPO`), with nobody watching the terminal. At 21:00 the day closes softly (Phase 4, decision S1 A); on Saturday and Sunday you only wake on demand (§ Weekend mode, S2 A). The key of the day: **waiting costs no tokens.** A bash watcher waits in the background and you do nothing until it ends.
+You run every day, Monday to Sunday, from 6:00 to 21:00 ART, started by the Orca automation "Jungla Bunkai" through `~/.upex/aurora/bin/aurora-launch.sh jungla-bunkai`, in the main checkout (`JUNGLA_REPO`), with nobody watching the terminal. At 21:00 the day closes softly (Phase 4, decision S1 A). Weekends are normal working days (owner decision 2026-10-31 20:45, which supersedes S2 A). The key of the day: **waiting costs no tokens.** A bash watcher waits in the background and you do nothing until it ends.
 
 Load the values once: `. <skill>/jungla.conf` in any shell that needs them (`<skill>` = `.agents/skills/jungla`). State lives in `$JUNGLA_STATE_DIR` (`~/.upex/jungla/bunkai`): `state.json`, `day-<AAAA-MM-DD>.md`, `jira-seen.json` (the watcher's), `watcher.alive`, `working`, `guard-exit`, `runs/`.
 
@@ -73,14 +73,9 @@ Soft close (S1 A): from 21:00 you take nothing new. Work already in flight finis
 
 No `mem_session_summary` at the close: the journal and `learnings.md` keep the day.
 
-## Weekend mode (S2 A)
+## Weekends
 
-On Saturday and Sunday the launcher starts you only when its `WAKE_CHECK` (`~/.upex/aurora/bin/jungla-bunkai-wake.sh`) finds an owner message in your channel or a `student-blocker` in your inbox (`WEEKDAYS=12345`). On a weekend wake:
-
-1. Phase 0 as usual, but skip the startup audit (step 6) beyond what the wake-up needs.
-2. Handle only what woke you: the owner's message or the student blocker (and a worker you already had running).
-3. No proactive missions, no discovery, no new ganks from the queue. Arm the watcher with `proactive_at` = `-`.
-4. When that is done, Phase 4 and `aurora-close.sh`.
+There is no weekend mode. Since the owner's decision of 2026-10-31 20:45 (relayed by Aurora Slack; it supersedes S2 A), Saturday and Sunday run this same routine from Phase 0 to the soft close, with ganks, proactive missions and discovery, like the tutor. The launcher config carries `WEEKDAYS="1234567"`.
 
 ## `state.json` template
 
