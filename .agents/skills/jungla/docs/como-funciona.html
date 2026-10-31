@@ -1,0 +1,916 @@
+<title>El Jungla de Bunkai</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap">
+<style>
+:root{
+  --paper:#f5f5f5;--paper-2:#ececec;--card:#ffffff;
+  --ink:#2d3142;--muted:#4f5d75;--soft:#6e778c;
+  --rule:rgba(45,49,66,.12);--rule-solid:#bfc0c0;
+  --accent:#eb6c36;--accent-ink:#c2501f;--accent-tint:rgba(235,108,54,.08);--link:#2e5aa8;
+  --ink-02:rgba(45,49,66,.02);--ink-03:rgba(45,49,66,.03);--ink-05:rgba(45,49,66,.05);
+  --ink-06:rgba(45,49,66,.06);--ink-20:rgba(45,49,66,.20);--ink-22:rgba(45,49,66,.22);
+  --ink-30:rgba(45,49,66,.30);--muted-10:rgba(79,93,117,.10);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#2d3142;--paper-2:#393e53;--card:#353a4f;
+    --ink:#f5f5f5;--muted:#bfc0c0;--soft:#9aa3b5;
+    --rule:rgba(245,245,245,.12);--rule-solid:rgba(191,192,192,.25);
+    --accent:#f08a59;--accent-ink:#f5a77f;--accent-tint:rgba(240,138,89,.10);--link:#6a95d8;
+    --ink-02:rgba(245,245,245,.02);--ink-03:rgba(245,245,245,.03);--ink-05:rgba(245,245,245,.05);
+    --ink-06:rgba(245,245,245,.06);--ink-20:rgba(245,245,245,.20);--ink-22:rgba(245,245,245,.22);
+    --ink-30:rgba(245,245,245,.30);--muted-10:rgba(191,192,192,.10);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#2d3142;--paper-2:#393e53;--card:#353a4f;
+  --ink:#f5f5f5;--muted:#bfc0c0;--soft:#9aa3b5;
+  --rule:rgba(245,245,245,.12);--rule-solid:rgba(191,192,192,.25);
+  --accent:#f08a59;--accent-ink:#f5a77f;--accent-tint:rgba(240,138,89,.10);--link:#6a95d8;
+  --ink-02:rgba(245,245,245,.02);--ink-03:rgba(245,245,245,.03);--ink-05:rgba(245,245,245,.05);
+  --ink-06:rgba(245,245,245,.06);--ink-20:rgba(245,245,245,.20);--ink-22:rgba(245,245,245,.22);
+  --ink-30:rgba(245,245,245,.30);--muted-10:rgba(191,192,192,.10);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion: no-preference){html{scroll-behavior:smooth}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Geist',system-ui,-apple-system,sans-serif;font-size:17px;line-height:1.55}
+.deck{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
+.slide{max-width:1000px;margin:0 auto;min-height:100vh;min-height:100svh;padding-block:72px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--rule)}
+.slide > *{min-width:0}
+.eyebrow{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--soft);margin:0 0 16px}
+.eyebrow b{color:var(--accent-ink);font-weight:500}
+h1,h2{font-family:'Instrument Serif',Georgia,serif;font-weight:400;line-height:1.04;letter-spacing:-.01em;margin:0 0 20px}
+h1{font-size:clamp(52px,11vw,120px)}
+h2{font-size:clamp(36px,6.4vw,64px)}
+h1 em,h2 em{font-style:italic;color:var(--accent-ink)}
+.lead{font-size:clamp(18px,2.2vw,22px);color:var(--muted);max-width:42em;margin:0 0 32px}
+.sub{font-family:'Geist Mono',ui-monospace,monospace;font-size:14px;letter-spacing:.06em;color:var(--muted);margin:0 0 28px}
+p{margin:0 0 14px}
+code{font-family:'Geist Mono',ui-monospace,monospace;font-size:.84em;background:var(--ink-05);border:1px solid var(--rule);border-radius:4px;padding:.04em .36em;overflow-wrap:anywhere}
+a{color:var(--link)}
+.fig{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:4px 0 24px}
+.fig svg{display:block;width:100%;min-width:720px;height:auto}
+.note{font-size:14px;color:var(--soft);margin:0 0 24px}
+.grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:760px){
+  .g3{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,.9fr)}
+  .g2{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+  .g2b{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}
+}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:20px;min-width:0}
+.card .eyebrow{font-size:11px;margin-bottom:8px}
+.card h3{font-size:17px;font-weight:600;margin:0 0 10px;display:flex;align-items:center;gap:10px;line-height:1.3}
+.card ul,.card ol{margin:0;padding-left:20px}
+.card li{margin:6px 0}
+.card p:last-child{margin-bottom:0}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ink);flex:none}
+.dot.acc{background:var(--accent)}.dot.muted{background:var(--muted)}.dot.link{background:var(--link)}.dot.soft{background:var(--soft)}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 24px}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:15px}
+th{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);text-align:left;border-bottom:1px solid var(--rule-solid);padding:8px 16px 8px 0}
+td{border-bottom:1px solid var(--rule);padding:12px 16px 12px 0;vertical-align:top}
+td:first-child{white-space:nowrap;font-weight:600}
+tr.focal td:first-child{color:var(--accent-ink)}
+.chip{display:inline-block;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--rule-solid);border-radius:4px;padding:1px 6px;color:var(--muted);white-space:nowrap}
+.chip.acc{color:var(--accent-ink);border-color:var(--accent)}
+pre{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;line-height:1.6;background:var(--paper-2);border:1px solid var(--rule);border-radius:6px;padding:16px;margin:0 0 24px;white-space:pre-wrap;overflow-wrap:anywhere}
+pre .k{color:var(--accent-ink)}
+.prio{list-style:none;margin:0 0 28px;padding:0;display:grid;gap:10px}
+.prio li{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:start;background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:14px 16px}
+.prio .g{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;font-weight:600;border:1px solid var(--rule-solid);border-radius:4px;text-align:center;padding:4px 0;color:var(--muted)}
+.prio li.focal{border-color:var(--accent);background:var(--accent-tint)}
+.prio li.focal .g{border-color:var(--accent);color:var(--accent-ink)}
+.prio b{display:block;font-size:16px;margin-bottom:2px}
+.prio span.d{color:var(--muted);font-size:15px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 16px;margin:0 0 32px}
+@media (min-width:760px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.stat{border-top:2px solid var(--ink);padding-top:12px}
+.stat.acc{border-top-color:var(--accent)}
+.stat .n{font-family:'Instrument Serif',Georgia,serif;font-size:clamp(44px,7vw,64px);line-height:1}
+.stat.acc .n{color:var(--accent-ink)}
+.stat .l{font-size:14px;color:var(--muted);margin-top:6px}
+.log{list-style:none;margin:0 0 24px;padding:0;border-left:1px solid var(--rule-solid)}
+.log li{position:relative;padding:0 0 16px 24px}
+.log li::before{content:"";position:absolute;left:-4px;top:9px;width:7px;height:7px;border-radius:50%;background:var(--ink)}
+.log li.acc::before{background:var(--accent)}
+.log time{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;color:var(--soft);margin-right:8px}
+.toc{columns:2;column-gap:32px;margin:8px 0 0;padding-left:24px;font-size:15px;max-width:640px}
+.toc li{margin:4px 0;break-inside:avoid}
+@media (max-width:520px){.toc{columns:1}}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 32px}
+.steps{counter-reset:s;list-style:none;margin:0;padding:0}
+.steps li{counter-increment:s;position:relative;padding-left:36px;margin:10px 0}
+.steps li::before{content:counter(s);position:absolute;left:0;top:1px;width:24px;height:24px;border:1px solid var(--rule-solid);border-radius:4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;display:grid;place-items:center;color:var(--muted)}
+.colophon{max-width:1000px;margin:0 auto;padding-top:24px;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:var(--soft)}
+/* SVG skin: every fill and stroke reads a token */
+svg text{font-family:'Geist',system-ui,sans-serif}
+.sv-bg,.sv-mask{fill:var(--paper)}
+.n-back{fill:var(--card);stroke:var(--ink);stroke-width:1}
+.n-focal{fill:var(--accent-tint);stroke:var(--accent);stroke-width:1.2}
+.n-store{fill:var(--ink-05);stroke:var(--muted);stroke-width:1}
+.n-ext{fill:var(--ink-03);stroke:var(--ink-30);stroke-width:1}
+.n-input{fill:var(--muted-10);stroke:var(--soft);stroke-width:1}
+.n-opt{fill:var(--ink-02);stroke:var(--ink-20);stroke-width:1;stroke-dasharray:4 3}
+.t-name{fill:var(--ink);font-size:12px;font-weight:600}
+.t-note{fill:var(--muted);font-size:12px}
+.t-sub,.t-tag,.t-lab,.t-leg{font-family:'Geist Mono',ui-monospace,monospace}
+.t-sub{fill:var(--muted);font-size:9px}
+.t-tag{fill:var(--soft);font-size:8px;letter-spacing:.1em}
+.t-tag.acc,.t-lab.acc{fill:var(--accent)}
+.t-lab{fill:var(--soft);font-size:8px;letter-spacing:.06em}
+.t-leg{fill:var(--muted);font-size:8px;letter-spacing:.14em}
+.t-legi{fill:var(--muted);font-size:9px;font-family:'Geist Mono',ui-monospace,monospace}
+.c-muted{fill:none;stroke:var(--muted);stroke-width:1.2}
+.c-acc{fill:none;stroke:var(--accent);stroke-width:1.2}
+.c-dash{stroke-dasharray:4 3;stroke-width:1}
+.hair{stroke:var(--rule);stroke-width:.8;fill:none}
+.base{stroke:var(--ink);stroke-width:1}
+.tick{stroke:var(--rule-solid);stroke-width:1}
+.lifeline{stroke:var(--ink-20);stroke-width:1;stroke-dasharray:3 3}
+.act{fill:var(--ink-06);stroke:var(--muted);stroke-width:.8}
+.frame{fill:var(--ink-02);stroke:var(--ink-22);stroke-width:1}
+.tab{fill:var(--paper);stroke:var(--ink-22);stroke-width:1}
+.mk-muted{fill:var(--muted)}
+.mk-acc{fill:var(--accent)}
+.mk-open{fill:none;stroke:var(--muted);stroke-width:1.2}
+.dot-ink{fill:var(--ink)}
+.dot-acc{fill:var(--accent)}
+/* navigator */
+.pager{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:10;display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--rule-solid);border-radius:8px;padding:4px}
+.pager[hidden]{display:none}
+.pager button{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:var(--ink);width:40px;height:40px;border-radius:6px;cursor:pointer;display:grid;place-items:center;padding:0}
+.pager button:hover{background:var(--ink-05)}
+.pager button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pager button svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6}
+.pager-count{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:var(--muted);min-width:56px;text-align:center}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+@media print{.pager{display:none}.slide{min-height:auto;break-after:page}}
+</style>
+
+<div class="deck">
+
+<!-- 01 -->
+<section class="slide" id="s1" data-slide aria-labelledby="s1-h">
+  <p class="eyebrow"><b>01</b> / 11 · Portada</p>
+  <h1 id="s1-h">El Jungla de <em>Bunkai</em></h1>
+  <p class="sub">Forward-Deployed Engineer (FDE) · <code>jungla-bunkai</code></p>
+  <p class="lead">Mitad product owner, mitad developer. Es el punto de entrada del repo Bunkai TMS: cuando un dueño quiere algo del producto, se lo pide a él. Y gankea: aparece en cuanto un alumno QA necesita algo.</p>
+  <div class="facts">
+    <span class="chip">6:00 a 21:00 ART</span>
+    <span class="chip">checkout principal, rama staging</span>
+    <span class="chip">canal #jungla-bunkai</span>
+    <span class="chip">delega en workers de Orca</span>
+  </div>
+  <nav aria-label="Índice">
+    <p class="eyebrow">Índice</p>
+    <ol class="toc">
+      <li><a href="#s2">Qué es exactamente</a></li>
+      <li><a href="#s3">Un día del Jungla</a></li>
+      <li><a href="#s4">Qué lo despierta</a></li>
+      <li><a href="#s5">Los ganks</a></li>
+      <li><a href="#s6">El puente con la tutora</a></li>
+      <li><a href="#s7">Cómo delega</a></li>
+      <li><a href="#s8">Misiones y deberes</a></li>
+      <li><a href="#s9">Autonomía y límites</a></li>
+      <li><a href="#s10">La primera noche</a></li>
+      <li><a href="#s11">Pendiente y réplica</a></li>
+    </ol>
+  </nav>
+</section>
+
+<!-- 02 -->
+<section class="slide" id="s2" data-slide aria-labelledby="s2-h">
+  <p class="eyebrow"><b>02</b> / 11 · Qué es exactamente</p>
+  <h2 id="s2-h">Las tres cosas, una encima de la otra</h2>
+  <p class="lead">Una automatización de Orca decide cuándo vive, el agente dice quién es y la skill dice cómo trabaja. Debajo están las skills del repo que reutiliza y los workers que hacen el trabajo pesado.</p>
+  <div class="fig">
+    <svg viewBox="0 0 880 520" role="img" aria-labelledby="capas-title capas-desc">
+      <title id="capas-title">Las cinco capas del Jungla</title>
+      <desc id="capas-desc">Pila de cinco capas: las automatizaciones de Orca con el lanzador compartido deciden cuándo vive, el agente jungla-bunkai dice quién es, la skill jungla dice cómo trabaja, debajo van las skills del repo que reutiliza y los workers de Orca que ejecutan.</desc>
+      <defs>
+        <marker id="capas-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-muted" points="0 0, 8 3, 0 6"/></marker>
+      </defs>
+      <rect class="sv-bg" x="0" y="0" width="880" height="520"/>
+      <text class="t-tag" x="64" y="56" text-anchor="middle">DESPIERTA</text>
+      <path class="c-muted" d="M64,68 V424" marker-end="url(#capas-arrow)"/>
+      <text class="t-tag" x="64" y="448" text-anchor="middle">EJECUTA</text>
+
+      <rect class="n-back" x="120" y="40" width="720" height="400" rx="6"/>
+      <rect class="n-focal" x="120" y="200" width="720" height="80"/>
+      <line class="hair" x1="120" y1="120" x2="840" y2="120"/>
+      <line class="hair" x1="120" y1="360" x2="840" y2="360"/>
+
+      <text class="t-tag" x="144" y="64">01 · CUÁNDO VIVE</text>
+      <text class="t-name" x="144" y="86">Automatizaciones de Orca + lanzador compartido</text>
+      <text class="t-sub" x="144" y="104">~/.upex/aurora/bin/aurora-launch.sh jungla-bunkai</text>
+      <text class="t-note" x="816" y="86" text-anchor="end">arranca a las 6:00, vigía cada 10 min</text>
+      <text class="t-sub" x="816" y="104" text-anchor="end">config/jungla-bunkai.conf</text>
+
+      <text class="t-tag" x="144" y="144">02 · QUIÉN ES</text>
+      <text class="t-name" x="144" y="166">El agente jungla-bunkai</text>
+      <text class="t-sub" x="144" y="184">.claude/agents/jungla-bunkai.md</text>
+      <text class="t-note" x="816" y="166" text-anchor="end">identidad mínima y cinco reglas</text>
+      <text class="t-sub" x="816" y="184" text-anchor="end">valen antes de leer nada</text>
+
+      <text class="t-tag acc" x="144" y="224">03 · CÓMO TRABAJA</text>
+      <text class="t-name" x="144" y="246">La skill jungla</text>
+      <text class="t-sub" x="144" y="264">.agents/skills/jungla/SKILL.md</text>
+      <text class="t-note" x="816" y="246" text-anchor="end">rutina, ganks, misiones, puente</text>
+      <text class="t-sub" x="816" y="264" text-anchor="end">references/ · scripts/ · jungla.conf</text>
+
+      <text class="t-tag" x="144" y="304">04 · QUÉ REUTILIZA</text>
+      <text class="t-name" x="144" y="326">Skills del repo</text>
+      <text class="t-sub" x="144" y="344">/autonomous-delivery · /sprint-development · /product-management</text>
+      <text class="t-note" x="816" y="326" text-anchor="end">auditoría, locks, entrega, backlog</text>
+
+      <text class="t-tag" x="144" y="384">05 · LAS MANOS</text>
+      <text class="t-name" x="144" y="406">Workers de Orca</text>
+      <text class="t-sub" x="144" y="424">un worktree propio nacido de origin/staging</text>
+      <text class="t-note" x="816" y="406" text-anchor="end">un worker pesado a la vez</text>
+      <text class="t-sub" x="816" y="424" text-anchor="end">un PR por historia o defecto</text>
+
+      <line class="hair" x1="40" y1="472" x2="840" y2="472"/>
+      <text class="t-leg" x="40" y="496">LEYENDA</text>
+      <rect class="n-focal" x="128" y="486" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="152" y="496">capa focal: la skill guarda el comportamiento</text>
+      <rect class="n-back" x="472" y="486" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="496" y="496">capa del sistema</text>
+    </svg>
+  </div>
+  <div class="grid g3">
+    <div class="card"><h3><span class="dot muted"></span>Orca y el lanzador</h3><p>La automatización «Jungla Bunkai» llama a <code>aurora-launch.sh jungla-bunkai</code>, que lee su config: horario, prompt de arranque y el patrón de procesos. El prompt abre con «Eres El Jungla de Bunkai. Lee…», y así se lo distingue de tus sesiones en el mismo checkout.</p></div>
+    <div class="card"><h3><span class="dot"></span>El agente</h3><p>Archivo corto: quién es y cinco reglas que valen antes de leer nada (checkout compartido, solo dueños y solo su canal, nada a <code>main</code>, nunca sin vigilante, sin datos personales). Lo demás lo manda a la skill.</p></div>
+    <div class="card"><h3><span class="dot acc"></span>La skill</h3><p>Todo lo que hace: la rutina, los ganks, las misiones, el puente, los scripts y <code>jungla.conf</code>, el único archivo con valores de este proyecto.</p></div>
+  </div>
+</section>
+
+<!-- 03 -->
+<section class="slide" id="s3" data-slide aria-labelledby="s3-h">
+  <p class="eyebrow"><b>03</b> / 11 · La rutina</p>
+  <h2 id="s3-h">Un día del Jungla</h2>
+  <p class="lead">Esperar no cuesta tokens. Un vigilante en bash corre en segundo plano y la sesión no hace nada hasta que ese vigilante termina con un evento.</p>
+  <div class="fig">
+    <svg viewBox="0 0 880 320" role="img" aria-labelledby="dia-title dia-desc">
+      <title id="dia-title">El día del Jungla de 6:00 a 21:00</title>
+      <desc id="dia-desc">Línea de tiempo por hora: arranque a las 6:00 con la Fase 0, espera sin tokens durante todo el día con despertares por evento, bloques proactivos a las 09:00, 13:00 y 17:00, y cierre a las 21:00 con aurora-close.sh.</desc>
+      <rect class="sv-bg" x="0" y="0" width="880" height="320"/>
+      <rect class="n-opt" x="88" y="72" width="748" height="32" rx="4"/>
+      <text class="t-sub" x="104" y="92">ESPERA · wait-jungla.sh en segundo plano, cero tokens · despierta con cada evento</text>
+
+      <text class="t-tag" x="64" y="148" text-anchor="middle">06</text>
+      <text class="t-tag" x="116" y="148" text-anchor="middle">07</text>
+      <text class="t-tag" x="168" y="148" text-anchor="middle">08</text>
+      <text class="t-tag" x="220" y="148" text-anchor="middle">09</text>
+      <text class="t-tag" x="272" y="148" text-anchor="middle">10</text>
+      <text class="t-tag" x="324" y="148" text-anchor="middle">11</text>
+      <text class="t-tag" x="376" y="148" text-anchor="middle">12</text>
+      <text class="t-tag" x="428" y="148" text-anchor="middle">13</text>
+      <text class="t-tag" x="480" y="148" text-anchor="middle">14</text>
+      <text class="t-tag" x="532" y="148" text-anchor="middle">15</text>
+      <text class="t-tag" x="584" y="148" text-anchor="middle">16</text>
+      <text class="t-tag" x="636" y="148" text-anchor="middle">17</text>
+      <text class="t-tag" x="688" y="148" text-anchor="middle">18</text>
+      <text class="t-tag" x="740" y="148" text-anchor="middle">19</text>
+      <text class="t-tag" x="792" y="148" text-anchor="middle">20</text>
+      <text class="t-tag" x="844" y="148" text-anchor="middle">21</text>
+      <path class="tick" d="M116,156 V164 M168,156 V164 M272,156 V164 M324,156 V164 M376,156 V164 M480,156 V164 M532,156 V164 M584,156 V164 M688,156 V164 M740,156 V164 M792,156 V164"/>
+      <line class="base" x1="64" y1="160" x2="844" y2="160"/>
+
+      <line class="hair" x1="220" y1="164" x2="220" y2="196"/>
+      <line class="hair" x1="428" y1="164" x2="428" y2="196"/>
+      <line class="hair" x1="636" y1="164" x2="636" y2="196"/>
+      <line class="hair" x1="64" y1="168" x2="64" y2="236"/>
+      <line class="hair" x1="844" y1="168" x2="844" y2="236"/>
+      <circle class="dot-ink" cx="220" cy="160" r="4"/>
+      <circle class="dot-ink" cx="428" cy="160" r="4"/>
+      <circle class="dot-ink" cx="636" cy="160" r="4"/>
+      <circle class="dot-acc" cx="64" cy="160" r="6"/>
+      <circle class="dot-acc" cx="844" cy="160" r="6"/>
+
+      <text class="t-name" x="220" y="212" text-anchor="middle">Proactivo</text>
+      <text class="t-sub" x="220" y="228" text-anchor="middle">09:00</text>
+      <text class="t-name" x="428" y="212" text-anchor="middle">Proactivo</text>
+      <text class="t-sub" x="428" y="228" text-anchor="middle">13:00</text>
+      <text class="t-name" x="636" y="212" text-anchor="middle">Proactivo</text>
+      <text class="t-sub" x="636" y="228" text-anchor="middle">17:00</text>
+      <text class="t-name" x="64" y="252">Arranque</text>
+      <text class="t-sub" x="64" y="268">automatización · Fase 0</text>
+      <text class="t-name" x="844" y="252" text-anchor="end">Cierre</text>
+      <text class="t-sub" x="844" y="268" text-anchor="end">diario · learnings · aurora-close.sh</text>
+
+      <line class="hair" x1="40" y1="284" x2="840" y2="284"/>
+      <text class="t-leg" x="40" y="308">LEYENDA</text>
+      <circle class="dot-acc" cx="136" cy="304" r="5"/>
+      <text class="t-legi" x="148" y="308">arranque y cierre</text>
+      <circle class="dot-ink" cx="304" cy="304" r="4"/>
+      <text class="t-legi" x="316" y="308">bloque proactivo</text>
+      <rect class="n-opt" x="464" y="298" width="24" height="12" rx="2"/>
+      <text class="t-legi" x="496" y="308">espera sin tokens (tope 6600 s, luego HEARTBEAT)</text>
+    </svg>
+  </div>
+  <div class="grid g3">
+    <div class="card">
+      <p class="eyebrow">6:00 · Fase 0</p>
+      <h3><span class="dot acc"></span>Arranque</h3>
+      <ul>
+        <li>Guardia: si <code>watcher.alive</code> tiene menos de 90 s o hay dos procesos Jungla, no arranca y deja <code>guard-exit</code> (30 min sin relanzar).</li>
+        <li>Estado en <code>state.json</code>: día nuevo o reinicio en el mismo día.</li>
+        <li>Casa al día: <code>git fetch</code> y fast-forward a <code>origin/staging</code> solo con el árbol limpio.</li>
+        <li>Herramientas: Jira, Slack, Supabase, <code>orca</code>. Sin Jira no hay día.</li>
+        <li>Auditoría de arranque con git como verdad, luego la bandeja del puente.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <p class="eyebrow">Todo el día</p>
+      <h3><span class="dot"></span>Espera y despertares</h3>
+      <p>Antes del primer vigilante lanza un keepalive (<code>sleep 21600</code>), porque Orca cierra la corrida cuando no queda ninguna shell en segundo plano. Cada despertar termina igual: actualiza el estado, escribe en el diario y vuelve a armar el vigilante.</p>
+      <p>Los bloques proactivos de 09:00, 13:00 y 17:00 solo corren si no hay gank esperando ni worker pesado.</p>
+    </div>
+    <div class="card">
+      <p class="eyebrow">21:00 · Fase 4</p>
+      <h3><span class="dot acc"></span>Cierre</h3>
+      <ul>
+        <li><code>closed_day</code> en el estado, para que el vigía sepa que cerró a propósito.</li>
+        <li>Workers vivos quedan en <code>active_runs</code> para mañana.</li>
+        <li>Diario del día y entradas en <code>learnings.md</code>.</li>
+        <li>Último paso, solo: <code>aurora-close.sh jungla-bunkai</code>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 04 -->
+<section class="slide" id="s4" data-slide aria-labelledby="s4-h">
+  <p class="eyebrow"><b>04</b> / 11 · El vigilante</p>
+  <h2 id="s4-h">Qué lo despierta</h2>
+  <p class="lead"><code>wait-jungla.sh</code> mira cuatro fuentes y termina con una sola línea. Esa línea es el veredicto, y el Jungla actúa según cuál sea.</p>
+  <div class="fig">
+    <svg viewBox="0 0 880 464" role="img" aria-labelledby="vigia-title vigia-desc">
+      <title id="vigia-title">Qué despierta al Jungla</title>
+      <desc id="vigia-desc">Slack, Jira, la bandeja del puente y el reloj alimentan al vigilante wait-jungla.sh, que guarda el último estado de Jira en jira-seen.json, imprime un veredicto para la sesión del Jungla y el Jungla lo vuelve a lanzar.</desc>
+      <defs>
+        <marker id="vigia-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-muted" points="0 0, 8 3, 0 6"/></marker>
+        <marker id="vigia-arrow-acc" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-acc" points="0 0, 8 3, 0 6"/></marker>
+      </defs>
+      <rect class="sv-bg" x="0" y="0" width="880" height="464"/>
+
+      <path class="c-muted" d="M240,72 H344 Q352,72 352,80 V164 Q352,172 360,172 H400" marker-end="url(#vigia-arrow)"/>
+      <path class="c-muted" d="M240,168 H312 Q320,168 320,176 V192 Q320,200 328,200 H400" marker-end="url(#vigia-arrow)"/>
+      <path class="c-acc" d="M240,264 H312 Q320,264 320,256 V240 Q320,232 328,232 H400" marker-end="url(#vigia-arrow-acc)"/>
+      <path class="c-muted" d="M240,360 H344 Q352,360 352,352 V268 Q352,260 360,260 H400" marker-end="url(#vigia-arrow)"/>
+      <path class="c-muted" d="M600,216 H680" marker-end="url(#vigia-arrow)"/>
+      <path class="c-muted c-dash" d="M464,280 V328" marker-end="url(#vigia-arrow)"/>
+      <path class="c-muted c-dash" d="M760,248 V296 Q760,304 752,304 H576 Q568,304 568,296 V280" marker-end="url(#vigia-arrow)"/>
+
+      <rect class="sv-mask" x="256" y="52" width="48" height="12" rx="2"/>
+      <text class="t-lab" x="280" y="61" text-anchor="middle">MENSAJE</text>
+      <rect class="sv-mask" x="248" y="148" width="64" height="12" rx="2"/>
+      <text class="t-lab" x="280" y="157" text-anchor="middle">KEY ENTRÓ</text>
+      <rect class="sv-mask" x="244" y="244" width="72" height="12" rx="2"/>
+      <text class="t-lab acc" x="280" y="253" text-anchor="middle">ARCHIVO NUEVO</text>
+      <rect class="sv-mask" x="260" y="340" width="40" height="12" rx="2"/>
+      <text class="t-lab" x="280" y="349" text-anchor="middle">HORA</text>
+      <rect class="sv-mask" x="608" y="196" width="64" height="12" rx="2"/>
+      <text class="t-lab" x="640" y="205" text-anchor="middle">VEREDICTO</text>
+      <rect class="sv-mask" x="472" y="296" width="32" height="12" rx="2"/>
+      <text class="t-lab" x="476" y="305">DIFF</text>
+      <rect class="sv-mask" x="636" y="284" width="56" height="12" rx="2"/>
+      <text class="t-lab" x="664" y="293" text-anchor="middle">RELANZA</text>
+
+      <rect class="n-ext" x="40" y="40" width="200" height="64" rx="6"/>
+      <text class="t-tag" x="52" y="58">SLACK</text>
+      <text class="t-name" x="52" y="78">Canal #jungla-bunkai</text>
+      <text class="t-sub" x="52" y="94">mensajes de los dueños</text>
+
+      <rect class="n-ext" x="40" y="136" width="200" height="64" rx="6"/>
+      <text class="t-tag" x="52" y="154">JIRA</text>
+      <text class="t-name" x="52" y="174">Proyecto BK</text>
+      <text class="t-sub" x="52" y="190">JUNGLA_GANK_JQL</text>
+
+      <rect class="n-store" x="40" y="232" width="200" height="64" rx="6"/>
+      <text class="t-tag" x="52" y="250">ARCHIVOS</text>
+      <text class="t-name" x="52" y="270">Bandeja del puente</text>
+      <text class="t-sub" x="52" y="286">~/.upex/jungla/bunkai/inbox/</text>
+
+      <rect class="n-ext" x="40" y="328" width="200" height="64" rx="6"/>
+      <text class="t-tag" x="52" y="346">RELOJ</text>
+      <text class="t-name" x="52" y="366">Hora ART</text>
+      <text class="t-sub" x="52" y="382">09 · 13 · 17 · 21:00 · 6600 s</text>
+
+      <rect class="sv-mask" x="400" y="152" width="200" height="128" rx="6"/>
+      <rect class="n-focal" x="400" y="152" width="200" height="128" rx="6"/>
+      <text class="t-tag acc" x="416" y="176">BASH · CERO TOKENS</text>
+      <text class="t-name" x="416" y="198">wait-jungla.sh</text>
+      <text class="t-sub" x="416" y="218">corre en segundo plano</text>
+      <text class="t-sub" x="416" y="234">late en watcher.alive</text>
+      <text class="t-sub" x="416" y="250">imprime un veredicto</text>
+      <text class="t-sub" x="416" y="266">y termina</text>
+
+      <rect class="n-store" x="400" y="328" width="128" height="56" rx="6"/>
+      <text class="t-name" x="412" y="352">jira-seen.json</text>
+      <text class="t-sub" x="412" y="370">key y estado anterior</text>
+
+      <rect class="n-back" x="680" y="184" width="160" height="64" rx="6"/>
+      <text class="t-tag" x="692" y="202">SESIÓN CLAUDE</text>
+      <text class="t-name" x="692" y="222">El Jungla</text>
+      <text class="t-sub" x="692" y="238">actúa según la línea</text>
+
+      <line class="hair" x1="40" y1="416" x2="840" y2="416"/>
+      <text class="t-leg" x="40" y="444">LEYENDA</text>
+      <rect class="n-focal" x="120" y="434" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="144" y="444">vigilante</text>
+      <rect class="n-ext" x="240" y="434" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="264" y="444">fuente externa</text>
+      <rect class="n-store" x="384" y="434" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="408" y="444">archivos en disco</text>
+      <rect class="n-back" x="552" y="434" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="576" y="444">sesión</text>
+      <path class="c-muted c-dash" d="M648,440 H680"/>
+      <text class="t-legi" x="688" y="444">estado y relanzo</text>
+    </svg>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Veredicto</th><th>Qué pasó</th><th>Qué hace el Jungla</th></tr></thead>
+      <tbody>
+        <tr class="focal"><td><code>INBOX</code></td><td>Llegó un archivo <code>student-blocker</code> a la bandeja del puente.</td><td>Gank G0, la prioridad máxima. Cierra el archivo con <code>bridge.sh done</code> en el mismo turno.</td></tr>
+        <tr><td><code>OWNER</code></td><td>Un dueño escribió en <code>#jungla-bunkai</code>.</td><td>Es una orden directa: la hace, la delega o explica en el hilo por qué no.</td></tr>
+        <tr><td><code>GANK</code></td><td>En Jira, una key entró a <code>Ready For Dev</code>, <code>QA Approved</code> o <code>BLOCKED</code>, o un Defect a <code>Open</code>.</td><td>Lo trabaja según <code>ganks.md</code>. El vigilante avisa solo cuando una key entra a esos estados; el stock que ya estaba lo cubre la auditoría de arranque.</td></tr>
+        <tr><td><code>PROACTIVE</code></td><td>Llegó un bloque libre (09:00, 13:00, 17:00) sin gank ni worker pesado.</td><td>Hace una tajada de la primera misión en <code>ready</code>.</td></tr>
+        <tr><td><code>HEARTBEAT</code></td><td>Pasaron 6600 s sin eventos (el harness corta a las 2 h).</td><td>Relanza el vigilante con los mismos argumentos, sin leer nada más.</td></tr>
+        <tr><td><code>END_OF_DAY</code></td><td>Son las 21:00.</td><td>Fase 4, el cierre.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Si el vigilante da <code>ERROR</code> tres veces seguidas, el Jungla no cierra el día: escribe el error en <code>guard-exit</code>, termina la sesión con <code>aurora-close.sh</code> sin marcar <code>closed_day</code>, y el vigía lo relanza a los 30 minutos.</p>
+</section>
+
+<!-- 05 -->
+<section class="slide" id="s5" data-slide aria-labelledby="s5-h">
+  <p class="eyebrow"><b>05</b> / 11 · Los ganks</p>
+  <h2 id="s5-h">Aparecer cuando el QA lo necesita</h2>
+  <p class="lead">Si hay varios ganks esperando, se atienden en este orden. Solo corre un worker pesado a la vez; el resto espera en <code>state.json</code>.</p>
+  <ol class="prio">
+    <li><span class="g">G0</span><div><b>Bloqueo de alumno</b><span class="d">La tutora avisa que la app no deja probar (403/5xx, falta un fault injection o un dato de staging). Reproduce, arregla por el camino más rápido correcto y le contesta a la tutora con un <code>answer</code>.</span></div></li>
+    <li><span class="g">G2</span><div><b>Defecto nuevo</b><span class="d">Un Defect en <code>Open</code>, casi siempre detrás de una historia <code>BLOCKED</code>. Primero mira si el fix ya está en <code>origin/staging</code> (status lag); si no, worker con <code>/sprint-development</code> en carril rápido.</span></div></li>
+    <li class="focal"><span class="g">G3</span><div><b>Sign-off de QA Approved</b><span class="d">Revisa que el trabajo QA cumpla el Definition of Done del boilerplate QA y pasa la historia a <code>Ready For Release</code>. Es barato y destraba la revisión del alumno.</span></div></li>
+    <li><span class="g">G1</span><div><b>Historia en Ready For Dev</b><span class="d">Audita (sin PR ni rama abiertos, no está ya en staging, dependencias de <code>dev-roadmap.md</code> cumplidas) y despacha un worker. Al final verifica la ancestría y que Jira la movió a <code>Ready For QA</code>.</span></div></li>
+    <li><span class="g">G4</span><div><b>Shift-left propio</b><span class="d">Solo en historias que ningún alumno tomó en 7 días. Una por bloque proactivo con <code>/shift-left-testing</code>; queda en <code>Ready For Dev</code> y se vuelve un G1.</span></div></li>
+  </ol>
+  <p class="eyebrow">La JQL del gank (34 ítems medidos el 30/10)</p>
+<pre><span class="k">project</span> = BK AND (
+  (issuetype = Story AND status in ("Ready For Dev", "QA Approved", "BLOCKED"))
+  OR (issuetype in (Bug, Defect) AND status = Open)
+)</pre>
+  <p class="eyebrow">G3 en detalle</p>
+  <div class="fig">
+    <svg viewBox="0 0 880 312" role="img" aria-labelledby="g3-title g3-desc">
+      <title id="g3-title">Sign-off de una historia en QA Approved</title>
+      <desc id="g3-desc">Primero el code gate: sin código en origin/staging la historia se detiene. Con código se revisa el Definition of Done; si cumple pasa a Ready For Release con include in release, si no cumple queda en QA Approved, y en los dos casos sale un review-request a la tutora.</desc>
+      <defs>
+        <marker id="g3-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-muted" points="0 0, 8 3, 0 6"/></marker>
+      </defs>
+      <rect class="sv-bg" x="0" y="0" width="880" height="312"/>
+
+      <path class="c-muted" d="M200,72 H248" marker-end="url(#g3-arrow)"/>
+      <path class="c-muted" d="M424,72 H472" marker-end="url(#g3-arrow)"/>
+      <path class="c-muted" d="M648,72 H696" marker-end="url(#g3-arrow)"/>
+      <path class="c-muted" d="M112,104 V176" marker-end="url(#g3-arrow)"/>
+      <path class="c-muted" d="M336,104 V176" marker-end="url(#g3-arrow)"/>
+      <path class="c-muted c-dash" d="M424,208 H776 Q784,208 784,200 V104" marker-end="url(#g3-arrow)"/>
+
+      <rect class="sv-mask" x="212" y="52" width="24" height="12" rx="2"/>
+      <text class="t-lab" x="224" y="61" text-anchor="middle">SÍ</text>
+      <rect class="sv-mask" x="428" y="52" width="40" height="12" rx="2"/>
+      <text class="t-lab" x="448" y="61" text-anchor="middle">CUMPLE</text>
+      <rect class="sv-mask" x="120" y="136" width="20" height="12" rx="2"/>
+      <text class="t-lab" x="124" y="145">NO</text>
+      <rect class="sv-mask" x="344" y="136" width="56" height="12" rx="2"/>
+      <text class="t-lab" x="348" y="145">NO CUMPLE</text>
+
+      <rect class="n-focal" x="24" y="40" width="176" height="64" rx="6"/>
+      <text class="t-tag acc" x="36" y="58">1 · CODE GATE</text>
+      <text class="t-name" x="36" y="78">Código en staging</text>
+      <text class="t-sub" x="36" y="94">ancestro de origin/staging</text>
+
+      <rect class="n-back" x="248" y="40" width="176" height="64" rx="6"/>
+      <text class="t-tag" x="260" y="58">2 · DOD</text>
+      <text class="t-name" x="260" y="78">Definition of Done</text>
+      <text class="t-sub" x="260" y="94">resultados + comentarios QA</text>
+
+      <rect class="n-back" x="472" y="40" width="176" height="64" rx="6"/>
+      <text class="t-tag" x="484" y="58">3 · JIRA</text>
+      <text class="t-name" x="484" y="78">include in release</text>
+      <text class="t-sub" x="484" y="94">pasa a Ready For Release</text>
+
+      <rect class="n-back" x="696" y="40" width="176" height="64" rx="6"/>
+      <text class="t-tag" x="708" y="58">4 · PUENTE</text>
+      <text class="t-name" x="708" y="78">review-request</text>
+      <text class="t-sub" x="708" y="94">a la tutora, siempre</text>
+
+      <rect class="n-opt" x="24" y="176" width="176" height="64" rx="6"/>
+      <text class="t-tag" x="36" y="194">SE DETIENE</text>
+      <text class="t-name" x="36" y="214">qa-approved-no-code</text>
+      <text class="t-sub" x="36" y="230">aviso en el canal</text>
+
+      <rect class="sv-mask" x="248" y="176" width="176" height="64" rx="6"/>
+      <rect class="n-opt" x="248" y="176" width="176" height="64" rx="6"/>
+      <text class="t-tag" x="260" y="194">SE QUEDA</text>
+      <text class="t-name" x="260" y="214">Sigue en QA Approved</text>
+      <text class="t-sub" x="260" y="230">los gaps van al review</text>
+
+      <line class="hair" x1="24" y1="268" x2="856" y2="268"/>
+      <text class="t-leg" x="24" y="292">LEYENDA</text>
+      <rect class="n-focal" x="104" y="282" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="128" y="292">primer control: git es la verdad</text>
+      <rect class="n-back" x="352" y="282" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="376" y="292">paso</text>
+      <rect class="n-opt" x="440" y="282" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="464" y="292">la historia no avanza</text>
+    </svg>
+  </div>
+  <p class="note">El veredicto queda en Jira como comentario de decisión de AI Tech Lead. El mínimo, en palabras del dueño: hay resultados de prueba y hay comentarios QA con sustancia (qué se probó, en qué ambiente, qué se encontró). Un <code>BLOCKED</code> suelto es una consecuencia: el Jungla busca el defecto vinculado y lo encola como G2.</p>
+</section>
+
+<!-- 06 -->
+<section class="slide" id="s6" data-slide aria-labelledby="s6-h">
+  <p class="eyebrow"><b>06</b> / 11 · El puente</p>
+  <h2 id="s6-h">El puente con Aurora tutora</h2>
+  <p class="lead">Solo la tutora habla con alumnos. Ella y el Jungla se pasan archivos, que sobreviven a que cualquiera de los dos esté caído y no gastan tokens.</p>
+  <div class="fig">
+    <svg viewBox="0 0 880 548" role="img" aria-labelledby="puente-title puente-desc">
+      <title id="puente-title">Un bloqueo de alumno pasa por el puente</title>
+      <desc id="puente-desc">El alumno pide ayuda a Aurora tutora en Slack, ella escribe un student-blocker en la bandeja del Jungla, el vigilante despierta al Jungla con INBOX, el Jungla reproduce, si es código con ticket lo delega a un worker, escribe un answer para la tutora y ella responde al alumno en su hilo.</desc>
+      <defs>
+        <marker id="puente-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-muted" points="0 0, 8 3, 0 6"/></marker>
+        <marker id="puente-arrow-acc" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-acc" points="0 0, 8 3, 0 6"/></marker>
+        <marker id="puente-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline class="mk-open" points="0 0, 8 3, 0 6"/></marker>
+      </defs>
+      <rect class="sv-bg" x="0" y="0" width="880" height="548"/>
+
+      <line class="lifeline" x1="96" y1="72" x2="96" y2="476"/>
+      <line class="lifeline" x1="272" y1="72" x2="272" y2="476"/>
+      <line class="lifeline" x1="448" y1="72" x2="448" y2="476"/>
+      <line class="lifeline" x1="624" y1="72" x2="624" y2="476"/>
+      <line class="lifeline" x1="800" y1="72" x2="800" y2="476"/>
+
+      <rect class="frame" x="596" y="276" width="232" height="104" rx="4"/>
+      <rect class="tab" x="596" y="276" width="40" height="16" rx="2"/>
+      <text class="t-lab" x="616" y="288" text-anchor="middle">OPT</text>
+      <text class="t-lab" x="608" y="304">[código con ticket]</text>
+
+      <rect class="act" x="268" y="120" width="8" height="40"/>
+      <rect class="act" x="620" y="200" width="8" height="212"/>
+      <rect class="act" x="796" y="328" width="8" height="36"/>
+      <rect class="act" x="268" y="412" width="8" height="40"/>
+
+      <path class="c-muted" d="M96,120 H268" marker-end="url(#puente-arrow)"/>
+      <path class="c-muted c-dash" d="M276,160 H448" marker-end="url(#puente-open)"/>
+      <path class="c-muted c-dash" d="M448,200 H620" marker-end="url(#puente-open)"/>
+      <path class="c-muted" d="M628,232 H664 Q672,232 672,240 V248 Q672,256 664,256 H628" marker-end="url(#puente-arrow)"/>
+      <path class="c-muted" d="M628,332 H796" marker-end="url(#puente-arrow)"/>
+      <path class="c-muted c-dash" d="M796,360 H628" marker-end="url(#puente-arrow)"/>
+      <path class="c-muted c-dash" d="M620,412 H276" marker-end="url(#puente-open)"/>
+      <path class="c-acc" d="M268,452 H96" marker-end="url(#puente-arrow-acc)"/>
+
+      <rect class="sv-mask" x="152" y="100" width="64" height="12" rx="2"/>
+      <text class="t-lab" x="184" y="109" text-anchor="middle">PIDE AYUDA</text>
+      <rect class="sv-mask" x="336" y="140" width="48" height="12" rx="2"/>
+      <text class="t-lab" x="360" y="149" text-anchor="middle">BLOCKER</text>
+      <rect class="sv-mask" x="516" y="180" width="40" height="12" rx="2"/>
+      <text class="t-lab" x="536" y="189" text-anchor="middle">INBOX</text>
+      <rect class="sv-mask" x="680" y="238" width="56" height="12" rx="2"/>
+      <text class="t-lab" x="684" y="247">REPRODUCE</text>
+      <rect class="sv-mask" x="692" y="312" width="40" height="12" rx="2"/>
+      <text class="t-lab" x="712" y="321" text-anchor="middle">BRIEF</text>
+      <rect class="sv-mask" x="680" y="340" width="64" height="12" rx="2"/>
+      <text class="t-lab" x="712" y="349" text-anchor="middle">WORKER_DONE</text>
+      <rect class="sv-mask" x="512" y="392" width="48" height="12" rx="2"/>
+      <text class="t-lab" x="536" y="401" text-anchor="middle">ANSWER</text>
+      <rect class="sv-mask" x="148" y="432" width="72" height="12" rx="2"/>
+      <text class="t-lab acc" x="184" y="441" text-anchor="middle">RESPONDE HILO</text>
+
+      <rect class="n-input" x="24" y="24" width="144" height="48" rx="6"/>
+      <text class="t-name" x="96" y="46" text-anchor="middle">Alumno</text>
+      <text class="t-sub" x="96" y="62" text-anchor="middle">hilo en Slack</text>
+      <rect class="n-back" x="200" y="24" width="144" height="48" rx="6"/>
+      <text class="t-name" x="272" y="46" text-anchor="middle">Aurora tutora</text>
+      <text class="t-sub" x="272" y="62" text-anchor="middle">bot Aurora</text>
+      <rect class="n-store" x="376" y="24" width="144" height="48" rx="6"/>
+      <text class="t-name" x="448" y="46" text-anchor="middle">Bandeja del Jungla</text>
+      <text class="t-sub" x="448" y="62" text-anchor="middle">inbox/</text>
+      <rect class="n-focal" x="552" y="24" width="144" height="48" rx="6"/>
+      <text class="t-name" x="624" y="46" text-anchor="middle">El Jungla</text>
+      <text class="t-sub" x="624" y="62" text-anchor="middle">jungla-bunkai</text>
+      <rect class="n-back" x="728" y="24" width="144" height="48" rx="6"/>
+      <text class="t-name" x="800" y="46" text-anchor="middle">Worker</text>
+      <text class="t-sub" x="800" y="62" text-anchor="middle">worktree propio</text>
+
+      <line class="hair" x1="24" y1="500" x2="856" y2="500"/>
+      <text class="t-leg" x="24" y="528">LEYENDA</text>
+      <path class="c-muted" d="M104,524 H136" marker-end="url(#puente-arrow)"/>
+      <text class="t-legi" x="144" y="528">llamada</text>
+      <path class="c-muted c-dash" d="M216,524 H248" marker-end="url(#puente-open)"/>
+      <text class="t-legi" x="256" y="528">archivo, asíncrono</text>
+      <path class="c-muted c-dash" d="M384,524 H416" marker-end="url(#puente-arrow)"/>
+      <text class="t-legi" x="424" y="528">respuesta</text>
+      <path class="c-acc" d="M520,524 H552" marker-end="url(#puente-arrow-acc)"/>
+      <text class="t-legi" x="560" y="528">respuesta al alumno</text>
+    </svg>
+  </div>
+  <p class="eyebrow">El otro sentido: G3 pide revisión</p>
+  <div class="fig">
+    <svg viewBox="0 0 880 352" role="img" aria-labelledby="revision-title revision-desc">
+      <title id="revision-title">El Jungla pide a la tutora revisar al alumno</title>
+      <desc id="revision-desc">Tras revisar el Definition of Done y dejar el veredicto en Jira, el Jungla escribe un review-request para la tutora; ella aplica su rúbrica y su regla de elegibilidad y revisa el trabajo del alumno en su hilo.</desc>
+      <defs>
+        <marker id="revision-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-muted" points="0 0, 8 3, 0 6"/></marker>
+        <marker id="revision-arrow-acc" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-acc" points="0 0, 8 3, 0 6"/></marker>
+        <marker id="revision-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline class="mk-open" points="0 0, 8 3, 0 6"/></marker>
+      </defs>
+      <rect class="sv-bg" x="0" y="0" width="880" height="352"/>
+      <line class="lifeline" x1="160" y1="72" x2="160" y2="280"/>
+      <line class="lifeline" x1="440" y1="72" x2="440" y2="280"/>
+      <line class="lifeline" x1="720" y1="72" x2="720" y2="280"/>
+      <rect class="act" x="156" y="104" width="8" height="64"/>
+      <rect class="act" x="436" y="168" width="8" height="88"/>
+
+      <path class="c-muted" d="M164,112 H200 Q208,112 208,120 V128 Q208,136 200,136 H164" marker-end="url(#revision-arrow)"/>
+      <path class="c-muted c-dash" d="M164,168 H436" marker-end="url(#revision-open)"/>
+      <path class="c-muted" d="M444,200 H480 Q488,200 488,208 V216 Q488,224 480,224 H444" marker-end="url(#revision-arrow)"/>
+      <path class="c-acc" d="M444,256 H716" marker-end="url(#revision-arrow-acc)"/>
+
+      <rect class="sv-mask" x="216" y="118" width="64" height="12" rx="2"/>
+      <text class="t-lab" x="220" y="127">DOD + JIRA</text>
+      <rect class="sv-mask" x="260" y="148" width="80" height="12" rx="2"/>
+      <text class="t-lab" x="300" y="157" text-anchor="middle">REVIEW-REQUEST</text>
+      <rect class="sv-mask" x="496" y="206" width="48" height="12" rx="2"/>
+      <text class="t-lab" x="500" y="215">RÚBRICA</text>
+      <rect class="sv-mask" x="552" y="236" width="56" height="12" rx="2"/>
+      <text class="t-lab acc" x="580" y="245" text-anchor="middle">REVISIÓN</text>
+
+      <rect class="n-focal" x="80" y="24" width="160" height="48" rx="6"/>
+      <text class="t-name" x="160" y="46" text-anchor="middle">El Jungla</text>
+      <text class="t-sub" x="160" y="62" text-anchor="middle">gank G3</text>
+      <rect class="n-back" x="360" y="24" width="160" height="48" rx="6"/>
+      <text class="t-name" x="440" y="46" text-anchor="middle">Aurora tutora</text>
+      <text class="t-sub" x="440" y="62" text-anchor="middle">~/.upex/aurora/tutor/inbox/</text>
+      <rect class="n-input" x="640" y="24" width="160" height="48" rx="6"/>
+      <text class="t-name" x="720" y="46" text-anchor="middle">Alumno</text>
+      <text class="t-sub" x="720" y="62" text-anchor="middle">su hilo o el canal</text>
+
+      <line class="hair" x1="24" y1="304" x2="856" y2="304"/>
+      <text class="t-leg" x="24" y="332">LEYENDA</text>
+      <path class="c-muted c-dash" d="M104,328 H136" marker-end="url(#revision-open)"/>
+      <text class="t-legi" x="144" y="332">archivo, asíncrono</text>
+      <path class="c-acc" d="M272,328 H304" marker-end="url(#revision-arrow-acc)"/>
+      <text class="t-legi" x="312" y="332">la tutora le habla al alumno</text>
+    </svg>
+  </div>
+  <div class="facts">
+    <span class="chip acc">solo la tutora habla con alumnos</span>
+    <span class="chip">archivos, cero tokens</span>
+    <span class="chip">cada archivo se procesa una vez y va a done/</span>
+    <span class="chip">sin datos personales: el thread ts identifica</span>
+  </div>
+</section>
+
+<!-- 07 -->
+<section class="slide" id="s7" data-slide aria-labelledby="s7-h">
+  <p class="eyebrow"><b>07</b> / 11 · Delegar</p>
+  <h2 id="s7-h">Cómo delega</h2>
+  <p class="lead">Dirige y delega. Lo pesado lo hace un worker de Orca en su propio worktree. Lo chico lo hace él en el checkout principal: uno o dos archivos, una transición de Jira, una lectura SQL, un archivo del puente.</p>
+  <div class="fig">
+    <svg viewBox="0 0 880 368" role="img" aria-labelledby="delega-title delega-desc">
+      <title id="delega-title">Cómo el Jungla delega en un worker</title>
+      <desc id="delega-desc">Seis pasos: brief fuera de git, worktree nuevo desde origin/staging con SHA verificado, un solo worker pesado, un PR por historia o defecto, verificación propia de ancestría y estado en Jira, y liberación del worker y el worktree en el mismo turno.</desc>
+      <defs>
+        <marker id="delega-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="mk-muted" points="0 0, 8 3, 0 6"/></marker>
+      </defs>
+      <rect class="sv-bg" x="0" y="0" width="880" height="368"/>
+      <path class="c-muted" d="M280,84 H320" marker-end="url(#delega-arrow)"/>
+      <path class="c-muted" d="M560,84 H600" marker-end="url(#delega-arrow)"/>
+      <path class="c-muted" d="M720,128 V156 Q720,164 712,164 H168 Q160,164 160,172 V200" marker-end="url(#delega-arrow)"/>
+      <path class="c-muted" d="M280,244 H320" marker-end="url(#delega-arrow)"/>
+      <path class="c-muted" d="M560,244 H600" marker-end="url(#delega-arrow)"/>
+
+      <rect class="n-back" x="40" y="40" width="240" height="88" rx="6"/>
+      <text class="t-tag" x="56" y="60">PASO 1</text>
+      <text class="t-name" x="56" y="82">Brief fuera de git</text>
+      <text class="t-sub" x="56" y="100">~/.upex/jungla/bunkai/runs/</text>
+      <text class="t-sub" x="56" y="116">&lt;fecha&gt;-&lt;slug&gt;/brief.md</text>
+
+      <rect class="n-back" x="320" y="40" width="240" height="88" rx="6"/>
+      <text class="t-tag" x="336" y="60">PASO 2</text>
+      <text class="t-name" x="336" y="82">Worktree nuevo</text>
+      <text class="t-sub" x="336" y="100">nace de origin/staging, SHA verificado</text>
+      <text class="t-sub" x="336" y="116">.env, bun install, agents:compat</text>
+
+      <rect class="n-back" x="600" y="40" width="240" height="88" rx="6"/>
+      <text class="t-tag" x="616" y="60">PASO 3</text>
+      <text class="t-name" x="616" y="82">Un worker pesado a la vez</text>
+      <text class="t-sub" x="616" y="100">/sprint-development &lt;KEY&gt;</text>
+      <text class="t-sub" x="616" y="116">el siguiente gank espera en la cola</text>
+
+      <rect class="n-back" x="40" y="200" width="240" height="88" rx="6"/>
+      <text class="t-tag" x="56" y="220">PASO 4</text>
+      <text class="t-name" x="56" y="242">Un PR por historia o defecto</text>
+      <text class="t-sub" x="56" y="260">merge commit a staging en verde</text>
+      <text class="t-sub" x="56" y="276">migraciones según project.yaml</text>
+
+      <rect class="n-focal" x="320" y="200" width="240" height="88" rx="6"/>
+      <text class="t-tag acc" x="336" y="220">PASO 5</text>
+      <text class="t-name" x="336" y="242">Verifica él mismo</text>
+      <text class="t-sub" x="336" y="260">ancestría en origin/staging</text>
+      <text class="t-sub" x="336" y="276">estado en Jira y el PR</text>
+
+      <rect class="n-back" x="600" y="200" width="240" height="88" rx="6"/>
+      <text class="t-tag" x="616" y="220">PASO 6</text>
+      <text class="t-name" x="616" y="242">Libera en el mismo turno</text>
+      <text class="t-sub" x="616" y="260">worker y worktree fuera</text>
+      <text class="t-sub" x="616" y="276">active_runs y línea en el diario</text>
+
+      <line class="hair" x1="40" y1="320" x2="840" y2="320"/>
+      <text class="t-leg" x="40" y="348">LEYENDA</text>
+      <rect class="n-focal" x="120" y="338" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="144" y="348">el control que no se delega</text>
+      <rect class="n-back" x="384" y="338" width="16" height="12" rx="2"/>
+      <text class="t-legi" x="408" y="348">paso</text>
+    </svg>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h3><span class="dot acc"></span>Directo a staging, sin PR</h3><p>Hotfixes sin ticket, roturas urgentes y sus propios archivos de proceso (la skill, <code>learnings.md</code>). Siempre con paths explícitos y tras leer <code>git status</code>. A <code>main</code> no va nada.</p></div>
+    <div class="card"><h3><span class="dot"></span>Si el worker pregunta</h3><p>Contesta él: es el PO y el tech lead. Solo lo reservado al dueño sube al canal.</p></div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section class="slide" id="s8" data-slide aria-labelledby="s8-h">
+  <p class="eyebrow"><b>08</b> / 11 · Bloques proactivos</p>
+  <h2 id="s8-h">Misiones y deberes recurrentes</h2>
+  <p class="lead">Cuando no hay gank esperando ni worker pesado, el bloque proactivo le da una tajada de trabajo: un worker, o cerca de una hora de lectura y escritura propia.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Id</th><th>Misión</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>m1</td><td>Arreglar el diseño roto. Según <code>master-design-plan.md</code>: átomos ~30%, editor ATC ~40%, App Shell ~75%. Una pantalla o una familia de átomos por tajada, como ticket y su PR.</td><td><span class="chip">ready</span></td></tr>
+        <tr><td>m2</td><td>Destrabar las ~12 historias que esperan un mockup (🔒): fase de pantalla de <code>/design-system</code> por historia.</td><td><span class="chip">ready</span></td></tr>
+        <tr><td>m3</td><td>Terminar las features a medias, una historia por tajada.</td><td><span class="chip">ready</span></td></tr>
+        <tr class="focal"><td>m4</td><td>Stripe, prioridad del dueño. Primero un plan en el canal: cómo prueban pagos los alumnos en modo sandbox (cuenta propia o acceso a la del dueño), si una cuenta sirve para varios proyectos (Bunkai, SoloQ, otros), qué necesita sí o sí al dueño (titularidad, KYC, claves live, facturación) y cómo se vuelve una lección. Después BK-231 y BK-233.</td><td><span class="chip acc">ready</span></td></tr>
+        <tr><td>m5</td><td>Proponer el pase <code>staging</code> → <code>main</code>, que no se hace desde junio. Prepara el body del PR de release y la lista de riesgos; el sí final es tuyo.</td><td><span class="chip">ready</span></td></tr>
+        <tr><td>m6</td><td>Deudas de proceso: la migración huérfana <code>0068</code>, y BK-467 y BK-509, que tienen estado avanzado sin código en staging.</td><td><span class="chip">ready</span></td></tr>
+        <tr><td>m7</td><td>Revisión de sprint de los miércoles en el canal (bloqueadas, defectos, historias listas, decisiones de PO), para que los dueños puedan vetar.</td><td><span class="chip">más adelante</span></td></tr>
+        <tr><td>spike</td><td>Alumnos que mencionan al dueño en Jira para hablar «con el developer». Investiga si se puede escuchar esas menciones, desde qué cuenta y con qué riesgo, y deja una propuesta. No habilita nada.</td><td><span class="chip">solo investigar</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid g2b">
+    <div class="card"><p class="eyebrow">Su propio reloj</p><h3><span class="dot"></span>Deberes recurrentes</h3>
+      <ul>
+        <li>Stock de ~20 historias abiertas para alumnos, sumando ~10 por semana con <code>/autonomous-delivery discovery</code> (más o menos una corrida por día hábil), en épicas e historias vía <code>/product-management</code>. Cuenta las historias abiertas con la JQL del stock, porque los alumnos también clonan historias viejas y no toda historia nueva se toma.</li>
+        <li>Auditoría diaria de la base: filas huérfanas, FKs rotas, estados trabados. Primero solo lectura; todo cambio va al diario con el SQL exacto.</li>
+      </ul>
+    </div>
+    <div class="card"><p class="eyebrow">Más</p><h3><span class="dot muted"></span>Limpieza y barrido</h3>
+      <ul>
+        <li>Limpieza semanal de datos de prueba que dejaron los alumnos. Nunca los fixtures que usan los tests.</li>
+        <li>Barrido G4 una vez por día.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 09 -->
+<section class="slide" id="s9" data-slide aria-labelledby="s9-h">
+  <p class="eyebrow"><b>09</b> / 11 · Decisiones del deck del 30/10</p>
+  <h2 id="s9-h">Autonomía y límites</h2>
+  <p class="lead">Tiene autonomía completa en producto y en la base. Al dueño le sube solo lo que es del dueño.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Tema</th><th>Regla</th><th>Origen</th></tr></thead>
+      <tbody>
+        <tr><td>Dónde vive</td><td>En el checkout principal, en <code>staging</code>, que compartes con él. Paths explícitos al hacer stage, nunca un descarte global, <code>git status</code> antes de cada commit.</td><td><code>D5 B</code></td></tr>
+        <tr><td>Base de datos</td><td>Migraciones sin restricción. La Supabase es un MVP compartido que los alumnos pueden romper; él la audita y la limpia.</td><td><code>D6 B</code></td></tr>
+        <tr><td>Producto</td><td>Decide como AI PO y AI Tech Lead: alternativas puntuadas, publicadas en el ticket. No espera al dueño para eso.</td><td>Critical Rule #18</td></tr>
+        <tr class="focal"><td>Escala</td><td>Solo dinero, cuentas, credenciales y el pase de <code>staging</code> a <code>main</code>.</td><td>compact rules</td></tr>
+        <tr><td>Habla</td><td>Solo con los dueños, solo en <code>#jungla-bunkai</code>, como el bot Aurora (<code>scripts/slack.sh</code>). Nunca con el conector de Slack de claude.ai, que publica como el dueño.</td><td><code>D8 A</code></td></tr>
+        <tr><td>Alumnos</td><td>Solo a través de la tutora.</td><td><code>D1 A</code></td></tr>
+        <tr><td>Git</td><td>Nada a <code>main</code>. Cada historia o defecto con ticket sale como un PR desde el worktree de un worker.</td><td>agente, regla 3</td></tr>
+        <tr><td>Terminal</td><td>Sin <code>AskUserQuestion</code> ni decks <code>/mkd</code>: nadie mira la terminal, su única salida es el canal.</td><td>agente</td></tr>
+        <tr><td>Datos</td><td>Ningún dato personal en archivos: un thread ts o una key de Jira identifican a la persona.</td><td>agente, regla 5</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Las decisiones del dueño (D1, D5, D6, D8) no las cambia solo: si cree que alguna debe cambiar, lo propone en el canal.</p>
+</section>
+
+<!-- 10 -->
+<section class="slide" id="s10" data-slide aria-labelledby="s10-h">
+  <p class="eyebrow"><b>10</b> / 11 · Diario del 31/10</p>
+  <h2 id="s10-h">La primera noche</h2>
+  <p class="lead">Fue una corrida manual, fuera de horario, a pedido de un dueño. Esto dejó el diario hasta la 01:28.</p>
+  <div class="stats">
+    <div class="stat"><div class="n">34</div><div class="l">ítems en la JQL del gank: 8 BLOCKED, 18 Open, 6 QA Approved, 2 Ready For Dev</div></div>
+    <div class="stat"><div class="n">8</div><div class="l">defectos con el fix ya en staging (status lag), esperando el retest del QA</div></div>
+    <div class="stat"><div class="n">10</div><div class="l">defectos abiertos de verdad, sin commit ni rama de fix</div></div>
+    <div class="stat acc"><div class="n">19</div><div class="l">ganks reales: despachó BK-1129 y quedaron 18 en cola</div></div>
+  </div>
+  <ol class="log">
+    <li class="acc"><time>00:52</time>Arranque. Guardia OK, <code>staging</code> igual a <code>origin/staging</code>, árbol limpio. Jira, Supabase y Orca andaban; Slack no, porque el canal todavía no existía.</li>
+    <li><time>00:52</time>Auditoría con git como verdad: 8 defectos en status lag y 10 reales. Primero van los que mantienen una historia bloqueada, después los de severidad High.</li>
+    <li><time>00:57</time>Primer worker sobre BK-1129 (el único defecto abierto de BK-512), en un worktree nacido de <code>origin/staging</code> con el SHA verificado y provisionado.</li>
+    <li><time>01:13</time>Un dueño creó <code>#jungla-bunkai</code> y Slack quedó vivo. El Jungla respondió en el hilo con el estado.</li>
+    <li class="acc"><time>01:14</time>Sign-off de BK-508, BK-399 y BK-88: cumplen el DoD, pasaron a <code>Ready For Release</code> y cada una generó un <code>review-request</code> a la tutora.</li>
+    <li><time>01:18</time>Commit de learnings directo a <code>staging</code> como archivo de proceso.</li>
+    <li><time>01:28</time>Claude Code cortó el keepalive y la espera del worker por poca memoria. El vigilante siguió; el resultado de BK-1129 se lee en el próximo despertar.</li>
+  </ol>
+  <div class="grid g2">
+    <div class="card"><h3><span class="dot acc"></span>Retenidas</h3><ul><li>BK-89 y BK-258: pasan el code gate, pero cada una tiene un defecto High abierto (BK-1122 y BK-1169).</li><li>BK-467: está en QA Approved sin commit de la feature en staging. El code gate la frenó.</li></ul></div>
+    <div class="card"><h3><span class="dot"></span>En cola</h3><ul><li>G2 primero, después G1: BK-572 y BK-666.</li><li>BK-214, bloqueada sin defecto abierto vinculado, espera una mirada de AI PO.</li></ul></div>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" id="s11" data-slide aria-labelledby="s11-h">
+  <p class="eyebrow"><b>11</b> / 11 · Lo que sigue</p>
+  <h2 id="s11-h">Pendiente y cómo se replica</h2>
+  <p class="lead">Quedan cuatro temas abiertos, y llevar un Jungla a otro proyecto se hace copiando una carpeta y editando dos archivos.</p>
+  <div class="grid g2">
+    <div class="card">
+      <p class="eyebrow">Abierto, sin decidir</p>
+      <h3><span class="dot acc"></span>Decisiones pendientes</h3>
+      <ul>
+        <li>El cierre de las 21:00: cierre suave o corte.</li>
+        <li>Fines de semana: si el Jungla corre o no.</li>
+        <li>La revisión de los miércoles (m7): sigue en «más adelante» hasta que los dueños la activen.</li>
+        <li>El spike de menciones en Jira: falta la propuesta del Jungla en el canal y la decisión de los dueños.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <p class="eyebrow">Un Jungla por proyecto</p>
+      <h3><span class="dot"></span>Cómo se replica</h3>
+      <ol class="steps">
+        <li>Copiar la skill <code>.agents/skills/jungla</code> al otro repo.</li>
+        <li>Editar <code>jungla.conf</code>: repo, key y JQL de Jira, canal de Slack, carpeta de estado, Supabase.</li>
+        <li>Agregar una config del lanzador en <code>~/.upex/aurora/bin/config/</code>. Sale <code>jungla-&lt;proyecto&gt;</code>, con su propio canal.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<p class="colophon">Fuentes: agente <code>jungla-bunkai.md</code>, skill <code>jungla</code> y sus references, <code>jungla.conf</code>, contrato del puente, config del lanzador y diario del 2026-10-31.</p>
+</div>
+
+<nav class="pager" hidden aria-label="Navegación de diapositivas">
+  <button type="button" data-dir="-1" aria-label="Diapositiva anterior"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10 3 L5 8 L10 13"/></svg></button>
+  <span class="pager-count" aria-live="polite">1 / 11</span>
+  <button type="button" data-dir="1" aria-label="Diapositiva siguiente"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6 3 L11 8 L6 13"/></svg></button>
+</nav>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('[data-slide]'));
+  var nav = document.querySelector('.pager');
+  if (!nav || !slides.length) return;
+  nav.hidden = false;
+  var count = nav.querySelector('.pager-count');
+  function reduced() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  function current() {
+    var line = window.innerHeight * 0.35, idx = 0;
+    for (var i = 0; i < slides.length; i++) {
+      if (slides[i].getBoundingClientRect().top <= line) idx = i;
+    }
+    return idx;
+  }
+  function update() { count.textContent = (current() + 1) + ' / ' + slides.length; }
+  function go(step) {
+    var i = Math.max(0, Math.min(slides.length - 1, current() + step));
+    slides[i].scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+  }
+  Array.prototype.forEach.call(nav.querySelectorAll('button'), function (b) {
+    b.addEventListener('click', function () { go(Number(b.getAttribute('data-dir'))); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    var t = e.target;
+    if (t && t.closest && t.closest('.fig,.tw')) return;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
+  });
+  var ticking = false;
+  window.addEventListener('scroll', function () {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () { ticking = false; update(); });
+  }, { passive: true });
+  window.addEventListener('resize', update);
+  update();
+})();
+</script>
