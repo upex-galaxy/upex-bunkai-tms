@@ -46,6 +46,10 @@ type DialogState
 
 const PREFIX = 'saved-views';
 
+function isFocusLost(element: Element | null): boolean {
+  return element === null || element === document.body || !element.isConnected;
+}
+
 export function SavedViewsMenu({ projectId, kind, currentState, onApply, moduleIds }: SavedViewsMenuProps) {
   const { views, status, load, create, rename, replaceState, remove } = useSavedViews(projectId, kind);
   const [open, setOpen] = useState(false);
@@ -53,6 +57,13 @@ export function SavedViewsMenu({ projectId, kind, currentState, onApply, moduleI
   const [activeId, setActiveId] = useState<string | null>(null);
   const [notice, setNotice] = useState<MenuNotice | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // BK-1173 — the control that opened the current dialog. `useModalDismiss`
+  // cannot return focus here: the name dialog's input autofocuses before that
+  // hook reads `document.activeElement`, so it records the input, which is gone
+  // once the dialog closes, and focus fell to the page body.
+  const dialogOpenerRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   // Fetch whenever the panel opens, so views saved in another tab appear.
   useEffect(() => {
@@ -74,6 +85,34 @@ export function SavedViewsMenu({ projectId, kind, currentState, onApply, moduleI
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [open, dialog.mode]);
+
+  // Focus inside the panel is lost when the panel unmounts (Escape, opening a
+  // view, Update, the nothing-to-save notice): hand it back to the trigger.
+  // Only when it was actually lost, so a click on another control keeps it.
+  useEffect(() => {
+    if (open) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) { return; }
+    wasOpenRef.current = false;
+    if (isFocusLost(document.activeElement)) { triggerRef.current?.focus(); }
+  }, [open]);
+
+  // A closed dialog returns focus to the control that opened it while that
+  // control is still on the page, else to the trigger (a deleted view's row).
+  const dialogOpen = dialog.mode !== 'closed';
+  useEffect(() => {
+    if (dialogOpen || dialogOpenerRef.current === null) { return; }
+    const opener = dialogOpenerRef.current;
+    dialogOpenerRef.current = null;
+    (opener.isConnected ? opener : triggerRef.current)?.focus();
+  }, [dialogOpen]);
+
+  const openDialog = (next: DialogState, opener: HTMLElement) => {
+    dialogOpenerRef.current = opener;
+    setDialog(next);
+  };
 
   // A notice belongs to the state it was raised for: drop it for good on the next
   // filter edit, so it cannot reappear when the filters return to that state.
@@ -103,8 +142,8 @@ export function SavedViewsMenu({ projectId, kind, currentState, onApply, moduleI
     return false;
   };
 
-  const startSave = () => {
-    if (guardNonEmpty()) { setDialog({ mode: 'create' }); }
+  const startSave = (opener: HTMLElement) => {
+    if (guardNonEmpty()) { openDialog({ mode: 'create' }, opener); }
   };
 
   const updateActive = async () => {
@@ -122,6 +161,7 @@ export function SavedViewsMenu({ projectId, kind, currentState, onApply, moduleI
   return (
     <div ref={containerRef} className="relative inline-flex flex-col items-end gap-1">
       <Button
+        ref={triggerRef}
         type="button"
         variant="ghost"
         size="sm"
@@ -181,7 +221,7 @@ export function SavedViewsMenu({ projectId, kind, currentState, onApply, moduleI
                     type="button"
                     aria-label={`Rename ${view.name}`}
                     data-testid={`${PREFIX}-rename-${view.id}`}
-                    onClick={() => setDialog({ mode: 'rename', view })}
+                    onClick={e => openDialog({ mode: 'rename', view }, e.currentTarget)}
                     className="inline-flex size-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-0"
                   >
                     <Pencil size={11} />
@@ -190,7 +230,7 @@ export function SavedViewsMenu({ projectId, kind, currentState, onApply, moduleI
                     type="button"
                     aria-label={`Delete ${view.name}`}
                     data-testid={`${PREFIX}-delete-${view.id}`}
-                    onClick={() => setDialog({ mode: 'delete', view })}
+                    onClick={e => openDialog({ mode: 'delete', view }, e.currentTarget)}
                     className="inline-flex size-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-signal-fail"
                   >
                     <Trash2 size={11} />
@@ -204,7 +244,7 @@ export function SavedViewsMenu({ projectId, kind, currentState, onApply, moduleI
             <button
               type="button"
               data-testid={`${PREFIX}-save`}
-              onClick={startSave}
+              onClick={e => startSave(e.currentTarget)}
               className="rounded-1 px-2 py-1.5 text-left text-sm text-fg-1 hover:bg-surface-3"
             >
               Save current view…
