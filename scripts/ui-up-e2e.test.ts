@@ -29,13 +29,24 @@ const SECRET = `fixture-secret-${crypto.randomUUID()}`;
 
 interface Run { exit: number, out: string, events: JournalEntry[] }
 
+/**
+ * `vars` as a child's WHOLE environment: nothing of `process.env` survives.
+ * Built from a `ProcessEnv` spread, never a bare literal, so the file still
+ * compiles under a host whose `ProcessEnv` requires `NODE_ENV` (Next.js).
+ */
+function onlyEnv(vars: Record<string, string | undefined>): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const key of Object.keys(env)) { delete env[key]; }
+  return Object.assign(env, vars);
+}
+
 /** The updater in `consumer`, stdin closed (no TTY), the page served and never opened. */
 async function runUp(f: UpFixture, args: string[], answer?: (e: JournalEntry) => unknown): Promise<Run> {
   const child = spawn(process.execPath, ['cli/update-boilerplate.ts', ...args], {
     cwd: f.consumer,
     // A clean environment: `bun test` loads this repo's `.env` into process.env,
     // and none of it may reach the fixture run (nor its journal).
-    env: { PATH: process.env.PATH, HOME: process.env.HOME, TMPDIR: process.env.TMPDIR, UPEX_TEMPLATE_REPO: f.upstream, UPEX_UI_NO_OPEN: '1', NO_COLOR: '1', LANG: 'es_ES.UTF-8' },
+    env: onlyEnv({ PATH: process.env.PATH, HOME: process.env.HOME, TMPDIR: process.env.TMPDIR, UPEX_TEMPLATE_REPO: f.upstream, UPEX_UI_NO_OPEN: '1', NO_COLOR: '1', LANG: 'es_ES.UTF-8' }),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';

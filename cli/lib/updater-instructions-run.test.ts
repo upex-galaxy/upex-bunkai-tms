@@ -13,12 +13,23 @@ import { dirname, join } from 'node:path';
 
 import { afterEach, describe, expect, test } from 'bun:test';
 import { RETIRED_SECTION_FILES, COMPONENTS as WRAPPER_COMPONENTS } from '../update-boilerplate.ts';
+import { isMaintainerCopy, isSchemaOwner, SCHEMA_SOURCE } from './agents-schema.ts';
 import { runUpdate } from './updater-core.ts';
 import { deliverProjectInstructionsStub, INSTRUCTIONS_DIR, LEGACY_PROJECT_INSTRUCTIONS_FILE, migrateLegacyProjectInstructions, PROJECT_INSTRUCTIONS_FILE, PROJECT_INSTRUCTIONS_TEMPLATE } from './updater-instructions.ts';
 import { collectParityFindings } from './updater-parity.ts';
 
 const REPO = join(import.meta.dir, '..', '..');
 const readRepo = (rel: string): string => readFileSync(join(REPO, rel), 'utf8');
+
+/**
+ * The boilerplate's own checkout: the package name AND the maintainer sentinel
+ * (the same test `contractsEnforced` makes). Downstream, this repo's
+ * `agent-project.md` is the project's own overlay, which the leak gate lets
+ * through, so a case that expects the maintainers' file to be refused skips there.
+ */
+const yamlPath = join(REPO, SCHEMA_SOURCE);
+const MAINTAINER_CHECKOUT = isSchemaOwner(readRepo('package.json'))
+  && existsSync(yamlPath) && isMaintainerCopy(readFileSync(yamlPath, 'utf8'));
 
 const roots: string[] = [];
 const startCwd = process.cwd();
@@ -175,7 +186,7 @@ describe('a project scaffolded from the release before the split', () => {
     expect(git(app, ['status', '--porcelain']).trim()).toBe('');
   });
 
-  test('receives every section and the generic stub, never the boilerplate\'s own agent-project.md, and keeps its AGENTS.md', async () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('receives every section and the generic stub, never the boilerplate\'s own agent-project.md, and keeps its AGENTS.md', async () => {
     const { template, app } = setup();
     process.chdir(app);
     let applied: string[] = [];
@@ -295,7 +306,7 @@ describe('a project that edited a synced section', () => {
 });
 
 describe('an existing app adopted with --adopt', () => {
-  test('gets the sections and the generic stub, and its own files stay untouched', async () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('gets the sections and the generic stub, and its own files stay untouched', async () => {
     const template = tempRoot();
     initRepo(template);
     commit(template, { ...PREVIOUS_RELEASE, ...THIS_RELEASE }, 'release N');

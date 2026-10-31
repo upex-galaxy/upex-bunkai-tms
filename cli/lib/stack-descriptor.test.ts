@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { generateSchema, SCHEMA_SOURCE, seedFromSchema, yamlLeafWalk } from './agents-schema.ts';
+import { generateSchema, isMaintainerCopy, isSchemaOwner, SCHEMA_SOURCE, seedFromSchema, yamlLeafWalk } from './agents-schema.ts';
 import {
   deriveIdentity,
   detectStack,
@@ -30,6 +30,14 @@ import {
 const REPO_ROOT = join(import.meta.dir, '..', '..');
 const realSource = (): string => readFileSync(join(REPO_ROOT, SCHEMA_SOURCE), 'utf8');
 const realSchema = (): string => generateSchema(realSource()).schema;
+
+/**
+ * The boilerplate's own checkout: the package name AND the maintainer sentinel
+ * (the same test `contractsEnforced` makes). Downstream the real yaml is the
+ * project's own and generation refuses it, so the cases that read it as the
+ * boilerplate's greenfield copy skip there, never fail.
+ */
+const MAINTAINER_CHECKOUT = isSchemaOwner(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')) && isMaintainerCopy(realSource());
 
 const roots: string[] = [];
 afterEach(() => {
@@ -84,18 +92,18 @@ describe('the block in the real yaml', () => {
     expect(unsupportedInV1(read.values)).toEqual([]);
   });
 
-  test('the generated schema carries the greenfield defaults verbatim (methodology, not identity)', () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('the generated schema carries the greenfield defaults verbatim (methodology, not identity)', () => {
     expect(readStack(realSchema()).values).toEqual(readStack(realSource()).values);
   });
 
-  test('a new project seeded from the schema starts with the block, valid', () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('a new project seeded from the schema starts with the block, valid', () => {
     const seeded = seedFromSchema(realSchema())!;
     const read = readStack(seeded);
     expect(read.present).toBe(true);
     expect(validateStack(read)).toEqual([]);
   });
 
-  test('legitimately-null leaves ship without a TODO prefix', () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('legitimately-null leaves ship without a TODO prefix', () => {
     const block = realSchema().split('\nstack:\n')[1].split('\n\n')[0];
     expect(block).not.toContain('TODO');
   });
@@ -235,7 +243,7 @@ describe('writeStack', () => {
     expect(result.text).toBe(realSource());
   });
 
-  test('a project without the block gets it from the schema, at the schema\'s position', () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('a project without the block gets it from the schema, at the schema\'s position', () => {
     const source = realSource();
     const start = source.indexOf('\n# The application\'s REAL stack');
     const end = source.indexOf('\nissue_tracker:');
@@ -302,7 +310,7 @@ describe('identity leaves derived from the stack', () => {
     expect(noDir['backend.backend_entry']).toBeUndefined();
   });
 
-  test('writeDerivedIdentity fills only null leaves, answers their TODO, never overwrites', () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('writeDerivedIdentity fills only null leaves, answers their TODO, never overwrites', () => {
     const root = repo({ 'src/app/page.tsx': '' });
     const filledSource = realSource().replace(/^ {2}db_type: null.*$/m, '  db_type: MySQL # the app says so');
     const result = writeDerivedIdentity(filledSource, root);
@@ -335,7 +343,7 @@ describe('validation and drift', () => {
     expect(unsupportedInV1(read.values).map(i => i.path)).toEqual(['package_manager']);
   });
 
-  test('drift lists only fields the repo shows differently', () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('drift lists only fields the repo shows differently', () => {
     const d = detectStack(repo(NEXT_SUPABASE_APP));
     const drift = stackDrift(readStack(realSource()), d);
     expect(drift.map(x => x.path)).toEqual([

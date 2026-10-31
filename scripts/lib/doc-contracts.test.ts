@@ -207,7 +207,7 @@ describe('the gate end to end', () => {
 });
 
 describe('this repo', () => {
-  test('the seeded regions are well-formed', () => {
+  test.skipIf(!contractsEnforced(REPO_ROOT))('the seeded regions are well-formed', () => {
     const { regions, findings } = scanContracts(REPO_ROOT);
     expect(findings).toEqual([]);
     expect(regions.length).toBeGreaterThan(0);
