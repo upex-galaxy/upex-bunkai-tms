@@ -72,6 +72,25 @@ describe('view list helpers', () => {
     expect(renamed.map(v => v.name)).toEqual(['Alpha', 'Gamma', 'Zeta']);
   });
 
+  // BK-1172 — after a save the panel re-sorted by character code while the API
+  // orders by `name_key` under the database's ICU en-US collation, so the list
+  // jumped on reload. Expected orders were read from the database itself
+  // (Postgres 17.6, `datlocprovider = i`, `datlocale = en-US`, 2026-10-31):
+  // `select n from unnest(array[...]) n order by lower(n), n`.
+  test('saving the tester\'s nine views one by one gives the API order', () => {
+    let list: SavedViewItem[] = [];
+    ['b', 'B2', 'a', 'Ä', '_x', '10', '9', 'e', 'é'].forEach((name, i) => {
+      list = upsertView(list, view(String(i), name));
+    });
+    expect(list.map(v => v.name)).toEqual(['_x', '10', '9', 'a', 'Ä', 'b', 'B2', 'e', 'é']);
+  });
+
+  test('punctuation, digits, accents and case sort as the database collation does', () => {
+    const names = ['b', 'B2', 'a', 'Ä', '_x', '10', '9', 'e', 'é', 'Zeta', 'z-a', 'za', 'a b', 'ab', 'Éclair', 'eclair', '-x', '~y', 'A1', 'a10', 'a9'];
+    const sorted = sortViews(names.map((name, i) => view(String(i), name)));
+    expect(sorted.map(v => v.name).join(' | ')).toBe('_x | -x | ~y | 10 | 9 | a | Ä | a b | A1 | a10 | a9 | ab | b | B2 | e | é | eclair | Éclair | z-a | za | Zeta');
+  });
+
   test('removeView drops only the targeted view', () => {
     expect(removeView([view('1', 'A'), view('2', 'B')], '1').map(v => v.id)).toEqual(['2']);
   });
