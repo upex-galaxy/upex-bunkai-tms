@@ -26,6 +26,7 @@ import { buildReportBugPrefill, shouldShowReportBugButton } from '@lib/runs/repo
 import { RUN_STEP_EVIDENCE_URL_MAX, RUN_STEP_NOTE_MAX } from '@lib/runs/validation';
 import { createClient } from '@lib/supabase/client';
 import { subscribeWithUserAuth } from '@lib/supabase/realtime-auth';
+import { isWorkspaceDeletedRefusal, WORKSPACE_DELETED_LANDING } from '@lib/workspaces/deleted-notice';
 import { Ban, Bug, Check, ChevronLeft, Flag, GitCompareArrows, Play, Square, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -186,6 +187,14 @@ function formatFinishedAt(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
+// BK-1129 — BK-512 Scenario N3: the Runner's workspace was deleted. A FULL
+// load, not router.replace: the (app) layout is shared with /home, so a client
+// navigation would keep the stale shell (sidebar + the notice's workspace name)
+// instead of re-running the AC-09 resolver.
+function leaveDeletedWorkspace(): void {
+  window.location.assign(WORKSPACE_DELETED_LANDING);
+}
+
 // Stable default: a fresh `[]` per render would re-run the effect that resets the attachments.
 const NO_ATTACHMENTS: StepAttachment[] = [];
 
@@ -294,6 +303,13 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
       try {
         const response = await fetch(`/api/v1/runs/${view.id}`);
         if (!response.ok) {
+          // BK-1129 — BK-512 N3: a not-found that says the workspace was
+          // deleted is permanent, not a blip. Hand over to the shell, which
+          // re-points the caller and says why; anything else stays silent.
+          const body: unknown = await response.json().catch(() => null);
+          if (isWorkspaceDeletedRefusal(response.status, body)) {
+            leaveDeletedWorkspace();
+          }
           return;
         }
         const body = (await response.json().catch(() => null)) as { run?: RunDetail } | null;
@@ -410,6 +426,12 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as RunActionErrorBody;
+        if (isWorkspaceDeletedRefusal(response.status, body)) {
+          // BK-1129 — the workspace was deleted under this Runner (BK-512 N3).
+          setSubmitting(false);
+          leaveDeletedWorkspace();
+          return;
+        }
         // Server copy is rendered VERBATIM (frozen AC messages, e.g. the 409
         // "This run is already closed and cannot be aborted.").
         setAbortError(body.error?.message ?? 'Could not abort the run.');
@@ -459,6 +481,12 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as RunActionErrorBody;
+        if (isWorkspaceDeletedRefusal(response.status, body)) {
+          // BK-1129 — the workspace was deleted under this Runner (BK-512 N3).
+          setSubmitting(false);
+          leaveDeletedWorkspace();
+          return;
+        }
         // Server copy is rendered VERBATIM (frozen AC messages, e.g. the 409
         // "This run is already closed and cannot be finished.").
         setFinishError(body.error?.message ?? 'Could not finish the run.');
@@ -529,6 +557,12 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as RunActionErrorBody;
+        if (isWorkspaceDeletedRefusal(response.status, body)) {
+          // BK-1129 — the workspace was deleted under this Runner (BK-512 N3).
+          setMarkSubmitting(false);
+          leaveDeletedWorkspace();
+          return;
+        }
         // Server copy is rendered VERBATIM (409's frozen "already closed"
         // copy, the 403 non-disclosing membership message, or the 422
         // validation envelope) — same convention as abort/finish.

@@ -46,6 +46,7 @@ import { listRecentProjects } from '@lib/home/recent-projects';
 import { buildWelcomeSummary, resolveDisplayName } from '@lib/home/welcome-summary';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
+import { WORKSPACE_DELETED_NOTICE, WORKSPACE_DELETED_ONBOARDING } from '@lib/workspaces/deleted-notice';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
@@ -65,7 +66,7 @@ const WORKSPACE_UNAVAILABLE_COPY
 // getUser() check below repeats it as defense in depth, exactly as /projects
 // and /settings do. The (app) layout above renders the shell but guards
 // nothing.
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -102,8 +103,12 @@ export default async function HomePage() {
   // A member with no workspace at all belongs in onboarding, exactly as
   // /projects has always sent them — moving the landing route must not strand
   // them on an empty dashboard.
+  // BK-1129 — a Runner whose workspace was deleted lands here with the
+  // deletion notice; when that was their last workspace the notice travels on
+  // to onboarding, so the shell can still say why they are there.
   if (list.length === 0) {
-    redirect('/onboarding');
+    const { notice } = await searchParams;
+    redirect(notice === WORKSPACE_DELETED_NOTICE ? WORKSPACE_DELETED_ONBOARDING : '/onboarding');
   }
 
   const cookieStore = await cookies();
