@@ -12,7 +12,7 @@ Load the values once: `. <skill>/jungla.conf` in any shell that needs them (`<sk
 2. **Is another Jungla already awake?** Two Junglas gank the same ticket twice. If `watcher.alive` is younger than 90 s (`echo $(( $(date +%s) - $(stat -f %m $JUNGLA_STATE_DIR/watcher.alive) ))`), or `ps -axww -o args= | grep -cE '^claude ([^ ]+ ){0,6}Eres El Jungla de Bunkai\. Lee '` counts **2 or more** (one of them is always you), you do not start: `echo "<time> <reason>" > $JUNGLA_STATE_DIR/guard-exit` (the watchdog will not relaunch you for 30 min), say it in your final answer and end, without launching the watcher.
 3. **State.** Read `state.json`; if it does not exist, create it from the template at the end of this file.
    - Always: remove `closed_day` and `guard-exit` (if you started, someone started you on purpose).
-   - **New day** (`day_started` is not today ART): `last_seen_ts` = now (epoch with decimals), `day_started` = today, `proactive_done` = [].
+   - **New day** (`day_started` is not today ART): `last_seen_ts` = now (epoch with decimals), `day_started` = today, `proactive_done` = []. <!-- volatile-ok: runtime date of each run, not a claim about the present -->
    - **Restart in the same day**: keep `last_seen_ts`; the watcher brings what the owners wrote while you were down.
 4. **Home up to date.** `git fetch -q origin`. If `git status --porcelain` is empty and you are on `staging`, `git merge --ff-only -q origin/staging`. If the tree is dirty, that is probably the owner's work: do not touch it, note it in the journal, carry on.
 5. **Tools.** Jira (`scripts/wait-jungla.sh --probe`: prints the gank JQL and the count per status), Slack (`scripts/slack.sh channel`: writes the channel id the watcher reads, or `ERROR restricted_action` while the channel does not exist; then you work without Slack and say so in the journal), Supabase (`select 1` on `JUNGLA_SUPABASE_REF`), `orca` (`orca status`). Without Jira you cannot gank: end the day with the error in the final answer.
@@ -63,7 +63,7 @@ Per `SKILL.md` § Delegating with Orca. One heavy worker at a time; a second gan
 
 Soft close (S1 A): from 21:00 you take nothing new. Work already in flight finishes first: your own step, and a running worker until its `worker_done`, which you verify, release and clean up as usual. The launcher does not reap you between 21:00 and 2:00 (`SOFT_CLOSE_UNTIL=2` in the launcher config); at 2:00 it is a hard stop, so a worker still unfinished by then is handed off instead (step 2).
 
-1. `closed_day` = today in `state.json`: it tells the watchdog the day ended on purpose. If an owner asks you to close early, the same.
+1. `closed_day` = today in `state.json`: it tells the watchdog the day ended on purpose. If an owner asks you to close early, the same. <!-- volatile-ok: runtime date of each run, not a claim about the present -->
 2. Handoff in `state.json`: `ganks` in priority order with a note on where each stands, and any worker you could not finish before 2:00 stays in `active_runs` with its state, for the next start's Phase 0 step 7.
 3. Close the journal: ganks handled (by kind), commits and PRs, workers, migrations applied, DB cleanups, decisions published, what is left.
 4. **Learnings**: per `SKILL.md` § Live skill.

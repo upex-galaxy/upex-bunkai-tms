@@ -1,4 +1,4 @@
-Actúa como Senior QA Engineer y Test Automation Expert especializado en unit testing con Jest/Vitest.
+Actúa como Senior QA Engineer y Test Automation Expert especializado en unit testing con el runner que la app ya usa (`stack.test_runner` en `.agents/project.yaml`: Vitest, Jest, Bun test, …).
 
 ---
 
@@ -32,10 +32,10 @@ Crear unit tests para funciones y lógica de negocio implementadas en la story a
 
 **Buscar y analizar:**
 
-- `src/**/*.ts` - Archivos TypeScript implementados en esta story
-- `src/**/*.tsx` - Componentes React implementados
-- `lib/**/*.ts` - Helpers y utilidades creadas
-- `utils/**/*.ts` - Funciones de transformación o cálculo
+- Los archivos que la story creó o cambió (`git diff --name-only` contra la rama base), bajo `{{stack.app_root}}`
+- Componentes, helpers, utilidades y funciones de transformación o cálculo entre esos archivos
+
+Las carpetas de los ejemplos de abajo (`src/lib/`, `src/utils/`) son ilustrativas: la app adoptada puede tener otra estructura (`lib/` en la raíz, paquetes de un monorepo) y se respeta la suya.
 
 **Qué identificar:**
 
@@ -58,17 +58,22 @@ Crear unit tests para funciones y lógica de negocio implementadas en la story a
 
 ### 3. Testing Framework
 
-**Verificar setup existente:**
+**Leer primero el bloque `stack:` de `.agents/project.yaml`:**
 
-- `package.json` - ¿Jest o Vitest instalado?
-- `jest.config.js` o `vitest.config.ts` - Configuración del framework
-- Archivos `.test.ts` o `.spec.ts` existentes - Patrones actuales
+- `stack.test_runner` - el runner de la app (`vitest`, `jest`, `bun`, `playwright`, `other`, `none`; `null` = todavía no se eligió)
+- `stack.scripts.test` - el NOMBRE del script de tests en el `package.json` de la app; el comando es `{{stack.package_manager}} run {{stack.scripts.test}}`
+- `stack.app_root` - dónde vive la app (y su `package.json`)
+
+**Después verificar el setup existente bajo `{{stack.app_root}}`:**
+
+- La config del runner (`vitest.config.*`, `jest.config.*`, `bunfig.toml`, …) - entorno, setup files, aliases, coverage
+- Archivos `*.test.*` / `*.spec.*` existentes - ubicación (colocados, `__tests__/`, `tests/`) y naming actuales
 
 **Qué identificar:**
 
-1. ¿Qué testing framework usa el proyecto? (Jest / Vitest)
+1. ¿El runner de `stack.test_runner` coincide con lo que el repo muestra? Si no coincide, decirlo y correr `bun run setup:doctor` (reporta el drift); nunca cambiar de runner por cuenta propia
 2. ¿Existe configuración de coverage?
-3. ¿Qué patrones de naming se usan?
+3. ¿Qué patrones de ubicación y naming se usan? Los tests nuevos los siguen
 
 ---
 
@@ -79,17 +84,17 @@ Crear unit tests para funciones y lógica de negocio implementadas en la story a
 1. **MCP Context7** - ALTAMENTE RECOMENDADO
    - Consultar docs oficiales antes de escribir tests
    - Queries recomendadas:
-     - "Jest latest best practices"
-     - "Vitest setup Next.js App Router"
+     - "<runner de stack.test_runner> latest best practices"
+     - "<runner> setup <stack.framework>"
      - "React Testing Library latest API"
-     - "Jest mock functions examples"
+     - "<runner> mock functions examples"
 
 2. **NO se requieren otros MCP** para esta fase
 
 ### Herramientas Locales:
 
-- Testing framework instalado (Jest/Vitest)
-- Package manager (npm/pnpm/yarn/bun)
+- El runner de `stack.test_runner`
+- El package manager de `stack.package_manager`
 
 ---
 
@@ -105,7 +110,7 @@ Crear unit tests que:
 - ✅ Cubrir casos felices (happy paths)
 - ✅ Cubrir edge cases (límites, vacíos, nulls)
 - ✅ Cubrir error cases (inputs inválidos)
-- ✅ Alcanzar mínimo 80% cobertura en funciones críticas
+- ✅ Cubrir cada branch con significado de las funciones críticas (objetivos por tipo de código en `references/test-coverage.md` § Targets by code type; la cobertura es un piso, no una meta: SKILL.md U6)
 
 **NO incluye:**
 
@@ -134,7 +139,7 @@ Crear unit tests que:
 ### Reports:
 
 - ✅ Tests pasando localmente (100% pass rate)
-- ✅ Coverage report generado (mínimo 80% en funciones críticas)
+- ✅ Coverage report generado (branch coverage leído contra `references/test-coverage.md` § Targets by code type)
 
 ### Documentación:
 
@@ -162,8 +167,8 @@ Crear unit tests que:
 - **Cubrir edge cases** - Valores límite, vacíos, nulls, undefined
 - **Cubrir error cases** - Inputs inválidos, excepciones
 - **Usar AAA pattern** - Arrange, Act, Assert
-- **Mockear dependencias externas** - APIs, DB, servicios externos
-- **Validar cobertura** - Mínimo 80% en funciones críticas
+- **Aislar dependencias externas** - APIs, DB, servicios externos: inyección en el seam primero, `jest.mock` / `vi.mock` solo si el seam es inevitable
+- **Validar cobertura** - Branch coverage por tipo de código (`references/test-coverage.md`), nunca un número global como meta
 - **Documentar tests complejos** - Comentarios si el test no es obvio
 
 ---
@@ -267,15 +272,17 @@ El proceso se divide en 5 pasos ejecutados secuencialmente.
 
 ## 🧪 PASO 2: SETUP DEL TESTING FRAMEWORK (Si no existe)
 
-**Objetivo:** Asegurar que Jest/Vitest está configurado correctamente.
+**Objetivo:** Asegurar que el runner de la app está configurado correctamente.
+
+**Este paso corre SOLO cuando `stack.test_runner` es `null`** (proyecto nuevo, runner sin elegir). Con cualquier otro valor la app ya decidió: se usa su runner, su config y su script tal como están, y este paso se salta entero. Nunca se instala un segundo runner al lado del existente ni se reemplaza uno por otro.
 
 ### Paso 2.1: Verificar Testing Framework
 
 **Acción:**
 
 ```bash
-# Verificar package.json
-cat package.json | grep -E "(jest|vitest)"
+# Confirmar en el package.json de la app (bajo stack.app_root) que no hay runner
+grep -E '"(jest|vitest)"|bun test' {{stack.app_root}}/package.json
 ```
 
 **Si NO está instalado:**
@@ -289,10 +296,10 @@ cat package.json | grep -E "(jest|vitest)"
    - "Jest setup Next.js latest"
    - O "Vitest setup Next.js latest"
 
-3. **Instalar:**
+3. **Instalar** con el package manager de la app:
    ```bash
-   [package-manager] add -D jest @types/jest ts-jest
-   # O: [package-manager] add -D vitest
+   {{stack.package_manager}} add -D jest @types/jest ts-jest
+   # O: {{stack.package_manager}} add -D vitest
    ```
 
 ---
@@ -309,7 +316,8 @@ SI framework = Jest:
   - preset: ts-jest
   - testEnvironment: node
   - collectCoverageFrom: src/**/*.ts (excluir .test.ts)
-  - coverageThreshold: 80%
+  - coverageThreshold: SOLO por archivo para los critical paths que el equipo nombre explícitamente
+    (sin umbral global: `references/test-coverage.md` § Coverage in CI usa gates por delta en el PR)
 
 SI framework = Vitest:
   Crear vitest.config.ts con:
@@ -317,13 +325,14 @@ SI framework = Vitest:
   - test.environment: node
   - coverage.provider: v8
   - coverage.reporter: text, html
+  - coverage.thresholds: mismo criterio que Jest (solo critical paths nombrados, sin umbral global)
 ```
 
 ---
 
 ### Paso 2.3: Agregar Scripts
 
-**En `package.json`, agregar:**
+**Solo si `stack.scripts.test` es `null`**: un script que la app ya declara no se renombra ni se reemplaza. En el `package.json` de la app, agregar:
 
 ```json
 {
@@ -337,10 +346,13 @@ SI framework = Vitest:
 
 **Output:**
 
+Después, registrar la elección en el bloque `stack:`: `bun run agents:setup --stack` (detecta el runner y el script nuevos y propone los valores con su evidencia).
+
 ```
 ✅ Testing framework configurado
 ✅ Scripts de test agregados
-✅ Coverage configurado (threshold: 80%)
+✅ stack.test_runner + stack.scripts.test registrados
+✅ Coverage configurado (umbrales solo en critical paths nombrados; gates por delta en CI)
 ```
 
 ---
@@ -351,7 +363,7 @@ SI framework = Vitest:
 
 ### Paso 3.1: Crear Archivos de Test
 
-**Convención de naming:**
+**Convención de naming:** la que ya usan los tests hermanos de la app (Paso 3 del input). Sin precedente, colocado junto al módulo:
 
 - `src/lib/discount-calculator.ts` → `src/lib/discount-calculator.test.ts`
 - `src/utils/format-currency.ts` → `src/utils/format-currency.test.ts`
@@ -362,7 +374,7 @@ SI framework = Vitest:
 
 **Para cada función crítica:**
 
-**Template:**
+**Template** (nombres en presente indicativo, `returns` y no `should return`: `references/test-naming.md` § Naming heuristics):
 
 ```typescript
 import { functionName } from './module';
@@ -370,7 +382,7 @@ import { functionName } from './module';
 describe('functionName', () => {
   // Happy path tests
   describe('when input is valid', () => {
-    it('should return expected result for typical case', () => {
+    it('returns expected result for typical case', () => {
       // Arrange
       const input = validInput;
       const expected = expectedOutput;
@@ -385,18 +397,18 @@ describe('functionName', () => {
 
   // Edge cases
   describe('edge cases', () => {
-    it('should handle boundary value X', () => {
+    it('handles boundary value X', () => {
       // ...
     });
 
-    it('should handle empty/null/undefined', () => {
+    it('handles empty/null/undefined', () => {
       // ...
     });
   });
 
   // Error cases
   describe('error handling', () => {
-    it('should throw error for invalid input Y', () => {
+    it('throws for invalid input Y', () => {
       expect(() => functionName(invalidInput)).toThrow();
     });
   });
@@ -415,7 +427,7 @@ import { calculateDiscount } from './discount-calculator';
 
 describe('calculateDiscount', () => {
   describe('when order is over $100', () => {
-    it('should apply 10% discount', () => {
+    it('applies 10% discount', () => {
       // Arrange
       const orderAmount = 150;
 
@@ -426,41 +438,41 @@ describe('calculateDiscount', () => {
       expect(result).toBe(135); // 150 - 15 = 135
     });
 
-    it('should apply 10% discount for $1000 order', () => {
+    it('applies 10% discount for $1000 order', () => {
       expect(calculateDiscount(1000)).toBe(900);
     });
   });
 
   describe('when order is under $100', () => {
-    it('should not apply discount', () => {
+    it('does not apply discount', () => {
       expect(calculateDiscount(50)).toBe(50);
     });
 
-    it('should not apply discount for $99.99', () => {
+    it('does not apply discount for $99.99', () => {
       expect(calculateDiscount(99.99)).toBe(99.99);
     });
   });
 
   describe('edge cases', () => {
-    it('should handle exactly $100 (boundary)', () => {
+    it('applies discount at exactly $100 (boundary)', () => {
       expect(calculateDiscount(100)).toBe(90);
     });
 
-    it('should handle $0 order', () => {
+    it('returns 0 for a $0 order', () => {
       expect(calculateDiscount(0)).toBe(0);
     });
 
-    it('should handle very large orders', () => {
+    it('applies discount to very large orders', () => {
       expect(calculateDiscount(1_000_000)).toBe(900_000);
     });
   });
 
   describe('error handling', () => {
-    it('should throw error for negative amounts', () => {
+    it('throws for negative amounts', () => {
       expect(() => calculateDiscount(-50)).toThrow('Order amount must be positive');
     });
 
-    it('should throw error for NaN', () => {
+    it('throws for NaN', () => {
       expect(() => calculateDiscount(NaN)).toThrow();
     });
   });
@@ -469,35 +481,38 @@ describe('calculateDiscount', () => {
 
 ---
 
-### Paso 3.4: Tests con Mocks (Si necesario)
+### Paso 3.4: Tests con dependencias externas (Si necesario)
 
-**Si la función depende de servicios externos:**
+**Si la función depende de servicios externos, primero inyección de dependencias en el seam** (SKILL.md U7, `references/mocking-patterns.md` § Dependency injection makes mocking easier): la función recibe el cliente como parámetro y el test le pasa un fake explícito.
 
 ```typescript
+// src/lib/user-service.ts
+import { supabase as defaultClient } from '@/lib/supabase/client';
+
+export async function getUserById(id: string, client = defaultClient) {
+  const { data, error } = await client.from('users').select('id, name').eq('id', id).single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // src/lib/user-service.test.ts
 import { getUserById } from './user-service';
-import { supabase } from '@/lib/supabase/client';
 
-// Mock Supabase client
-jest.mock('@/lib/supabase/client', () => ({
-  supabase: {
-    from: jest.fn().mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockResolvedValue({
-          data: { id: '123', name: 'John' },
-          error: null,
-        }),
-      }),
-    }),
-  },
-}));
+function fakeClient(result: { data: unknown; error: { message: string } | null }) {
+  return {
+    from: () => ({ select: () => ({ eq: () => ({ single: async () => result }) }) }),
+  } as unknown as Parameters<typeof getUserById>[1];
+}
 
 describe('getUserById', () => {
-  it('should return user data from Supabase', async () => {
-    const result = await getUserById('123');
+  it('returns the user row', async () => {
+    const client = fakeClient({ data: { id: '123', name: 'John' }, error: null });
+    expect(await getUserById('123', client)).toEqual({ id: '123', name: 'John' });
+  });
 
-    expect(result).toEqual({ id: '123', name: 'John' });
-    expect(supabase.from).toHaveBeenCalledWith('users');
+  it('throws the Supabase error message', async () => {
+    const client = fakeClient({ data: null, error: { message: 'not found' } });
+    await expect(getUserById('123', client)).rejects.toThrow('not found');
   });
 });
 ```
@@ -505,12 +520,12 @@ describe('getUserById', () => {
 **Explicar al usuario:**
 
 ```markdown
-**🔧 Mocking:**
+**🔧 Dependencias externas:**
 
-- **Cuándo mockear:** Dependencias externas (APIs, DB, filesystem)
-- **Qué mockear:** `supabase`, `fetch`, `axios`, etc.
-- **Cómo mockear:** `jest.mock()` o `vi.mock()` (Vitest)
-- **Por qué:** Tests unitarios deben ser rápidos y no depender de servicios externos
+- **Cuándo reemplazarlas:** APIs, DB, filesystem, tiempo, aleatoriedad (límites reales del sistema)
+- **Cómo, en orden:** 1) inyección de dependencias en el seam + fake explícito; 2) `jest.mock()` / `vi.mock()` solo cuando el seam es inevitable (side effects a nivel de módulo, SDK de terceros que no se puede inyectar)
+- **Qué afirmar:** el resultado y el error observables, no la cadena de llamadas al cliente (SKILL.md U1)
+- **Por qué:** tests unitarios rápidos, sin servicios externos y sin acoplarse a la implementación
 ```
 
 ---
@@ -561,14 +576,14 @@ utils/format-currency.ts   | 95     | 87.5     | 100     | 95      |
 
 **Validaciones:**
 
-- ✅ Funciones críticas: mínimo 80% coverage
+- ✅ Funciones críticas: branch coverage dentro del rango de su tipo de código (`references/test-coverage.md` § Targets by code type), y ningún error path sin test
 - ✅ Branch coverage: cubrir todos los if/else
 - ✅ Functions coverage: todas las funciones exportadas testeadas
 
 **Si cobertura baja:**
 
-1. Identificar líneas no cubiertas
-2. Agregar tests para esas líneas
+1. Identificar los branches no cubiertos
+2. Agregar tests para los que tienen comportamiento propio (no tests de relleno para subir el número: SKILL.md U6)
 3. Re-ejecutar coverage
 
 ---
@@ -581,7 +596,7 @@ utils/format-currency.ts   | 95     | 87.5     | 100     | 95      |
 - [ ] ¿Se usa AAA pattern (Arrange, Act, Assert)?
 - [ ] ¿Se testean casos felices Y edge cases?
 - [ ] ¿Se testean error cases?
-- [ ] ¿Mocks solo para dependencias externas?
+- [ ] ¿Dependencias externas reemplazadas por inyección en el seam, con `jest.mock` / `vi.mock` solo donde el seam es inevitable?
 - [ ] ¿Tests son independientes (no dependen de orden)?
 - [ ] ¿Tests son rápidos (< 1 segundo cada uno)?
 
@@ -601,20 +616,18 @@ utils/format-currency.ts   | 95     | 87.5     | 100     | 95      |
 ### Unit Tests
 
 ```bash
-# Run all tests
-npm run test
+# Run all tests (the app's own script: stack.scripts.test)
+{{stack.package_manager}} run {{stack.scripts.test}}
 
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage
-npm run test:coverage
+# Watch / coverage: the app's own scripts when it declares them; otherwise pass the runner flag
+{{stack.package_manager}} run {{stack.scripts.test}} --watch
+{{stack.package_manager}} run {{stack.scripts.test}} --coverage
 ```
 ````
 
 ### Coverage Requirements
 
-- Minimum 80% coverage for business logic functions
+- Coverage is a floor, not a target: CI gates on the coverage delta of each PR, not on a global number
 - All critical paths must be tested
 
 ````
@@ -654,13 +667,13 @@ npm run test:coverage
 
 ```bash
 # Run tests
-npm run test
+{{stack.package_manager}} run {{stack.scripts.test}}
 
 # Watch mode (útil durante desarrollo)
-npm run test:watch
+{{stack.package_manager}} run {{stack.scripts.test}} --watch
 
 # Coverage report
-npm run test:coverage
+{{stack.package_manager}} run {{stack.scripts.test}} --coverage
 ````
 
 ## Próximos Pasos:
@@ -704,7 +717,7 @@ npm run test:coverage
 
 ### Validación:
 - [ ] Todos los tests pasan (100%)
-- [ ] Coverage mínimo 80% en funciones críticas
+- [ ] Branch coverage de funciones críticas leído contra `references/test-coverage.md` (piso, no meta)
 - [ ] No hay warnings críticos
 - [ ] Tests son rápidos (< 1s cada uno)
 
@@ -726,7 +739,7 @@ it('test 1', () => { ... })
 ✅ Bien:
 
 ```typescript
-it('should apply 10% discount for orders over $100', () => { ... })
+it('applies 10% discount for orders over $100', () => { ... })
 ```
 
 ---
@@ -734,7 +747,7 @@ it('should apply 10% discount for orders over $100', () => { ... })
 ### **2. AAA Pattern (Arrange, Act, Assert)**
 
 ```typescript
-it('should format currency correctly', () => {
+it('formats USD amount with thousands separator', () => {
   // Arrange - Setup
   const amount = 1234.56;
   const currency = 'USD';
@@ -755,10 +768,10 @@ it('should format currency correctly', () => {
 
 ```typescript
 let user;
-it('should create user', () => {
+it('creates user', () => {
   user = createUser();
 });
-it('should delete user', () => {
+it('deletes user', () => {
   deleteUser(user.id);
 });
 ```
@@ -766,12 +779,12 @@ it('should delete user', () => {
 ✅ Bien (cada test es independiente):
 
 ```typescript
-it('should create user', () => {
-  const user = createUser();
-  expect(user).toBeDefined();
+it('creates user', () => {
+  const user = createUser({ name: 'Ana' });
+  expect(user).toEqual({ id: expect.any(String), name: 'Ana' });
 });
 
-it('should delete user', () => {
+it('deletes user', () => {
   const user = createUser();
   deleteUser(user.id);
   expect(getUser(user.id)).toBeNull();
@@ -782,17 +795,20 @@ it('should delete user', () => {
 
 ### **4. Mock Solo lo Necesario**
 
-❌ Mal (mockear funciones internas):
+❌ Mal (mockear lo que estás testeando):
 
 ```typescript
-jest.mock('./discount-calculator'); // NO mockear lo que estás testeando
+jest.mock('./discount-calculator'); // NO mockear la unidad bajo test
 ```
 
-✅ Bien (mockear dependencias externas):
+✅ Bien (inyectar la dependencia externa en el seam):
 
 ```typescript
-jest.mock('@/lib/supabase/client'); // Mockear servicios externos
+const client = fakeClient({ data: { id: '1', name: 'Ana' }, error: null });
+expect(await getUserById('1', client)).toEqual({ id: '1', name: 'Ana' });
 ```
+
+`jest.mock('@/lib/supabase/client')` queda para cuando el seam es inevitable (SKILL.md U7).
 
 ---
 

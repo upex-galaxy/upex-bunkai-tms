@@ -11,7 +11,7 @@ Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO vive
 - `{{jira.acceptance_test_plan}}` — Acceptance Test Plan (Story-level Textarea). Fuente de los escenarios de aceptación que la implementación debe cubrir. Solo lectura desde este flujo.
 - `{{jira.spec_implementation_plan}}` — Spec Implementation Plan (Story-level Textarea). Plan técnico generado por este flujo y publicado a la Story.
 
-**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `AGENTS.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.agents/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
+**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `.agents/instructions/agent-tool-resolution.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.agents/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
 
 ---
 
@@ -23,451 +23,102 @@ Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO vive
   2. **Modality jira-xray** — ATP vive en un issue `Test Plan` enlazado a la Story (su `description` contiene el cuerpo del ATP): `bun run jira:sync-issues get <ATP_KEY>` materializa `.context/PBI/test-plans/TESTPLAN-<ATP_KEY>-<slug>.md`; léelo. El `<ATP_KEY>` sale del enlace "tests" / "is tested by" de la Story (visible en `story.md` / `comments.md`). NUNCA uses `get <STORY_KEY>` para leer un ATP de Xray.
   3. **Fallback final**: `comments.md` / la descripción de la issue — ahí cae el comentario fallback `## Acceptance Test Plan` cuando el custom field está ausente (per `.agents/jira-required.yaml`).
 - Feature Implementation Plan: [usar .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/feature-implementation-plan.md — materializado por la sync desde el campo `{{jira.feature_implementation_plan}}` del Epic]
-- SRS relevante: [usar secciones relacionadas de .context/SRS/]
-- **Design System:** [usar .context/design-system.md - para decisiones de UI/UX]
+- SRS relevante: [usar secciones relacionadas de .context/SRS/; sin SRS, las secciones de los mapas de negocio que nombra `../SKILL.md` → "Product docs: PRD/SRS or business maps"]
+- **Design System:** [usar `DESIGN.md` (tokens y personalidad visual) y, en stories con UI, `.context/design/master-design-plan.md` §8 (fila US→Screen) → §4 (spec de pantalla) + el mockup en `.context/designs/` (Critical Rule #14)]
 
 **⚠️ IMPORTANTE - Jira es la fuente de verdad para el Acceptance Test Plan:**
-Los escenarios del Acceptance Test Plan (definidos durante la fase de planning) son los que la implementación DEBE cubrir. Cada escenario debe mapearse a un step de implementación para garantizar cobertura completa. NO omitir ninguno.
+Los escenarios del Acceptance Test Plan (definidos durante la fase de planning) son los que la implementación DEBE cubrir. Cada escenario debe mapearse a un step de implementación (línea **Covers** del step) para garantizar cobertura completa. NO omitir ninguno.
 
-**Autor del plan → Jira → sync → lee.** NO escribas a mano `implementation-plan.md`. Es un archivo `[SYNC]` (read-only cache): redacta el plan en sesión, publícalo al campo `{{jira.spec_implementation_plan}}` de la Story (o comentario fallback per `.agents/jira-required.yaml`), corre `bun run jira:sync-issues get <STORY_KEY> --include-comments`, y lee el `implementation-plan.md` materializado en `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/`. El cuerpo del plan sigue la estructura de abajo. **Formato ADF**: estructura el cuerpo per `../../acli/references/adf-authoring-style.md` — headings por sección, tabla para trade-offs de opciones / matrices de decisión, panel `[!WARNING]` para riesgos. Richness con propósito, no decoración.
+**Autor del plan → Jira → sync → lee.** NO escribas a mano `implementation-plan.md`. Es un archivo `[SYNC]` (read-only cache): redacta el plan en sesión, publícalo al campo `{{jira.spec_implementation_plan}}` de la Story (o comentario fallback per `.agents/jira-required.yaml`), corre `bun run jira:sync-issues get <STORY_KEY> --include-comments`, y lee el `implementation-plan.md` materializado en `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/`. El cuerpo del plan sigue el esqueleto de abajo.
 
 ---
+
+## Cómo escribir el plan (estas reglas NO se publican)
+
+Lo que se publica es solo el cuerpo entre los marcadores `plan-body`. Todo lo de esta sección guía la redacción y se queda en el skill: copiarlo al cuerpo gasta presupuesto de Jira (ver "Presupuesto de tamaño" abajo) sin darle nada al revisor.
+
+- **Verificar antes de decidir.** Si el enfoque usa librerías externas, consultá Context7 MCP para confirmar que los métodos y hooks existen en la versión del proyecto (ej.: Supabase Auth, React Query, Next.js App Router). Si el proyecto usa shadcn/ui, buscá en shadcn MCP antes de planear un componente nuevo (dialog, form, data-table). El plan registra el enfoque elegido, no la consulta.
+- **Promoción a ADR.** Las decisiones del plan son story-local (qué hook, qué componente, un trade-off de un archivo). Si una pasa el **doble filtro** (arquitectónica Y difícil de revertir: toca muchos archivos, migra datos o impone un invariante cross-cutting), promovela a `ADR-NNNN-<slug>.md` en `.context/ADR/` y dejá en el plan solo el backlink (`See ADR-NNNN`). Detección + procedimiento: `agentic-dev-core/references/adr-doctrine.md`; template + lifecycle: `.context/ADR/README.md`. Estado: una decisión que el humano ya aprobó (plan aprobado, respuesta en el chat, deck de decisiones) va `Accepted`, citando dónde se aprobó; solo una pregunta todavía abierta va `Proposed`.
+- **Tipos del backend.** Los componentes importan los tipos por donde la app ya los expone (greenfield: `@/lib/types`, derivados de `{{stack.database.types_path}}`; alias de la app: `{{stack.conventions.import_alias}}`), las props se tipan con ellos, el mock data cumple su estructura y los schemas de Zod usan `z.infer<>`. El plan nombra los tipos que usa y los que crea; no pega el código.
+- **UI.** Aplica Critical Rule #14 (`AGENTS.md`): la UI viva es la referencia, el mockup es inspiración; inspeccioná y reutilizá los componentes existentes y nunca inventes UI. La personalidad visual (bordes, sombras, espaciado, hover) y la paleta ya están congeladas en `DESIGN.md`: el plan no las repite. Un diagrama ASCII de layout entra solo cuando no hay mockup que citar.
+- **Copy real.** Los textos salen del vocabulario de `.context/business/domain-glossary.md` y del PRD (`executive-summary.md`, `user-personas.md`), con el tono del producto; sin PRD, del glosario y del copy que la UI viva ya usa. Nada de frases genéricas ("Bienvenido a nuestra plataforma", "La mejor solución para...").
+- **Base de datos.** El plan describe los cambios de schema; no incluye SQL estático. El cambio se aplica durante la implementación por el DB MCP según `{{stack.database.migrations_tool}}`, después de leer el historial de migraciones por el mismo MCP (`agentic-dev-core/references/db-change-doctrine.md`); una story sin cambios de base de datos no necesita la capability `db`. Sin MCP en una story que sí la necesita: STOP per `agentic-dev-core/references/mcp-capabilities.md` §4.
+- **Steps.** Específicos y ejecutables, cada uno con su testing y su estimación; la suma coincide con los story points de `story.md`. El último step integra y corre el escenario E2E completo.
+- **Lo que no va en el cuerpo.** El Definition of Done genérico vale para toda story y lo verifican Stage 2-4 de `/sprint-development`; el plan lista solo los checks propios de esta story. Genérico: código según el plan; todos los AC pasando; tipos del backend sin type errors; personalidad de `DESIGN.md` y copy del dominio aplicados; middleware actualizado si hay rutas privadas nuevas; tests unitarios (cobertura según `unit-testing/references/test-coverage.md`: metas por tipo de código, piso y no meta), de integración y E2E (los TC del ATP) pasando; lint, build y TypeScript limpios; code review aprobado; deploy a staging con smoke test en desktop y mobile. Lo que ya dice el Feature Implementation Plan del Epic se enlaza, no se repite.
+- **Detalle de trabajo.** Specs largas de componentes, payloads de API o notas de schema que solo sirven para implementar van a `.session/sprint-development/<STORY_KEY>/notes.md` (notas de trabajo locales; esta skill nunca escribe un `plan.md` bajo `.session/`, ver `agentic-dev-core/references/session-management.md` §13); nada que el revisor necesite puede vivir solo ahí.
+- **Forma.** Una sección que no aplica se omite, no se publica vacía. Listas cortas antes que tablas o paneles: en ADF una tabla cuesta varias veces lo que cuesta la misma información en lista, así que una tabla entra solo cuando reemplaza varias listas paralelas, y un panel `[!WARNING]` solo para un riesgo que bloquea (`../../acli/references/adf-authoring-style.md`).
+
+---
+
+<!-- plan-body:start -->
 
 # Implementation Plan: STORY-{PROJECT_KEY}-{ISSUE_NUM} - [Story Title]
 
 ## Overview
 
-Implementar funcionalidad de [descripción breve].
+[Qué se implementa, en 1-2 oraciones.]
 
-**Acceptance Criteria a cumplir:**
-
-- [Criterio 1]
-- [Criterio 2]
-- [Criterio 3]
-
----
+**Acceptance Criteria:** [AC 1]; [AC 2]; [AC 3]
 
 ## Technical Approach
 
-**⚠️ IMPORTANTE - Verificación con Context7 MCP:**
-Antes de definir el enfoque técnico, si usas librerías externas (React, Next.js, Supabase, etc.):
-
-- 🔍 **Usa Context7 MCP** para verificar capacidades actuales de las APIs
-- ✅ Confirma que los métodos/hooks que planeas usar existen en la versión del proyecto
-- 📖 Obtén best practices actualizadas de la documentación oficial
-
-**Ejemplo:**
-
-- Necesitas autenticación → Consulta Context7 para Supabase Auth API actual
-- Necesitas data fetching → Consulta Context7 para React Query o SWR API actual
-- Necesitas routing → Consulta Context7 para Next.js App Router API actual
-
-**Chosen approach:** [Descripción del enfoque técnico]
-
-**Alternatives considered:**
-
-- [Alternativa A]: [Por qué no se eligió]
-- [Alternativa B]: [Por qué no se eligió]
-
-**Why this approach:**
-
-- ✅ [Ventaja 1]
-- ✅ [Ventaja 2]
-- ❌ Trade-off: [Desventaja o compromiso]
-
----
-
-## UI/UX Design (Si la story tiene interfaz)
-
-**⚠️ IMPORTANTE:** Esta story debe usar el Design System base de Fase 3 (frontend-setup.md).
-
-**Design System disponible:** `.context/design-system.md`
-
-### Componentes del Design System a usar:
-
-**⚠️ IMPORTANTE - Uso de MCP shadcn/ui:**
-Si el proyecto usa shadcn/ui como design system, DEBES usar el MCP de shadcn para:
-
-- 🔍 Buscar semánticamente componentes disponibles antes de crear nuevos
-- ✅ Confirmar props y API de componentes shadcn
-- 📖 Obtener ejemplos de uso actualizados
-
-**Ejemplo de búsqueda:**
-
-- Necesitas un diálogo → Busca "dialog" o "modal" en MCP shadcn
-- Necesitas un formulario → Busca "form" en MCP shadcn
-- Necesitas una tabla → Busca "table" o "data-table" en MCP shadcn
-
-**Componentes base (ya existen):**
-
-- ✅ Button → `variant`: [primary | secondary | outline | ghost | danger]
-- ✅ Card → Para [describir uso específico]
-- ✅ Input/Form → Para [formularios específicos]
-- ✅ Modal → Para [diálogos/confirmaciones]
-- [Listar otros componentes relevantes del design system]
-
-### Componentes custom a crear:
-
-**Componentes específicos del dominio (nuevos):**
-
-- 🆕 [ComponentName]
-  - **Propósito:** [Descripción]
-  - **Props:** [Listar props principales]
-  - **Diseño:** [Breve descripción visual - usa design system base]
-  - **Ubicación:** `components/[domain]/[component-name].tsx`
-
-(Donde [ComponentName] se define según el dominio de la story. Ejemplos según proyecto: MentorCard en MYM, ProductCard en SHOP, PostCard en BLOG)
-
-### Wireframes/Layout:
-
-**Estructura de la página/sección:**
-
-```
-[Descripción textual del layout - ej:]
-┌──────────────────────────────────────┐
-│ Header: [Título] + [CTA Button]     │
-├──────────────────────────────────────┤
-│ Filters: [Input] [Select] [Button]  │
-├──────────────────────────────────────┤
-│ Grid: [Card] [Card] [Card]          │
-│       [Card] [Card] [Card]          │
-└──────────────────────────────────────┘
-```
-
-### Estados de UI:
-
-**Estados visuales a implementar:**
-
-- **Loading:** [Skeleton loader / Spinner - describir dónde]
-- **Empty:** [EmptyState component con mensaje + CTA]
-- **Error:** [Error message + retry button]
-- **Success:** [Vista normal con datos]
-- [Otros estados específicos si aplica]
-
-### Validaciones visuales (Formularios):
-
-**Si la story incluye formularios:**
-
-- **Campo [X]:** [Validación] → Mensaje: "[mensaje]"
-- **Campo [Y]:** [Validación] → Mensaje: "[mensaje]"
-- **Submit:** [Validación del form completo]
-
-**Estados visuales:**
-
-- Error: `border-red-500` + mensaje en `text-red-500`
-- Success: `border-green-500`
-- Focus: `ring-primary`
-
-### Responsividad:
-
-**Breakpoints a considerar:**
-
-- **Mobile (< 768px):** [Ajustes específicos - ej: grid → list, sidebar → drawer]
-- **Tablet (768px - 1024px):** [Ajustes]
-- **Desktop (> 1024px):** [Layout completo]
-
-**Paleta de colores aplicada:**
-
-- Primary actions: `bg-primary` (del design system)
-- Secondary elements: `bg-secondary`
-- Borders/Dividers: `border-border`
-- Text: `text-foreground` / `text-muted-foreground`
-
-### Personalidad UI/UX aplicada:
-
-**⚠️ IMPORTANTE:** Esta story debe reflejar la personalidad visual elegida en Fase 3 (frontend-setup).
-
-**Estilo visual a seguir:** [Del design system - Minimalista/Bold/Corporativo/Playful]
-
-**Según personalidad elegida:**
-
-- **Si Minimalista:**
-  - Espacios generosos (padding/margin amplios)
-  - Tipografía limpia, jerárquica
-  - Sombras sutiles (`shadow-sm`)
-  - Bordes suaves (`rounded-md`)
-
-- **Si Bold/Moderno:**
-  - Gradientes sutiles en backgrounds
-  - Sombras pronunciadas (`shadow-lg`, `shadow-xl`)
-  - Bordes redondeados (`rounded-lg`, `rounded-xl`)
-  - Hover effects con transforms
-
-- **Si Corporativo:**
-  - Líneas rectas, estructura formal
-  - Bordes mínimos o rectos (`rounded-sm`)
-  - Colores sobrios, sin gradientes
-  - Profesional y serio
-
-- **Si Playful:**
-  - Colores vibrantes del accent
-  - Bordes muy redondeados (`rounded-2xl`, `rounded-full`)
-  - Ilustraciones o íconos coloridos
-  - Animaciones suaves
-
-**Validar en diseño:**
-
-- ✅ Bordes consistentes con estilo elegido
-- ✅ Sombras consistentes con estilo elegido
-- ✅ Espaciado consistente con estilo elegido
-- ✅ Efectos hover/active coherentes con personalidad
-
----
-
-## Types & Type Safety
-
-**⚠️ IMPORTANTE:** Esta story debe usar tipos del backend para garantizar type-safety y zero type mismatches.
-
-**Tipos disponibles:**
-
-- `lib/database.types.ts` - Tipos generados desde database schema (Fase 3.2 - Backend Setup)
-- `lib/types.ts` - Type helpers extraídos del backend
-
-**Directiva para componentes:**
-
-- ✅ Importar tipos desde `@/lib/types`
-- ✅ Tipar props de componentes con tipos del backend
-- ✅ Crear mock data (si aplica) que cumpla con la estructura de tipos
-- ✅ Usar `z.infer<>` si se usan schemas de Zod
-
-**Ejemplo:**
-
-```typescript
-import type { User, Mentor } from '@/lib/types'
-
-interface MentorCardProps {
-  mentor: Mentor  // ✅ Tipo del backend
-  onSelect: (id: string) => void
-}
-
-// Mock data type-safe
-const mockMentors: Mentor[] = [
-  { id: '1', name: 'John Doe', ... } // ✅ TypeScript valida estructura
-]
-```
-
-**Beneficios:**
-
-- Zero type mismatches entre frontend y backend
-- Autocomplete completo en componentes
-- Refactoring seguro (cambios en schema se detectan automáticamente)
-
----
-
-## Content Writing (Si la story tiene UI con texto)
-
-**⚠️ CRÍTICO:** NO usar texto genérico o placeholder.
-
-**Directiva para la IA:**
-
-1. **Leer contexto de negocio:**
-   - `.context/PRD/executive-summary.md` - Propuesta de valor, problema que resuelve
-   - `.context/business/README.md` - Problema y solución del negocio
-   - `.context/PRD/user-personas.md` - A quién va dirigido
-2. **Usar vocabulario del dominio:**
-   - Identificar entidades principales del proyecto (del PRD/PBI)
-   - Usar nombres reales, NO genéricos
-3. **Evitar frases placeholder:**
-   - ❌ "Bienvenido a nuestra plataforma"
-   - ❌ "La mejor solución para..."
-   - ❌ "Gestiona tus recursos fácilmente"
-4. **Aplicar tono coherente:**
-   - Según personalidad del producto (del PRD)
-   - Formal/Casual/Técnico/Amigable
-
-**Ejemplos según dominio:**
-
-- ❌ Genérico: "Bienvenido a nuestra plataforma de gestión"
-- ✅ Contextual (si proyecto es MentorYourMind): "Encuentra mentores expertos en tu área"
-- ✅ Contextual (si proyecto es ShopFlow): "Administra tu inventario en tiempo real"
-- ✅ Contextual (si proyecto es BlogHub): "Publica y monetiza tus artículos"
-
-**Resultado esperado:**
-Textos que reflejan el contexto específico del proyecto, usando vocabulario del dominio identificado en el PRD/idea.
-
----
+- **Chosen:** [enfoque técnico]
+- **Alternatives:** [A]: [por qué no]; [B]: [por qué no]
+- **Trade-off:** [lo que se cede]
+
+## UI/UX
+
+- **Screen:** [fila §8 → spec §4 / ruta del mockup, o "DESIGN.md-only"]
+- **Reused components:** [componente: uso]
+- **New components:** [Nombre (`components/<domain>/<name>.tsx`)]: [propósito; props principales]
+- **States:** loading [cómo], empty [mensaje + CTA], error [mensaje + retry], success [vista]
+- **Validation:** [campo]: [regla] → "[mensaje]"
+- **Responsive:** mobile [ajuste], tablet [ajuste], desktop [layout completo]
+- **Copy:** [textos clave con vocabulario del dominio]
+
+## Types
+
+[Tipos del backend que usa (`Mentor` desde `@/lib/types`) y los que crea, con archivo.]
 
 ## Implementation Steps
 
-### **Step 1: [Nombre del paso]**
+### Step 1: [Nombre]
 
-**Task:** [Descripción de la tarea]
+- **Files:** `[ruta]`
+- **Task:** [qué cambia]
+- **Edge cases:** [caso]: [cómo se maneja]
+- **Covers:** [TC-001, AC 2]
+- **Testing:** [tipo]: [qué verifica]
+- **Estimate:** [tiempo]
 
-**Details:**
+(un step por unidad de trabajo; el último integra y corre el E2E)
 
-- [Detalle 1]
-- [Detalle 2]
-- [Detalle 3]
+## Technical Decisions
 
-**⚠️ IMPORTANTE (si aplica DB):**
-
-- NO incluir SQL estático en el plan
-- Describir cambios necesarios de schema/tablas
-- **Usar Supabase MCP** durante implementación para ejecutar migrations
-- Si Supabase MCP no está disponible: proporcionar SQL para ejecución manual
-
-**Testing:**
-
-- [Tipo de test]: [Qué verificar]
-
-**Estimated time:** [tiempo]
-
----
-
-### **Step 2: [Nombre del paso]**
-
-**Task:** [Descripción]
-
-**File:** [ruta del archivo a crear/modificar]
-
-**Structure/Logic:**
-
-- [Elemento 1]
-- [Elemento 2]
-
-**Edge cases handled:**
-
-- [Edge case 1]: [Cómo se maneja]
-- [Edge case 2]: [Cómo se maneja]
-
-**Testing:**
-
-- [Tests a realizar]
-
-**Estimated time:** [tiempo]
-
----
-
-(Continuar con todos los steps necesarios)
-
-### **Step N: Integration**
-
-**Task:** Conectar todos los componentes
-
-**Flow completo:**
-
-1. [Paso 1 del flujo]
-2. [Paso 2 del flujo]
-3. [Paso 3 del flujo]
-   ...
-
-**Testing:**
-
-- E2E test: [Escenario completo]
-
-**Estimated time:** [tiempo]
-
----
-
-## Technical Decisions (Story-specific)
-
-> **Regla de promoción a ADR.** Las decisiones de esta sección son **story-local** y viven acá (qué hook, qué componente, un trade-off de un archivo). Si una decisión pasa el **doble filtro** — es **arquitectónica** Y **difícil de revertir** (toca muchos archivos, migra datos, o impone un invariante cross-cutting) — NO la dejes acá: promovela a un `ADR-NNNN-<slug>.md` en `.context/ADR/` y dejá un backlink de una línea (`See ADR-NNNN`). Detección + procedimiento: `agentic-dev-core/references/adr-doctrine.md`; template + lifecycle: `.context/ADR/README.md`. La IA redacta como `Proposed`; el humano aprueba.
-
-### Decision 1: [Nombre de decisión específica de esta story]
-
-**Chosen:** [Decisión]
-
-**Reasoning:**
-
-- ✅ [Razón]
-- ❌ Trade-off: [Compromiso]
-
----
+- **[Decisión]:** [elegido], porque [razón]. Trade-off: [compromiso]. [See ADR-NNNN si se promovió]
 
 ## Dependencies
 
-**Pre-requisitos técnicos:**
+- [ ] [Pre-requisito] [BLOCKER si falta]
 
-- [ ] [Pre-requisito 1]
-- [ ] [Pre-requisito 2 - BLOCKER si no está]
+## Risks
 
----
+- **[Riesgo]** (impact H/M/L): [mitigación]
 
-## Risks & Mitigations
+## Estimate
 
-**Risk 1:** [Descripción del riesgo específico de esta story]
+**Total:** [tiempo] · **Story points:** [N] (coincide con story.md)
 
-- **Impact:** High | Medium | Low
-- **Mitigation:** [Estrategia]
+## Story-specific Done
 
-**Risk 2:** ...
+- [ ] [TC-001]: [nombre] pasa
+- [ ] [Check propio de esta story]
 
-- **Impact:** ...
-- **Mitigation:** ...
-
----
-
-## Estimated Effort
-
-| Step           | Time             |
-| -------------- | ---------------- |
-| 1. [Step name] | [time]           |
-| 2. [Step name] | [time]           |
-| 3. [Step name] | [time]           |
-| ...            | ...              |
-| **Total**      | **[total time]** |
-
-**Story points:** [número] (debe match estimación en story.md)
-
----
-
-## Definition of Done Checklist
-
-- [ ] Código implementado según este plan
-- [ ] Todos los Acceptance Criteria pasando
-- [ ] **Tipos del backend usados correctamente**
-  - [ ] Imports desde `@/lib/types` en componentes
-  - [ ] Props de componentes tipadas con tipos del backend
-  - [ ] Mock data (si aplica) cumple estructura de tipos
-  - [ ] Zero type errors relacionados a entidades del backend
-- [ ] **Personalidad UI/UX aplicada consistentemente**
-  - [ ] Bordes según estilo elegido (Minimalista/Bold/Corporativo/Playful)
-  - [ ] Sombras según estilo elegido
-  - [ ] Espaciado según estilo elegido
-  - [ ] Paleta de colores aplicada (bg-primary, bg-secondary, etc.)
-  - [ ] Efectos hover/active coherentes con personalidad
-- [ ] **Content Writing contextual (NO genérico)**
-  - [ ] Vocabulario del dominio usado (del PRD/idea)
-  - [ ] Sin frases placeholder ("Bienvenido", "La mejor plataforma")
-  - [ ] Tono coherente con personalidad del producto
-- [ ] **Protección de rutas (si aplica)**
-  - [ ] Middleware actualizado si se agregaron rutas privadas
-  - [ ] Rutas públicas/privadas correctamente configuradas
-- [ ] Tests unitarios escritos (coverage > 80%)
-  - [ ] [Componente específico 1]
-  - [ ] [Componente específico 2]
-- [ ] Tests de integración pasando
-  - [ ] [Escenario específico]
-- [ ] Tests E2E pasando (referencia: Acceptance Test Plan de Jira — `acceptance-test-plan.md` sincronizado, o el `comments.md` / descripción fallback)
-  - [ ] TC-001: [nombre]
-  - [ ] TC-002: [nombre]
-  - [ ] ...
-- [ ] Code review aprobado
-- [ ] Sin errores de linting/TypeScript
-  - [ ] Linting passes
-  - [ ] Build passes (`npm run build` o equivalente)
-  - [ ] Zero TypeScript errors
-- [ ] Deployed to staging
-- [ ] Manual smoke test en staging
-  - [ ] UI se ve correcta en desktop
-  - [ ] UI se ve correcta en mobile
-  - [ ] Design system aplicado consistentemente
+<!-- plan-body:end -->
 
 ---
 
 **Output:** El cuerpo del plan se publica al campo `{{jira.spec_implementation_plan}}` de la Story; tras la sync queda materializado en .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/implementation-plan.md (read-only cache).
-
-**Nota para IA:**
-
-- Si story es compleja, considera crear archivos adicionales opcionales (components.md, api-details.md, database-changes.md)
-- Esto es decisión de la IA según complejidad real
-
-**Restricciones:**
-
-- Steps específicos y ejecutables
-- Estimated time realista
-- Total debe match story points
-- Testing strategy por cada step
 
 ---
 
@@ -487,6 +138,15 @@ Textos que reflejan el contexto específico del proyecto, usando vocabulario del
    - Verificar si el slug `{{jira.spec_implementation_plan}}` resuelve a un campo presente en el workspace (vía `.agents/jira-fields.json` / `.agents/jira-required.yaml`).
 
 > Antes de escribir campos rich-text en Jira, leé `.agents/skills/product-management/references/jira-publishing-gotchas.md` para los dos bugs ADF conocidos y sus workarounds.
+
+> **Presupuesto de tamaño (bloqueante).** Jira Cloud corta cada valor rich-text en 32,767 caracteres y cuenta el **ADF serializado**, no el Markdown: el plan convertido mide varias veces lo que mide en Markdown, y las tablas, listas anidadas, paneles y bloques de código son lo que más crece (mediciones: `.context/ADR/ADR-0003-forensic-measurements-ledger.md`). Antes de publicar, en el campo o en el comentario fallback, convertí y medí el cuerpo COMPLETO tal como va a quedar guardado:
+>
+> ```bash
+> bun .agents/skills/acli/scripts/md-to-adf.ts plan.md plan.adf.json
+> jq -c . plan.adf.json | wc -m        # debe quedar en 30000 o menos
+> ```
+>
+> Más de 30,000 → **STOP antes de escribir.** Proponé qué secciones salen del plan y a dónde van, con lo que ahorra cada movimiento, y esperá la decisión del usuario. Destinos de este nivel: código de ejemplo largo sale del plan (el plan nombra archivo y símbolo; el código vive en la rama y el PR); una decisión arquitectónica difícil de revertir va a un ADR (`.context/ADR/`) y el plan la enlaza; el contexto que ya está en el Feature Implementation Plan del Epic se enlaza, no se repite; una Story que sigue sin entrar es una Story demasiado grande: proponé partirla con `/product-management`. Un rechazo de Jira por longitud (`CONTENT_LIMIT_EXCEEDED`) es el mismo STOP. Nunca truncar, nunca partir el plan en dos campos o dos comentarios, nunca quitar el formato para que entre. Las secciones de la plantilla que no aplican a este plan se omiten, no se publican vacías. Regla canónica: `.agents/skills/acli/SKILL.md` → "Size budget" (T5).
 
 2. **Si el campo existe:**
    - Publicar el cuerpo COMPLETO del plan al campo `{{jira.spec_implementation_plan}}` de la Story vía `[ISSUE_TRACKER_TOOL]` (escritura de custom field).
@@ -509,5 +169,6 @@ Textos que reflejan el contexto específico del proyecto, usando vocabulario del
 ### Output Esperado
 
 - [ ] Cuerpo del plan publicado al campo `{{jira.spec_implementation_plan}}` de la Story (si el slug resuelve a un campo presente) o al comentario fallback `## Spec Implementation Plan (Dev)`
+- [ ] Tamaño del cuerpo medido como ADF serializado antes de publicar: `{N} / 30,000` (o STOP con la propuesta de qué secciones se mueven)
 - [ ] Label `implementation-plan-ready` agregado a la Story
 - [ ] `bun run jira:sync-issues get <STORY_KEY> --include-comments` ejecutado; `implementation-plan.md` materializado y leído

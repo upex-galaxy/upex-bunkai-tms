@@ -146,6 +146,10 @@ interface CliFlags {
   verbose: boolean
   help: boolean
   upex: boolean
+  /** `--plan-json <file>`: never prompt; write the unresolved pickers to <file>. */
+  planJson: string | null
+  /** `--answers <file>`: never prompt; take each picker's answer from <file>. */
+  answers: string | null
 }
 
 /** A single required status declared in the manifest under a work_type. */
@@ -312,8 +316,11 @@ function parseArgs(argv: string[]): CliFlags {
     verbose: false,
     help: false,
     upex: false,
+    planJson: null,
+    answers: null,
   };
-  for (const arg of argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
     switch (arg) {
       case '--force':
         flags.force = true;
@@ -334,6 +341,12 @@ function parseArgs(argv: string[]): CliFlags {
         break;
       case '--upex':
         flags.upex = true;
+        break;
+      case '--plan-json':
+        flags.planJson = argv[++i] ?? null;
+        break;
+      case '--answers':
+        flags.answers = argv[++i] ?? null;
         break;
     }
   }
@@ -367,6 +380,15 @@ FLAGS:
                        jira-required.yaml and all REST calls; only network
                        requirement is GitHub raw access.
                        Source: ${UPEX_UPSTREAM_URL}
+  --plan-json <file>   Never prompt. Every status / transition picker that would
+                       ask is written to <file> as JSON ({ questions: [...] });
+                       when there is at least one, NOTHING is written to
+                       .agents/jira-workflows.json and the exit code is 10.
+                       With none, the catalog is written as usual. Used by
+                       \`bun setup\` to ask the pickers in its page.
+  --answers <file>     Never prompt. Take each picker's answer from <file>
+                       (a JSON object: question id -> Jira id, or "__skip__");
+                       a question missing from the file is skipped.
   --help, -h           Show this help.
 
 INSTANCE HOST (not an env var):
@@ -400,6 +422,7 @@ EXIT CODES:
   0  success — every required canonical slug is mapped (or skipped deliberately)
   1  auth / network / config / file-system error, OR at least one required
      canonical slug remained unmapped without an explicit user skip.
+  10 --plan-json only: pickers are pending (see the plan file); nothing written.
 
 NOTES:
   Slug rules mirror sync-jira-fields.ts: lowercase, NFD normalize, strip
@@ -832,6 +855,48 @@ interface StatusChoice {
   status: JiraStatus
 }
 
+// ============================================================================
+// PLAN / ANSWERS (installer-ui delivery 3, owner answer Q5)
+// ============================================================================
+
+/** One picker the plan mode collected instead of prompting. */
+export interface PlanQuestion {
+  /** `<work_type>.status.<slug>` or `<work_type>.transition.<slug>`. */
+  id: string
+  workType: string
+  kind: 'status' | 'transition'
+  slug: string
+  reason: 'missing' | 'collision' | 'mismatch'
+  description?: string
+  /** Transitions: the from/to the manifest expects. */
+  expects?: { from: string, to: string }
+  /** Jira ids, plus `__skip__` (leave it unmapped). */
+  options: { value: string, label: string }[]
+}
+
+export const SKIP_ANSWER = '__skip__';
+/** Exit code of `--plan-json` when pickers are pending. */
+export const PLAN_PENDING_EXIT = 10;
+
+/** Set by main(): the plan being collected, or the answers being applied. */
+export const PICKS: { plan: PlanQuestion[] | null, answers: Record<string, string> | null } = { plan: null, answers: null };
+
+/**
+ * Plan mode records the question and answers "unmapped" for now; answers mode
+ * returns the recorded answer (missing = skip). `undefined` = neither mode: prompt.
+ */
+export function decidePick(q: PlanQuestion): string | undefined {
+  if (PICKS.plan) {
+    PICKS.plan.push(q);
+    return SKIP_ANSWER;
+  }
+  if (PICKS.answers) {
+    const a = PICKS.answers[q.id];
+    return typeof a === 'string' && (a === SKIP_ANSWER || q.options.some(o => o.value === a)) ? a : SKIP_ANSWER;
+  }
+  return undefined;
+}
+
 /**
  * Interactive prompt for a required canonical status that did not auto-resolve
  * (either no slug match, or multiple slug matches and --allow-collisions was
@@ -857,7 +922,16 @@ async function promptStatusPick(
     name: `${c.status.name}  (id ${c.status.id}, slug ${c.slug})`,
   }));
   choices.push({ value: '__skip__', name: '[skip] — leave this canonical slug unmapped' });
-  const picked = await select({
+  const decided = decidePick({
+    id: `${workTypeSlug}.status.${required.slug}`,
+    workType: workTypeSlug,
+    kind: 'status',
+    slug: required.slug,
+    reason,
+    ...(required.description ? { description: required.description } : {}),
+    options: choices.map(c => ({ value: c.value, label: c.name })),
+  });
+  const picked = decided ?? await select({
     message: `Pick a Jira status for ${workTypeSlug}.${required.slug}`,
     choices,
     default: choices[0].value,
@@ -907,7 +981,17 @@ async function promptTransitionPick(
     name: `${c.transition.name}  (id ${c.transition.id}, ${c.fromCanonical ?? '(global)'} → ${c.toCanonical ?? '(?)'})`,
   }));
   choices.push({ value: '__skip__', name: '[skip] — leave this canonical slug unmapped' });
-  const picked = await select({
+  const decided = decidePick({
+    id: `${workTypeSlug}.transition.${required.slug}`,
+    workType: workTypeSlug,
+    kind: 'transition',
+    slug: required.slug,
+    reason,
+    ...(required.description ? { description: required.description } : {}),
+    expects: { from: required.from ?? 'any', to: required.to ?? 'any' },
+    options: choices.map(c => ({ value: c.value, label: c.name })),
+  });
+  const picked = decided ?? await select({
     message: `Pick a Jira transition for ${workTypeSlug}.${required.slug}`,
     choices,
     default: choices[0].value,
@@ -1659,6 +1743,15 @@ async function main(): Promise<void> {
     process.exit(1);
   });
 
+  if (flags.planJson) { PICKS.plan = []; }
+  else if (flags.answers) {
+    try { PICKS.answers = JSON.parse(readFileSync(flags.answers, 'utf8')) as Record<string, string>; }
+    catch (e) {
+      log.error(`--answers ${flags.answers}: ${(e as Error).message}`);
+      process.exit(1);
+    }
+  }
+
   // --upex: short-circuit the entire Jira-fetch pipeline and download the
   // upstream reference JSON. Does not require ATLASSIAN_* env vars, project_key
   // or admin. Bypasses jira-required.yaml because the upstream JSON has
@@ -1718,6 +1811,10 @@ async function main(): Promise<void> {
 
   let projectKey = loadProjectKey();
   let projectKeyWasPrompted = false;
+  if (!projectKey && (PICKS.plan || PICKS.answers)) {
+    log.error('No project_key in .agents/project.yaml: set it (bun run agents:setup) before a --plan-json / --answers run.');
+    process.exit(1);
+  }
   if (!projectKey) {
     try {
       projectKey = await promptProjectKey();
@@ -1842,6 +1939,15 @@ async function main(): Promise<void> {
     }
   }
 
+  // 8a. Plan mode: pending pickers are written for the caller; the catalog is not.
+  if (flags.planJson) {
+    writeFileSync(flags.planJson, `${JSON.stringify({ questions: PICKS.plan ?? [] }, null, 2)}\n`, 'utf8');
+    if ((PICKS.plan ?? []).length > 0) {
+      log.info(`${PICKS.plan!.length} picker(s) need an answer: written to ${flags.planJson}; ${OUTPUT_PATH} unchanged.`);
+      process.exit(PLAN_PENDING_EXIT);
+    }
+  }
+
   // 8. Persist (or print on dry-run).
   if (flags.dryRun) {
     out(JSON.stringify(newCatalog, null, 2));
@@ -1877,7 +1983,9 @@ function isAbortError(e: unknown): boolean {
   return name === 'ExitPromptError' || /User force closed|prompt was canceled/i.test(msg);
 }
 
-main().catch((e) => {
-  log.error((e as Error).message);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((e) => {
+    log.error((e as Error).message);
+    process.exit(1);
+  });
+}

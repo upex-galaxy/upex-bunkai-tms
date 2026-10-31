@@ -10,7 +10,7 @@ Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO vive
 
 - `{{jira.acceptance_test_plan}}` — Acceptance Test Plan (Story-level Textarea). Fuente de los test cases que la implementación debe cubrir. Solo lectura desde este flujo, y SIEMPRE vía sync (`bun run jira:sync-issues get <STORY_KEY> --include-comments` → leer `acceptance-test-plan.md`); nunca leer el custom field por `view`.
 
-**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `AGENTS.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.agents/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
+**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `.agents/instructions/agent-tool-resolution.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.agents/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
 
 ---
 
@@ -36,7 +36,7 @@ Implementar la story **STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}** siguiendo su i
 Para implementar con documentación oficial verificada y actualizada, necesito que conectes el MCP de Context7.
 
 **¿Cómo conectarlo?**
-1. Revisa: `docs/setup/mcp/[claude-code|gemini-cli|copilot-cli|vscode].md`
+1. Revisa: `docs/setup/mcp/README.md` (guías por harness: `claude-code.md`, `codex.md`)
 2. Agrega Context7 a tu configuración MCP
 3. Reinicia la sesión de chat
 
@@ -53,15 +53,13 @@ Puedo continuar, pero usaré conocimiento interno (puede estar desactualizado).
 2. ▶️ Continúa sin Context7 (menos confiable)
 ```
 
-### Supabase MCP (Si proyecto usa Supabase)
+### DB MCP (capability `db`: Supabase o la misma familia Postgres)
 
-**¿Está disponible?** [Verificar si puedes acceder a Supabase MCP]
+**Solo si la story toca la base de datos** (schema, RLS, funciones, datos). Una story que no la toca nunca se detiene por esta capability (`agentic-dev-core/references/mcp-capabilities.md` §4, pasos opcionales).
 
-**Si NO está disponible y la story requiere DB:**
+**¿Está disponible?** [Verificar que existe una tool terminada en `list_migrations` / `execute_sql`, con cualquier prefijo]
 
-- Advertir al usuario
-- Proporcionar SQL manual para que ejecute
-- O instruir cómo conectar Supabase MCP
+**Si NO está disponible y la story requiere DB:** STOP per `agentic-dev-core/references/mcp-capabilities.md` §4: nombrar la capability, el server que la provee y cómo habilitarlo. SQL a mano solo si el usuario lo elige después del STOP.
 
 ### shadcn/ui MCP (Si proyecto usa shadcn)
 
@@ -116,21 +114,23 @@ Puedo continuar, pero usaré conocimiento interno (puede estar desactualizado).
 .agents/skills/sprint-development/references/
 ├── code-standards.md           # Estándares de código (DRY, naming, TypeScript)
 ├── error-handling.md           # Manejo de errores estructurado
-├── data-testid-standards.md    # Atributos data-testid para testing E2E
-└── spec-driven-development.md  # Principio de desarrollo guiado por specs
+└── data-testid-standards.md    # Atributos data-testid para testing E2E
 ```
+
+Son los DEFAULTS para una app que todavía no tiene convención propia. Donde la app ya tiene una (estructura, alias `{{stack.conventions.import_alias}}`, naming, manejo de errores, estilo de test id `{{stack.conventions.testid_style}}`), gana la de la app: `../SKILL.md` → `## Stack parameters` → "Existing conventions win". Un test id existente nunca se renombra.
 
 **Propósito:**
 
 - Estándares de código (DRY, naming, TypeScript)
 - Manejo de errores estructurado
 - **Atributos `data-testid` para testing E2E**
-- Principios de Spec-Driven Development
 
 ### 3. Design System (Si story tiene UI):
 
 ```
-.context/design-system.md
+DESIGN.md                                  # tokens congelados (ruta: frontend.design_md_path en .agents/project.yaml)
+.context/design/master-design-plan.md      # §8 US→Screen, §4 spec de pantalla (AGENTS.md Rule 14)
+.context/design-system.md                  # guía de componentes, si frontend-setup la creó
 ```
 
 **Propósito:**
@@ -145,6 +145,8 @@ Puedo continuar, pero usaré conocimiento interno (puede estar desactualizado).
 .context/SRS/architecture-specs.md
 .context/SRS/api-contracts.yaml  (si story toca backend/API)
 ```
+
+Sin SRS (app existente cuyos product docs son los mapas de negocio): las mismas preguntas se responden con las secciones de los mapas que lista `../SKILL.md` → "Product docs: PRD/SRS or business maps" (arquitectura, modelo de datos, contrato de API), más `.context/business/project-dev-guide.md`. No se crea un SRS para completar este paso.
 
 **Propósito:**
 
@@ -173,7 +175,7 @@ Puedo continuar, pero usaré conocimiento interno (puede estar desactualizado).
    - Entiende qué se espera que funcione
    - Identifica edge cases a considerar
    - Usa los test cases como checklist durante la implementación
-   - (NO implementes tests ahora - eso es Fase 8)
+   - (los unit tests van después del código, con `/unit-testing`; integration/E2E son del workflow de QA)
 
 4. **Consulta docs con Context7 MCP (CRÍTICO)**
    - ⚠️ **MCP MÁS IMPORTANTE**: Úsalo siempre que trabajes con librerías externas
@@ -182,7 +184,8 @@ Puedo continuar, pero usaré conocimiento interno (puede estar desactualizado).
    - Antes de implementar: confirma que la API/método existe en la versión actual
    - Ejemplo: usar `[DOCS_TOOL]` para consultar docs de Next.js, React, Supabase, etc.
 
-5. **Consulta shadcn MCP (si proyecto usa shadcn)**
+5. **Load the frontend skills, then consult the shadcn MCP (story has UI)**
+   - **Required, before the first component or layout write:** the design set (`/frontend-design` + `/ui-ux-pro-max` + `/impeccable` + `/emil-design-eng`) + `/shadcn` + `/tailwind-css-patterns` (category `frontend-ui`). They carry the composition, shadcn and Tailwind rules; the shadcn MCP below is the component catalog, not a substitute. A story that redesigns a screen that already exists also loads `/redesign-existing-projects`; a public marketing page (landing, pricing) also loads `/design-taste-frontend`, and an indexable one `/seo`. Not installed → say so once, point at `bun setup` or the single `bunx skills add` line from `PROJECT_LEVEL_SKILLS` in `cli/install.ts`, then continue (`agentic-dev-core/references/skill-composition-strategy.md` §3.5).
    - Si necesitas componentes UI: busca componentes shadcn disponibles
    - Si tienes dudas sobre props de componentes: consulta la API
    - Ejemplo: buscar "dialog", "form", "table" para encontrar componentes apropiados
@@ -233,13 +236,16 @@ Puedo continuar, pero usaré conocimiento interno (puede estar desactualizado).
 **Si falta algo:**
 
 - ❌ **NO ejecutes scripts interactivos** (`npm init`, `npx create-*`, etc.)
-- ✅ Instala dependencias manualmente: `npm install [paquete]` o `bun add [paquete]`
+- ✅ Instala dependencias con el package manager de la app: `{{stack.package_manager}} add [paquete]`
 - ✅ Si requiere setup complejo: instruye al usuario paso a paso
 
 **Para cambios de DB:**
 
-- ✅ Usa Supabase MCP si está disponible
-- ✅ Si NO está disponible: proporciona SQL para que usuario ejecute manualmente
+- ✅ **Required first:** load `/supabase` + `/supabase-postgres-best-practices` (category `backend-db`) before the first schema, RLS, function or migration call through the DB MCP. Not installed → say so once, point at `bun setup` or the single `bunx skills add` line from `PROJECT_LEVEL_SKILLS` in `cli/install.ts`, then continue (`agentic-dev-core/references/skill-composition-strategy.md` §3.5).
+- ✅ Lee el historial de migraciones por el DB MCP (`list_migrations`) justo antes de escribir el cambio
+- ✅ Aplica según `{{stack.database.migrations_tool}}`: `supabase-mcp` / `supabase-cli` por el DB MCP (`supabase-cli` además commitea el archivo con la versión que registró el MCP); `prisma` / `drizzle`: la herramienta de la app genera la migración y aplicarla es el pipeline del equipo, preguntando antes; el MCP queda en solo lectura. Detalle: `agentic-dev-core/references/db-change-doctrine.md`
+- ✅ Después de aplicar: `list_migrations` muestra el cambio, relee la definición en vivo y regenera los tipos (`{{stack.package_manager}} run {{stack.scripts.db_types}}`)
+- ❌ Nunca DDL por `execute_sql`, nunca aplicar un cambio solo para destrabar un error local
 
 ---
 
@@ -329,7 +335,7 @@ export function MentorCard({ mentor }) {
 **Cómo probar:**
 
 ```bash
-npm run dev
+{{stack.package_manager}} run {{stack.scripts.dev}}   # desde {{stack.app_root}}
 # Navega a: http://localhost:3000/[ruta]
 # Verifica: [Qué debe verse/funcionar]
 ```
@@ -347,20 +353,20 @@ npm run dev
 - **NO hardcodear valores** (usar env vars, constants)
 - **NO duplicar código** (DRY always)
 - **NO usar `any` en TypeScript** (tipos explícitos)
-- **NO hardcodear SQL** (usar Supabase MCP o parametrizar)
+- **NO hardcodear SQL en el código de la app** (queries parametrizadas o el cliente del proyecto; los cambios de schema van por el DB MCP, `agentic-dev-core/references/db-change-doctrine.md`)
 - **NO usar `console.error`** (usar logger apropiado)
 - **NO crear componentes UI si ya existen** (reusar design system)
 - **NO ejecutar scripts interactivos**
-- **NO implementar integration/E2E tests** (eso es Fase 11: Test Automation)
+- **NO implementar integration/E2E tests** (eso es QA, Test Automation, fuera de este skill)
 
 ### ✅ SÍ HACER:
-- **Seguir structure de carpetas** del proyecto
+- **Seguir la estructura y las convenciones que la app ya tiene** (ganan sobre los defaults de las references)
 - **Aplicar naming conventions** (camelCase, PascalCase apropiados)
 - **Documentar funciones complejas** (JSDoc si necesario)
 - **Manejar errores apropiadamente** (try-catch, error boundaries)
 - **Usar componentes del design system** (Button, Card, etc.)
 - **Validar inputs de usuario** (sanitización, validación)
-- **Agregar `data-testid` a componentes UI** (ver `references/data-testid-standards.md`)
+- **Agregar test ids a componentes UI nuevos** con el estilo de la app (`{{stack.conventions.testid_style}}`, o el que ya usa su código; sin ninguno, `references/data-testid-standards.md`). Nunca renombrar uno existente
 
 ---
 
@@ -370,7 +376,7 @@ npm run dev
 
 1. **Build del proyecto:**
 ```bash
-npm run build  # o: bun run build
+{{stack.package_manager}} run {{stack.scripts.build}}   # rol null: se omite y se reporta
 ````
 
 - ✅ Build exitoso sin errores TypeScript
@@ -404,7 +410,7 @@ npm run build  # o: bun run build
 3. [Resultado esperado] ✅
 ```
 
-**Nota:** Unit tests se crean con el prompt `unit-testing.md`. Integration/E2E tests en Fase 11.
+**Nota:** Unit tests se crean con `/unit-testing`. Integration/E2E tests: workflow de QA, fuera de este skill.
 
 ---
 
@@ -445,10 +451,10 @@ npm run build  # o: bun run build
 
 ```bash
 # 1. Instalar dependencias (si agregaste alguna)
-npm install
+{{stack.package_manager}} install
 
 # 2. Levantar servidor
-npm run dev
+{{stack.package_manager}} run {{stack.scripts.dev}}
 
 # 3. Abrir en navegador
 # http://localhost:3000/[ruta]
@@ -466,7 +472,7 @@ npm run dev
 - Carga el skill `/unit-testing` para diseño de unit tests (TDD, AAA, mocking)
 - Crea tests para lógica de negocio crítica
 
-**2. Code Review (Fase 8):**
+**2. Code Review (Stage 3):**
 
 - Usa `references/review-pr.md` (sibling en este skill)
 - Revisa código con análisis estático
@@ -493,7 +499,7 @@ Acceptance Criteria:
 Story: [Link a Jira si aplica]
 ```
 
-**Nota:** NO hagas commit todavía - primero crea unit tests y luego pasa por Code Review (Fase 8).
+**Nota:** NO hagas commit todavía - primero crea unit tests y luego pasa por Code Review (Stage 3).
 
 ````
 
@@ -506,8 +512,8 @@ Implementa STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre} siguiendo estos pasos:
 
 **Contexto a leer:**
 1. .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/implementation-plan.md
-2. .agents/skills/sprint-development/references/ (code-standards, error-handling, data-testid-standards, spec-driven-development)
-3. .context/design-system.md
+2. .agents/skills/sprint-development/references/ (code-standards, error-handling, data-testid-standards)
+3. DESIGN.md + .context/design/master-design-plan.md (si la story tiene UI)
 
 **Proceso:**
 1. Analiza el implementation plan
@@ -567,4 +573,4 @@ Este comando requiere input interactivo. Te proporciono los pasos manuales:
 
 ---
 
-**Nota final:** Esta fase implementa funcionalidad + unit tests. Integration/E2E tests se agregan en Fase 11 (Test Automation).
+**Nota final:** Esta fase implementa funcionalidad + unit tests. Integration/E2E tests se agregan en el workflow de QA (Test Automation, fuera de este skill).

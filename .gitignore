@@ -166,3 +166,27 @@ cookies.txt
 
 # ----- 2026-09-04 (sync) -----
 .template/last-apply.json
+
+# ----- 2026-10-30 (sync) -----
+.playwright/output
+.playwright-cli/
+storage-state-*.json
+.playwright/profiles/
+.envrc
+.template/doctrine-ledger.json
+
+# ----- Community skills installed per machine, not committed (2026-10-30, owner decision Q8) -----
+# Their vendor content carries links to files or sibling skills the repo does not
+# ship (docs:check dead links, REGISTRY.md scrape). Reinstall from skills-lock.json.
+.agents/skills/n8n-code-javascript/
+.agents/skills/n8n-code-python/
+.agents/skills/n8n-expression-syntax/
+.agents/skills/n8n-mcp-tools-expert/
+.agents/skills/n8n-node-configuration/
+.agents/skills/n8n-validation-expert/
+.agents/skills/n8n-workflow-patterns/
+.agents/skills/resend-cli/
+.agents/skills/accessibility/
+.agents/skills/seo/
+.agents/skills/react-hook-form/
+.agents/skills/zod/

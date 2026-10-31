@@ -10,6 +10,7 @@
 
 1. **Admin / schema-owner / superuser DB credentials are NEVER published.**
    - If the only DB credential available is `postgres` / schema owner / a role with `CREATE` / `DROP` / `ALTER` privileges → STOP. Ask the user to provision a `qa_*` read-only role first. Provide the SQL (`CREATE ROLE qa_user WITH LOGIN PASSWORD '<set this>'; GRANT USAGE ON SCHEMA public TO qa_user; GRANT SELECT ON ALL TABLES IN SCHEMA public TO qa_user;` — adapt to the host's schemas).
+   - **Provisioning that role is a database change, and this skill never applies it.** It hands over the SQL plus the route `agentic-dev-core/references/db-change-doctrine.md` §2 assigns by `stack.database.migrations_tool`: with `supabase-mcp` / `supabase-cli`, the role (created `NOLOGIN`) and its `GRANT`s go in ONE named migration (`apply_migration`, e.g. `create_qa_readonly_role`) on an environment the user confirms for this change; with `prisma` / `drizzle`, the team's own migration pipeline. The `LOGIN PASSWORD` is set afterwards by a person (`ALTER ROLE … WITH LOGIN PASSWORD …` in the SQL editor), never through the MCP and never inside a migration, because the migration history would keep the password in clear. The password then lives only in the credentials artifact destination (T1).
    - If the user insists, surface the risk explicitly and ask for written confirmation in chat. The skill still refuses to write the superuser credential into the artifact body.
 2. **Session-signing secrets are NEVER published.**
    - `NEXTAUTH_SECRET`, JWT signing keys (`JWT_SECRET`, `SESSION_SECRET`, etc.), refresh-token signing keys, OAuth client secrets meant for server-side use only.
@@ -29,6 +30,7 @@
   - **Real per-tester credentials** (any account with real-data reach or per-person identity) are NEVER inlined — emails only on the page, passwords gated in the credentials artifact.
   - When unsure which case applies → default to gated (emails only). Pre-flight + project context (public practice/demo vs internal tool) decides.
 - Private hostnames (e.g. `<random>.upexgalaxy.com`-shaped, customer-specific subdomains) NEVER on the page. They live in the credentials artifact.
+- The build stamp shows the short commit SHA (and a commit link from `.agents/project.yaml`) and nothing else. A commit SHA is public-safe; the platform variables around it are not all safe: never render other platform env values next to it (commit message, author, `VERCEL_AUTOMATION_BYPASS_SECRET`, …).
 - NEVER add analytics, tracking pixels, or third-party scripts to `/qa`. The page is operational tooling, not a marketing surface.
 - NEVER store the credentials destination URL in `.env`. It goes in the snapshot comment (which is committed) — and that is intentional, because the destination URL itself is access-gated by the destination's permission model.
 
@@ -46,7 +48,7 @@
 
 ---
 
-## MCP credential failure protocol (mirrors AGENTS.md Rule #11)
+## MCP credential failure protocol (mirrors AGENTS.md Critical Rule #9)
 
 If any MCP used for publish (Atlassian, Notion, custom) returns `401` / `403` or fails to authenticate:
 

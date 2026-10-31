@@ -35,7 +35,7 @@ Seven strategies are supported. Each one tells the skill where new branches star
 
 **PR base**: `main` (when PRs are used at all — solo-main often skips PRs entirely).
 
-**Protected branches**: `main`. Confirm before any push.
+**Protected branches**: `main`; a direct push to it is gated by `git_strategy.policy.direct_push_to_protected` (SKILL.md 3.3: `allowed` pushes, `confirm` asks, `forbidden` routes through a PR).
 
 **Release model**: continuous; every push is a release.
 
@@ -62,7 +62,7 @@ Seven strategies are supported. Each one tells the skill where new branches star
 
 **PR base**: integration branch by default. Promotion PRs (`staging → main`) target `main`.
 
-**Protected branches**: `main` AND integration branch. Confirm before any direct push to either.
+**Protected branches**: `main` AND integration branch; a direct push to either is gated by `git_strategy.policy.direct_push_to_protected` (SKILL.md 3.3: `allowed` pushes, `confirm` asks, `forbidden` routes through a PR).
 
 **Release model**: integration branch is always deployable to a staging environment; `main` deploys to production on a release event.
 
@@ -104,7 +104,7 @@ git_strategy:
 
 **PR base**: integration; `hotfix/*` → `main`; `release/*` → `main` (with back-merge to integration).
 
-**Protected branches**: `main`, integration, `release/*`. Confirm before any direct push.
+**Protected branches**: `main`, integration, `release/*`; a direct push to any of them is gated by `git_strategy.policy.direct_push_to_protected` (SKILL.md 3.3: `allowed` pushes, `confirm` asks, `forbidden` routes through a PR).
 
 **Release model**: explicit release branches stabilise; release PR merges to `main` and triggers production deploy.
 
@@ -147,7 +147,7 @@ git_strategy:
 
 **Shape**: Vincent Driessen's classic (2010). `main` (releases only) + `develop` (integration) + `feature/*` (off `develop`) + `release/*` (off `develop`, merge to `main`) + `hotfix/*` (off `main`).
 
-**Best for**: products with explicit, infrequent versioned releases (desktop apps, libraries with semver, embedded software). Mostly **legacy** today; Driessen himself notes most teams should prefer trunk-based or GitHub Flow.
+**Best for**: products with explicit, infrequent versioned releases (desktop apps, libraries with semver, embedded software). Mostly **legacy**; Driessen himself notes most teams should prefer trunk-based or GitHub Flow.
 
 **Detection signals**:
 
@@ -330,7 +330,7 @@ The conceptual blocks that the old runbook rendered now map to `git_strategy` fi
 
 - **(a) Markers → fields** — `strategy:` + `branches.integration` (or `ephemeral_pattern`) + the applicable `decisions.*`. Decisions a strategy doesn't use stay `n/a`.
 - **(b) Invariant** — NOT persisted. It is implied by `decisions.promote_method: ff-only` (the "production is an ancestor of integration" invariant holds only for `ff-only`). The prose explaining it lives in this catalogue's per-strategy section, read on demand.
-- **(c) Branch-role table → `branches:` + `protected:`** — `branches.production` / `branches.integration` / `branches.ephemeral_pattern` capture the long-lived/ephemeral branches; `protected:` lists the branches needing confirm-before-push. Work-branch prefixes live in `branch_prefixes:`.
+- **(c) Branch-role table → `branches:` + `protected:`** — `branches.production` / `branches.integration` / `branches.ephemeral_pattern` capture the long-lived/ephemeral branches; `protected:` lists the branches whose direct push is gated by `policy.direct_push_to_protected`. Work-branch prefixes live in `branch_prefixes:`.
 - **(d) Merge methods + promotion + hotfix → `decisions:`** — `feature_merge` (work-branch → integration/trunk), `promote_method` (integration → production), `hotfix_policy`. The actual command shapes are read from this catalogue, not stored in the block.
 - **(e) Protection policy → `policy:`** — `direct_push_to_protected` / `admin_bypass` / `require_pr_reviews`, set by Q4 for EVERY strategy. Drives the strictness of the Push gate (SKILL.md 3.3) and whether an admin bypass may ever be offered.
 

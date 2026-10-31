@@ -8,7 +8,7 @@
 
 **Core Principle**: Main conversation = command center. Subagents = executors.
 
-> **Sanctioned exceptions** (not violations of the doctrine): a skill MAY define an explicit, user-invoked all-inline (**Solo**) mode that dispatches no subagents, AND MAY pin a specific step to the session that owns a non-delegable resource (e.g. a browser/extension or user auth bound to the main session). Example: `/sprint-development` Solo mode, and its live-UI step when the chosen tool is the session-bound claude-in-chrome MCP.
+> **Sanctioned exceptions** (not violations of the doctrine): a skill MAY define an explicit, user-invoked all-inline (**Solo**) mode that dispatches no subagents, AND MAY pin a specific step to the session that owns a non-delegable resource (e.g. a browser/extension or user auth bound to the main session). Example: `/sprint-development` Solo mode. Its live-UI step is NOT one: `/playwright-cli` is not session-bound, so it runs inside the stage subagent.
 
 **Use subagents for**: Reading/writing multiple files, MCP operations, research across repos, git operations, verification (tests/types/lint), multi-file edits.
 
@@ -18,10 +18,11 @@
 
 1. **Goal**: One-sentence description
 2. **Context docs**: Which files to read first
-3. **Skills to load**: Which skills the subagent needs (e.g., `/playwright-cli`)
-4. **Exact instructions**: Step-by-step, not vague goals
-5. **Report format**: What to return (files changed, tests passed/failed, blockers)
-6. **Rules**: Relevant Critical Rules to follow
+3. **Project Standards (auto-resolved)**: compact rules copied from `.agents/skills/REGISTRY.md` (protocol: `./skill-resolver.md`)
+4. **Skills to load**: Which skills the subagent needs (e.g., `/playwright-cli`)
+5. **Exact instructions**: Step-by-step, not vague goals
+6. **Report format**: What to return (files changed, tests passed/failed, blockers)
+7. **Rules**: Relevant Critical Rules to follow
 
 ### Rule reachability (a rule a subagent cannot see does not exist)
 
@@ -31,7 +32,7 @@ Therefore, for any rule that must BIND an executor (a prohibition, a fail-closed
 
 1. The rule lives in its owning `references/*.md` (full statement + rationale) **AND**
 2. It appears as a bullet under the owning skill's `## Compact Rules` section in `SKILL.md`, so `scripts/build-skill-registry.ts` propagates it into `REGISTRY.md` (Strategy A extraction) **AND**
-3. The dispatching orchestrator restates it in component **6 (Rules)** of the briefing for any dispatch that could trip it.
+3. The dispatching orchestrator restates it in component **7 (Rules)** of the briefing for any dispatch that could trip it.
 
 A rule that exists only in a reference file is documentation for the orchestrator, not a constraint on the executor. **Observed failure mode**: credential improvisation and un-cleaned session artifacts by stage subagents that never opened the reference stating the rule.
 

@@ -12,24 +12,32 @@
  *      A manifest var absent from the human doc is a real bug → ERROR.
  *   3. `.env.example` keys NOT in the manifest are reported as INFO, not errors.
  *      DEV intentionally documents day-zero / control-plane vars (ATLASSIAN_*,
- *      TAVILY_API_KEY, SUPABASE_ACCESS_TOKEN) that the manifest does not *route*
+ *      SUPABASE_ACCESS_TOKEN) that the manifest does not *route*
  *      to a remote backend — they are local-only credentials surfaced by doctor.
  *   4. No deprecated var (DEPRECATED_VARS) still appears in `.env.example` →
  *      ERROR (a retired key left in the template would mislead new clones).
- *   5. No manifest var holds a DIFFERENT value in the process environment than in
- *      the repo's `.env`. The process value silently wins at load time, so a
- *      stale one makes a corrected `.env` a no-op. ERROR by default; WARNING when
+ *   4b. Every `.env.example` key is declared by the env schema (`.env.schema` +
+ *      `.env.core.schema`) → ERROR otherwise: varlock fails an undeclared key
+ *      that is present and EMPTY in `.env`, so a `.env` copied from the template
+ *      would not load. Skipped when neither schema file exists.
+ *   5. No variable holds a DIFFERENT value in the process environment than in
+ *      the repo's `.env` / `.env.local`. `varlock run` (the MCP `.env` loader,
+ *      `bunx varlock run -- <cmd>`) lets the process value win, so a stale one
+ *      makes a corrected `.env` a no-op. Candidates come from varlock's own
+ *      `overrideKeys` (`inheritedOverrides` in cli/lib/env-schema.ts); output is
+ *      names and lengths only. ERROR by default; WARNING when
  *      `VARS_ENV_CHECK_DRIFT=warn` (set by `.husky/pre-push`, because this rule
  *      describes the developer's machine and must not block an unrelated push).
- *      Skipped when `.env` is absent. See `collectEnvDrift` for the rationale.
+ *      Skipped when no env file exists. See `collectEnvDrift` for the rationale.
  *
  * Exit code: 0 if no ERRORs, 1 otherwise. Mirrors `scripts/lint-vars.ts`.
  */
 
-import type { VarSpec } from '../cli/lib/variables-manifest.ts';
 import { existsSync } from 'node:fs';
-
 import { join, relative } from 'node:path';
+
+import { inheritedOverrides, schemaClassification } from '../cli/lib/env-schema.ts';
+import { appOwnedExampleKeys } from '../cli/lib/updater-adopt.ts';
 import {
   DEPRECATED_VARS,
   envFileVars,
@@ -54,22 +62,13 @@ const ENV_FILE = join(REPO_ROOT, '.env');
 // -----------------------------------------------------------------------------
 
 /**
- * Masks a value for display. Secrets never print; non-secrets print in full,
- * because seeing the two values side by side IS the diagnosis.
- */
-function display(spec: VarSpec | undefined, value: string): string {
-  if (value === '') { return '(empty)'; }
-  if (spec?.secret) { return `${'*'.repeat(8)} (${value.length} chars)`; }
-  return value;
-}
-
-/**
- * A variable ALREADY present in the process wins over the `.env` file under both
- * loaders this repo uses: `bun` autoloads `.env` without overriding, and
- * `dotenv-cli` does the same unless `-o` is passed. So a stale value inherited
- * from whatever spawned the shell (or an agent session) silently shadows a
- * corrected `.env`, and a full application restart does not clear it because the
- * value is re-inherited from the same parent every time.
+ * A variable ALREADY present in the process wins over the env files under every
+ * loader this repo uses: `varlock run` (the MCP `.env` loader and
+ * `bunx varlock run -- <cmd>`) takes the process value, as does
+ * Bun's own autoload. So a stale value inherited from whatever spawned the shell
+ * (or an agent session) silently shadows a corrected `.env`, and a full
+ * application restart does not clear it because the value is re-inherited from
+ * the same parent every time.
  *
  * That is not hypothetical: a stale `ATLASSIAN_URL` made `jira:sync-issues`
  * overwrite `.context/PBI/` with content from a pre-migration Atlassian site
@@ -77,6 +76,8 @@ function display(spec: VarSpec | undefined, value: string): string {
  * and anchored to `.agents/project.yaml` (see `cli/lib/atlassian-instance.ts`),
  * which is the only real cure — there is no second copy left to go stale. Every
  * other var still lives in `.env`, so this rule attacks the rest of the class.
+ * It is the one place the check runs: the harness launcher that also refused
+ * to start on drift was retired with the launch scripts (ADR-0016).
  *
  * SEVERITY IS CALLER-CONTROLLED. Rules 1-4 describe the REPOSITORY and are always
  * fatal. Drift describes the DEVELOPER'S MACHINE, so making it fatal everywhere
@@ -85,55 +86,31 @@ function display(spec: VarSpec | undefined, value: string): string {
  * `.husky/pre-push` does exactly that. Direct runs and `repo:check` leave it
  * unset, so there it stays a hard error.
  *
- * Skipped when `.env` is absent (CI, fresh clone): nothing to compare against.
+ * Skipped when no env file exists (CI, fresh clone): nothing to compare against.
+ * An empty file value shadows nothing and an equal value is not drift (both
+ * carve-outs live in `inheritedOverrides`). No value is ever printed: a finding
+ * carries the two lengths only.
  */
-function collectEnvDrift(): { findings: string[], status: 'checked' | 'skipped' } {
-  if (!existsSync(ENV_FILE)) { return { findings: [], status: 'skipped' }; }
-
-  const findings: string[] = [];
-  const filePairs = parseDotEnvPairs(ENV_FILE);
-  // Scoped to vars actually READ from `.env`. For an externally-sourced var a
-  // process⇄file disagreement is not drift — neither side is consulted — and
-  // reporting it here would bury the STALE_IN_ENV_FILE warning that says the
-  // real thing: delete the line.
-  const specByName = new Map(envFileVars().map(s => [s.name, s]));
-
-  for (const [name, fileValue] of filePairs) {
-    // Only manifest vars are in scope; an unknown key is another rule's job.
-    const spec = specByName.get(name);
-    if (!spec) { continue; }
-
-    // An EMPTY file value shadows nothing — the process is then the only source,
-    // which is legitimate (a secret injected by the platform, a value the user
-    // exports on purpose). Same carve-out `cli/install.ts` makes when it loads
-    // `.env`: only a non-empty file value overrides the process. Without this the
-    // rule fires on every blank slot in the template and becomes noise.
-    if (fileValue === '') { continue; }
-
-    const procValue = process.env[name];
-    // Absent from the process is fine: the loader will supply the file value.
-    if (procValue === undefined) { continue; }
-    if (procValue === fileValue) { continue; }
-
-    findings.push(
-      `ENV_DRIFT: '${name}' differs between the process environment and .env — `
-      + `process=${display(spec, procValue)} vs .env=${display(spec, fileValue)}. `
-      + 'The process value WINS at load time, so .env is being ignored in silence.',
-    );
-  }
-
-  return { findings, status: 'checked' };
+function collectEnvDrift(): { findings: string[], status: 'checked' | 'skipped', source: string } {
+  const report = inheritedOverrides(REPO_ROOT, process.env);
+  if (report.status === 'skipped') { return { findings: [], status: 'skipped', source: '' }; }
+  const findings = report.findings.map(f =>
+    `ENV_DRIFT: '${f.name}' differs between the process environment and .env / .env.local — `
+    + `process=${f.processLength} chars vs env file=${f.fileLength} chars${f.sensitive ? ' (sensitive)' : ''}. `
+    + 'The process value WINS at load time, so the env file is being ignored in silence.',
+  );
+  return { findings, status: 'checked', source: report.status === 'varlock' ? 'varlock overrideKeys' : 'env file keys' };
 }
 
 /** Shared remedy block — printed whether drift lands as an error or a warning. */
 function printDriftRemedy(): void {
-  console.log('Fix (ENV_DRIFT): the process value is stale and shadows .env. Find who injected it —');
+  console.log('Fix (ENV_DRIFT): the process value is stale and shadows the env file. Find who injected it —');
   console.log('  ps eww -p $PPID                          # walk the ancestry; repeat up the chain');
-  console.log('  env -i HOME=$HOME zsh -l -c \'echo $VAR\'   # test the login shell in isolation');
+  console.log('  env -i HOME="$HOME" PATH="$PATH" zsh -l   # a clean login shell, to test in isolation');
   console.log('Testing from the contaminated shell inherits the bad value and gives a false negative.');
   console.log('Restarting the app does NOT fix it: the value is re-inherited from the same parent.');
-  console.log('Relaunch the agent session through `bun run claude` / `bun run opencode` (they pass');
-  console.log('dotenv -o, which forces .env over anything inherited).');
+  console.log('`unset VAR` in the launching shell (or fix its source), then relaunch the agent session:');
+  console.log('its MCP servers inherit the harness environment, and an inherited value wins over .env there too.');
 }
 
 // -----------------------------------------------------------------------------
@@ -188,10 +165,25 @@ function main(): void {
         .map(s => s.name)
     : [];
 
-  // ERROR: a deprecated var still present in `.env.example`.
-  const deprecatedStillPresent = DEPRECATED_VARS
+  // ERROR: a deprecated var still present in `.env.example`. On an adopted app
+  // a declaration OUTSIDE the tooling's sentinel block is the app's own
+  // variable that happens to share a retired name (measured: upexgalaxy-webapp
+  // declares JIRA_API_TOKEN for its own Jira CLI): reported, never an error,
+  // because removing it would break the app.
+  const appOwned = appOwnedExampleKeys(REPO_ROOT, ENV_EXAMPLE);
+  const deprecatedDeclared = DEPRECATED_VARS
     .filter(d => exampleSet.has(d.name))
     .map(d => d.name);
+  const deprecatedStillPresent = deprecatedDeclared.filter(n => !appOwned.has(n));
+  const deprecatedAppOwned = deprecatedDeclared.filter(n => appOwned.has(n));
+
+  // ERROR: a `.env.example` key the env schema does not declare (a deprecated
+  // key is excluded: rule 4 already reports it).
+  const schema = schemaClassification(REPO_ROOT);
+  const deprecatedNames = new Set(DEPRECATED_VARS.map(d => d.name));
+  const undeclaredInSchema = schema === null
+    ? []
+    : exampleKeys.filter(k => !schema.declared.has(k) && !deprecatedNames.has(k) && !appOwned.has(k));
 
   // INFO: `.env.example` keys not routed by the manifest (day-zero / local-only).
   const untrackedByManifest = exampleKeys.filter(k => !manifestSet.has(k));
@@ -206,6 +198,7 @@ function main(): void {
   const totalErrors = missingFromExample.length
     + externallySourcedInExample.length
     + deprecatedStillPresent.length
+    + undeclaredInSchema.length
     + driftErrors.length;
 
   // ----- output -----
@@ -215,7 +208,7 @@ function main(): void {
   console.log(`.env.example keys:    ${exampleKeys.length} (${relative(REPO_ROOT, ENV_EXAMPLE)})`);
   console.log(`Deprecated vars:      ${DEPRECATED_VARS.length}`);
   console.log(
-    `Process env ⇄ .env:   ${drift.status === 'skipped' ? 'skipped (no .env)' : driftSoft ? 'checked (warn-only)' : 'checked'}`,
+    `Process env ⇄ .env:   ${drift.status === 'skipped' ? 'skipped (no .env)' : `checked over ${drift.source}${driftSoft ? ' (warn-only)' : ''}`}`,
   );
   console.log('');
 
@@ -228,6 +221,14 @@ function main(): void {
       );
     }
     console.log('  Source of truth: .agents/project.yaml (read it with `bun run --silent jira:url`).');
+    console.log('');
+  }
+
+  if (deprecatedAppOwned.length > 0) {
+    console.log(`WARNINGS (${deprecatedAppOwned.length}) — reported, not blocking:`);
+    for (const name of deprecatedAppOwned) {
+      console.log(`  - DEPRECATED_NAME_APP_OWNED: ${name}  (a retired tooling name, declared by the adopted app outside the tooling's block: the app's own variable; the tooling does not read it)`);
+    }
     console.log('');
   }
 
@@ -257,6 +258,9 @@ function main(): void {
     }
     for (const name of deprecatedStillPresent) {
       console.log(`  - DEPRECATED_STILL_PRESENT: ${name}  (in DEPRECATED_VARS but still declared in .env.example — remove it)`);
+    }
+    for (const name of undeclaredInSchema) {
+      console.log(`  - UNDECLARED_IN_ENV_SCHEMA: ${name}  (documented in .env.example but declared by neither .env.schema nor .env.core.schema — add it to the manifest or UNROUTED_VARS, then bun run vars:schema)`);
     }
     for (const e of driftErrors) {
       console.log(`  - ${e}`);

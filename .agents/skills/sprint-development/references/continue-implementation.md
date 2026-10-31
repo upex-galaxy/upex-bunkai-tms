@@ -13,7 +13,7 @@ Continuar la implementación de **STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}** que
 **Antes de continuar, verifica MCPs disponibles:**
 
 1. **Context7 MCP** - Úsalo si necesitas consultar documentación de librerías
-2. **Supabase MCP** - Úsalo si la story requiere cambios de DB
+2. **DB MCP** (capability `db`) - Solo si la story requiere cambios de DB; se aplican según `agentic-dev-core/references/db-change-doctrine.md`
 3. **shadcn MCP** - Úsalo si necesitas componentes UI (y el proyecto usa shadcn)
 
 **Nota:** Ver `references/implement-story.md` (sección "Verificación de Herramientas") para más detalles sobre cada MCP.
@@ -46,7 +46,7 @@ Continuar la implementación de **STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}** que
    - Funcionalidad ya implementada
 
 3. **Valida estado actual**
-   - Ejecuta `npm run build` (verificar si compila)
+   - Ejecuta `{{stack.package_manager}} run {{stack.scripts.build}}` (verificar si compila; rol null: usa el script `types` y dilo)
    - Prueba manual rápida (qué funciona)
 
 ---
@@ -96,7 +96,7 @@ Continuar la implementación de **STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}** que
 
 **Sigue las mismas restricciones de `implement-story.md`:**
 
-- ❌ NO integration/E2E tests (eso es Fase 11)
+- ❌ NO integration/E2E tests (eso es QA, fuera de este skill)
 - ✅ Code standards
 - ✅ Error handling
 - ✅ Design system

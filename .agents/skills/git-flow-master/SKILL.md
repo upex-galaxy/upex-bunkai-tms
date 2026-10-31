@@ -2,7 +2,7 @@
 name: git-flow-master
 description: "End-to-end Git operator for any branching strategy. Auto-detects the project's strategy (solo-main, main+integration, enterprise multi-branch, trunk-based, GitFlow, GitHub Flow, GitLab Flow) from .git config, branches, and the `git_strategy:` block in `.agents/project.yaml`, then adapts every commit, branch, push, PR, conflict-fix, and large-change commit-planning action to that strategy. Use this skill whenever the user wants to: create a branch (`crear branch`, `new feature branch`, `start work on UPEX-123`), commit changes (`commit this`, `commitear esto`, `make a commit`, `commit and push`), push code (`push`, `push to main`, `push to staging`, `subir cambios`), open a pull request (`create PR`, `open PR`, `abrir PR`, `crear pull request`, `gh pr create`), fix merge conflicts (`fix conflict`, `resolver conflicto`, `merge conflict`, `rebase conflict`, `push rejected`), plan the commits of a large change and open it as ONE PR (`this PR is too big`, `split this PR`, `PR demasiado grande`), set up or bootstrap a branching strategy on a fresh repo (`set up our git strategy`, `bootstrap branching`, `configura el flujo de git`, `git strategy setup`, `materialize the git flow`, `create the staging branch and write the runbook`), or pick / change / set up a branching strategy (`git flow`, `git strategy`, `branching strategy`, `which git flow do we use`, `set up our git strategy`, `bootstrap branching`, `configura el flujo de git`). Trigger even when the user does not say `git-flow-master` literally — if the work is git-or-PR-shaped, this is the right tool. Do NOT use for: implementing features (use /sprint-development), writing tests (use /unit-testing), product backlog refinement (use /product-management), or general code editing — git-flow-master operates strictly on the version-control layer."
 license: MIT
-compatibility: [claude-code, opencode]
+compatibility: [claude-code, codex, opencode]
 phase: implementation
 complementary_categories: []
 # compact_rules is consumed VERBATIM by scripts/build-skill-registry.ts (frontmatter-first,
@@ -18,11 +18,14 @@ compact_rules: |
   - **Config examples in `references/` are examples.** Quoting one as a project's real configuration is a defect. Open the project's own file and cite it.
   - **One PR per user story, always.** Size never splits a story into PRs: a large change is ONE PR carried by atomic commits (one responsibility, tests with their behaviour, every commit green), with the commit list and a review guide in the PR body. NEVER propose or open stacked/chained PRs unless the user explicitly asks for them in that run. A story too large is split in the backlog via `/product-management`, never by PR.
   - **Merge with a merge commit (`--no-ff`), never squash.** The per-commit history must survive on the target branch. Never merge a PR carrying a ticket key into anything but its final target: Jira's automation flips the ticket to Ready For QA on that merge and the workflow has no way back.
-  - **Never push to `main` without explicit confirmation**; honour `direct_push_to_protected` on every protected branch.
+  - **Push to a protected branch = resolve `git_strategy.policy.direct_push_to_protected`** (Critical Rule #4): `allowed` is standing authorization, push without asking (asking anyway collapses it into `confirm`); `confirm` asks before every push; `forbidden` refuses and routes through a PR. A missing or null block behaves as `confirm`.
   - **Never** `--force`, `--force-with-lease`, `--no-verify`, amend, or rebase pushed history on a shared branch unless the user explicitly asks AND the branch is unshared.
   - **Admin bypass may only be OFFERED when `admin_bypass: true`**, and only after re-confirming at runtime that the operator really is an admin and that they accept the specific irreversible action.
   - **Stop at PR creation.** Never auto-merge.
-  - **One commit = one responsibility**, conventional prefix, no AI-attribution lines (sole scoped exception: the `Claude-Session: <session-id>` forensic trailer on AI-authored commits — `references/conventional-commits.md` § Hard rules).
+  - **One commit = one responsibility**, conventional prefix, no AI-attribution lines. Every commit ends with the two forensic trailers `Worktree: <name|primary>` then `Session: <label>`, copied from the `AGENT IDENTITY:` context line (`unknown` when unresolved); harness-branded trailers (`Claude-Session:`, an AI `Co-Authored-By:`) are forbidden (§3.2).
+  - **WHEN the pre-push or CI documentation-contract gate names a region (ADR-0017)**: update every page it lists in the same push; only if they still hold, add `Docs-Checked: <label> <reason>` above the forensic trailers. NEVER add it by reflex or without the reason.
+metadata:
+  kind: workflow
 ---
 
 <!-- Model preferences (advisory; dispatchers may use to route) -->
@@ -73,11 +76,12 @@ If the user is asking about feature implementation, test design, product backlog
 - **Config examples in `references/` are examples.** Quoting one as a project's real configuration is a defect. Open the project's own file and cite it.
 - **One PR per user story, always.** Size never splits a story into PRs: a large change is ONE PR carried by atomic commits (one responsibility, tests with their behaviour, every commit green), with the commit list and a review guide in the PR body. NEVER propose or open stacked/chained PRs unless the user explicitly asks for them in that run. A story too large is split in the backlog via `/product-management`, never by PR.
 - **Merge with a merge commit (`--no-ff`), never squash.** The per-commit history must survive on the target branch. Never merge a PR carrying a ticket key into anything but its final target: Jira's automation flips the ticket to Ready For QA on that merge and the workflow has no way back.
-- **Never push to `main` without explicit confirmation**; honour `direct_push_to_protected` on every protected branch.
+- **Push to a protected branch = resolve `git_strategy.policy.direct_push_to_protected`** (Critical Rule #4): `allowed` is standing authorization, push without asking (asking anyway collapses it into `confirm`); `confirm` asks before every push; `forbidden` refuses and routes through a PR. A missing or null block behaves as `confirm`.
 - **Never** `--force`, `--force-with-lease`, `--no-verify`, amend, or rebase pushed history on a shared branch unless the user explicitly asks AND the branch is unshared.
 - **Admin bypass may only be OFFERED when `admin_bypass: true`**, and only after re-confirming at runtime that the operator really is an admin and that they accept the specific irreversible action.
 - **Stop at PR creation.** Never auto-merge.
-- **One commit = one responsibility**, conventional prefix, no AI-attribution lines (sole scoped exception: the `Claude-Session: <session-id>` forensic trailer on AI-authored commits — `references/conventional-commits.md` § Hard rules).
+- **One commit = one responsibility**, conventional prefix, no AI-attribution lines. Every commit ends with the two forensic trailers `Worktree: <name|primary>` then `Session: <label>`, copied from the `AGENT IDENTITY:` context line (`unknown` when unresolved); harness-branded trailers (`Claude-Session:`, an AI `Co-Authored-By:`) are forbidden (§3.2).
+- **WHEN the pre-push or CI documentation-contract gate names a region (ADR-0017)**: update every page it lists in the same push; only if they still hold, add `Docs-Checked: <label> <reason>` above the forensic trailers. NEVER add it by reflex or without the reason.
 
 **Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning the commits of a large change, or when the compact rules above do not settle the operation.
 
@@ -134,7 +138,7 @@ Run this ONCE per session, at the first push / PR / merge intent (not on read-on
 **Run the tool; do not perform the queries by hand:**
 
 ```bash
-bun run git:policy verify          # read-only; exit 1 on drift
+bun run git:policy verify          # read-only; exit 1 on unaccepted drift
 bun run git:policy verify --stamp  # same, and records the reconciliation when clean
 ```
 
@@ -164,7 +168,7 @@ Options: (a) update .agents/project.yaml to match the host, (b) change the host
 configuration, (c) accept the divergence and record WHY.
 ```
 
-**Option (c) needs a durable home, or it re-litigates itself every session.** Record an accepted divergence in the project's own `AGENTS.md` → `## Git Strategy` section — per-project, never synced from any template — stating what diverges and why it is intended. A later session reads it and stops re-raising the same drift. Legitimate reasons exist and are project-specific: a template / boilerplate repository whose maintainer is the only committer and for whom the review requirement is ceremony; a repo whose ruleset is inherited from an org policy nobody local can change. What is NOT legitimate is inferring the exception: the skill never decides on its own that a bypass is fine, and never treats "the push went through" as the reason. The user states the exception once, in writing, and it holds until they change it.
+**Option (c) needs a durable home, or it re-litigates itself every session.** Record an accepted divergence in `git_strategy.policy.accepted_divergences` (`.agents/project.yaml`; one entry per `verify` finding field, with a reason — `references/ruleset-parity.md` §2b). `verify` then reports it as ACCEPTED and exits 0, so a later session stops re-raising the same drift. Prose context, when it helps, goes in the project's own `.agents/instructions/agent-project.md` → `## Git Strategy (this repository)` section — per-project, never synced from any template. Legitimate reasons exist and are project-specific: a template / boilerplate repository whose maintainer is the only committer and for whom the review requirement is ceremony; a repo whose ruleset is inherited from an org policy nobody local can change. What is NOT legitimate is inferring the exception: the skill never decides on its own that a bypass is fine, and never treats "the push went through" as the reason. The user states the exception once, in writing, and it holds until they change it.
 
 Editing `.agents/project.yaml` requires the user's choice, exactly like Strategy Setup. Once verified, stamp the outcome so later runs know how much the block can be trusted:
 
@@ -220,7 +224,7 @@ git_strategy:
 
 The `git_strategy:` block is the source of truth; its `description:` field is the one-paragraph human summary. The user can edit it; the next invocation re-reads it.
 
-AGENTS.md's `## Git Strategy` section is **just a pointer** to this block — NEVER write strategy policy or branch decisions into AGENTS.md.
+The `## Git Strategy` section of `.agents/instructions/agent-git.md` is **just a pointer** to this block — NEVER write strategy policy or branch decisions into `AGENTS.md` or an instruction section. Any other change to an instruction file follows `agentic-dev-core/references/instructions-doctrine.md` (its §4 covers this skill's one write, the `## Git Strategy (this repository)` heading of `agent-project.md`).
 
 If the strategy uses an integration branch with a non-default name (anything other than `staging`), record it under `git_strategy.branches.integration` so commits don't have to re-detect.
 
@@ -313,8 +317,22 @@ Group changes by responsibility, not by file type:
 
 - One commit = one responsibility. Never bundle unrelated changes.
 - Never `git add -A` or `git add .` — list explicit paths to avoid leaking secrets (`.env`, credentials) or unrelated work.
-- **No AI attribution.** No `Generated with Claude Code`, no `Co-Authored-By: Claude`, no equivalent line. Commits look human-authored. (Critical Rule #3 in `AGENTS.md`.) Sole scoped exception, defined where the rule lives: the `Claude-Session: <session-id>` forensic trailer on AI-authored commits — `references/conventional-commits.md` § Hard rules.
+- **No AI attribution.** No `Generated with Claude Code`, no `Co-Authored-By: Claude`, no equivalent line. Commits look human-authored. (Critical Rule #3 in `AGENTS.md`.)
 - If a pre-commit hook fails, **stop, fix the underlying issue, create a NEW commit**. Never `--amend` a commit the hook rejected — `--amend` operates on the previous commit, which destroys context.
+
+**Forensic trailers (mandatory, every commit, every strategy).** The last two lines of every commit message are:
+
+```
+Worktree: <name|primary>
+Session: <label>
+```
+
+- Both values come from the `AGENT IDENTITY:` line the prompt hook (`.agents/hooks/personality-reinject.mjs`) injects into this session's context (`worktree=…`, `session=…`). Copy them; do not re-derive them per commit. The session label may contain spaces and parentheses (`my-session (c0ffee12)`): take everything after `session=` up to the literal ` harness=` token, never split the line on whitespace.
+- `primary` is the correct worktree value when the session runs in the main checkout. When a value could not be resolved at all, write `unknown`: never guess a name, never drop the key. A missing trailer is less recoverable than an honest `unknown`.
+- Nothing goes below them, and nothing is added beside them.
+- **`Docs-Checked: <label> <reason>`** is the one trailer that may sit ABOVE them (ADR-0017). Add it only when the change touched a `LINT.IfChange(<label>)` region, the pages its `LINT.ThenChange(...)` names were NOT updated, and they still describe the behaviour correctly; the reason says why. Never by reflex, never without a reason (a bare label does not count). The pre-push and CI documentation-contract gate block the push without it or the page edits. On an already-pushed range the ack is an empty commit carrying the line, never an amend.
+- **These are forensics, not attribution.** They record WHICH working tree and WHICH session produced the commit, so a bisect, an incident review, or a parallel-session post-mortem can find the right transcript on any harness. They are deliberately harness-agnostic: no tool, vendor, or model is named. The prohibition in Critical Rule #3 is untouched: never `Claude-Session:` or any other `<Tool>-Session:` key, never a `Co-Authored-By:` for an AI, never a "Generated with …" line.
+- `.husky/commit-msg` runs `scripts/check-commit-trailers.ts`, which WARNS (never blocks) when the pair is missing or out of place or a branded trailer is present. A warning on an agent-written commit is a defect to fix in the next commit, not by amending a pushed one.
 
 Present all proposed commits as one block. Wait for OK / modify / reject before executing.
 
@@ -336,9 +354,10 @@ Push command depends on Step 1 output:
 
 **Consult `git_strategy.policy.direct_push_to_protected`** to decide how strict the gate is:
 
-- `allowed` → proceed with the direct push, but still confirm once: _"You are about to push directly to the protected branch `{branch}` in a `{strategy}` flow. Confirm?"_ Wait for explicit yes.
-- `confirm` (default) → **always ask** the same confirmation. Wait for explicit yes.
+- `allowed` → **standing authorization**: push WITHOUT a per-push confirm. The recorded value IS the authorization (stamped by Strategy Setup with the user); asking anyway collapses `allowed` into `confirm` and empties the third state.
+- `confirm` (default) → **always ask**: _"You are about to push directly to the protected branch `{branch}` in a `{strategy}` flow. Confirm?"_ Wait for explicit yes.
 - `forbidden` → **refuse the direct push.** Do not push to the protected branch. Route the work through a PR instead (branch off the strategy's default base → push the work-branch → open a PR via 3.4).
+- **Missing or null `git_strategy` block** (fresh scaffold, project never onboarded) → behave as `confirm`: the safe default is to ask, never to assume standing authorization.
 
 **Admin bypass (rare, opt-in).** A bypass of a `forbidden`/`confirm` gate may be **OFFERED only when `git_strategy.policy.admin_bypass: true`**. Even then, before bypassing, re-confirm at runtime BOTH: (a) the operator is actually a repo admin — ASK them, the skill cannot know the GitHub role; AND (b) the specific irreversible action. If `git_strategy.policy.admin_bypass: false`, **never offer a bypass** under any circumstance.
 
@@ -359,7 +378,7 @@ The user can override with `--base X` in arguments. If overridden, surface it in
 
 **Title format**: `{type}({ISSUE-KEY}): {description}` — under 70 chars. Without a key: `{type}: {description}`.
 
-**Body** — render inline (no template file to read) using the structure in `references/pr-templating.md`. Substitute placeholders the skill can fill (`<<ISSUE_KEY>>`, `<<SUMMARY>>`, `<<CHANGES>>`, `<<TEST_PLAN>>`, `<<RISK>>`, `<<SESSION_ID>>`, `<<CWD_SLUG>>`). Leave any unfilled placeholder visible so the author can edit it before posting — do not silently drop sections. Exception: the `- Session:` / `- Transcript:` provenance lines are dropped (both, together) when the session id cannot be determined or the PR is human-opened — a wrong session id is worse than none (`references/pr-templating.md` § Placeholder rules).
+**Body** — render inline (no template file to read) using the structure in `references/pr-templating.md`. Substitute placeholders the skill can fill (`<<ISSUE_KEY>>`, `<<SUMMARY>>`, `<<CHANGES>>`, `<<TEST_PLAN>>`, `<<RISK>>`, `<<WORKTREE>>`, `<<SESSION_LABEL>>`). Leave any unfilled placeholder visible so the author can edit it before posting — do not silently drop sections. The `- Worktree:` / `- Session:` provenance lines carry the same values as the commit trailers (`unknown` when unresolved) and are dropped together only on a human-opened PR (`references/pr-templating.md` § Placeholder rules).
 
 Write the rendered body to a tempfile (e.g. `$(mktemp)`) and pass it via `gh pr create --body-file` to avoid escaping issues.
 
@@ -460,7 +479,7 @@ git_strategy:
 **Non-negotiables**
 
 - **Never `--force`** (not `--force-with-lease` either) during a setup sync. Sync only on a true fast-forward; if the integration/production pair has diverged both ways → STOP and hand to conflict resolution (3.5).
-- **Confirm before any push to a protected branch.** A setup ff-sync push is still a push to a protected branch — ask first.
+- **A setup ff-sync push is still a push to a protected branch.** Ask first: Strategy Setup runs before the user has ratified the new `policy:` values, so `allowed` does not authorize its own setup push.
 - **Propose, don't auto-execute** branch creation. Show the plan (which branch, off what, why) and wait for OK before `git checkout -b` / `git branch`.
 - **No AI attribution** in any commit the setup makes (see this skill's "Critical rules" section and the project `AGENTS.md`).
 
@@ -488,7 +507,7 @@ A large change is still ONE pull request per user story (bug, tech story). Size 
 
 - Branch, title and base follow Step 3.1 / 3.4 as for any PR. One branch, one PR.
 - The body carries the commit list and a review guide (reading order, riskiest commits first). Template: `references/pr-templating.md` § Big PR body.
-- Migrations travel inside the same PR. They are applied per Critical Rule #20 after the review is approved and before the merge; the PR body lists the apply steps.
+- Migrations travel inside the same PR. They are applied per the Bunkai rule MVP-ONE-DATABASE (`.agents/instructions/agent-project.md`) after the review is approved and before the merge; the PR body lists the apply steps.
 - Merge with a merge commit (`--no-ff`), never squash or rebase, so the commit history survives on the target branch.
 - **Jira gotcha.** Jira's automation moves the ticket to `Ready For QA` when a PR with its key is merged, and the workflow has no transition back. Never merge a ticket-keyed PR into anything but its final target (`staging`), and only when truly ready (migrations applied if any, checks green). With one PR per story, that single merge is the one event that flips the ticket.
 
@@ -506,7 +525,7 @@ Legacy pattern, never offered or proposed by this skill. Do it only when the use
 
 - `{{PROJECT_KEY}}` — issue prefix for branch naming (e.g. `UPEX-123`). Resolves from `.agents/project.yaml`.
 - `{{ATLASSIAN_URL}}` — base URL for the Traceability section in PR bodies. Resolves from `.agents/project.yaml:atlassian_url`.
-- Any project missing `.agents/project.yaml` will lack these. Fall back to a generic `{prefix}/{slug}` and surface a one-line warning: clone the full boilerplate (the foundation files ship with the repo).
+- Any project missing `.agents/project.yaml` will lack these. Fall back to a generic `{prefix}/{slug}` and surface a one-line warning: the agentic layer is not installed: `bunx create-agentic-dev@latest <name>` for a new project, `bunx create-agentic-dev@latest --adopt` then `/project-adoption` for an existing app (`agentic-dev-core` → Install model).
 
 ---
 
@@ -527,8 +546,8 @@ Legacy pattern, never offered or proposed by this skill. Do it only when the use
 
 1. **Diagnose before acting.** Step 1 always runs. Never assume repo state.
 2. **One commit = one responsibility.** Never bundle unrelated changes.
-3. **No AI attribution** in commits or PR bodies. Commits look human-authored. (Critical Rule #3 in `AGENTS.md`.) Sole scoped exceptions, provenance not attribution: the `Claude-Session:` commit trailer and the PR body's `Session` / `Transcript` lines — `references/conventional-commits.md` § Hard rules, `references/pr-templating.md` § Placeholder rules.
-4. **Confirm before pushing to any protected branch.** Strategy-driven; see Step 3.3. (Critical Reminder #4 in `AGENTS.md`.)
+3. **No AI attribution** in commits or PR bodies. Commits look human-authored. (Critical Rule #3 in `AGENTS.md`.) The two forensic trailers of 3.2 (`Worktree:` / `Session:`) always close a commit message, and the PR body carries the same pair: they name a working tree and a session, never a tool, so they are provenance, not attribution, and not optional. Harness-branded trailers stay forbidden.
+4. **Resolve `direct_push_to_protected` before pushing to any protected branch.** `allowed` pushes, `confirm` asks, `forbidden` routes through a PR; see Step 3.3. (Critical Rule #4 in `AGENTS.md`.)
 5. **Never force-push, never rewrite pushed history, never `--no-verify`** unless the user explicitly authorises it AND the branch is unshared. (Critical Reminder #5 in `AGENTS.md`.)
 6. **No `git add -A` / `git add .`** — always list explicit paths.
 7. **Show proposed commits / branches / PR body and wait for OK** before executing. The user can accept, modify, or reject any item.
@@ -545,8 +564,8 @@ Legacy pattern, never offered or proposed by this skill. Do it only when the use
 - **G1.** NEVER force-push to `main` or any shared branch — destroys teammates' history and is unrecoverable once others have pulled.
 - **G2.** NEVER amend or rebase a pushed commit — creates orphan commits in others' clones and rewrites history that was already replicated.
 - **G3.** NEVER commit secrets, credentials, `.env` contents, or auth tokens — git history is forever; a single commit leaks the secret permanently.
-- **G4.** NEVER include "Generated with Claude Code", "Co-Authored-By: Claude", or any AI-attribution line in commit messages or PR bodies (Critical Rule #3). Commits look human-authored. (The `Claude-Session:` forensic trailer and the PR `Session`/`Transcript` lines are NOT attribution and are the one scoped exception — `references/conventional-commits.md` § Hard rules.)
-- **G5.** NEVER push to `main` without explicit user confirmation (Critical Rule #4). Strategy-driven protection applies to every protected branch, not just `main`.
+- **G4.** NEVER include "Generated with Claude Code", "Co-Authored-By: Claude", or any AI-attribution line in commit messages or PR bodies (Critical Rule #3). Commits look human-authored. The `Worktree:` / `Session:` forensic trailers are NOT attribution and are mandatory (§3.2); a `Claude-Session:` or any other harness-branded trailer IS forbidden.
+- **G5.** NEVER push to a protected branch without resolving `git_strategy.policy.direct_push_to_protected` (Critical Rule #4): never ask under `allowed`, never skip the ask under `confirm`, never push under `forbidden`. Strategy-driven protection applies to every protected branch, not just `main`.
 - **G6.** NEVER bypass pre-commit / pre-push hooks with `--no-verify` to "ship faster" — hooks exist to catch the bug you didn't notice. Fix the hook failure and create a new commit.
 - **G7.** NEVER mix concerns in a single commit (feat + refactor + lint fix bundled together) — atomic commits enable surgical revert and clean blame.
 - **G8.** NEVER split one story into stacked or chained PRs, and never squash-merge its PR, unless the user explicitly asks in that run. Size is handled with atomic commits (Step 4). If stacking IS explicitly requested, name the dependency chain in every PR body so reviewers know which PR to read first.
@@ -559,20 +578,27 @@ Legacy pattern, never offered or proposed by this skill. Do it only when the use
 When work needs to be isolated from in-progress changes on the current branch — a second
 AI session running in parallel, a hotfix while a feature is open, or unrelated WIP you do
 not want to mix — use a **git worktree** (a second working directory on its own branch,
-sharing one `.git`). Two paths:
+sharing one `.git`). The repo lifecycle is the same on every host and every creation path:
 
-- **Manual git** (portable, any tool): `git worktree add ../dir -b feat/x main` → work →
-  `git worktree remove` / `prune`.
-- **Claude Code harness** (this agent only): `EnterWorktree` moves the session into a fresh
-  worktree under `.claude/worktrees/`; `ExitWorktree` (`keep`/`remove`) leaves it. Other
-  coding agents lack this — they use the manual path.
+```
+create  ->  bun run worktree:provision  ->  work  ->  bun run worktree:audit <wt> --rescue  ->  remove
+```
+
+- **Create**: `git worktree add ../dir -b feat/x main` on any host (portable canon). A host's own
+  tool (Claude Code `EnterWorktree` / `ExitWorktree`, a Codex-managed worktree) is a harness path
+  only: it still needs the two repo steps around it. Supervised fleets go through
+  `/orca-orchestration`, whose committed `orca.yaml` runs both steps as hooks.
+- **Provision** copies the gitignored inputs a fresh worktree lacks (`.env`, `.vercel/`, local
+  settings), installs dependencies and creates the `.claude/skills` alias.
+- **`.session/` is never copied**: durable state lives at `<<PRIMARY_ROOT>>` and is cited by
+  absolute path (`.agents/README.md` §"Checkout roots").
+- **Audit before removing**: `--rescue` copies state that lives only in the worktree back to the
+  primary, never overwriting.
 
 Key gotcha: a fresh worktree contains only the **tracked** files of its base — **untracked
 WIP does not teleport**, so `mv` it in (or commit first). Keep the primary tree's
-`git status` clean. Record every worktree you create in the `.session/worktrees.json`
-registry (path, branch, session id — a record for post-hoc forensics, never a lock).
-Full lifecycle, multi-session safety rules, the registry contract, and the decision guide:
-`references/worktrees.md`.
+`git status` clean. Provenance is the commit's forensic trailers (§3.2), not a side file.
+Full lifecycle, multi-session safety rules, and the decision guide: `references/worktrees.md`.
 
 ---
 
@@ -582,6 +608,7 @@ Full lifecycle, multi-session safety rules, the registry contract, and the decis
 - [ ] Strategy resolved (detected from the `git_strategy:` block in `.agents/project.yaml`, inferred from layout, or asked) and persisted to the `git_strategy:` block in `.agents/project.yaml` if newly chosen.
 - [ ] Branch / commit / push / PR / conflict operation followed the runbook for that strategy.
 - [ ] Each commit is atomic, conventional, and free of AI attribution.
+- [ ] Each commit message ends with the two forensic trailers (`Worktree:` then `Session:`), values taken from the `AGENT IDENTITY:` context line or written as `unknown`.
 - [ ] No `git add -A` / `--force` / `--no-verify` used unless explicitly authorised.
 - [ ] No global discard ran (`git restore .` / `git checkout -- .` / `git reset --hard` / untargeted `git stash` / `git clean`); any discard targeted explicit session-owned paths only.
 - [ ] PR (if created) has Title <70 chars, body with Summary / Changes / Test Plan / Traceability / Risk, base branch matches strategy.
@@ -601,6 +628,6 @@ Full lifecycle, multi-session safety rules, the registry contract, and the decis
 | `references/conventional-commits.md` | Full type vocabulary, scope rules, breaking-change syntax, mixed-changes precedence. Read when proposing commits.                                      |
 | `references/pr-templating.md`        | PR body template, placeholder rules, label / reviewer / draft conventions, multi-strategy base-branch table. Read when opening a PR.                   |
 | `references/conflict-resolution.md`  | Per-conflict-type playbooks (merge / rebase / push-rejected / detached-HEAD / stash / unrelated histories / hook rejection). Read when Step 3.5 fires. |
-| `references/worktrees.md`            | Git worktrees for isolated/parallel work — manual git + Claude Code `EnterWorktree`/`ExitWorktree`, the untracked-files gotcha, multi-session safety, cleanup, decision guide. Read when isolating work or running parallel sessions. |
+| `references/worktrees.md`            | Git worktrees for isolated/parallel work — the repo lifecycle (`worktree:provision` → work → `worktree:audit --rescue`), manual git as the portable canon, harness tools as a harness path, the untracked-files gotcha, multi-session safety, cleanup, decision guide. Read when isolating work or running parallel sessions. |
 
 Read references on demand — do not load them all upfront. Each file is self-contained.

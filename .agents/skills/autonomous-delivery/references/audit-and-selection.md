@@ -4,7 +4,8 @@
 > Companion: `./hazard-catalogue.md` (why each check exists), `./run-report-format.md` (where the output goes).
 
 Substitute the project's integration branch for `<integration-branch>` throughout — read it from
-`.agents/project.yaml` -> `git_strategy.branches.integration`, never assume a name.
+`.agents/project.yaml` -> `git_strategy.branches.integration` (the production branch when that is null),
+never assume a name.
 
 ---
 
@@ -139,9 +140,11 @@ Verify a correction exactly as hard as the claim it corrects, against live refs.
 
 ### 4e. Also collected in this phase
 
-- **The live migration ledger**, via `[DB_TOOL]`. It can be ahead of your branch (a peer applied out of
-  band) and it can contain a migration that exists in no file you can list. Cross-check against
-  `git log origin/<integration-branch> -- <migrations-dir>/` and sibling branches.
+- **The live migration ledger**, via `[DB_TOOL]` (`list_migrations`). It can be ahead of your branch (a peer
+  applied out of band) and it can contain a migration that exists in no file you can list. When the app keeps
+  migration files (`{{stack.database.migrations_dir}}` non-null), cross-check against
+  `git log origin/<integration-branch> -- <migrations-dir>/` and sibling branches; when it does not
+  (`migrations_tool: supabase-mcp`), the ledger is the only record and the PR bodies name what each applied.
 - **Branch-protection reality**, from BOTH the classic branch-protection endpoint AND the rulesets
   endpoint. The classic one returns a not-protected 404 when protection is implemented as a ruleset, which
   reads as unprotected if it is all you check. Record the enforced fields: required approving reviews,
@@ -166,11 +169,11 @@ particular way.
 | Input | Authoritative for | Never authoritative for |
 | --- | --- | --- |
 | `.context/dev-roadmap.md` | dependency edges, mockup gates, execution ordering | current status of anything |
-| Live tracker query | status right now, assignee, changelog | whether work merged |
+| Live tracker query | live status, assignee, changelog | whether work merged |
 | Phase 1 verdict column | whether work merged | what should be built |
-| Queue / board / claim file | who owns which row right now | whether a dependency shipped |
+| Queue / board / claim file | who owns which row at read time | whether a dependency shipped |
 
-**A recent timestamp on the roadmap is not evidence about any ticket's status today.** The file tracks when
+**A recent timestamp on the roadmap is not evidence about any ticket's live status.** The file tracks when
 edges and gates were refreshed, which is a different axis entirely.
 
 ---
@@ -224,7 +227,8 @@ Optimistic locking on a shared file. Steps 4 and 5 are the ones that get skipped
    never overwrite someone else's claim, never edit another run's row.
 6. **Keep the row current enough that a stranger could resume from it cold**: exact branch, exact tip SHA,
    which pull requests exist and their state, and the next concrete command. The board row is the real
-   cross-run resume artifact; a per-session progress file dies with its worktree.
+   cross-run resume artifact; a per-session progress file is machine-local (this skill's lives at
+   `<<PRIMARY_ROOT>>`), and a dispatched skill's worktree-local one dies with its worktree unless rescued.
 7. **A gated row is not claimable until you verify the gate LIVE and flip it yourself, citing what you
    checked.** Cite the merge commit and the ancestry result, not the tracker status that made it look open.
 

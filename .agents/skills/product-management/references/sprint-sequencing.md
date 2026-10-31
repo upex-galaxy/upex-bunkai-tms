@@ -1,6 +1,6 @@
 # Sprint Sequencing
 
-> **Purpose**: After all epics, stories, and dependency links exist in Jira, compute a topologically-sorted execution plan. Execution Sprint 1 contains stories with no inbound dependency links; Execution Sprint N+1 contains stories whose dependencies all sit in Sprint ≤ N. This is the operational layer between "backlog seeded" and "team picks up first sprint" — it answers the question "what unblocks the team today?". This algorithm is the single source of truth for the sort; the sort RESULT is persisted by invoking `/dev-roadmap`, which writes it as §4 of `.context/dev-roadmap.md` (and surgically preserves the hand-authored §2/§3/§5/§6). This reference is NOT redefined elsewhere — `/dev-roadmap` reuses it.
+> **Purpose**: After all epics, stories, and dependency links exist in Jira, compute a topologically-sorted execution plan. Execution Sprint 1 contains stories with no inbound dependency links; Execution Sprint N+1 contains stories whose dependencies all sit in Sprint ≤ N. This is the operational layer between "backlog seeded" and "team picks up first sprint" — it answers the question "what unblocks the team next?". This algorithm is the single source of truth for the sort; the sort RESULT is persisted by invoking `/project-context dev-roadmap`, which writes it as §4 of `.context/dev-roadmap.md` (and surgically preserves the hand-authored §2/§3/§5/§6). This reference is NOT redefined elsewhere — `/project-context dev-roadmap` reuses it.
 > **Use when**: A backlog seed or feature add just finished, dependency links just changed, or a PM asks for execution order.
 > **Companion references**: `dependency-linking.md` (creates the links this sort consumes), `jira-operations.md` (issue + link fetch patterns), `product-backlog-seed.md`, `add-feature.md`, `epic-creation.md`.
 
@@ -64,9 +64,9 @@ NEVER attempt to break cycles automatically. The choice of which link to drop is
 
 ---
 
-## Output — the §4 section `/dev-roadmap` emits
+## Output — the §4 section `/project-context dev-roadmap` emits
 
-This algorithm produces the schema below. It is NOT written to a standalone file by this skill — instead, invoke `/dev-roadmap`, which regenerates this content as §4 ("Execution sprints") of `.context/dev-roadmap.md` while surgically preserving the hand-authored §2/§3/§5/§6 (epic backbone, edge reasons, mockup-gates, local blockers). §4 is regenerated (overwritten) on every re-run — the only state that matters there is the current snapshot of the link graph. Exact schema:
+This algorithm produces the schema below. It is NOT written to a standalone file by this skill — instead, invoke `/project-context dev-roadmap`, which regenerates this content as §4 ("Execution sprints") of `.context/dev-roadmap.md` while surgically preserving the hand-authored §2/§3/§5/§6 (epic backbone, edge reasons, mockup-gates, local blockers). §4 is regenerated (overwritten) on every re-run — the only state that matters there is the current snapshot of the link graph. Exact schema:
 
 ```markdown
 # Execution Sprint Sequence — {{master_sprint_name}}
@@ -93,7 +93,7 @@ The "Soft dependencies" section is informational — it lists `relates` links so
 - **Automatic**: final phase of `add-feature.md` Phase 2B, once the full epic + stories + links exist.
 - **Automatic**: final step of `product-backlog-seed.md`, after the initial seed completes.
 - **On-demand**: top-level workflow `H` in `SKILL.md`. Trigger phrases include "qué historias trabajamos primero", "execution order", "sprint plan", "topological order", "what unblocks the team".
-- **Re-run** whenever the dependency graph changes — a story added, a link added, a link removed. Re-running invokes `/dev-roadmap` to regenerate §4 of `.context/dev-roadmap.md`. A stale §4 is worse than none at all because it lies authoritatively.
+- **Re-run** whenever the dependency graph changes — a story added, a link added, a link removed. Re-running invokes `/project-context dev-roadmap` to regenerate §4 of `.context/dev-roadmap.md`. A stale §4 is worse than none at all because it lies authoritatively.
 
 ---
 
@@ -108,4 +108,4 @@ The "Soft dependencies" section is informational — it lists `relates` links so
 
 ## Output framing
 
-`.context/dev-roadmap.md` §4 is consumed by humans (PMs, dev leads) during sprint planning AND by `/sprint-development` when picking up the next ticket. It is the canonical answer to "what can the team start today without waiting on anything?". It does not decide what the team SHOULD work on next — priorities, capacity, and external commitments live elsewhere — but it bounds the set of stories the team CAN work on next without violating a dependency.
+`.context/dev-roadmap.md` §4 is consumed by humans (PMs, dev leads) during sprint planning AND by `/sprint-development` when picking up the next ticket. It is the canonical answer to "what can the team start without waiting on anything?". It does not decide what the team SHOULD work on next — priorities, capacity, and external commitments live elsewhere — but it bounds the set of stories the team CAN work on next without violating a dependency.

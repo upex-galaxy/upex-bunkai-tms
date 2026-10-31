@@ -12,7 +12,7 @@
 
 ## Tool Resolution recap
 
-Routing follows the canonical table in `AGENTS.md` §6 (Tool Resolution). For Jira:
+Routing follows the canonical table in `.agents/instructions/agent-tool-resolution.md` §6 (Tool Resolution). For Jira:
 
 `[ISSUE_TRACKER_TOOL]` resolves to a three-tier stack:
 
@@ -65,7 +65,7 @@ When the primary tier is unavailable or fails, follow this protocol:
 2. **Log the degradation** in the workflow output so the user can see which tier ran. Format: `tool_layer: primary | fallback | last_resort` plus a one-line reason (e.g. primary CLI not installed, MCP not opted in, primary returned 5xx).
 3. **Surface semantic degradation explicitly** when the tier change loses meaning:
    - Issue-link fallback from `dependencies` to symmetric `relates` — direction is lost. The workflow MUST tell the user this happened and recommend creating the canonical `Dependencies` link type in the workspace.
-   - Status transition skipped because the slug resolves to an absent workspace status — workflow MUST report `transition_skipped: <slug>` and continue without halting.
+   - Status transition whose slug resolves to an absent workspace status — run the unmapped-status fallback in `agentic-dev-core/references/artifact-lifecycle.md` §4 (list the live transitions, ONE question for the whole batch, fire the live id, recommend `bun run jira:sync-workflows`). Only a skip the user chose is reported as `transition_skipped: <slug>`; the batch continues without halting either way.
 4. **Halt only on hard failures**, not on tier degradation. A hard failure is: all three tiers exhausted, or a write operation that cannot be retried safely.
 
 ---
@@ -79,7 +79,7 @@ The methodology reads Jira issue state through the local sync script, NOT throug
 
 **Why not `/acli` view:** its default projection omits every `customfield_*`, so reading AC / Scope / etc. through it returns `null` — looking empty even when the field is richly populated. Empirically-confirmed trap (see the `/acli` skill gotchas). Custom-field reads MUST go through the sync script (or REST `GET /rest/api/3/issue/{KEY}?fields=...`).
 
-**No local authoring.** Do NOT hand-write `.context/PBI/**` content (epic.md / story.md / per-field files). All issue content lives in Jira; the sync script is the one tool that materializes it locally. Author in Jira (create / REST PUT), then `get` / `jql` / `pull` to refresh the local cache. Exception — `.context/dev-roadmap.md` is NOT part of this sync-owned cache: it is owned by `/dev-roadmap` (which regenerates §4 from the dependency graph and hand-authors the rest, §2/§3/§5/§6), so it must NOT be lumped with the read-only PBI mirror.
+**No local authoring.** Do NOT hand-write `.context/PBI/**` content (epic.md / story.md / per-field files). All issue content lives in Jira; the sync script is the one tool that materializes it locally. Author in Jira (create / REST PUT), then `get` / `jql` / `pull` to refresh the local cache. Exception — `.context/dev-roadmap.md` is NOT part of this sync-owned cache: it is owned by `/project-context dev-roadmap` (which regenerates §4 from the dependency graph and hand-authors the rest, §2/§3/§5/§6), so it must NOT be lumped with the read-only PBI mirror.
 
 ### Auditing an already-populated story (gap-safe review)
 

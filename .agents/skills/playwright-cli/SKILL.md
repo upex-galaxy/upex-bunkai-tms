@@ -2,6 +2,10 @@
 name: playwright-cli
 description: Automate browser interactions, test web pages and work with Playwright tests.
 allowed-tools: Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
+compact_rules: |
+  - **One named session per task.** Open the browser with `playwright-cli open -s=<name>` and pass the same `-s=<name>` to every later command; close it when the task ends.
+  - **Snapshot before you act.** Target elements by the refs of the latest `snapshot`; take a new snapshot after any navigation or DOM change, never reuse stale refs.
+  - **Session material is ephemeral.** Storage state, cookies and traces go to the session scratch directory only and are deleted before reporting.
 ---
 
 # Browser Automation with playwright-cli

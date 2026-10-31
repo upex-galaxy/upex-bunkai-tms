@@ -1,0 +1,61 @@
+{
+  "skill_name": "project-context",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/project-context data. This is the project we scaffolded from the boilerplate last month; nothing special about it.",
+      "expected_output": "Greenfield path, unchanged: reads the `stack:` block, finds the schema defaults (app_root `.`, schema_source `live`), reads the schema through [DB_TOOL] against DB_PROJECT_REF of the active env, detects CREATE or UPDATE with `bun run context:map business-data-context --list`, and writes only business-data-context's references/business-data-map.html with a discovery-gaps section. The overview names the env it read. No stack-related Discovery Gap, no migration-file reading, no extra sections.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We adopted agentic-dev into our existing app. stack.database.schema_source is migrations and migrations_dir is supabase/migrations. Map the data model, and don't connect to any database, our only Supabase project is production.",
+      "expected_output": "Mode data with schema_source migrations: reads the migration files under supabase/migrations (relative to stack.app_root) oldest first, offline, cites sections with migration:<file>, and never calls [DB_TOOL] against production; capability db is optional here, so a missing db MCP is not a STOP. The overview says the schema was read from the migrations folder and names its newest file. Anything the files cannot show (data volume, live-only drift) goes to discovery-gaps.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Refresh the feature map. Our repo is a monorepo and stack.app_root is apps/web; there is also apps/admin.",
+      "expected_output": "Mode features scoped to stack.app_root: every app path (routes, pages, route handlers) resolves under apps/web, apps/admin is not scanned and is listed in discovery-gaps as not inspected. One app per run; it does not silently widen scope to the whole monorepo.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Generate the API business map. We don't have an api/ folder or OpenAPI, the app just calls supabase.from() and supabase.rpc() from its components.",
+      "expected_output": "Mode api does NOT hard-stop: the app has a Supabase-direct API. It follows references/api.md § Supabase-direct API: tables through .from(), functions through .rpc(), auth, storage and edge functions as the surface; enforcement is named as RLS policies (data map access-control ids), sections cite calling modules, db:<table>, rpc:<function> and auth:<scheme>, `bun run api:sync` is skipped, and cross-references say there is no spec and the generated database types are the contract.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Build the master implementation plan for this app. It's been in production for two years; we installed agentic-dev with --adopt last week.",
+      "expected_output": "Mode master-plan with .template/installer.lock.json adopted: true: applies the remaining-work framing. Stable features and end-to-end flows form a 'Baseline (already shipped)' table that is never scored or placed in a Master Sprint; candidates are Beta / Planned / WIP features, partial CRUD, map gaps and open epics; urgency reads the next release the tracker or PRD names, not an MVP. Hard gate on the generated data map still applies.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "qué historia sigue? armá el dev roadmap. Ojo que en Jira nunca usamos links de dependencia entre historias, solo epics con sus stories.",
+      "expected_output": "Mode dev-roadmap does NOT stop: epics with child stories satisfy the hard gate and missing dependency links are a soft gap (§1.2b). §3 holds only edges a cited data-map or mockup-gate source forces, every unlinked story goes to the §6 edge-mapping TODO, §4 runs the Kahn sort over the sparse graph and says it ran without tracker links, and the report recommends linking through product-management's dependency-linking reference. It never invents a link. Answers in Spanish, writes the file in English.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Run /project-context data. Our .agents/project.yaml has no stack: block at all, it predates it.",
+      "expected_output": "Uses the defaults .agents/project.schema.yaml declares for stack (app root at the repo root, live schema), runs the data mode normally, and adds exactly one discovery-gaps line naming `bun run agents:setup --stack`. It does not stop and does not write the block itself.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "How do I write a unit test for the price calculator with bun test?",
+      "expected_output": "Does not trigger project-context; this is unit-testing work.",
+      "should_trigger": false,
+      "files": []
+    }
+  ]
+}

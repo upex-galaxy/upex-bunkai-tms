@@ -1,0 +1,205 @@
+# The Launch Seam — How a Workflow Skill Hands Work to a Fleet
+
+> Loaded by: any workflow skill that distributes work (`sprint-development` in batch-sprint fleet
+> mode, and any project skill that adds a fleet later), and by whoever edits one.
+> This is the CONTRACT between a skill that owns the WHAT and this skill, which owns the HOW.
+> It is the only place where a workflow skill is allowed to mention orchestration at all, and even
+> there it mentions it silently.
+
+---
+
+## 1 · The one seam, and what the two paths actually share
+
+Every workflow skill that distributes work writes a **launch file** — `launch.txt` inside its own
+session scope, N lines, each one self-contained and ready to paste. It writes that file **always**,
+whether or not any runtime exists.
+
+**The byte-identical rule survives, with a narrower scope.** The line in `launch.txt` is the line a
+HUMAN pastes, byte for byte, and a conductor that deliberately opens an unsupervised terminal passes
+it verbatim as that terminal's command. What it can no longer be is the supervised launch: the
+runtime recognizes only agents IT started, so a terminal created from our own command line can never
+be adopted (`orca-orchestration/references/gotchas.md` G44). Supervision is the native launch, and
+the native launch takes an agent, a model and an effort level — **not a command line**.
+
+So what the two paths share is not the argv. It is the PAYLOAD: the same brief files, cited by the
+same absolute paths, and the same prompt text — pasted by a human on one path, delivered by
+`[ORCHESTRATION_TOOL] send-prompt` right after readiness on the other. A paraphrased prompt is still
+the failure this rule exists to prevent; the prompt is what must not drift.
+
+| Responsibility | Without a runtime (the contract) | With a runtime (supervised) |
+|---|---|---|
+| Launch | the human opens N terminals and pastes N lines from `launch.txt` | `[ORCHESTRATION_TOOL] launch: one native supervised worker per unit of work (agent + model + effort), then send the prompt into it` |
+| Prompt | it is inside the pasted line | delivered as a separate step, same text, opening with `/<workflow-skill> <label> fleet worker` |
+| Credentials | identical on both paths: the pasted line opens the bare harness binary, so the harness process holds no `.env` value (ADR-0016) | identical on both paths: on every host each MCP server that needs `.env` values starts through the `.env` loader (`varlock run --filter <its vars>`), which reads the worktree's `.env` itself; nothing is exported into the worker's shell (CLIs carry their own auth, a command needing a value runs as `bunx varlock run -- sh -c '<cmd using "$VAR">'`). The conductor VERIFIES credentials on screen before sending work (G45) |
+| State | the workflow's own blocked-state tokens in its session memory, plus the tracker | the mailbox: wait on done / escalation / question |
+| Sibling awareness | each worker knows only its own ticket | the roster in the brief; a worker broadcasts a fact that changes someone else's decision |
+| Close | the human closes terminals | `[ORCHESTRATION_TOOL] close: release the supervised worker by dispatch` |
+
+Workflow skills write `[ORCHESTRATION_TOOL] <verb>: …` pseudocode and point at `orca-orchestration`
+for the real grammar. Only this skill spells out commands, because only this skill is the tool owner.
+
+---
+
+## 2 · What a workflow skill writes
+
+### 2.1 · The launch file
+
+- Path: `<<PRIMARY_ROOT>>/.session/<skill-slug>/<scope>/launch.txt`, inside the scope of the workflow
+  skill that distributes the work. One file, one home: only a run that no single workflow skill
+  owns (a conductor running `orca-orchestration` directly) keeps it in the orchestration scope,
+  `.session/orchestration/<slug>/launch.txt` (`references/coordinator-playbook.md` §0). Never both.
+- **Regenerated whole** at each planning pass. Closed or finished items simply drop out; nothing is
+  edited in place, so there is never a half-updated file.
+- One line per unit of work, **self-contained**: it exports whatever the worker needs, then starts
+  the agent with the full prompt. A line that depends on something typed earlier in that terminal is
+  not a launch line.
+- Shape, one line per harness. The permission flag is the one that matches
+  `orchestration.permission_modes.worker` (`.agents/project.yaml`), translated in
+  `references/orca-machine-setup.md` §3.1; the lines below carry the shipped `bypass`, with the
+  version each flag was read at (2026-10-28). Confirm with `<harness> --help` before pasting:
+
+  ```
+  claude --model <full-model-id> --effort <level> --dangerously-skip-permissions '<prompt>'
+  opencode --model <provider/model> --auto --prompt '<prompt>'                        # v1.19.5 / v2.2.0
+  codex --model <full-model-id> --dangerously-bypass-approvals-and-sandbox '<prompt>' # rust-v0.165.0
+  pi --approve -n "<label>${ORCA_TERMINAL_HANDLE:+--$ORCA_TERMINAL_HANDLE}" '<prompt>' # v1.4.0, not a supported harness
+  ```
+
+  Claude Code's line carries no `-n`: a name flag marks the name as human-set, and the identity hook
+  then never appends the handle, so the hook names the session from the prompt token instead
+  (`references/session-identity.md` §2b). Codex's bypass flag is the full one on purpose:
+  `-a never -s workspace-write` never prompts but keeps `.git` read-only and the network off, so the
+  worker cannot commit. The full set, with the Claude Code source and the auto-mode flags:
+  `templates/launch.txt`.
+
+  The line runs the harness's own binary in the worktree, with no wrapper: the harness process holds
+  no `.env` value, and its MCP servers read `.env` through the loader (ADR-0016). `<label>` is the
+  worker's roster label, the same token the prompt opens with; the worker's name is
+  `<label>--<handle>`. On a harness with no name flag (Codex, OpenCode), the human types
+  `/rename <label>--<handle>` once the session is up (`<label>` alone outside Orca; OpenCode v1's
+  `/rename` takes no argument, so the roster carries the name), because a model cannot rename its own
+  session.
+
+**This line is for a human, or for a terminal nobody will supervise.** Two things about it do not
+survive the supervised path, and a skill that assumes they do is writing a lie into its own doc:
+
+1. **An environment prefix does not reach a supervised worker.** There is no argv on the native
+   launch, so `FOO=bar <binary> …` has nowhere to live. Measured on a real fleet: the variables a
+   sprint fleet used to mark a worker were empty in every session even on the custom-argv path, because the
+   prefix belongs to a shell the runtime did not keep. **Never detect fleet mode from an environment
+   variable.** Detect it from the prompt token and the brief; an exported variable is at most a
+   redundant signal on the human-paste path.
+2. **A session-name flag exists only in a pasted line.** On the supervised path the session is titled
+   from the PROMPT, which is why the prompt has a fixed opening (§2.1b).
+
+### 2.1b · The prompt, which IS shared by both paths
+
+Whether it is pasted inside a launch line or sent into a native worker, the prompt has the same four
+parts, in this order:
+
+```
+/<workflow-skill> <label> fleet worker. Read <ABS>/<scope>/COMMON.md then <ABS>/<scope>/W-<label>.md
+and execute your brief. Run every stage without returning to the prompt until worker_done is sent;
+stage boundaries are not checkpoints. Channel: {{MESSAGE_VERB}}. No heartbeats.
+ROUTE-SCOPE: <section ids the work needs, e.g. git, harnesses; or none>
+```
+
+- **The opening token is load-bearing.** `/<workflow-skill> <label> fleet worker` is what the identity
+  hook reads to title the session `<label>--<handle>` (there is no name flag on the supervised path)
+  and what the workflow
+  skill reads to know it is running as a fleet worker.
+- **The continuation sentence is not decoration.** Workers on a measured fleet (G58) stopped at
+  a stage boundary with work remaining, on briefs that said "no checkpoints": the instruction works
+  when it arrives as the worker's own prompt and fails as a pointer to a file. It belongs in the
+  prompt, in the brief, and in `COMMON.md`.
+- **The scope sentence goes LAST and names what the worker must read.** The prompt hook
+  classifies the prompt to inject `ROUTE:` lines, and a worker prompt is the worst input it gets:
+  the injected preamble talks about workers, dispatch and rules, and the absolute paths name the
+  scope folders, so before the cap one prompt fired most sections and workers read almost none of
+  them (measurements in ADR-0018). `ROUTE-SCOPE:` replaces the prompt for that classification: list the section
+  ids (`id:` in `.agents/instructions/agent-*.md`) the brief's work needs, a few words when unsure,
+  or `none`. It runs to the end of its line, so nothing follows it. Without it the hook classifies
+  the task block alone; with it the worker gets exactly the routes the conductor chose. On a
+  pasted launch line the sentence stays on the same line, after `No heartbeats.`
+- **One prompt, one task** (`references/brief-template.md` §5). The brief lives in a FILE; the prompt
+  points at it.
+
+### 2.2 · The three quoting rules, non-negotiable
+
+1. **The whole prompt is single-quoted; it contains no `'` and no unescaped `"`.** The delimiter is
+   fixed (single quotes, always) so it is never a per-line choice; a prompt that needs either
+   character is rephrased instead of switching delimiter.
+2. **`<` and `>` inside the quoted prompt are literal text, not redirection.** Redirection only
+   fires on an unquoted `<`/`>`; once the whole prompt sits inside single quotes the shell never
+   interprets them, so this rule does not ban those two characters.
+3. **Validate every line with a shell syntax check before anything is launched** (`sh -n` over the
+   file, or the equivalent for the shell the user actually runs). Every line of a real fleet once
+   died at once on a quoting error (G30): the environment variables never exported, and the
+   terminals looked perfectly fine.
+
+### 2.3 · The gated lines
+
+When the gate passes (`SKILL.md` §The gate), a workflow skill may do only the things listed here,
+each one gated and each one silent when the gate fails:
+
+1. **Hand the work to the launcher** instead of asking the human to paste it: one supervised worker
+   per unit of work, then the same prompt delivered into it (§1, §2.1b). A conductor that wants an
+   unsupervised terminal instead passes the `launch.txt` line verbatim as that terminal's command.
+2. **Seed the per-unit brief** with the fleet fields (`references/brief-template.md`), including
+   `Run: <run_id>` when the worker is launched without a dispatch.
+3. **Add the mailbox report** to what a worker already writes: the workflow's own tokens and files
+   stay, the message is an addition. Never a replacement.
+4. **Open a generated HTML surface in a worktree-bound tab** instead of the system browser — a
+   coverage map, a report, a deck (`references/html-surfaces.md`). Gate fails: open it the ordinary
+   way and say nothing. The system browser is the normal outcome, not a degraded one.
+
+Everything else — Runs, Tasks, adoption, board cards, waiting, acking, liveness, closing — belongs to
+this skill. A workflow skill never spells out a command for it.
+
+---
+
+## 3 · What a workflow skill must NEVER do
+
+| Never | Why |
+|---|---|
+| list a runtime, a binary or an app as a **prerequisite** | the flow works without it; a prerequisite turns an optional accelerator into a hard dependency |
+| put it in a **non-bypassable probe** | a machine without it would fail a gate it has no reason to pass |
+| mention it in a **PR body, an implementation plan, a tracker comment** or any report of record | the artifact of record must read identically on every machine, forever |
+| include it in the **blocked-token sweep** | the sweep is the fallback that must work WITHOUT it |
+| **name it to the user when the gate fails** | state A is total silence. Not a hint, not a suggestion, not an aside. The install recommendation belongs to `orca-orchestration`, and fires only because the user ASKED for orchestration |
+| change what a single worker does | N=1 must keep its existing behaviour byte for byte. Fleet mode adds a coordinator above the loop; it does not alter the loop |
+| paraphrase the prompt, on either path | see §1 and §2.1b: the prompt is the payload both paths share |
+| detect fleet mode from an environment variable | it does not survive either path. Measured empty on a real fleet (§2.1) |
+
+**The test that settles any future edit**: would this line still make sense, unchanged, to a developer
+who has never heard of the orchestrator? If not, it belongs in this skill.
+
+---
+
+## 4 · Per-skill scope and topology
+
+| Skill | Scope for `launch.txt` | Topology |
+|---|---|---|
+| `sprint-development` (batch-sprint, N>1) | `<<PRIMARY_ROOT>>/.session/sprint-development/sprint-<N>/` | one Orca worktree per worker, one worker per story; merge and staging deploy serialized through the conductor (`sprint-development/references/fleet-mode.md`) |
+| `autonomous-delivery` (unattended) | its own mode scope, `.session/autonomous-delivery/<mode>/` | one worktree per dispatched story or bug, inside its mode cap (`references/automations.md` §2.6) |
+| `product-management` (backlog refinement fan-out) | its own batch scope | same checkout, one worker per epic or story; state lives in the tracker |
+
+Detail: `references/topologies.md`. The scope directory name is whatever that skill's own
+session-management contract already declares — this seam never invents a new scope shape.
+
+---
+
+## 5 · Review checklist for a seam edit
+
+- [ ] The launch file is written on BOTH paths, unconditionally.
+- [ ] The prompt is identical on both paths, and it opens with `/<workflow-skill> <label> fleet worker`.
+- [ ] The launch line's permission flag matches `orchestration.permission_modes.worker` (§2.1), and
+      the Claude Code line carries no name flag.
+- [ ] The prompt carries the continuation sentence (no stopping until `worker_done`).
+- [ ] Nothing in the flow detects fleet mode from an environment variable.
+- [ ] Every line is self-contained and passes the shell syntax check.
+- [ ] The whole prompt is single-quoted, with no `'` and no unescaped `"` inside it.
+- [ ] The gated block is genuinely gated, and its failure mode is SILENCE.
+- [ ] N=1 behaviour is unchanged.
+- [ ] The workflow's own tokens and artifacts are still written; the mailbox is additive.
+- [ ] Every orchestration action is `[ORCHESTRATION_TOOL]` pseudocode pointing here.

@@ -12,9 +12,13 @@ This is the commit-message contract for git-flow-master. The grammar is the stan
 [optional body]
 
 [optional BREAKING CHANGE: footer]
-[optional Refs / Closes / Co-authored-by footers — but NEVER Claude]
-[optional Claude-Session: <session-id> — forensic trailer, AI-authored commits only]
+[optional Refs / Closes / Co-authored-by footers — but NEVER an AI]
+
+Worktree: <name|primary>
+Session: <label>
 ```
+
+The last two lines are the mandatory forensic trailers (Hard rule 1). Nothing goes below them.
 
 Regex the message must match:
 
@@ -135,13 +139,16 @@ PR label hint: `breaking-change`.
 - [ ] Commit message explains the **outcome**, not the file list.
 - [ ] Subject line ≤ 72 chars. Body wraps at 72.
 - [ ] No `git add -A` / `git add .`. Each file path is listed explicitly.
+- [ ] The message ends with `Worktree:` then `Session:`, and carries no harness-branded trailer.
 
 ---
 
 ## Hard rules
 
-1. **No AI attribution.** Never include `Generated with Claude Code`, `Co-Authored-By: Claude <…>`, or any equivalent line that reads as authorship or advertising. Commits look human-authored. (Critical Rule #3 in `AGENTS.md`.)
-   **ONE scoped exception**: a `Claude-Session: <session-id>` trailer, on commits actually written by an AI session. It is not attribution — it names no product and claims no authorship. It is a forensic pointer: it exists so `git log --grep Claude-Session` can route a root-cause investigation to the transcript that explains the change (`~/.claude/projects/<cwd-slug>/<session-id>.jsonl`). It is omitted entirely from human-authored commits, and it never appears in the subject line or body — trailer position only. The ban above stands in full outside this exception.
+1. **No AI attribution, and the two forensic trailers on every commit.** Never include `Generated with Claude Code`, `Co-Authored-By: Claude <…>`, or any equivalent line that reads as authorship or advertising. Commits look human-authored. (Critical Rule #3 in `AGENTS.md`.)
+   Every commit an agent session writes ends with exactly two trailers, in this order: `Worktree: <name|primary>` then `Session: <label>`, both copied from the `AGENT IDENTITY:` line the prompt hook injects (`SKILL.md` §3.2 is the canon: where the values come from, `unknown` when unresolved). They are forensics, not attribution: they name a checkout and a session, never a tool, so `git log --grep 'Session: <label>'` finds every commit of one session on any harness.
+   **Harness-branded trailers are forbidden**: `Claude-Session:`, any `<Tool>-Session:`, an AI `Co-Authored-By:`. A branded key names the tool instead of the work, goes stale when the tool changes, and reads as attribution.
+   `.husky/commit-msg` WARNS (never blocks) when the pair is missing or out of place, or when a branded trailer is present (`scripts/check-commit-trailers.ts`).
 2. **No `git add -A` / `git add .`.** Always list the exact paths to avoid leaking secrets (`.env`, credentials) or unrelated work.
 3. **Never `--amend` a commit a hook rejected.** The hook rejected the commit, so it does not exist; `--amend` would mutate the previous commit instead. Fix the underlying issue and create a new commit.
 4. **Never `--amend` a published commit.** Once pushed, a commit is part of shared history. Add a forward commit (`fix:`, `revert:`) instead.

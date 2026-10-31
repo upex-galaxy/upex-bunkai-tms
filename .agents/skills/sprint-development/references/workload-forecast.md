@@ -55,7 +55,7 @@ Commit plan:
   3. feat(BK-123): add GET /api/reports route with schema validation — serves AC-2, AC-3
   4. feat(BK-123): add reports page, filters and empty/error states — serves AC-1, AC-5
   5. docs(BK-123): update status report and release notes
-Review guide: read 1 first (schema + RLS, highest risk: apply per Critical Rule #20 only after approval),
+Review guide: read 1 first (schema + RLS, highest risk: apply per the Bunkai rule MVP-ONE-DATABASE (`.agents/instructions/agent-project.md`) only after approval),
               then 2 (aggregation correctness), then 3 and 4 (thin wiring), 5 last.
 Notes: types in commit 1 are generated; not counted toward Size.
 ```
@@ -141,7 +141,7 @@ Stacked or chained PRs are not an option the planner offers. They are a legacy p
 If `Size` is `Large` AND the commit plan shows increments that each deliver value on their own, OR the story carries more than ~13 story points of real work, the remedy is at the **backlog level**, not the PR level:
 
 - Add a `Notes:` line to the forecast block recommending that the STORY be split in the tracker through `/product-management`. Each resulting story gets its own plan, its own PR.
-- This is a RECOMMENDATION recorded in the plan. It does not block implementation by default; absent a decision to split, the story proceeds as one PR with the commit plan above (AGENTS.md Critical Rule #18: the AI decides, nobody waits).
+- This is a RECOMMENDATION recorded in the plan. It does not block implementation by default; absent a decision to split, the story proceeds as one PR with the commit plan above (Bunkai rule AI-LED-DECISIONS in `.agents/instructions/agent-project.md`: the AI decides, nobody waits).
 
 ---
 

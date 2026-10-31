@@ -1,8 +1,8 @@
 ---
 name: jira-instance-migration
-description: Repoint this repo at a new Atlassian/Jira instance after a site migration, and regenerate the `.agents/` catalogs whose custom-field IDs the migration invalidated. Takes two inputs (source instance, target instance); detects the source from the repo and asks for whatever is missing before touching anything. Triggers on 'jira instance migration', 'migrar la instancia de jira', 'cambió la URL de Jira', 'jira site migration', 'we moved Jira workspaces', 'repoint jira', 'nuevo site de jira', 'actualizar ATLASSIAN_URL', 'the jira URL changed'. Do NOT use for: first-time Jira setup (see docs/setup/jira-setup-guide.md), routine catalog refresh with no instance change (run `bun run jira:sync-*` directly), or Jira ticket operations (use /acli).
+description: Repoint this repo at a new Atlassian/Jira instance after a site migration, and regenerate the `.agents/` catalogs whose custom-field IDs the migration invalidated. Takes two inputs (source instance, target instance); detects the source from the repo and asks for whatever is missing before touching anything. Triggers on 'jira instance migration', 'migrar la instancia de jira', 'cambió la URL de Jira', 'jira site migration', 'we moved Jira workspaces', 'repoint jira', 'nuevo site de jira', 'actualizar ATLASSIAN_URL', 'the jira URL changed'. Do NOT use for: first-time Jira setup (see docs/setup/README.md, section "Jira (lado dev)"), routine catalog refresh with no instance change (run `bun run jira:sync-*` directly), or Jira ticket operations (use /acli).
 license: MIT
-compatibility: [claude-code, copilot, cursor, codex, opencode]
+compatibility: [claude-code, codex, opencode]
 ---
 
 # Jira Instance Migration
@@ -12,8 +12,8 @@ Repoint this repository at a new Atlassian instance and regenerate everything th
 **Inputs**: `$ARGUMENTS` — the source instance and the target instance, in that order. Both may be omitted; Phase 0 resolves them.
 
 ```
-/jira-instance-migration oldsite.atlassian.net newsite.atlassian.net
-/jira-instance-migration                         # -> Phase 0 detects and asks
+/jira-administration instance-migration oldsite.atlassian.net newsite.atlassian.net
+/jira-administration instance-migration       # -> Phase 0 detects and asks
 ```
 
 ---
@@ -38,8 +38,8 @@ A second silent failure sits alongside it: `.env` and the `acli` session are ind
 grep -n 'atlassian_url' .agents/project.yaml             # the source of truth
 [ISSUE_TRACKER_TOOL] Auth Status | grep -i site          # the machine-global session
 bun run --silent jira:url 2>&1                           # what the tooling actually resolves
-printenv ATLASSIAN_URL 2>/dev/null                       # should print NOTHING (see below)
-grep -n '^ATLASSIAN_URL' .env 2>/dev/null                # should match NOTHING (see below)
+[ -n "${ATLASSIAN_URL+x}" ] && echo "ATLASSIAN_URL SET in process" || echo unset   # should say unset (see below)
+bun run vars:env:check 2>&1 | grep ATLASSIAN_URL          # should match NOTHING (STALE_IN_ENV_FILE = a .env line)
 ```
 
 The last two are **contamination probes, not sources**. `ATLASSIAN_URL` is not a
@@ -59,7 +59,7 @@ Three outcomes:
 
 Normalize both to the bare host (`site.atlassian.net`, no scheme, no trailing slash). Then confirm as one line and wait:
 
-> Migrating `<source>` -> `<target>`. Three places change: `.env`, `.agents/project.yaml`, and your machine-global `acli` session. Confirm?
+> Migrating `<source>` -> `<target>`. The host is rewritten in one place, `.agents/project.yaml`; a stale `ATLASSIAN_URL` copy, if the probes find one, is deleted; and your machine-global `acli` session is re-logged into the target. Confirm?
 
 **Verify the target is reachable and populated before proceeding.** Migrating into an empty or half-provisioned instance regenerates empty catalogs and publishes them, which is worse than doing nothing:
 
@@ -88,13 +88,13 @@ Classify every hit into change / do-not-change, and **present the table to the u
 
 | Target | What to write |
 |---|---|
-| `.agents/project.yaml` -> `atlassian_url` | `https://<target>` — **the only place the host is written.** Every script resolves the instance from here (`cli/lib/atlassian-instance.ts`), the test runtime reads it through `config/variables.ts`, and `bun run jira:url` is how shell recipes read it. Write it WITH the scheme, matching what `bun run agents:setup` writes; the resolver accepts a bare slug too, but a mixed repo is harder to review |
+| `.agents/project.yaml` -> `atlassian_url` | `https://<target>` — **the only place the host is written.** Every script resolves the instance from here (`cli/lib/atlassian-instance.ts`), and `bun run jira:url` is how shell recipes read it. Write it WITH the scheme, matching what `bun run agents:setup` writes; the resolver accepts a bare slug too, but a mixed repo is harder to review |
 | a stale `ATLASSIAN_URL`, if either probe hit | **delete it**, do not update it. Remove the `.env` line; for a process value, find and fix whatever exports it (`ps eww -p $PPID` up the chain). Updating it instead just recreates a second copy that will go stale at the next migration |
 | `acli` session | machine-global (`~/.config/acli`), not a repo file — re-login required per machine |
 
 ### Does not change
 
-- **A vanity / alias domain** (an org-owned hostname that fronts Jira instead of the numbered or named instance slug). If one appears in the code, leave it: these normally redirect to whatever instance is currently active, which is exactly why already-published `/browse/` links survive a migration. **But the alias is invisible from the repo** — tell the user to confirm by hand that it now resolves to the target. If it still points at the source, every published link is broken and nothing in the codebase reveals it.
+- **A vanity / alias domain** (an org-owned hostname that fronts Jira instead of the numbered or named instance slug). If one appears in the code, leave it: these normally redirect to whatever instance is active, which is exactly why already-published `/browse/` links survive a migration. **But the alias is invisible from the repo** — tell the user to confirm by hand that it now resolves to the target. If it still points at the source, every published link is broken and nothing in the codebase reveals it.
 - **Historical records** — sprint reports, retros, changelogs of closed work. Rewriting them falsifies the past.
 - **Code whose pattern already generalizes.** If the logic matches the instance with a regex rather than a literal (`/site\d+\.atlassian\.net/`), it already supports the target and only a comment names the source. Read the code before deciding; do not edit a pattern that already generalizes.
 - **Regenerable cache** — `.context/PBI/` is rebuilt by the sync, so occurrences there clear themselves.
@@ -109,25 +109,25 @@ Anything that fits neither list — a CI workflow, a README, `.mcp.json`, a depl
 2. **Delete** any stale `ATLASSIAN_URL` the probes found (the `.env` line, and whatever exports it into the process). Do not update it — see the table above.
 3. Re-authenticate `acli`:
 
-> **The files are not the whole story — check the process environment.** A stale `ATLASSIAN_URL` inherited from whatever spawned this session still shadows anything that reads the env var directly, and it survives a full application restart because it is re-inherited every time. `bun run vars:env:check` reports it; so does `bun run setup:doctor`, which flags a host resolved from the env instead of the yaml. To hunt the source, walk the ancestry with `ps eww -p <pid>` and test the login shell in isolation with `env -i HOME=$HOME zsh -l -c 'printenv ATLASSIAN_URL'` — testing from the contaminated shell inherits the bad value and gives a false negative.
+> **The files are not the whole story — check the process environment.** A stale `ATLASSIAN_URL` inherited from whatever spawned this session still shadows anything that reads the env var directly, and it survives a full application restart because it is re-inherited every time. `bun run vars:env:check` reports it; so does `bun run setup:doctor`, which flags a host resolved from the env instead of the yaml. To hunt the source, walk the ancestry with `ps eww -p <pid>` and test the login shell in isolation with `env -i HOME=$HOME zsh -l -c '[ -n "${ATLASSIAN_URL+x}" ] && echo SET || echo unset'` — testing from the contaminated shell inherits the bad value and gives a false negative.
 >
 > **Template-repo carve-out for step 1.** A boilerplate/template repo ships `.agents/project.yaml` with every value `null` on purpose — downstream projects inherit the file verbatim, so a concrete site baked into it is wrong for all of them. Detect this by reading `project.project_name` in the same file: if it is `null`, the repo is an un-onboarded template. **Leave `atlassian_url: null`** and say so in the report. The same rule applies to `project_key` in Phase 4. Only a real, onboarded project gets the value written.
 
 ```text
-TOKEN=$(grep '^ATLASSIAN_API_TOKEN=' .env | cut -d= -f2-)
-EMAIL=$(grep '^ATLASSIAN_EMAIL=' .env | cut -d= -f2-)
 [ISSUE_TRACKER_TOOL] Authenticate:
   site=$(bun run --silent jira:url --slug)
-  email=$EMAIL
-  token=$TOKEN
+  email=$ATLASSIAN_EMAIL
+  token=$ATLASSIAN_API_TOKEN   (piped by NAME, e.g. echo "$ATLASSIAN_API_TOKEN" | acli ... --token)
 ```
+
+Both variables live in `.env`, never in the agent's own process: the harness is opened bare and holds no `.env` value (ADR-0016). Run the login through the loader in a subprocess (`bunx varlock run -- sh -c '...'`) instead of reading `.env`: `agentic-dev-core/references/secret-hygiene.md` §3.
 
 `--site` takes the BARE host, which is what `--slug` prints. Reading it back from
 the yaml rather than retyping `<target>` also proves step 1 actually landed: if
 the yaml is wrong, the login fails loudly instead of quietly succeeding against a
 site the repo does not agree with.
 
-> **Secret hygiene**: never `cat` the `.env` or grep it broadly — that dumps `ATLASSIAN_API_TOKEN` into the terminal, the scrollback, and the agent transcript. Filter by the exact key every time. If a token does get printed, say so plainly and recommend rotating it.
+> **Secret hygiene** (Critical Rule #1): never open `.env` at all, not even filtered by key: `cat`, `grep` and `cut` all move `ATLASSIAN_API_TOKEN` into the terminal, the scrollback or the agent shell. Use the variables by NAME as above. If a token does get printed, say so plainly and recommend rotating it.
 >
 > **Do not back the `.env` up inside the repo.** `cp .env .env.bak` feels prudent and is not: `.gitignore` usually covers the exact name `.env`, not arbitrary suffixes, so the backup lands as an untracked file holding a live API token, one `git add -A` away from being committed. Verify with `git check-ignore -v <path>` before writing any copy, or put it outside the working tree entirely. The `.env` edit here is a single line and is trivially reversible without a backup.
 
@@ -143,14 +143,12 @@ A migration where some places match and others do not is worse than one where no
 grep -n 'atlassian_url' .agents/project.yaml       # 1. the source of truth
 bun run --silent jira:url                          # 2. what the tooling resolves
 [ISSUE_TRACKER_TOOL] Auth Status | grep -i site    # 3. the acli session
-printenv ATLASSIAN_URL                             # 4. must print NOTHING
+[ -n "${ATLASSIAN_URL+x}" ] && echo SET || echo unset   # 4. must say unset
 URL=$(bun run --silent jira:url)
-EMAIL=$(grep '^ATLASSIAN_EMAIL=' .env | cut -d= -f2-)
-TOKEN=$(grep '^ATLASSIAN_API_TOKEN=' .env | cut -d= -f2-)
-[ISSUE_TRACKER_TOOL] Authenticated GET: url=$URL/rest/api/3/myself credentials=$EMAIL:$TOKEN output=HTTP status
+[ISSUE_TRACKER_TOOL] Authenticated GET: url=$URL/rest/api/3/myself credentials=$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN output=HTTP status
 ```
 
-Checks 1-3 must name the target, check 4 must be empty, and the REST call must return `200`. Report all five as a table.
+Checks 1-3 must name the target, check 4 must say `unset`, and the REST call must return `200`. Report all five as a table.
 
 Check 2 is not redundant with check 1: it is the only one that proves the resolver agrees with the file, and it prints a warning to stderr if a leftover env var disagrees with the yaml. Check 4 is the one people skip — a surviving process value is invisible in every file yet still reaches anything that reads the variable directly.
 
@@ -183,7 +181,7 @@ Project issue type "Task" exists in <KEY> but is not declared in
 
 So a stale manifest declaring 3 work types regenerates a catalog with 3 work types, exits `0`, and reports success. The migration looks clean and the catalog is missing everything the manifest forgot to ask for. Same silent-success failure this whole command exists to prevent, entering through the input side.
 
-The manifest goes stale invisibly because **the boilerplate updater neither syncs it nor warns about it**: it sits in `bootstrapOnlyPaths` (so `bun run update` never overwrites the project's customizations) and is absent from the drift watchlist (so nothing reports that it has fallen behind). A project scaffolded from an older boilerplate can be many versions behind with zero signal.
+The manifest goes stale quietly because **the boilerplate updater never syncs it**: it sits in `bootstrapOnlyPaths` (so `bun sync` never overwrites the project's customizations). The drift watchlist compares it by STRUCTURE only and reports the keys upstream added as an `informational` row, never a blocking one, and a row that was answered `keep project` once is easy to forget. A project scaffolded from an older boilerplate can be many versions behind with nothing that stops a migration.
 
 Compare against upstream before regenerating:
 

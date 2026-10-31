@@ -22,4 +22,4 @@ Tengo este modelo de negocio: [usar business-model.md]
 
 **Formato:** Markdown, máximo 2 páginas, con bullets concisos
 
-**Fuentes:** Puedes usar conocimiento general, pero indica cuando sea especulativo
+**Fuentes:** solo la investigación que el usuario aporta (links, PDFs, notas de analistas). Sin fuente para un dato de mercado o de un competidor, deja un `[PLACEHOLDER]` y pregunta: nunca lo completes con conocimiento general (F2 en `SKILL.md`).

@@ -2,6 +2,8 @@
 name: next-upgrade
 description: Upgrade Next.js to the latest version following official migration guides and codemods
 argument-hint: "[target-version]"
+metadata:
+  kind: workflow
 ---
 
 # Upgrade Next.js

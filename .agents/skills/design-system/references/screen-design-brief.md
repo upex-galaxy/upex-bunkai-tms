@@ -160,7 +160,7 @@ bundle contents into `.context/designs/{project-slug}/{batch-slug}/` in the repo
 (If you use "Send to local coding agent", tell the agent the destination path above.)
 
 **Open Design** (local app — see `references/open-design-app.md` to bring it up): create a
-project, pick a screen-type skill (e.g. `web-prototype`/`dashboard`), and paste this brief into
+project, pick the `frontend-design` skill (application screens), and paste this brief into
 the Discover question form / brief field. Iterate, then copy the final artifacts from
 `./.od/artifacts/<timestamp>-<slug>/` into `.context/designs/{project-slug}/{batch-slug}/`.
 

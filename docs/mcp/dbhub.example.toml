@@ -1,50 +1,59 @@
 # ============================================
-# DBHUB CONFIGURATION - EJEMPLO
+# DBHUB CONFIGURATION - EXAMPLE
 # ============================================
-# Archivo: dbhub.toml (en root del proyecto)
-# Documentación: https://dbhub.ai/config/toml
+# Target file: dbhub.toml (project root), read by the opt-in `sql` MCP block in
+# docs/mcp/*.template.*. This repo does not enable DBHub: its database
+# capability (`db`) is the committed `supabase` MCP. Add DBHub only when a
+# project needs raw SQL against a database the Supabase MCP does not cover.
+# Documentation: https://dbhub.ai/config/toml
 #
-# Este archivo configura las conexiones de base de datos para el MCP de DBHub.
-# IMPORTANTE: dbhub.toml SE COMMITEA — usá expansión ${VAR} (sin secretos en el
-# archivo; los valores reales viven en .env). Es parte de la estrategia de testing,
-# misma convención que .mcp.json / opencode.jsonc. Solo si necesitás pegar
-# credenciales LITERALES, hacelo en dbhub.local.toml (ya gitignored), nunca aquí.
+# Credentials never live in this file. DBHub interpolates `${VAR}` from its
+# process environment at load time, which the opt-in `sql` block fills through
+# the .env loader (`varlock run --filter DB_HOST,DB_USER,DB_PASSWORD`), so a
+# dbhub.toml written with `${VAR}` can be committed while the values stay in
+# .env. A name added here goes into that block's --filter on all three hosts.
+# Literal credentials go in dbhub.local.toml, which .gitignore already covers.
 #
-# ⚠️  AUDIT 2026-05-11: una versión anterior de este template tenía un user/password
-# con apariencia real (qa_team.czuusjchqpgvanvbdrnz / QA_SoloQ_2024_Secure!).
-# Si esas credenciales eran reales y existen en la historia de git, rotalas en el
-# proveedor (Supabase) — borrar del template no las borra de la historia.
+# An unset variable is left as the literal `${VAR}` text and DBHub raises no
+# error: the connection fails later (AGENTS.md Critical Rule #9).
 
 # ============================================
-# FUENTE DE DATOS: PostgreSQL (Supabase)
+# DATA SOURCE: PostgreSQL (Supabase pooler)
 # ============================================
+# Supabase pooler user is `postgres.<project-ref>`; the pooler host is shown
+# in the Supabase dashboard (Connect -> Session pooler).
 
 [[sources]]
-id = "soloq"
+id = "app"
 type = "postgres"
-host = "aws-1-us-east-2.pooler.supabase.com"
+host = "${DB_HOST}"
 port = 5432
 database = "postgres"
-user = "{{DB_USER}}"
-password = "{{DB_PASSWORD}}"
+user = "${DB_USER}"
+password = "${DB_PASSWORD}"
 sslmode = "require"
 
-# ============================================
-# OPCIONES AVANZADAS
-# ============================================
-# Puedes agregar opciones adicionales por fuente:
-# lazy = true              # Defer connection until first query
-# connection_timeout = 60  # Timeout de conexión en segundos
-# query_timeout = 30       # Timeout de consulta en segundos
+# .env (gitignored), for example:
+#   DB_HOST=<region>.pooler.supabase.com
+#   DB_USER=postgres.<project-ref>
+#   DB_PASSWORD=<db-password>
 
 # ============================================
-# EJEMPLO: MÚLTIPLES BASES DE DATOS
+# ADVANCED OPTIONS
+# ============================================
+# Per-source options:
+# lazy = true              # Defer connection until first query
+# connection_timeout = 60  # Connection timeout in seconds
+# query_timeout = 30       # Query timeout in seconds
+
+# ============================================
+# EXAMPLE: SEVERAL DATABASES
 # ============================================
 
 # [[sources]]
 # id = "production"
 # type = "postgres"
-# dsn = "postgres://user:pass@prod-host:5432/mydb"
+# dsn = "postgres://readonly_user:${PROD_DB_PASSWORD}@prod-host:5432/mydb"
 # lazy = true
 # connection_timeout = 60
 # query_timeout = 30
@@ -53,7 +62,7 @@ sslmode = "require"
 # [[sources]]
 # id = "staging"
 # type = "postgres"
-# dsn = "postgres://user:pass@staging-host:5432/mydb"
+# dsn = "postgres://readonly_user:${STAGING_DB_PASSWORD}@staging-host:5432/mydb"
 # connection_timeout = 30
 # query_timeout = 15
 
@@ -63,9 +72,8 @@ sslmode = "require"
 # dsn = "sqlite:///./data/local.db"
 
 # ============================================
-# HERRAMIENTAS PERSONALIZADAS (OPCIONAL)
+# CUSTOM TOOLS (OPTIONAL)
 # ============================================
-# Puedes definir herramientas SQL personalizadas:
 
 # [[tools]]
 # name = "search_employees"

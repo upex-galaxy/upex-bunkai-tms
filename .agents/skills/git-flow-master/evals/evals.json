@@ -109,7 +109,7 @@
     {
       "id": 16,
       "prompt": "Open the PR for BK-901 against staging. It is a big story, about 3,000 lines, 12 commits already made on feature/BK-901-reports.",
-      "expected_output": "Skill opens exactly ONE PR (base staging, from the strategy) and never proposes stacked PRs or a size gate. The body is rendered inline with a Commit list and a Review guide section (references/pr-templating.md § Big PR body), reading order dependency-first with the riskiest commits flagged. States that it merges with a merge commit (never squash), that review is commit by commit, that fixes land as new commits, and that migrations (if any) are applied per Critical Rule #20 after review approval and before the merge. Stops at PR creation, never auto-merges, no AI attribution.",
+      "expected_output": "Skill opens exactly ONE PR (base staging, from the strategy) and never proposes stacked PRs or a size gate. The body is rendered inline with a Commit list and a Review guide section (references/pr-templating.md § Big PR body), reading order dependency-first with the riskiest commits flagged. States that it merges with a merge commit (never squash), that review is commit by commit, that fixes land as new commits, and that migrations (if any) are applied per the Bunkai rule MVP-ONE-DATABASE after review approval and before the merge. Stops at PR creation, never auto-merges, no AI attribution.",
       "should_trigger": true,
       "files": []
     }

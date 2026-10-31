@@ -2,9 +2,9 @@
 
 > **Status:** OPTIONAL pattern. The default `product-management` flow edits acceptance criteria **in place** on each story. Only adopt delta specs when one of the conditions in [§ When to use](#when-to-use) actually holds — the overhead is real.
 >
-> **Scope:** Methodology + local-file pattern only. This workflow does NOT push rich-text content to the issue tracker — all artifacts live under `.context/PBI/`. If a future extension publishes deltas to Jira, route through `[ISSUE_TRACKER_TOOL]` and see `references/jira-publishing-gotchas.md` for ADF rules.
+> **Scope:** Methodology + local-file pattern only. This workflow does NOT push rich-text content to the issue tracker — all artifacts live under `.context/specs/`, a committed tree. If a future extension publishes deltas to Jira, route through `[ISSUE_TRACKER_TOOL]` and see `references/jira-publishing-gotchas.md` for ADF rules.
 >
-> **Gitignore prerequisite:** `.context/PBI/*` is gitignored by default (Jira is the source of truth for everything else under that tree — see `AGENTS.md` §9). `specs/` and `archive/` are the two exceptions this pattern needs committed, since they are hand-authored and not Jira-mirrored. Before adopting delta specs, add `!.context/PBI/specs/` and `!.context/PBI/archive/` negations to `.gitignore` alongside the existing `!.context/PBI/README.md` / `!.context/PBI/templates/` lines — otherwise the "git-diffable changelog" this pattern promises never actually reaches git.
+> **Why `.context/specs/` and not `.context/PBI/`:** everything under `.context/PBI/` is the gitignored Jira cache (`.agents/instructions/agent-local-context-pbi.md` §9): rebuilt by the sync, never committed, and no hand-authored file there may be depended on. Specs, deltas and their archive are hand-authored and must reach git (the pattern's whole value is a git-diffable changelog), so they live in their own committed tree. Never add `.gitignore` negations under `.context/PBI/` for them, and never write, move or archive anything inside a synced story folder.
 
 ---
 
@@ -38,7 +38,7 @@ If unsure, default to in-place editing. Migration toward delta specs is straight
 
 ## Source-of-truth specs
 
-The source of truth for a feature lives at `.context/PBI/specs/{capability}/{feature}.md`, where `{capability}` is a logical grouping (domain / bounded context — `auth/`, `billing/`, `checkout/`) and `{feature}` is a kebab-case feature name (`login.md`, `password-reset.md`, `invoice-generation.md`).
+The source of truth for a feature lives at `.context/specs/{capability}/{feature}.md`, where `{capability}` is a logical grouping (domain / bounded context — `auth/`, `billing/`, `checkout/`) and `{feature}` is a kebab-case feature name (`login.md`, `password-reset.md`, `invoice-generation.md`).
 
 Each `feature.md` is the **canonical, always-current** description of how that feature behaves. It is what QA, support, and onboarding read; it must always reflect production reality.
 
@@ -69,20 +69,20 @@ Multiple `### Requirement:` blocks per feature are normal. Each requirement shou
 
 ## Delta spec structure
 
-A delta spec lives alongside the Jira ticket that introduces the change:
+A delta spec lives in a change folder named after the Jira ticket that introduces the change:
 
 ```
-.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/spec.md
+.context/specs/changes/{ticket}/spec.md
 ```
 
-Where `{ticket}` is the issue tracker key (e.g., `UPEX-277`, `MYM-103`).
+Where `{ticket}` is the issue tracker key (e.g., `UPEX-277`, `MYM-103`). The story's synced cache folder under `.context/PBI/` stays untouched; link the delta from the story with a Jira comment if reviewers need to find it.
 
 Every delta spec has up to three top-level sections:
 
 ```markdown
 # {Ticket} — {Short change title}
 
-> Targets: `.context/PBI/specs/{capability}/{feature}.md`
+> Targets: `.context/specs/{capability}/{feature}.md`
 > Related Jira: {ticket-url}
 
 ## ADDED Requirements
@@ -163,7 +163,7 @@ Each requirement is a `### Requirement: {Title}` block with:
 
 ## Concrete example: adding 2FA to login
 
-Suppose `auth/login.md` currently exists with one requirement:
+Suppose `auth/login.md` already exists with one requirement:
 
 ```markdown
 # Login
@@ -189,12 +189,12 @@ The system MUST authenticate users via email and password.
 - And displays "Invalid email or password"
 ```
 
-Ticket `UPEX-512` introduces optional 2FA. The delta spec at `.context/PBI/epics/EPIC-UPEX-100-<epic>/stories/STORY-UPEX-512-<slug>/spec.md`:
+Ticket `UPEX-512` introduces optional 2FA. The delta spec at `.context/specs/changes/UPEX-512/spec.md`:
 
 ```markdown
 # UPEX-512 — Add optional TOTP-based 2FA to login
 
-> Targets: `.context/PBI/specs/auth/login.md`
+> Targets: `.context/specs/auth/login.md`
 > Related Jira: https://example.atlassian.net/browse/UPEX-512
 
 ## ADDED Requirements
@@ -258,7 +258,7 @@ Note how the **MODIFIED** block contains the **full** post-change requirement �
 
 When writing a `## MODIFIED Requirements` block, follow this exact workflow:
 
-1. Open the source-of-truth file (`.context/PBI/specs/{capability}/{feature}.md`).
+1. Open the source-of-truth file (`.context/specs/{capability}/{feature}.md`).
 2. **Copy the entire requirement block** — from `### Requirement: {Title}` through every `#### Scenario:` block under it.
 3. Paste the copy under `## MODIFIED Requirements` in the delta spec.
 4. **Edit the copy in place** — change the body, edit existing scenarios, add new ones, remove obsolete ones.
@@ -310,14 +310,14 @@ When the story closes (PR merged + verified in staging/prod), the delta is folde
    - Optionally write a one-line entry to a CHANGELOG with the removal reason.
 
 5. **Move the change folder to archive**
-   - Move `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/` to `.context/PBI/archive/YYYY-MM-DD-{ticket}/`, where `YYYY-MM-DD` is the close date.
+   - Move `.context/specs/changes/{ticket}/` to `.context/specs/archive/YYYY-MM-DD-{ticket}/`, where `YYYY-MM-DD` is the close date. Only the change folder moves; the story's synced cache under `.context/PBI/` is never touched.
    - Add an `archive-report.md` inside the archived folder summarizing: requirements added/modified/removed, target file(s) updated, who archived it, when.
 
 6. **Commit the archive**
    - One commit titled `archive(spec): {ticket} merged into {capability}/{feature}`.
-   - The diff shows: target `feature.md` updates + the move of `{ticket}/` to `archive/`.
+   - The diff shows: target `feature.md` updates + the move of `changes/{ticket}/` to `archive/`.
 
-After archive: the canonical truth lives only in `.context/PBI/specs/`. The archived delta is historical record.
+After archive: the canonical truth lives only in `.context/specs/{capability}/`. The archived delta is historical record.
 
 ---
 
@@ -343,7 +343,7 @@ After archive: the canonical truth lives only in `.context/PBI/specs/`. The arch
 Adopting delta specs after a history of in-place editing:
 
 1. **Pick a capability boundary, not the whole repo.** Start with one high-churn capability (e.g., `auth/`) and leave the rest on in-place editing. Mixed mode is fine.
-2. **Snapshot current AC into source-of-truth.** Consolidate existing AC into `feature.md` files under `.context/PBI/specs/{capability}/` using RFC 2119 + Gherkin. The snapshot is the new canonical truth.
+2. **Snapshot current AC into source-of-truth.** Consolidate existing AC into `feature.md` files under `.context/specs/{capability}/` using RFC 2119 + Gherkin. The snapshot is the new canonical truth.
 3. **Cut over on the next story.** From the next ticket forward, write a delta `spec.md` instead of editing AC in place. Update the story-refinement checklist accordingly.
 4. **Archive policy.** Decide who runs the archive step (typically the dev who merges the PR, or the PM on story close).
 5. **Tooling (optional).** Add a script to validate deltas (target exists, MODIFIED has ≥ scenarios than source, ADDED titles do not collide, REMOVED titles exist).

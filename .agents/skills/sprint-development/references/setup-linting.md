@@ -6,6 +6,8 @@ Actúa como Senior DevOps Engineer y Code Quality Expert.
 
 Configurar **ESLint + Prettier** en el proyecto actual (si no está configurado).
 
+> **Aditivo, nunca reemplazo.** Si la app ya tiene configuración de lint o de formato (cualquier `eslint.config.*`, `.eslintrc.*`, `.prettierrc*`, `biome.json`, o un script `{{stack.scripts.lint}}` no null en `.agents/project.yaml`), esta guía NO corre: la configuración de la app gana, y lo que falte se propone al usuario como cambio aparte, nunca se pisa un archivo existente ni se renombra un script. Al terminar en una app que no tenía nada, registra los nombres de script creados con `bun run agents:setup --stack` para que `stack.scripts.lint` los nombre.
+
 ---
 
 ## ⚙️ VERIFICACIÓN DE HERRAMIENTAS (MCP)
@@ -47,14 +49,14 @@ Puedo continuar, pero usaré configuración genérica (puede no ser óptima).
 ## Análisis del Proyecto
 
 **Framework detectado:** [Next.js / React+Vite / etc.]
-**Package manager:** [npm / pnpm / bun]
+**Package manager:** [`{{stack.package_manager}}`]
 
 **Estado actual:**
 
 - ESLint: ✅ Configurado / ❌ No configurado
 - Prettier: ✅ Configurado / ❌ No configurado
 
-**Próximo paso:** [Configurar desde cero / Actualizar / Ya está OK]
+**Próximo paso:** [Configurar desde cero / Ya está OK: la configuración existente gana, fin de la guía]
 ```
 
 ---
@@ -68,25 +70,25 @@ Puedo continuar, pero usaré configuración genérica (puede no ser óptima).
 **Comando a ejecutar:**
 
 ```bash
-[npm/pnpm/bun] install -D eslint prettier eslint-config-prettier eslint-plugin-prettier
+{{stack.package_manager}} add -d eslint prettier eslint-config-prettier eslint-plugin-prettier
 ```
 
 **Para Next.js:**
 
 ```bash
-[npm/pnpm/bun] install -D eslint-config-next
+{{stack.package_manager}} add -d eslint-config-next
 ```
 
 **Para React (sin Next.js):**
 
 ```bash
-[npm/pnpm/bun] install -D eslint-plugin-react eslint-plugin-react-hooks
+{{stack.package_manager}} add -d eslint-plugin-react eslint-plugin-react-hooks
 ```
 
 **Para TypeScript:**
 
 ```bash
-[npm/pnpm/bun] install -D @typescript-eslint/eslint-plugin @typescript-eslint/parser
+{{stack.package_manager}} add -d @typescript-eslint/eslint-plugin @typescript-eslint/parser
 ```
 
 ---
@@ -204,9 +206,10 @@ package-lock.json
 ```json
 {
   "scripts": {
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:fix": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\""
   }
 }
 ```
@@ -220,7 +223,7 @@ package-lock.json
 ### 5.1 Probar linting
 
 ```bash
-[npm/pnpm/bun] run lint:check
+{{stack.package_manager}} run lint:check
 ```
 
 **Resultado esperado:**
@@ -231,7 +234,7 @@ package-lock.json
 ### 5.2 Probar fix automático
 
 ```bash
-[npm/pnpm/bun] run lint:fix
+{{stack.package_manager}} run lint:fix
 ```
 
 **Resultado esperado:**
@@ -241,7 +244,7 @@ package-lock.json
 ### 5.3 Probar Prettier
 
 ```bash
-[npm/pnpm/bun] run format:fix
+{{stack.package_manager}} run format:fix
 ```
 
 **Resultado esperado:**
@@ -297,20 +300,20 @@ package-lock.json
 
 ### Scripts agregados a `package.json`:
 
-- `npm run lint:check` - Ejecutar linting
-- `npm run lint:fix` - Fix automático
-- `npm run format:fix` - Formatear código
+- `{{stack.package_manager}} run lint:check` - Ejecutar linting
+- `{{stack.package_manager}} run lint:fix` - Fix automático
+- `{{stack.package_manager}} run format:fix` - Formatear código
 
 ### ✅ Validación:
 
-- ✅ `npm run lint:check` ejecuta sin errores de configuración
-- ✅ `npm run format:fix` formatea archivos
+- ✅ `{{stack.package_manager}} run lint:check` ejecuta sin errores de configuración
+- ✅ `{{stack.package_manager}} run format:fix` formatea archivos
 
 ### 📋 Próximos Pasos:
 
 1. **Ejecutar linting en código existente:**
    ```bash
-   npm run lint:check
+   {{stack.package_manager}} run lint:check
    ```
 ````
 
@@ -320,8 +323,8 @@ package-lock.json
 2. **Fix automático (si es seguro):**
 
    ```bash
-   npm run lint:fix
-   npm run format:fix
+   {{stack.package_manager}} run lint:fix
+   {{stack.package_manager}} run format:fix
    ```
 
 3. **Configurar editor:**
@@ -352,7 +355,7 @@ Configura ESLint y Prettier para este proyecto Next.js.
 2. Instala dependencias necesarias
 3. Crea archivos de configuración manualmente (NO scripts interactivos)
 4. Agrega scripts a package.json
-5. Valida que funciona (npm run lint:check)
+5. Valida que funciona ({{stack.package_manager}} run lint:check)
 
 **Importante:**
 - Usa Context7 MCP para consultar configuración oficial de Next.js
@@ -389,4 +392,4 @@ Este comando requiere input interactivo. En su lugar:
 
 ---
 
-**Nota:** Después de configurar linting, procede con code review (Fase 8) usando `review-pr.md`.
+**Nota:** Después de configurar linting, procede con code review (Stage 3) usando `review-pr.md`.

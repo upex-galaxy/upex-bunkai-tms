@@ -1,0 +1,26 @@
+{
+  "skill_name": "business-api-context",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to add a route that lets an org admin invite a member. Which route group does that belong to, how does auth work there, and which existing routes would the invite journey chain with?",
+      "expected_output": "Loads business-api-context, reads the map with `bun run context:map business-api-context --section <members or auth group id>` (never the raw HTML), answers from the section with its id and data-updated date, and takes field shapes from the OpenAPI types rather than the map. If the map is a placeholder it says so and hands over `project-context` mode `api`.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "el endpoint PATCH /api/projects/:id me devuelve 409 cuando el proyecto está archivado y el mapa dice que solo puede devolver 200 o 404, ¿corregimos el mapa?",
+      "expected_output": "Loads business-api-context and follows references/refresh.md: locates the section via --list / --section, PROPOSES a one-section edit in the fixed proposal shape (evidence = the request and response) and waits for an explicit yes before editing only that section of references/business-api-map.html and bumping data-updated. Answers in Spanish. Touches no file outside the skill's references/.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "What states can a project move through, and which trigger sets archived_at?",
+      "expected_output": "Should NOT be answered from business-api-context: state machines and triggers belong to business-data-context (plus [DB_TOOL]). At most business-api-context is cited for which route performs the archive.",
+      "should_trigger": false,
+      "files": []
+    }
+  ]
+}

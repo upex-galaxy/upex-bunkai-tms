@@ -25,6 +25,12 @@
       "category": "positive"
     },
     {
+      "name": "should-refine-from-business-maps-without-prd",
+      "prompt": "Refina la historia BK-40 de esta app adoptada. No hay .context/PRD ni .context/SRS; los mapas de negocio y el glosario están generados.",
+      "expected_behavior": "Refines from the business-maps substitutes (`## Inputs` → \"Product docs: PRD/SRS or business maps\"): scope from the feature map's modules, the `As a` persona from the glossary's actors or the data map's `access-control` roles, journeys from the API/data map sections, and the `**Source spec:**` line citing the map section. Does not write a PRD or SRS, and does not offer the initial backlog seed (workflow A).",
+      "category": "positive"
+    },
+    {
       "name": "should-not-trigger-implementation",
       "prompt": "Implement UPEX-123. The story is refined and ready to code.",
       "expected_behavior": "Does NOT activate product-management. Should route to /sprint-development because the request is per-story implementation. product-management refines stories BEFORE coding; sprint-development takes refined stories and codes them.",

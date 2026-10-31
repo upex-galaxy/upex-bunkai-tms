@@ -33,6 +33,12 @@
  *                      `link_types.required:` or `link_types.optional:`. The
  *                      <sub> segment (outward / inward / fallback) is implicit;
  *                      any of those are valid for link types.
+ *   5. {{stack.<path>}} (lowercase dot-notation) — a leaf of the `stack:` block
+ *                      (e.g. {{stack.package_manager}}, {{stack.scripts.lint}}).
+ *                      MUST name a leaf the block declares. The block's own
+ *                      leaves are never harvested as bare {{VAR}} names: they
+ *                      are read by path, and a bare {{SCRIPTS}} would be
+ *                      meaningless.
  *
  * Exit code: 0 if no ERRORs, 1 otherwise. WARNs do not affect exit code.
  */
@@ -50,11 +56,12 @@ const PROJECT_YAML = join(REPO_ROOT, '.agents', 'project.yaml');
 const JIRA_REQUIRED_YAML = join(REPO_ROOT, '.agents', 'jira-required.yaml');
 
 // Directories to scan recursively. AI-facing content only.
-// `.claude/commands` and `.opencode/commands` hold generated transport wrappers
-// (`bun run agents:compat`) with no `{{VAR}}` content — not scanned.
+// The harness command directories are not scanned: the boilerplate ships none
+// (a skill is invoked by name plus mode), and what a project keeps there is its own.
 const SCAN_ROOTS = [
   '.context',
   '.agents/skills',
+  '.agents/instructions', // the on-demand sections of AGENTS.md
 ];
 
 // Single root-level file to also scan.
@@ -109,6 +116,14 @@ const DOC_META_ALLOWLIST: Array<[string, string]> = [
   ['PROJECT_VARIABLE', 'REGISTRY.md'],
   // AGENTS.md §Pseudocode value types: documents {{PROJECT_VAR}} as syntax meta-marker
   ['PROJECT_VAR', 'AGENTS.md'],
+  // The AGENTS.md sections moved to .agents/instructions/ carry the same
+  // syntax meta-markers: the Critical Rules full text, Tool Resolution's
+  // pseudocode value types, Project Variables' syntax table, the context map.
+  ['VARIABLES', '.agents/instructions/agent-critical-rules.md'],
+  ['PROJECT_VAR', '.agents/instructions/agent-tool-resolution.md'],
+  ['VAR', '.agents/instructions/agent-project-variables.md'],
+  ['VAR_NAME', '.agents/instructions/agent-project-variables.md'],
+  ['VAR', '.agents/instructions/agent-context-map.md'],
   // testability-guide credentials-content-template.md: documents {{VAR_NAME}} / {{environments.<env>.<var>}} syntax for publishers
   ['VAR_NAME', 'credentials-content-template.md'],
   // resend-cli (vendored community skill) reference docs use Resend's own
@@ -135,6 +150,8 @@ interface DeclaredVars {
   envNames: Set<string>
   /** Per-env catalog: { local: Set<"web_url","api_url",...>, staging: ... } (snake_case). */
   envCatalog: Map<string, Set<string>>
+  /** Dotted leaf paths below `stack:` (`scripts.lint`), the targets of {{stack.<path>}}. */
+  stackPaths: Set<string>
 }
 
 function loadDeclaredVariables(yamlPath: string): DeclaredVars {
@@ -160,11 +177,30 @@ function loadDeclaredVariables(yamlPath: string): DeclaredVars {
   const envScoped = new Set<string>();
   const envNames = new Set<string>();
   const envCatalog = new Map<string, Set<string>>();
+  const stackPaths = new Set<string>();
 
   for (const [sectionName, sectionVal] of Object.entries(root)) {
     // `git_strategy` is read DIRECTLY by the git-flow-master skill — its leaves are NOT
     // {{VAR}} template variables, so they must not be harvested as declared vars.
     if (sectionName === 'git_strategy') { continue; }
+    // `harnesses` is a top-level LIST read by the compatibility gates (ADR-0013),
+    // not a {{VAR}} leaf.
+    if (sectionName === 'harnesses') { continue; }
+    // `stack` is read BY PATH ({{stack.scripts.lint}}), so its leaves are
+    // collected as dotted paths, never as bare flat names.
+    if (sectionName === 'stack') {
+      const walk = (node: unknown, prefix: string): void => {
+        if (!node || typeof node !== 'object' || Array.isArray(node)) {
+          stackPaths.add(prefix);
+          return;
+        }
+        for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+          walk(value, prefix === '' ? key : `${prefix}.${key}`);
+        }
+      };
+      walk(sectionVal, '');
+      continue;
+    }
     if (sectionName === 'environments') {
       // Nested: each child is an environment whose leaves are env-scoped vars.
       if (!sectionVal || typeof sectionVal !== 'object' || Array.isArray(sectionVal)) {
@@ -192,7 +228,7 @@ function loadDeclaredVariables(yamlPath: string): DeclaredVars {
     }
   }
 
-  return { flat, envScoped, envNames, envCatalog };
+  return { flat, envScoped, envNames, envCatalog, stackPaths };
 }
 
 /**
@@ -391,6 +427,7 @@ interface ScanResult {
   sessionVarNames: Set<string>
   sessionVarOccurrences: number
   jiraSlugHits: JiraSlugHit[]
+  stackHits: StackHit[]
   metaSkippedCount: number
 }
 
@@ -413,6 +450,13 @@ const JIRA_RE = /\{\{jira\.([a-z_][a-z0-9_.]*)\}\}/g;
 // link-type entry in `.agents/jira-required.yaml`.
 const LINK_TYPE_SUBFIELDS = new Set(['name', 'outward', 'inward', 'fallback']);
 const SESSION_RE = /<<([A-Z_][A-Z0-9_]*)>>/g;
+const STACK_RE = /\{\{stack\.([a-z_][a-z0-9_.]*)\}\}/g;
+
+interface StackHit {
+  path: string
+  file: string
+  line: number
+}
 
 function isAllowlisted(varName: string, filePath: string): boolean {
   return DOC_META_ALLOWLIST.some(
@@ -426,6 +470,7 @@ function scanFiles(files: string[]): ScanResult {
   const sessionVarNames = new Set<string>();
   let sessionVarOccurrences = 0;
   const jiraSlugHits: JiraSlugHit[] = [];
+  const stackHits: StackHit[] = [];
   let metaSkippedCount = 0;
 
   for (const file of files) {
@@ -494,6 +539,14 @@ function scanFiles(files: string[]): ScanResult {
         // else: unknown jira.* shape — silently skip (owned by other namespaces).
       }
 
+      // --- stack refs {{stack.<path>}}
+      STACK_RE.lastIndex = 0;
+      for (;;) {
+        const m = STACK_RE.exec(line);
+        if (m === null) { break; }
+        stackHits.push({ path: m[1], file, line: i + 1 });
+      }
+
       // --- session vars
       SESSION_RE.lastIndex = 0;
       for (;;) {
@@ -511,6 +564,7 @@ function scanFiles(files: string[]): ScanResult {
     sessionVarNames,
     sessionVarOccurrences,
     jiraSlugHits,
+    stackHits,
     metaSkippedCount,
   };
 }
@@ -580,7 +634,9 @@ function main(): void {
 
   const filesWithProjectHits = new Set(result.projectVarHits.map(h => h.file)).size;
 
-  const totalErrors = undeclared.length + invalidExplicitEnv.length + invalidJiraHits.length + external.undocumented.length;
+  const invalidStackHits = result.stackHits.filter(h => !declared.stackPaths.has(h.path));
+
+  const totalErrors = undeclared.length + invalidExplicitEnv.length + invalidJiraHits.length + invalidStackHits.length + external.undocumented.length;
 
   // ----- output -----
   const envList = [...declared.envNames].sort().join(', ') || '(none)';
@@ -635,6 +691,10 @@ function main(): void {
       }
       console.log(`  - UNDECLARED: {{${hit.raw}}} at ${rel}:${hit.line}  (${reason})`);
     }
+    for (const hit of invalidStackHits) {
+      const rel = relative(REPO_ROOT, hit.file);
+      console.log(`  - UNDECLARED stack reference: {{stack.${hit.path}}} at ${rel}:${hit.line}  (not a leaf of the stack: block in .agents/project.yaml)`);
+    }
     for (const entry of external.undocumented) {
       console.log(`  - EXTERNAL_CONSUMER_UNDOCUMENTED: ${entry.name} at .agents/project.yaml:${entry.line}  (missing inline '# ...' comment explaining where it's consumed)`);
     }
@@ -657,6 +717,7 @@ function main(): void {
   console.log(`  - ${result.explicitEnvHits.length} explicit {{environments.<env>.<var>}} occurrences (${invalidExplicitEnv.length} invalid)`);
   console.log(`  - ${result.sessionVarNames.size} distinct <<VAR>> session variables (${result.sessionVarOccurrences} occurrences)`);
   console.log(`  - ${validJiraCount} valid {{jira.*}} references; ${invalidJiraHits.length} invalid (errors above)`);
+  console.log(`  - ${result.stackHits.length - invalidStackHits.length} valid {{stack.*}} references; ${invalidStackHits.length} invalid (errors above)`);
   console.log(`  - ${result.metaSkippedCount} documentation meta-references skipped (allowlisted)`);
   console.log(`  - ${externalSkippedCount} external_consumers entries skipped (declared in .agents/project.yaml allowlist)`);
 

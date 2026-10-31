@@ -1,12 +1,12 @@
-# Ambientes de Desarrollo - Guía para QA Engineers
+# Ambientes de Desarrollo
 
 > **Idioma:** Español
 > **Nivel:** Introductorio
-> **Audiencia:** QA Engineers que necesitan entender los ambientes de desarrollo
+> **Audiencia:** Developers que necesitan entender los ambientes de un proyecto
 
 ---
 
-## ¿Qué son los ambientes?
+## Qué son los ambientes?
 
 Un ambiente es una **copia independiente de tu aplicación** donde se ejecuta el código. Cada ambiente tiene su propia base de datos, configuración y propósito específico.
 
@@ -50,7 +50,7 @@ Es una **réplica casi exacta de producción**. Aquí se ejecutan todas las prue
 
 **Quién lo usa:** QA Engineers, Product Owners, Stakeholders
 
-**Ejemplo real:** Terminaste de automatizar tests de checkout. Los ejecutas en staging porque imita exactamente cómo funciona producción.
+**Ejemplo real:** Terminaste el nuevo checkout. Lo validas en staging porque imita exactamente cómo funciona producción.
 
 ---
 
@@ -78,7 +78,7 @@ El ambiente que ven tus clientes. **Nunca hagas tests aquí**, solo monitoreo.
 
 **Propósito:** Desarrollo y testing individual.
 
-Técnicamente no es un "ambiente compartido", pero es donde pasas la mayor parte de tu tiempo como QA.
+Técnicamente no es un "ambiente compartido", pero es donde pasas la mayor parte de tu tiempo.
 
 **Características:**
 
@@ -87,9 +87,11 @@ Técnicamente no es un "ambiente compartido", pero es donde pasas la mayor parte
 - Iteración rápida
 - Datos de prueba personalizados
 
-**Quién lo usa:** Cada desarrollador/QA en su máquina
+**Quién lo usa:** Cada developer en su máquina
 
-**Ejemplo real:** Estás escribiendo un test de Playwright. Lo ejecutas localmente 20 veces hasta que funciona perfectamente.
+**Ejemplo real:** Estás armando un formulario. Lo pruebas localmente hasta que funciona y recién ahí abres el PR.
+
+**Con worktrees:** cada worktree es otra copia local, con su propio `.env`. Un `git worktree add` no lo trae; `bun run worktree:provision` (corrido desde el worktree) copia `.env` y el resto de lo que una sesión necesita desde la carpeta principal. Ver [git-flow.md](./git-flow.md#worktrees).
 
 ---
 
@@ -104,7 +106,7 @@ tests    integran    validan       usan
 
 **Paso a paso:**
 
-1. **Local:** Escribes código/tests en tu computadora
+1. **Local:** Escribes código y tests en tu computadora
 2. **Development:** Commit y push, se integra con el código de otros
 3. **Staging:** El equipo valida que todo funcione correctamente
 4. **Production:** Si staging pasa, se despliega a usuarios reales
@@ -151,19 +153,17 @@ Múltiples ambientes intermedios. "Canary" despliega a un pequeño % de usuarios
 
 ## Ambientes en Este Template
 
-> **Fuente de verdad:** los ambientes reales de cada proyecto (y sus URLs) se declaran en `.agents/project.yaml` → bloque `environments:` (`web_url`, `api_url`, `db_project_ref` por ambiente; `testing.default_env` marca el activo). El mapeo branch↔ambiente depende del bloque `git_strategy:` del mismo archivo — el repo del boilerplate en sí opera como **solo-main** (solo existe `main`, sin branch `staging`).
+> **Fuente de verdad:** los ambientes reales de cada proyecto (y sus URLs) se declaran en `.agents/project.yaml` → bloque `environments:` (`web_url`, `api_url`, `db_project_ref` por ambiente; `testing.default_env` marca el activo). El mapeo branch↔ambiente depende del bloque `git_strategy:` del mismo archivo; la estrategia por defecto, `solo-main`, tiene solo `main` y ninguna branch `staging`.
 
 Como default recomendado para un proyecto scaffoldeado, usamos **3 ambientes**:
 
 ### Local (tu máquina)
 
-Aquí desarrollas y pruebas tus tests de automatización.
+Aquí desarrollas y corres los tests unitarios.
 
-### Staging (branch `staging`)
+### Staging
 
-Ambiente de integración donde todos los cambios son validados antes de producción.
-
-**Este es tu ambiente principal de trabajo como QA.**
+Ambiente de integración donde todos los cambios son validados antes de producción. Es el ambiente por defecto de las skills cuando no indicas otro (`.agents/instructions/agent-ticket-work.md` §8). Con una estrategia `main-integration` le corresponde la branch `staging`; con `solo-main` es un deploy de Vercel sin branch propia.
 
 ### Production (branch `main`)
 
@@ -173,30 +173,25 @@ Código estable y aprobado.
 
 ## Por Qué NO Usamos "qa" Como Nombre de Branch
 
-Aunque algunas empresas tienen ambientes llamados "qa", **staging es el término estándar** que encontrarás en:
+Aunque algunas empresas tienen ambientes llamados "qa", **staging es el término estándar** en la documentación de CI/CD (GitHub Actions, GitLab CI, Jenkins), en tutoriales y en las convenciones de la industria.
 
-- 90% de las ofertas de trabajo
-- Documentación de CI/CD (GitHub Actions, GitLab CI, Jenkins)
-- Tutoriales y cursos
-- Convenciones de la industria
-
-Los QA engineers **trabajan en staging**, no necesitan un ambiente separado llamado "qa".
+QA valida en staging; no hace falta un ambiente separado llamado "qa".
 
 ---
 
 ## Cómo Se Relacionan las Branches de Git con los Ambientes
 
-Cada branch usualmente tiene un ambiente asociado:
+Con una estrategia `main-integration` (branch `staging`), el mapeo típico es:
 
 ```
 Git Branch           Ambiente           Auto-deploy?
 ─────────────────────────────────────────────────────
-feature/login    →    Local              No
+feature/login    →    Local / Preview    Preview por PR
 staging          →    Staging            Sí (automático)
 main             →    Production         Sí (con aprobación)
 ```
 
-**Auto-deploy:** Cuando haces push a `staging`, automáticamente se despliega al ambiente staging via CI/CD.
+**Auto-deploy:** un push a `staging` se despliega solo al ambiente staging vía CI/CD. Con `solo-main` no hay branch `staging`: el mapeo sale de la estrategia que declara tu `git_strategy:`, y el deploy a staging y la promoción a producción los conduce `/sprint-development`. Que un deploy esté listo se verifica leyendo el deploy del commit hasta que diga `READY`, nunca porque el push salió bien (`AGENTS.md` Regla #16).
 
 ---
 
@@ -220,7 +215,7 @@ API_KEY=live_key_67890
 DEBUG_MODE=false
 ```
 
-Esto se maneja con archivos `.env` o variables de entorno en el servidor.
+Esto se maneja con archivos `.env` o variables de entorno en el servidor (en Vercel, por scope: Preview / Production).
 
 **En este boilerplate:** las URLs por ambiente NO viven en `.env` — se declaran en `.agents/project.yaml` (`environments:`), y los prompts las resuelven como `{{WEB_URL}}` / `{{API_URL}}` según el ambiente activo. En `.env` quedan solo credenciales y secretos.
 
@@ -230,16 +225,15 @@ Esto se maneja con archivos `.env` o variables de entorno en el servidor.
 
 ### Local
 
-- Tests unitarios
+- Tests unitarios (`bun run test` en la raíz; la lista de scripts está en `package.json`)
 - Tests de componentes
-- Debugging de tests
+- Debugging
 
 ### Staging
 
-- Suites completas de tests (E2E)
-- Testing de regresión
+- Validación de nuevas features contra la UI en vivo
+- Suites E2E y regresión (las conduce QA desde su repo)
 - Testing básico de rendimiento
-- Validación de nuevas features
 
 ### Production
 
@@ -297,16 +291,16 @@ Aunque son similares, pueden tener diferencias sutiles. Monitorea producción po
 
 ## Preguntas Frecuentes
 
-**¿Por qué no puedo hacer tests en producción?**
+**Por qué no puedo hacer tests en producción?**
 Porque afectarías a usuarios reales. Un bug en un test puede borrar datos, crashear la app, o crear una mala experiencia.
 
-**¿Staging siempre es idéntico a producción?**
+**Staging siempre es idéntico a producción?**
 Idealmente sí, pero a veces hay diferencias en recursos (staging usa servidores más pequeños para ahorrar costos).
 
-**¿Cuántos ambientes son suficientes?**
+**Cuántos ambientes son suficientes?**
 Para aprender: Local + Staging + Production es perfecto. En trabajo real, depende del tamaño de la empresa.
 
-**¿Qué pasa si encuentro un bug en producción?**
+**Qué pasa si encuentro un bug en producción?**
 Se crea un hotfix inmediato. Algunos equipos lo prueban rápidamente en staging primero, otros van directo a producción si es urgente.
 
 ---
@@ -323,7 +317,7 @@ Se crea un hotfix inmediato. Algunos equipos lo prueban rápidamente en staging 
 
 Los ambientes te protegen de errores costosos. Pruebas localmente, integras en staging, despliegas a producción solo cuando todo está validado.
 
-**Como QA Engineer, tu ambiente principal es staging.** Ahí ejecutas tus suites de tests, validas features, y aseguras calidad antes de que el código llegue a usuarios reales.
+**Staging es donde se valida todo antes de producción:** ahí ves tu feature corriendo con datos realistas y QA ejecuta sus suites antes de que el código llegue a usuarios reales.
 
 El mercado usa principalmente: Local → Dev → Staging → Production.
 
@@ -334,5 +328,4 @@ Este template recomienda por default: Local → Staging → Production (simplifi
 ## Navegación
 
 - [Git Flow](./git-flow.md) - Flujo de trabajo con Git
-- [TMLC](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/workflows/test-manual-lifecycle.md) - Ciclo de vida del testing manual
-- [TALC](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/workflows/test-automation-lifecycle.md) - Ciclo de vida de la automatización
+- [agentic-qa-boilerplate](https://github.com/upex-galaxy/agentic-qa-boilerplate) - El repo hermano donde vive el testing manual y la automatización

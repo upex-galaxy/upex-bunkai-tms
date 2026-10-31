@@ -7,9 +7,9 @@
 
 ## Core principle — delegation, not generation
 
-The AI does **NOT** generate screen mockups. Screen design is an inherently external maneuver:
+The AI does **NOT** generate screen mockups on its own. Screen design is a design-tool maneuver:
 a dedicated design tool produces the prototypes, and they land in the repo. This skill
-**orchestrates the delegation** — in one of two modes:
+**orchestrates the delegation** — in one of three modes:
 
 - **MCP-driven (preferred when available)**: Open Design's MCP is registered → the AI commissions
   the runs itself (`start_run` per screen), Open Design's own pipeline generates, the AI polls,
@@ -18,14 +18,21 @@ a dedicated design tool produces the prototypes, and they land in the repo. This
   Design's inner agent + skill, never the orchestrating AI hand-writing HTML.
 - **Manual handoff (fallback)**: no MCP → tell the user what to do (brief out), wait, then build
   the plan from what lands — exactly like Paths C / D do for `DESIGN.md`.
+- **Design-skill generation (Mode C)**: no MCP, but the design set is loaded for the job, before the first
+  line of HTML (`agentic-dev-core/references/skill-composition-strategy.md` §3.5: `frontend-design`,
+  `ui-ux-pro-max`, `impeccable`, `emil-design-eng`, plus the two conditional members it names). The AI
+  writes the screen HTML itself THROUGH those skills, and they are what make it a design tool. Name them in
+  `BRIEF.md`; a human ratifies the result like any other mockup. No design skill loaded → this mode
+  does not exist, and the AI falls back to the manual handoff.
 
 Supported external tools (document both; the user picks):
 
 | Tool | How | Output |
 |------|-----|--------|
 | **Claude Design** (`claude.ai/design`) | Premium (Claude Pro+). User mocks screens in HTML/CSS, exports the handoff bundle. | A bundle (HTML/CSS/JS prototypes + chat transcript) dropped into the drop zone. |
-| **Open Design** (OSS, local Docker app) | Free. User iterates screens in the local UI, downloads the prototypes. | Prototype files dropped into the drop zone. |
-| Any other prototyper (Figma export, hand-authored HTML, …) | User's choice | Whatever lands in the drop zone is treated as the screen source. |
+| **Open Design** (OSS, local desktop app; Docker optional) | Free. User iterates screens in the local UI, downloads the prototypes. | Prototype files dropped into the drop zone. |
+| Any other prototyper (Figma export, HTML a human wrote, …) | User's choice | Whatever lands in the drop zone is treated as the screen source, once a human ratifies it. |
+| AI-generated HTML through design skills (Mode C) | The design set loaded in the session (`skill-composition-strategy.md` §3.5) | HTML screens the AI writes through it into the drop zone; `BRIEF.md` names the skills loaded; a human ratifies every one. Without a design skill loaded, AI-written HTML is NOT a mockup (S1). |
 
 **Drop zone:** `.context/designs/<project-slug>/<batch-slug>/` (project-slug from `.agents/project.yaml`;
 batch-slug per `references/screen-design-brief.md` — one folder per brief/feature batch, holding
@@ -112,10 +119,12 @@ the mockup + `DESIGN.md` tokens. If the plan is absent, it falls back to `DESIGN
 
 ## Anti-patterns — NEVER do these
 
-- **S1.** NEVER hand-author or invent screen mockups yourself (no `Write`/`write_file` of design
-  HTML). Delegate to the external tool and wait for its artifacts. Commissioning Open Design runs
-  via MCP IS sanctioned delegation — OD's pipeline generates, you orchestrate. What stays banned is
-  the orchestrating AI writing the mockup markup itself (including "fixing" a run by hand-editing
+- **S1.** NEVER hand-author or invent screen mockups yourself with no design skill loaded (no
+  `Write`/`write_file` of design HTML outside Mode C). Delegate to the external tool and wait for its
+  artifacts. Commissioning Open Design runs via MCP IS sanctioned delegation — OD's pipeline
+  generates, you orchestrate — and so is Mode C, where a loaded `frontend-ui` design skill drives the
+  HTML you write. What stays banned is the orchestrating AI writing the mockup markup itself with no
+  design skill loaded (including "fixing" a run by hand-editing
   its output — send a refinement run instead). A made-up screen defeats the entire fidelity contract.
 - **S2.** NEVER run this phase without an explicit user opt-in. It is always a question, never a default.
 - **S3.** NEVER duplicate `DESIGN.md` token values into the master design plan — reference them. The

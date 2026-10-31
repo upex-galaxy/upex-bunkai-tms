@@ -31,13 +31,13 @@ Genera Entity-Relationship Diagram en Mermaid que muestre:
 - Relaciones (1:1, 1:N, N:M)
 - Cardinalidad
 
-**IMPORTANTE:** NO generar SQL schemas estáticos. Indicar que se usará Supabase MCP para obtener schema real en tiempo real.
+**IMPORTANTE:** NO generar SQL schemas estáticos. Indicar que el schema real se lee y se cambia por el DB MCP (`agentic-dev-core/references/db-change-doctrine.md`).
 
 **3. Tech Stack Justification**
 
 Por cada componente del stack, incluir:
 
-- **Componente:** (ej: Next.js 15)
+- **Componente:** (ej: Next.js)
 - **Por qué elegido:**
   - ✅ Ventaja 1
   - ✅ Ventaja 2
@@ -45,7 +45,7 @@ Por cada componente del stack, incluir:
 
 **Ejemplo:**
 
-- **Frontend: Next.js 15 (App Router)**
+- **Frontend: Next.js (App Router)**
   - ✅ React Server Components (mejor performance)
   - ✅ Routing file-based (DX mejorada)
   - ✅ Full-stack framework (API routes integrados)
@@ -95,4 +95,4 @@ Candidatos típicos en esta fase: modelo de auth/authorization, patrón de data-
 - **Template + lifecycle + índice**: `.context/ADR/README.md`.
 - **Lo que NO es un ADR**: trade-offs locales de una story (van en su `implementation-plan.md`), bugfixes, refactors locales, naming.
 - **Append-only**: un ADR Accepted no se reescribe; se **supersede** con uno nuevo que enlaza de vuelta.
-- La IA redacta como `Proposed`; el humano lo pasa a `Accepted`. Persistí la decisión en engram (`mem_save`, type `architecture`).
+- Estado: una decisión que el humano ya aprobó (está en el SRS/PRD que firmó, o la decidió en el chat o en un deck) se escribe `Accepted` desde el inicio, citando dónde se aprobó; solo una pregunta todavía abierta va como `Proposed`. Persistí la decisión en engram (`mem_save`, type `architecture`).

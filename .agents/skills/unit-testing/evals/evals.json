@@ -21,7 +21,19 @@
     {
       "name": "should-trigger-coverage-target",
       "prompt": "What's a good coverage target for this business logic module? Line vs branch — what should I aim for?",
-      "expected_behavior": "Activates unit-testing in advisory mode. Reads test-coverage.md reference. Explains line vs branch coverage trade-offs, recommends branch coverage as the more meaningful target for business logic (typically 80-90% branch, 100% on critical paths), mentions mutation testing as the next step to validate the tests actually catch bugs.",
+      "expected_behavior": "Activates unit-testing in advisory mode. Reads test-coverage.md reference. Explains line vs branch coverage trade-offs, recommends branch coverage as the more meaningful metric for business logic, quotes the per-code-type ranges from test-coverage.md (90-100% for pure business logic) as guidelines and a floor rather than a target, prefers delta-based CI gates over a single global threshold, mentions mutation testing as the next step to validate the tests actually catch bugs.",
+      "category": "positive"
+    },
+    {
+      "name": "adopted-app-uses-its-own-runner",
+      "prompt": "Write unit tests for the price calculator in our adopted monorepo app. Tests here run with bun test and live in __tests__ folders.",
+      "expected_behavior": "Activates unit-testing. Reads `.agents/project.yaml` → `stack:` first: `stack.test_runner` (`bun`), `stack.scripts.test`, `stack.app_root`. Writes the tests with the `bun:test` API in the app's existing `__tests__/` layout under `stack.app_root`, and runs them with `{{stack.package_manager}} run {{stack.scripts.test}}`. Does NOT install Vitest or Jest, does NOT add a config for a second runner, does NOT rename the app's test script, and does NOT assume `src/**`.",
+      "category": "positive"
+    },
+    {
+      "name": "greenfield-null-runner-sets-up-and-records",
+      "prompt": "Fresh project from create-agentic-dev, no tests yet. TDD the slug helper.",
+      "expected_behavior": "Activates unit-testing. Reads `stack.test_runner`, finds `null` (runner not chosen yet), so runs the Setup step: asks which runner, checks its setup docs through `library-docs`, installs it with `stack.package_manager`, adds the test script only because `stack.scripts.test` names none in the app's `package.json`, then runs `bun run agents:setup --stack` so the block records the runner and the script. Then runs red-green-refactor on the helper. The greenfield flow is otherwise unchanged.",
       "category": "positive"
     },
     {

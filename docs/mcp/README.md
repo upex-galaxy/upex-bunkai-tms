@@ -1,215 +1,108 @@
-# MCP Configuration Templates
+# MCP Configuration
 
-This directory contains **pre-configured MCP server templates** for different AI CLI tools, plus the syntax reference for each host's env-var expansion.
+This directory holds **opt-in MCP blocks** the repo does not enable, one template per supported host, plus the DBHub example and the long-form per-host syntax guide. The servers the repo actually runs are not here: they live in the three committed configs below.
 
 ## Runtime configs committed in this repo
 
-The boilerplate runs on three harnesses from one source (`AGENTS.md` + `.agents/skills/`, see `AGENTS.md` §5.5). The MCP inventory is the one surface that genuinely differs per host, so it exists once per format, committed, with the same server set on every host: whatever `.mcp.json` declares (`context7`, `tavily`, `supabase`, `n8n` out of the box):
+The boilerplate runs on three harnesses from one source (`AGENTS.md` + `.agents/skills/`, see `.agents/instructions/agent-harnesses.md` §5.5). The MCP inventory is the one surface that genuinely differs per host, so it exists once per format, committed, with the same server set on every host: whatever `.mcp.json` declares. Only LOCAL (stdio) servers are committed; web search is connected at harness level (see [Capabilities](#capabilities-not-server-names)).
 
-| Harness             | Committed config     | Env-var syntax                                      | Launcher (loads `.env` first) |
-| ------------------- | -------------------- | --------------------------------------------------- | ----------------------------- |
-| Claude Code         | `.mcp.json`          | `${VAR}` inside args / env values                   | `bun run claude`              |
-| OpenCode            | `opencode.jsonc`     | `{env:VAR}` inside command / environment values     | `bun run opencode`            |
-| Codex CLI + Desktop | `.codex/config.toml` | `env_vars = ["VAR"]` / `bearer_token_env_var` by name | `bun run codex`               |
+| Harness             | Committed config     | How a server gets its `.env` values                     | How to open it                |
+| ------------------- | -------------------- | ------------------------------------------------------- | ----------------------------- |
+| Claude Code         | `.mcp.json`          | the `.env` loader, `--filter` = the names it reads      | `claude`, or the desktop app  |
+| OpenCode            | `opencode.jsonc`     | the same loader, same filter                            | `opencode`                    |
+| Codex CLI + Desktop | `.codex/config.toml` | the same loader, same filter, `startup_timeout_sec = 30` | `codex`, or Codex Desktop     |
 
-`bun run agents:compat:check` normalizes the three files into one shape (transport, command, args, url, env vars, enabled) and compares them. The canonical set is whatever `.mcp.json` declares: a server missing from another host, present in one host only, or depending on a different set of `.env` variables, fails the check (it runs inside `repo:check` and the pre-push hook). The four ids the boilerplate ships additionally get a strict per-host shape check when the project declares them; a project that declares a different set (say `playwright` instead of `n8n`) passes on the generic check alone. Gemini CLI and Cursor have no runtime adapter: they stay template-only below. `.codex/config.toml` is read only in a repository Codex trusts; `bun run setup:doctor` warns about that.
+`bun run agents:compat:check` normalizes the three files into one shape (transport, command, args, url, env vars, enabled) and compares them; a server behind the loader is read as its own command, with its `--filter` as its `.env` dependencies. The canonical set is whatever `.mcp.json` declares: a server missing from another host, present in one host only, or depending on a different set of `.env` variables, fails the check (it runs inside `repo:check` and the pre-push hook). The servers the boilerplate ships (`KNOWN_MCP_IDS` in `cli/lib/agent-compatibility-contracts.ts`) additionally get a strict per-host shape check when the project declares them; a project that declares a different set passes on the generic check alone. `.codex/config.toml` is read only in a repository Codex trusts; `bun run setup:doctor` warns about that.
 
-## Available Templates
+### Getting `.env` into the MCP servers
 
-| File                     | For Tool    | Format | Description                                                                                          |
-| ------------------------ | ----------- | ------ | ---------------------------------------------------------------------------------------------------- |
-| `claude.template.json`   | Claude Code | JSON   | `.mcp.json` in project root                                                                          |
-| `opencode.template.json` | OpenCode    | JSON   | `opencode.jsonc` in project root                                                                     |
-| `codex.template.toml`    | Codex CLI   | TOML   | Derived from the committed `.codex/config.toml` (same server set) plus opt-in extras with `{{VAR}}`   |
-| `gemini.template.json`   | Gemini CLI  | JSON   | `~/.gemini/settings.json` (template only, no runtime adapter in this repo)                           |
-| `dbhub.example.toml`     | DBHub (SQL) | TOML   | `dbhub.toml` in project root                                                                         |
+- **Every host, every launch:** a stdio server that needs `.env` values starts through the `.env` loader, `bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter <its vars> -- <command>` (`MCP_ENV_LOADER_*` / `mcpEnvLoaderArgs` in `cli/lib/agent-compatibility-contracts.ts`, ADR-0012; the pin equals the `varlock` devDependency). It reads the varlock schema plus `.env` / `.env.local` (or the secret manager the schema names, ADR-0011) from the project root at spawn time, however the harness was launched (terminal, desktop app, a natively launched supervised worker), and hands the server ONLY the names in its filter. `--no-redact-stdout` keeps the JSON-RPC stream byte-intact. A server that needs no value (context7) launches bare.
+- **Nothing beside the loader:** no `${VAR}`, `{env:VAR}`, `{file:...}` or `env_vars` for the names the filter delivers. An unset `${VAR}` breaks a desktop launch, and an empty inherited value shadows `.env`. `bun run agents:compat:check` fails on either in the boilerplate and warns downstream with the exact launch to use.
+- **Opening the agent:** its own binary in the project folder (`claude`, `opencode`, `codex`) or its desktop app. There is no wrapper script: nothing loads `.env` into the agent's process, so no secret reaches the AI's shell (ADR-0016). A command the agent runs that needs a value runs it through the loader in a subprocess, `bunx varlock run -- sh -c '<command using "$VAR">'`; `bun` scripts load `.env` themselves.
+- **An MCP that behaves as if `.env` were ignored:** varlock lets a variable your shell already exports win over `.env`. `bun run vars:env:check` names the variables whose inherited value differs (names and lengths only); `unset` them or open a clean shell.
+- **After a `.env` change:** restart the agent session. OpenCode caches the resolved config per directory, so also run `opencode service restart` (or quit every OpenCode session).
+- **A worktree** carries its own `.env`; `bun run worktree:provision` copies it and derives nothing from it.
+- **Plaintext copies from an older install** (the `env` block of `.claude/settings.local.json`, `.auth/opencode/<VAR>`): no host reads them. `bun run harness:env` retires them (equal to `.env`: deleted; different: moved to `.auth/harness-env-backup/<VAR>` and named), and `bun run harness:env:check` exits 1 while one remains.
 
-## Variable Format
+### A missing credential fails silently
 
-Templates use `{{VARIABLE}}` as a universal **find-and-replace placeholder** — it's NOT runtime-evaluated syntax. Before using the file, replace every `{{VAR}}` using one of two strategies:
+None of the three hosts refuses to start when a variable is missing. The loader hands the server the variable unset or empty, the server starts, and it dies on its first authenticated call. A value that FAILS the schema stops only the server that needs it: `bunx varlock load --agent` shows which, redacted. So a 401/403 or a mystery tool failure is the signal, not a parse error. Check with `/mcp` inside the session, fix `.env`, then restart the session: values are read when the MCP server spawns (`AGENTS.md` Critical Rule #9).
 
-| Strategy                           | Replace `{{VAR}}` with               | Then                                              | Use when                         |
-| ---------------------------------- | ------------------------------------ | ------------------------------------------------- | -------------------------------- |
-| **A. Literal value** (legacy)      | The real secret directly             | Add the config file to `.gitignore`               | Personal-only config             |
-| **B. Native env-var expansion** ⭐ | Tool-native syntax (see table below) | Store the real value in `.env`, commit the config | Team-shared config (recommended) |
+## Capabilities, not server names
 
-### Native env-var syntax (for strategy B)
+Skills never name a server. They declare a CAPABILITY in `metadata.requires_capabilities` (`library-docs`, `web-search`, `db`, `automation-flows`, `diagrams`) and the AI resolves it by tool-name SUFFIX, whatever prefix the host gave the server: `mcp__context7__query-docs` and a claude.ai connector's `mcp__claude_ai_context7__query-docs` are the same capability. When no tool provides a capability the skill needs, the AI stops at that step, names the capability and how to enable it, and waits: it never swaps in another tool on its own.
 
-| Tool        | Syntax                                                                        | Example                       | Missing-var behavior                                          |
-| ----------- | ----------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------- |
-| Claude Code | `${VAR}` / `${VAR:-default}`                                                  | `${API_TOKEN}`                | **Fails to parse the config** (safe)                          |
-| OpenCode    | `{env:VAR}`                                                                   | `{env:API_TOKEN}`             | Substitutes empty string (footgun)                            |
-| Codex CLI   | `env_vars = ["VAR"]` (stdio) / `bearer_token_env_var = "VAR"` (HTTP), by name | `env_vars = ["API_TOKEN"]`    | Variable is not forwarded; the server fails at auth (401/403) |
-| Gemini CLI  | `$VAR` / `${VAR}`                                                             | `$API_TOKEN`                  | Depends on field                                              |
+- **Web search** (`web-search`) is connected once per machine at harness level (Exa first, Tavily second), never in a project file. The recommended servers and their connect commands are in `cli/lib/harness-level-mcps.ts`; `bun setup` prints them and `bun run setup:doctor` shows what this machine declares.
+- **Browser automation** is not an MCP: it is `playwright-cli` named sessions (`.agents/instructions/agent-tool-resolution.md` §6, `[AUTOMATION_TOOL]`).
+- **Jira / Confluence** go through `acli` by default; the Atlassian MCP is opt-in ([below](#atlassian-mcp-opt-in)).
 
-Codex never expands `${VAR}` inside `args` or `env` values, so a placeholder there is passed to the server as literal text. The committed `.codex/config.toml` therefore forwards every secret by name and adapts two servers: `tavily` runs as Streamable HTTP with `bearer_token_env_var = "TAVILY_API_KEY"` (the `mcp-remote` tunnel in `.mcp.json` only exists to put the key in a URL), and `supabase` drops `--access-token` in favour of `SUPABASE_ACCESS_TOKEN` in `env_vars`, which the package reads as its documented fallback. `[mcp_servers.X.env]` tables hold literal settings only. Details in [`mcp-configuration-guide.md`](./mcp-configuration-guide.md) § Codex CLI.
+Vocabulary, suffixes and the stop procedure: `.agents/skills/agentic-dev-core/references/mcp-capabilities.md`. Why web search stays out of the project files: `.context/ADR/ADR-0005-harness-level-mcps-and-capabilities.md`.
 
-For strategy B, also need a `.env` loader so the agent process has the vars at spawn time:
+## Files in this directory
 
-- Cross-platform: `bun run claude` / `bun run opencode` / `bun run codex` (`dotenv -o -e .env` wrappers in `package.json`; `-o` makes `.env` win over an inherited shell variable)
-- Mac/Linux optional: a `.envrc` with `dotenv_if_exists .env` + `direnv allow`
+| File                         | For                | Format | Holds                                                                                       |
+| ---------------------------- | ------------------ | ------ | ------------------------------------------------------------------------------------------- |
+| `claude.template.json`       | Claude Code        | JSON   | opt-in blocks for `.mcp.json`, the stdio ones that need values already on the `.env` loader |
+| `opencode.template.json`     | OpenCode           | JSON   | opt-in blocks for `opencode.jsonc` (each one `"enabled": false`), same loader               |
+| `codex.template.toml`        | Codex CLI + Desktop | TOML  | opt-in blocks for `.codex/config.toml`, the stdio ones that need values already on the `.env` loader |
+| `dbhub.example.toml`         | DBHub (SQL)        | TOML   | starting point for a `dbhub.toml`, used by the opt-in `sql` block                           |
+| `mcp-configuration-guide.md` | all three hosts    | md     | per-host syntax reference (scopes, CLI commands, remote servers, OAuth)                     |
 
-**Working example**: see `.mcp.json`, `opencode.jsonc`, `.codex/config.toml`, and `.env.example` in this repo's root.
+`bun sync --update-mcp-template <claude|opencode|codex>` refreshes one template from upstream.
 
-Common `{{VAR}}` placeholders found in templates:
+## Adding an opt-in server
 
-- `{{API_BEARER_TOKEN}}` — your API bearer token
-- `{{POSTMAN_API_KEY}}` — your Postman API key
-- `{{ATLASSIAN_EMAIL}}` / `{{ATLASSIAN_API_TOKEN}}` — Atlassian credentials (one family for Jira + Confluence + acli)
-- `{{ATLASSIAN_URL}}` — the Atlassian site host. **Not a `.env` variable**: it lives in `.agents/project.yaml` -> `issue_tracker.atlassian_url`. An MCP config cannot run a command, so paste the literal host here; print it with `bun run --silent jira:url`
-- `{{TAVILY_API_KEY}}`, `{{SUPABASE_ACCESS_TOKEN}}`, `{{GEMINI_API_KEY}}`, `{{SLACK_MCP_XOXP_TOKEN}}`, `{{DB_USER}}`, `{{DB_PASSWORD}}`
+Never `cp` a template over a committed config: it would replace the parity-checked server set. Copy single blocks instead.
 
-Non-sensitive values (URLs, paths) use real examples from the SoloQ project.
+1. Copy the server's block from each of the three templates into `.mcp.json`, `opencode.jsonc` and `.codex/config.toml`. A server added to one host only fails `bun run agents:compat:check`.
+2. Replace each `{{VAR}}` (see below). A stdio block that needs secrets already starts through the `.env` loader: its `--filter` lists the exact names the server reads, and those names go in `.env` as they are.
+3. Declare the variables in `.env.schema` (`@sensitive` on a secret), add them with an empty value to `.env.example`, and set them in `.env`.
+4. Run `bun run agents:compat:check`.
+5. Restart the session and confirm the server with `/mcp`.
+6. If a skill should use it, give it a capability row in `mcp-capabilities.md` first; a server no skill instructs gets no capability name.
 
-## MCP Servers Included
+### `{{VAR}}` placeholders
 
-| Server         | Type   | Description                                 |
-| -------------- | ------ | ------------------------------------------- |
-| **playwright** | stdio  | E2E browser testing with vision/PDF/tracing |
-| **devtools**   | stdio  | Chrome DevTools integration                 |
-| **openapi**    | stdio  | REST API testing via OpenAPI spec           |
-| **sql**        | stdio  | Database testing via DBHub                  |
-| **supabase**   | stdio  | Supabase database management                |
-| **shadcn**     | stdio  | shadcn/ui component registry                |
-| **context7**   | stdio  | Developer documentation lookup              |
-| **tavily**     | remote | Web search                                  |
-| **postman**    | remote | API collections & testing                   |
-| **sentry**     | remote | Error monitoring                            |
-| **vercel**     | remote | Deployment management                       |
-| **notion**     | remote | Documentation                               |
-| **atlassian**  | stdio  | Jira/Confluence                             |
-| **nanobanana** | stdio  | Image generation (Gemini)                   |
-| **github**     | remote | Repository management                       |
-| **slack**      | stdio  | Team communication                          |
+Templates use `{{VARIABLE}}` as a find-and-replace marker, not runtime syntax. A stdio server never carries a secret marker: it reads its secrets through the `.env` loader under their own names. Where a secret sits inside a larger value (`API_HEADERS="Authorization:Bearer <token>"`), the whole value goes in `.env` under the name the server reads.
 
-## Quick Start
+The one secret marker left is on a REMOTE (HTTP) server, which cannot start through the loader. Replace it with the host-native reference and keep its value in `.env`:
 
-### 1. Copy Template
+| Host        | `{{POSTMAN_API_KEY}}` becomes                       |
+| ----------- | --------------------------------------------------- |
+| Claude Code | `${POSTMAN_API_KEY}`                                |
+| OpenCode    | `{env:POSTMAN_API_KEY}`                             |
+| Codex       | `bearer_token_env_var = "POSTMAN_API_KEY"` (already in the template) |
 
-**For Claude Code**:
+Those three resolve from the harness's own process environment, which `.env` reaches on no launch. Prefer the server's OAuth login (as the Atlassian remote MCP through `mcp-remote` does). A token-only remote server means you export that ONE variable in the shell before launching, which knowingly puts it in the agent's environment.
 
-```bash
-cp docs/mcp/claude.template.json .mcp.json
-```
+Non-secret placeholders (`{{API_BASE_URL}}`, `{{OPENAPI_SPEC_URL}}`, `{{SENTRY_ORG}}`, `{{SENTRY_PROJECT}}`) are pasted as literal values.
 
-**For OpenCode**:
+Pasting a literal secret into a config is only acceptable in a personal, gitignored copy; nothing in `.gitignore` covers such a file for you.
 
-```bash
-cp docs/mcp/opencode.template.json opencode.jsonc
-```
+## Key differences by host
 
-**For Codex CLI**: this repo already ships `.codex/config.toml` with every server `.mcp.json` declares, so nothing to copy for a project checkout. The template is for the opt-in extras (copy a single `[mcp_servers.X]` block into `.codex/config.toml`) or for a machine-wide config:
+| Feature        | Claude Code    | OpenCode                    | Codex                                                       |
+| -------------- | -------------- | --------------------------- | ----------------------------------------------------------- |
+| Root key       | `mcpServers`   | `mcp`                       | `mcp_servers`                                               |
+| Command        | string + `args` | array                      | string + `args`                                             |
+| Literal env    | `env`          | `environment`               | `[mcp_servers.X.env]`                                       |
+| Stdio secret   | `.env` loader  | `.env` loader               | `.env` loader                                               |
+| Remote secret  | `${VAR}`       | `{env:VAR}`                 | not in the URL: `url` + `bearer_token_env_var`              |
+| Remote type    | `type: "http"` | `type: "remote"`            | `url`                                                       |
+| Enable/disable | N/A            | `enabled`                   | `enabled`                                                   |
 
-```bash
-mkdir -p ~/.codex
-cp docs/mcp/codex.template.toml ~/.codex/config.toml
-```
-
-**For Gemini CLI**:
-
-```bash
-mkdir -p ~/.gemini
-cp docs/mcp/gemini.template.json ~/.gemini/settings.json
-```
-
-### 2. Create DBHub Config (for SQL testing)
-
-```bash
-cp docs/mcp/dbhub.example.toml dbhub.toml
-# Edit with your database credentials
-```
-
-### 3. Replace Variables
-
-Open your config file and replace each `{{VARIABLE}}` placeholder. Pick a strategy:
-
-**Strategy A — literal value (then gitignore the file):**
-
-```json
-"API_HEADERS": "Authorization:Bearer {{API_BEARER_TOKEN}}"
-```
-
-↓
-
-```json
-"API_HEADERS": "Authorization:Bearer eyJhbGciOiJIUzI1NiIs..."
-```
-
-**Strategy B — env-var expansion (then commit the file, secrets in `.env`):**
-
-For Claude Code:
-
-```json
-"API_HEADERS": "Authorization:Bearer ${API_BEARER_TOKEN}"
-```
-
-For OpenCode:
-
-```json
-"API_HEADERS": "Authorization:Bearer {env:API_BEARER_TOKEN}"
-```
-
-Then in `.env` (gitignored):
-
-```
-API_BEARER_TOKEN=eyJhbGciOiJIUzI1NiIs...
-```
-
-### 4. Verify Setup
-
-Run your agent and verify with:
-
-```
-/mcp
-```
-
-## Key Differences by Tool
-
-| Feature        | Claude         | OpenCode         | Codex                                                   | Gemini       |
-| -------------- | -------------- | ---------------- | ------------------------------------------------------- | ------------ |
-| Root key       | `mcpServers`   | `mcp`            | `mcp_servers`                                           | `mcpServers` |
-| Command        | string         | array            | string                                                  | string       |
-| Env vars       | `env`          | `environment`    | `env_vars` (forwarded by name) + `[server.env]` (literals) | `env`        |
-| Secret in URL  | `${VAR}`       | `{env:VAR}`      | not possible: `url` + `bearer_token_env_var`            | `$VAR`       |
-| Remote type    | `type: "http"` | `type: "remote"` | `url`                                                   | `httpUrl`    |
-| Enable/disable | N/A            | `enabled`        | `enabled`                                               | N/A          |
+Full syntax per host: [`mcp-configuration-guide.md`](./mcp-configuration-guide.md).
 
 ## Security
 
-- **Templates** (this folder) = Safe for git, uses `{{VAR}}` placeholders
-- **Active configs** (`.mcp.json`, `opencode.jsonc`, `.codex/config.toml`) = committed, reference env vars only; secrets live in `.env` (gitignored)
-- **Literal-secret copies** (strategy A) = NOT for git — add them to `.gitignore` yourself; there is no automatic pattern covering them
-- `dbhub.toml` is **COMMITTED** (`${VAR}` placeholders, no secrets — same convention as `.mcp.json` / `opencode.jsonc`); only `dbhub.local.toml` (literal-secret overrides) is ignored
+- **Templates** (this folder) are safe for git: `{{VAR}}` placeholders only.
+- **Committed configs** (`.mcp.json`, `opencode.jsonc`, `.codex/config.toml`) hold variable names only; values live in `.env` (gitignored), and no plaintext copy is written anywhere else.
+- **DBHub:** a project that adds it commits `dbhub.toml` with `${VAR}` references only, filled by the `sql` block's loader filter; literal overrides go in `dbhub.local.toml`, which `.gitignore` already covers.
 
 ## Atlassian MCP (opt-in)
 
-The Atlassian MCP server is **not enabled by default**. By default the boilerplate uses `acli` (Atlassian CLI) for all Jira/Confluence work. If you need MCP-level access to Atlassian (e.g. for tools that aren't exposed by acli), enable it manually:
+The Atlassian MCP server is **not enabled by default**: the boilerplate uses `acli` for all Jira and Confluence work. If you need MCP-level access to Atlassian (tools `acli` does not expose), enable it on all three hosts:
 
-1. Open the matching template under this directory:
-   - Claude Code: `claude.template.json`
-   - OpenCode: `opencode.template.json`
-   - Gemini CLI: `gemini.template.json`
-   - Codex CLI: `codex.template.toml`
-2. Copy the `atlassian` block into your active config (`.mcp.json` for Claude Code, `opencode.jsonc` for OpenCode, etc.).
-3. Confirm `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` are set in `.env` (the installer collects both during `bun run setup`).
-4. Replace `{{ATLASSIAN_URL}}` in the block you pasted with the literal site host (Codex only: its template's `atlassian` block authenticates via `mcp-remote` OAuth and has no `{{ATLASSIAN_URL}}` to replace). Print it with:
-
-   ```bash
-   bun run --silent jira:url
-   ```
-
-   It is not read from `.env` — an MCP config cannot invoke a command, so this one value is pasted rather than referenced. After a site migration, update `.agents/project.yaml` first, then re-paste here; `bun run setup:doctor` will not catch a stale value inside an MCP config.
-
-5. Restart your agent so the new MCP server is picked up.
-
-## Documentation
-
-For complete setup guide, see: [`mcp-configuration-guide.md`](./mcp-configuration-guide.md)
-
-This includes:
-
-- Step-by-step configuration for each tool
-- DBHub (SQL) setup with connection strings
-- OpenAPI setup with authentication flow
-- Postman API key generation
-- Troubleshooting guide
+1. Copy the `atlassian` block from each template into `.mcp.json`, `opencode.jsonc` and `.codex/config.toml`. It is the same server everywhere, Atlassian's remote MCP through `mcp-remote`, and it launches bare: no `.env` loader, no variable.
+2. Run `bun run agents:compat:check`, then restart the session.
+3. On the first tool call, `mcp-remote` opens the Atlassian OAuth consent in the browser. It reads neither `ATLASSIAN_EMAIL` nor `ATLASSIAN_API_TOKEN`, so those stay `acli`'s alone.

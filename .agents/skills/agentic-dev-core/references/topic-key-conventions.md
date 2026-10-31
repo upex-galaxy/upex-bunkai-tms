@@ -50,7 +50,7 @@ Session-state keys mirror the file layout under `.session/<skill-slug>/<scope>/{
 
 ## Common artifact types
 
-The vocabulary is open — pick whatever name the workflow naturally uses — but the table below covers the names most skills emit today. New names should follow the same kebab-case style and be added here when introduced.
+The vocabulary is open — pick whatever name the workflow naturally uses — but the table below covers the names most skills emit. New names should follow the same kebab-case style and be added here when introduced.
 
 | Artifact name       | Producer                                          | What it is                                                  | File path                                       |
 | ------------------- | ------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
@@ -58,9 +58,9 @@ The vocabulary is open — pick whatever name the workflow naturally uses — bu
 | `epic`              | `product-management` (epic creation)              | Epic-level scope, child stories, traceability to PRD. Jira-synced. | `.context/PBI/epics/EPIC-<KEY>-<slug>/epic.md`              |
 | `implementation-plan` | `sprint-development` Stage 1                    | Story implementation plan (tasks mapped to AC). Jira-synced. | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md`            |
 | `feature-implementation-plan` | `sprint-development` Stage 1 (macro)     | Feature-level implementation plan across multiple stories. Jira-synced. | `.context/PBI/epics/EPIC-<KEY>-<slug>/feature-implementation-plan.md` |
-| `review`            | `sprint-development` Stage 3                      | Code-review findings against AC + standards                 | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/review.md`               |
-| `compliance-matrix` | `sprint-development` Stage 3                      | AC-vs-code coverage matrix (which AC each commit closes). `[LOCAL]` per `AGENTS.md` §9 — same-session work product; nothing downstream may depend on the file persisting (the durable copy is the PR review body / Jira comment it feeds) | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/compliance-matrix.md`    |
-| `bug-fix`           | `sprint-development` Stage 2 (`bug-fix-workflow`) | Root-cause + fix plan + regression notes                    | `.context/PBI/bugs/BUG-<KEY>-<slug>/bug-fix.md`              |
+| `review`            | `sprint-development` Stage 3                      | Code-review findings against AC + standards                 | `.session/sprint-development/<KEY>/review.md`               |
+| `compliance-matrix` | `sprint-development` Stage 3                      | AC-vs-code coverage matrix (which AC each commit closes). Session working copy; nothing downstream may depend on the file persisting (the durable copy, and the one the merge gate reads, is the PR body) | `.session/sprint-development/<KEY>/compliance-matrix.md`    |
+| `bug-fix`           | `sprint-development` Stage 2 (`bug-fix-workflow`) | Root-cause + fix plan + regression notes                    | `.session/sprint-development/<KEY>/bug-fix.md`              |
 | `edge-cases`        | `product-management` (enumeration)                | Cataloged edge cases with criticality + AC-promote decision | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/edge-cases.md`           |
 | `test-report`       | (out of scope here)                               | QA test execution report — referenced for traceability      | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/test-report.md`          |
 
@@ -72,7 +72,7 @@ The convention is **UPSERT, not append**: writing `pbi/UPEX-123/implementation-p
 
 1. Most artifacts represent the **current state of the work**, not its history. A re-plan after PR feedback should replace the stale plan, not coexist with it.
 2. The Engram CLI itself is upsert-by-`topic_key` (matching keys overwrite); we mirror that behavior file-side so the two stay consistent.
-3. If you need history: `.context/PBI/` is a **gitignored cache** (`AGENTS.md` §9), so `git log` on a file there shows nothing. For Jira-synced artifacts (`implementation-plan`, `epic`, …) the **Jira field's own edit history** is the record — the field is the source of truth; re-sync materializes the latest. For everything else, distinct engram topic keys per round (`review-r1`, `review-r2`, …) preserve prior states.
+3. If you need history: `.context/PBI/` is a **gitignored cache** (`.agents/instructions/agent-local-context-pbi.md` §9), so `git log` on a file there shows nothing. For Jira-synced artifacts (`implementation-plan`, `epic`, …) the **Jira field's own edit history** is the record — the field is the source of truth; re-sync materializes the latest. For everything else, distinct engram topic keys per round (`review-r1`, `review-r2`, …) preserve prior states.
 
 When **not** to UPSERT — start a new artifact name instead:
 
@@ -128,7 +128,7 @@ The PBI tree is rooted at the epic (Module = Epic, 1:1). Epic-level files live i
 
 Notes:
 
-- The file is **the** local read surface; Engram is a mirror, not a primary store. Tier discipline applies per `AGENTS.md` §9: the whole PBI tree is gitignored, so a `[SYNC]` file recovers via re-sync (its truth is the Jira field), while a non-synced artifact written here (`spec.md`, `review.md`, `edge-cases.md`, `compliance-matrix.md`, …) is `[LOCAL]` — machine-local and disposable; nothing downstream may depend on it existing. Content that must survive the machine goes to a Jira field/comment; durable session state goes to `.session/`.
+- The file is **the** local read surface; Engram is a mirror, not a primary store. Tier discipline applies per `.agents/instructions/agent-local-context-pbi.md` §9: the whole PBI tree is gitignored, so a `[SYNC]` file recovers via re-sync (its truth is the Jira field), while a non-synced artifact written here (`spec.md`, `edge-cases.md`, …) is `[LOCAL]` — machine-local and disposable; nothing downstream may depend on it existing. Content that must survive the machine goes to a Jira field/comment; durable session state goes to `.session/` (where `sprint-development` keeps `review.md`, `compliance-matrix.md` and `bug-fix.md`).
 - Files are kebab-case-named; the trailing `.md` is conventional.
 - Existing `.context/PBI/` projects already follow this layout (`spec.md`, `implementation-plan.md`, etc.); the only change is the topic-key tag we associate with each file.
 - `implementation-plan.md` and `feature-implementation-plan.md` are **Jira-synced caches**: the plan is authored, written to the Jira `spec_implementation_plan` / `feature_implementation_plan` field (fallback: a comment), then materialized read-only by `bun run jira:sync-issues get <KEY>`. Treat the materialized file as read-only; edit the Jira field, then re-sync.

@@ -54,7 +54,7 @@ Replace the placeholders with the MCP's actual tool name + parameter names. The 
 ## What this adapter explicitly does NOT do
 
 - It does NOT install a new MCP. The skill never adds dependencies — that includes MCP servers.
-- It does NOT cache MCP credentials. AGENTS.md Rule #11 (env vars cached at MCP-spawn time) applies.
+- It does NOT cache MCP credentials. AGENTS.md Critical Rule #9 (env vars cached at MCP-spawn time) applies.
 - It does NOT auto-translate the body to a destination-specific format unless the destination genuinely cannot render Markdown. When unsure → ask the user.
 
 ---

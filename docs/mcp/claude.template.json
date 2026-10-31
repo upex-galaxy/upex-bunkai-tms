@@ -1,54 +1,55 @@
 {
   "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest",
-        "--caps",
-        "vision,pdf,testing,tracing,tabs",
-        "--timeout-action",
-        "10000",
-        "--timeout-navigation",
-        "30000",
-        "--viewport-size",
-        "1920x1080"
-      ]
-    },
-    "devtools": {
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp"]
-    },
     "openapi": {
-      "command": "npx",
-      "args": ["-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
+      "command": "bunx",
+      "args": [
+        "-p",
+        "varlock@1.20.0",
+        "varlock",
+        "run",
+        "--no-redact-stdout",
+        "--inject",
+        "vars",
+        "--filter",
+        "API_HEADERS",
+        "--",
+        "npx",
+        "-y",
+        "@ivotoby/openapi-mcp-server",
+        "--tools",
+        "dynamic"
+      ],
       "env": {
-        "API_BASE_URL": "https://staging-upexsoloq.vercel.app/api",
-        "OPENAPI_SPEC_PATH": "https://staging-upexsoloq.vercel.app/api/openapi",
-        "API_HEADERS": "Authorization:Bearer {{API_BEARER_TOKEN}}"
+        "API_BASE_URL": "{{API_BASE_URL}}",
+        "OPENAPI_SPEC_PATH": "{{OPENAPI_SPEC_URL}}"
       }
     },
     "sql": {
-      "command": "npx",
-      "args": ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
-    },
-    "supabase": {
-      "command": "npx",
-      "args": ["-y", "@supabase/mcp-server-supabase@latest"],
-      "env": {
-        "SUPABASE_ACCESS_TOKEN": "{{SUPABASE_ACCESS_TOKEN}}"
-      }
+      "command": "bunx",
+      "args": [
+        "-p",
+        "varlock@1.20.0",
+        "varlock",
+        "run",
+        "--no-redact-stdout",
+        "--inject",
+        "vars",
+        "--filter",
+        "DB_HOST,DB_USER,DB_PASSWORD",
+        "--",
+        "npx",
+        "-y",
+        "@bytebase/dbhub@latest",
+        "--config",
+        "dbhub.toml"
+      ]
     },
     "shadcn": {
       "command": "npx",
-      "args": ["shadcn@latest", "mcp"]
-    },
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"]
-    },
-    "tavily": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.tavily.com/mcp/?tavilyApiKey={{TAVILY_API_KEY}}"]
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
     },
     "postman": {
       "type": "http",
@@ -59,7 +60,7 @@
     },
     "sentry": {
       "type": "http",
-      "url": "https://mcp.sentry.dev/mcp/soloq/typescript"
+      "url": "https://mcp.sentry.dev/mcp/{{SENTRY_ORG}}/{{SENTRY_PROJECT}}"
     },
     "vercel": {
       "type": "http",
@@ -70,29 +71,53 @@
       "url": "https://mcp.notion.com/mcp"
     },
     "atlassian": {
-      "command": "uvx",
-      "args": ["mcp-atlassian"],
-      "env": {
-        "JIRA_URL": "{{ATLASSIAN_URL}}",
-        "JIRA_USERNAME": "{{ATLASSIAN_EMAIL}}",
-        "JIRA_API_TOKEN": "{{ATLASSIAN_API_TOKEN}}"
-      }
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.atlassian.com/v1/sse"
+      ]
     },
     "nanobanana": {
-      "command": "uvx",
-      "args": ["nanobanana-mcp-server@latest"],
-      "env": {
-        "GEMINI_API_KEY": "{{GEMINI_API_KEY}}"
-      }
+      "command": "bunx",
+      "args": [
+        "-p",
+        "varlock@1.20.0",
+        "varlock",
+        "run",
+        "--no-redact-stdout",
+        "--inject",
+        "vars",
+        "--filter",
+        "GEMINI_API_KEY",
+        "--",
+        "uvx",
+        "nanobanana-mcp-server@latest"
+      ]
     },
     "slack": {
-      "command": "npx",
-      "args": ["-y", "slack-mcp-server@latest", "--transport", "stdio"],
+      "command": "bunx",
+      "args": [
+        "-p",
+        "varlock@1.20.0",
+        "varlock",
+        "run",
+        "--no-redact-stdout",
+        "--inject",
+        "vars",
+        "--filter",
+        "SLACK_MCP_XOXP_TOKEN",
+        "--",
+        "npx",
+        "-y",
+        "slack-mcp-server@latest",
+        "--transport",
+        "stdio"
+      ],
       "env": {
-        "SLACK_MCP_XOXP_TOKEN": "{{SLACK_MCP_XOXP_TOKEN}}",
         "SLACK_MCP_ADD_MESSAGE_TOOL": "true",
-        "SLACK_MCP_USERS_CACHE": "./context/mcp/outputs/slack/",
-        "SLACK_MCP_CHANNELS_CACHE": "./context/mcp/outputs/slack/"
+        "SLACK_MCP_USERS_CACHE": "./.session/mcp/slack/",
+        "SLACK_MCP_CHANNELS_CACHE": "./.session/mcp/slack/"
       }
     }
   }

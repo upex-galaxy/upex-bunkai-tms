@@ -7,10 +7,10 @@
 
 1. **Goal** — one sentence. What outcome the subagent must achieve.
 2. **Context docs** — files the subagent reads before acting. Absolute paths.
-3. **Project Standards (auto-resolved)** — REQUIRED. Compact rules of skills relevant to this dispatch. Pulled from `.agents/skills/REGISTRY.md` (built once per session by `bun scripts/build-skill-registry.ts`). The subagent treats this section as authoritative for the listed conventions and does NOT re-read the full SKILL.md unless explicitly told to. Protocol: `agentic-dev-core/references/skill-resolver.md`.
+3. **Project Standards (auto-resolved)** — REQUIRED. Compact rules of skills relevant to this dispatch. Pulled from `.agents/skills/REGISTRY.md` (built once per session by `bun scripts/build-skill-registry.ts`). The subagent treats this section as authoritative for the listed conventions and does NOT re-read the full SKILL.md unless explicitly told to. Context skills (`metadata.kind: context`, slug `<aspect>-context`) are included ONLY when the dispatch touches their aspect (`skill-resolver.md`, rule 5). Protocol: `agentic-dev-core/references/skill-resolver.md`.
 4. **Skills to load** — skill triggers (e.g. `/acli`, `/git-flow-master`, `/playwright-cli`) the subagent must invoke before issuing tool calls. The orchestrator never inlines tool syntax — that lives in the owning skill.
 5. **Exact instructions** — numbered steps. No ambiguity. Each step names the tool / skill action.
-6. **Report format** — what the subagent returns to the orchestrator. Either a JSON object with named fields, or a bullet list with explicit headings. Avoid free-form prose. **Always include the two secret-hygiene fields** (`secrets_materialized`, `cleaned`) — see below.
+6. **Report format** — what the subagent returns to the orchestrator. Either a JSON object with named fields, or a bullet list with explicit headings. Avoid free-form prose. **Always include the two secret-hygiene fields** (`secrets_materialized`, `cleaned`) — see below. For a stage dispatch of a stage-owning skill, append the session-footer fields (`skills_loaded`, `mcps_used`, `clis_used`, `dev_surfaces_touched`, `evidence_captured`) per `agentic-dev-core/references/session-footer-contract.md` §Briefing snippet: the orchestrator unions them into ONE session-close footer.
 7. **Rules** — constraints (relevant Critical Rules from `AGENTS.md`, project-specific guardrails, Git rules, env-selection rules). **This component is the ONLY place a binding prohibition reaches the executor** — a rule that lives only in a `references/*.md` the subagent does not open is not a constraint. See `orchestration-doctrine.md` → "Rule reachability".
 
 ### Mandatory report fields (every dispatch)
@@ -150,22 +150,22 @@ Stage 1 — Planning agent
 Goal: Produce an implementation plan for ticket <<ISSUE_KEY>> under .context/PBI/epics/EPIC-<<EPIC_KEY>>-<<EPIC_SLUG>>/stories/STORY-<<ISSUE_KEY>>-<<STORY_SLUG>>/implementation-plan.md.
 
 Context docs:
-  - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/business/business-data-map.md
-  - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/business/business-feature-map.md
-  - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/business/business-api-map.md
+  - bun run context:map business-data-context      (data map: run the reader, never read the HTML)
+  - bun run context:map business-feature-context   (feature map)
+  - bun run context:map business-api-context       (API map)
   - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/business/project-dev-guide.md
   - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/master-implementation-plan.md
   - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/PBI/epics/EPIC-<<EPIC_KEY>>-<<EPIC_SLUG>>/stories/STORY-<<ISSUE_KEY>>-<<STORY_SLUG>>/context.md
-  - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.agents/skills/sprint-development/references/spec-driven-development.md
+  - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.agents/skills/sprint-development/references/story-plan.md
 
 Skills to load: /acli (to fetch the ticket if spec.md is missing fields)
 
 Exact instructions:
   1. Load the ticket via [ISSUE_TRACKER_TOOL] Get Issue: <<ISSUE_KEY>>.
-  2. Read every doc in Context docs above.
+  2. Read every doc in Context docs above (the business maps through their `bun run context:map` command; a placeholder notice means no map).
   3. Map each AC to a concrete task (file to touch + change shape).
   4. Identify required new endpoints / schemas / migrations and flag pre-requisites.
-  5. Author the implementation plan using the spec-driven-development template, write it to the Jira `spec_implementation_plan` field (fallback: a comment) via [ISSUE_TRACKER_TOOL], then materialize the read-only cache with `bun run jira:sync-issues get <<ISSUE_KEY>>` (produces implementation-plan.md in the story folder).
+  5. Author the implementation plan using the story-plan template, write it to the Jira `spec_implementation_plan` field (fallback: a comment) via [ISSUE_TRACKER_TOOL], then materialize the read-only cache with `bun run jira:sync-issues get <<ISSUE_KEY>>` (produces implementation-plan.md in the story folder).
   6. List any open questions that block coding (ambiguous AC, missing schema, etc.).
 
 Report format:
@@ -217,10 +217,11 @@ Rules:
 ## Anti-patterns (do NOT delegate)
 
 - **Quick lookups (1-2 file reads)** — inline `Read` is faster, doesn't pay the subagent overhead.
-- **Memory reads/writes** — orchestrator owns memory. Subagents must not read or write `AGENTS.md` / `AGENTS.md` / persistent memory.
+- **Memory reads/writes** — orchestrator owns memory. Subagents never read or write persistent memory and never edit `AGENTS.md` or an instruction section. `AGENTS.md` (L0) loads by itself in every session; a subagent reads only the `.agents/instructions/` sections its briefing names.
 - **Task tracking** (TaskCreate / TaskUpdate / progress files) — orchestrator owns tasks.
-- **Asking the user for input** — only the orchestrator can prompt the user. Subagents that hit a question must STOP and report.
-- **Planning / decision-making** — the orchestrator decides what to do next. Subagents execute pre-decided steps.
+- **Asking the user for input** — only the orchestrator can prompt the user. A subagent that meets a question runs `decision-protocol.md` first: a technical call inside the approved plan is decided and reported as DECIDED with the option it beat, and only the four §5 kinds (product behaviour, a new security posture, an irreversible or outward action, what the stage or the owner reserves) stop the subagent and go back to the orchestrator.
+  - Exception, supervised workers ONLY: for a §5 question, a persistent worker launched through `/orca-orchestration` sends its conductor a blocking `ask` over the run mailbox instead of stopping, and still never prompts the user (nobody is watching its terminal). Subagents keep stop-and-report for the §5 kinds.
+- **Planning** — the orchestrator owns the plan and decides what to do next. Subagents execute the planned steps and decide only the technical calls inside them, reported as DECIDED.
 - **Sleeping / polling** — if you would `sleep`, you probably wanted Background pattern instead.
 - **Running tests on someone else's behalf** — verification is part of the same agent that made the change. Don't fan out a "verify" agent for a 1-step edit.
 

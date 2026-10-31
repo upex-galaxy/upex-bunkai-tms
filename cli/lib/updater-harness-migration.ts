@@ -9,7 +9,7 @@
  * instructions in `AGENTS.md` (which OpenCode and Codex read natively), skills in
  * `.agents/skills/` and the hook emitter in `.agents/hooks/`, with `.claude/skills`
  * reduced to a generated, gitignored alias and `CLAUDE.md` to a one-line `@AGENTS.md`
- * shim. Without this preflight, `bun run up` on a repo scaffolded before that change
+ * shim. Without this preflight, `bun sync` on a repo scaffolded before that change
  * is DESTRUCTIVE, in three compounding ways:
  *
  *   1. `CLAUDE.md` holds the project's own AI memory (identity, env URLs, custom
@@ -37,6 +37,7 @@ import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
+import { hiddenPaths } from './adopt-gitignore.ts';
 import { CLAUDE_INSTRUCTIONS_SHIM, isInside, OS_METADATA_FILES } from './agent-compatibility.ts';
 
 /**
@@ -145,7 +146,7 @@ export function readHarnessMigrationResultFromEnv(env: NodeJS.ProcessEnv = proce
 /**
  * Repo-relative paths an applied migration wrote, moved or unindexed. The
  * updater's dirty-tree guard exempts exactly these: a tree that was clean before
- * `bun run up` must not be refused because the preflight did its job.
+ * `bun sync` must not be refused because the preflight did its job.
  */
 export function harnessMigrationTouchedPaths(result: HarnessMigrationResult): string[] {
   if (!result.applied) { return []; }
@@ -219,6 +220,12 @@ function ensureGeneratedArtifactsIgnored(root: string): string[] {
   return missing.map(([entry]) => entry);
 }
 
+/** True when git tracks at least one file under `rel` (false outside a repo or with git missing). */
+function tracksAnything(root: string, rel: string): boolean {
+  const res = spawnSync('git', ['-C', root, 'ls-files', '--', rel], { encoding: 'utf8' });
+  return res.status === 0 && res.stdout.trim() !== '';
+}
+
 function isRealDirectory(path: string): boolean {
   if (!existsSync(path)) { return false; }
   const stats = lstatSync(path);
@@ -248,7 +255,7 @@ function planInstructions(root: string, blockers: string[]): InstructionsAction 
     blockers.push(
       'AGENTS.md and CLAUDE.md both carry instructions, and only one may be canonical. Merge whatever '
       + 'CLAUDE.md still holds into AGENTS.md, replace CLAUDE.md with the single line `@AGENTS.md`, '
-      + 'then re-run `bun run up`.',
+      + 'then re-run `bun sync`.',
     );
     return 'conflicting-instructions';
   }
@@ -257,7 +264,7 @@ function planInstructions(root: string, blockers: string[]): InstructionsAction 
     blockers.push(
       'CLAUDE.md is already the `@AGENTS.md` shim but AGENTS.md does not exist, so this repo '
       + 'currently has NO instructions. Restore AGENTS.md from git history (`git log --diff-filter=D '
-      + `-- AGENTS.md\`) or from \`${MIGRATION_BACKUP_DIR}/\`, then re-run \`bun run up\`.`,
+      + `-- AGENTS.md\`) or from \`${MIGRATION_BACKUP_DIR}/\`, then re-run \`bun sync\`.`,
     );
     return 'orphaned-shim';
   }
@@ -266,14 +273,20 @@ function planInstructions(root: string, blockers: string[]): InstructionsAction 
 
 /**
  * Read-only. Safe to call on any repo, in any state, including a fully migrated one.
+ *
+ * `adopt`: the run is `--adopt` on an existing app, whose instruction files
+ * are the app's own text, not a Claude-era boilerplate memory. The adopt hook
+ * handles them (`planAdoptInstructions` in `./updater-adopt.ts`: preserved
+ * verbatim, applied only on approval), so this preflight plans nothing for
+ * them and never refuses over them.
  */
-export function planHarnessMigration(root = process.cwd()): HarnessMigrationPlan {
+export function planHarnessMigration(root = process.cwd(), opts: { adopt?: boolean } = {}): HarnessMigrationPlan {
   const resolvedRoot = resolve(root);
   const canonicalSkills = join(resolvedRoot, '.agents', 'skills');
   const claudeSkills = join(resolvedRoot, '.claude', 'skills');
   const blockers: string[] = [];
 
-  const instructions = planInstructions(resolvedRoot, blockers);
+  const instructions = opts.adopt === true ? 'none' : planInstructions(resolvedRoot, blockers);
 
   const skillsToMove: string[] = [];
   const skillsToArchive: string[] = [];
@@ -309,6 +322,20 @@ export function planHarnessMigration(root = process.cwd()): HarnessMigrationPlan
       if (existsSync(join(canonicalSkills, entry))) { skillsToArchive.push(entry); }
       else { skillsToMove.push(entry); }
     }
+  }
+
+  // Fail closed: the move untracks `.claude/skills` (`unindexLegacySkillTree`).
+  // A destination git ignores turns that into a plain deletion of the skills
+  // from history on the next commit, with nothing versioned in their place.
+  const trackedMoves = skillsToMove.filter(skill => tracksAnything(resolvedRoot, `.claude/skills/${skill}`));
+  const hiddenDestinations = hiddenPaths(resolvedRoot, trackedMoves.map(skill => `.agents/skills/${skill}/SKILL.md`));
+  if (hiddenDestinations.length > 0) {
+    const rules = [...new Set(hiddenDestinations.map(h => `${h.pattern} (${h.source})`))].join(', ');
+    blockers.push(
+      `${hiddenDestinations.length} tracked skill(s) would move from .claude/skills/ into .agents/skills/, which git ignores (${rules}): `
+      + 'the next commit would delete them from git and version nothing. Re-include .agents/ in .gitignore (or run the first install with --adopt, which does it), then re-run. '
+      + `Skills: ${hiddenDestinations.map(h => h.path.split('/')[2]).join(', ')}`,
+    );
   }
 
   const archivesLegacyHook = isRealFile(join(resolvedRoot, LEGACY_CLAUDE_HOOK));

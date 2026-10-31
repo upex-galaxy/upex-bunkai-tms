@@ -1,43 +1,38 @@
-bunx lint-staged
+# lint-staged lints and formats the staged files with the project's own
+# config. An adopted app may have none (its formatting is its own, and the
+# adoption never adds one): then it is skipped, never a failed commit.
+if grep -Eq '"lint-staged"[[:space:]]*:[[:space:]]*\{' package.json 2>/dev/null \
+  || [ -n "$(ls -d .lintstagedrc* lint-staged.config.* 2>/dev/null)" ]; then
+  bunx lint-staged
+fi
 
-# Light-weight repo health checks on every commit (fast, cover full repo).
-bun run types:check
-bun run vars:check
-bun run skills:check
-
-# skill-registry freshness gate — only runs when staged files affect it.
-STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
-if echo "$STAGED" | grep -qE '^(\.agents/skills/.+/SKILL\.md$|scripts/build-skill-registry\.ts$|\.agents/skills/REGISTRY\.md$)'; then
-  bun run skills:registry:check || {
-    echo ""
-    echo "❌ .agents/skills/REGISTRY.md is stale. Fix:"
-    echo "   bun run skills:registry && git add .agents/skills/REGISTRY.md"
-    exit 1
-  }
+# Framework gates, in one call. They live in `.husky/framework-gates.sh`, which
+# the boilerplate updater SYNCS, while this hook is project-owned and never
+# overwritten, so a gate added upstream lands here without rewriting your file.
+# The `-f` guard is required: `.husky/_/h` runs this under `sh -e`, and sourcing
+# a file that is not there would kill the hook.
+#
+# Your own gates go around this call; the ordering in this file is yours.
+# `lint-staged` stays above it on purpose: it REWRITES staged files, so it has
+# to finish before anything reads the staged list.
+GATES="$(dirname -- "$0")/framework-gates.sh"
+if [ -f "$GATES" ]; then
+  . "$GATES"
+  framework_gates_pre_commit
+else
+  echo "⚠️  .husky/framework-gates.sh missing: framework pre-commit gates SKIPPED."
+  echo "   Restore it with: bun sync"
 fi
 
 # openapi spec freshness gate — only runs when staged files affect the spec.
 # Bunkai-specific (kept across boilerplate syncs): public/openapi.json is
 # generated from the route.openapi.ts modules and must never drift.
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null || true)
 if echo "$STAGED" | grep -qE '^(app/api/.+/route\.openapi\.ts$|scripts/openapi-gen\.ts$|lib/openapi/.+$|public/openapi\.json$)'; then
   bun run openapi:check || {
     echo ""
     echo "❌ public/openapi.json is stale. Fix:"
     echo "   bun run openapi:gen && git add public/openapi.json"
-    exit 1
-  }
-fi
-
-# cross-harness compatibility gate — only runs when staged files affect it.
-# Covers the generated Claude skills alias, the command wrappers, the three hook
-# adapters and MCP parity across the three host configs. Everything it guards is
-# generated or mirrored, so a hand-edit is invisible to every other check.
-if echo "$STAGED" | grep -qE '^(\.agents/compatibility/|\.agents/hooks/|\.claude/commands/|\.opencode/commands/|\.opencode/plugins/|\.codex/|\.claude/settings\.json$|\.mcp\.json$|opencode\.jsonc$|cli/lib/agent-compatibility.*\.ts$|scripts/agent-compatibility.*\.ts$|AGENTS\.md$|CLAUDE\.md$)'; then
-  bun run agents:compat:check || {
-    echo ""
-    echo "❌ Cross-harness compatibility is out of contract. Fix:"
-    echo "   bun run agents:compat   # regenerates wrappers + repairs the Claude skills alias"
-    echo "   then re-stage whatever it rewrote under .claude/commands/ and .opencode/commands/"
     exit 1
   }
 fi

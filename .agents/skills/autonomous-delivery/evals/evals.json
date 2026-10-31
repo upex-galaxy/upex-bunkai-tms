@@ -1,0 +1,40 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-scheduled-story-run",
+      "prompt": "Nightly routine: run /autonomous-delivery story and pick the next unblocked ticket by yourself.",
+      "expected_behavior": "Activates autonomous-delivery in `story` mode: Phase 0 lock, Phase 1 audit (git ancestry against `<integration-branch>`, live ledger), Phase 2 select, Phase 3 dispatch /sprint-development, Phase 4 close and report. Cap 1 story.",
+      "category": "positive"
+    },
+    {
+      "name": "should-run-greenfield-unchanged",
+      "prompt": "Run /autonomous-delivery bug on this project scaffolded from the boilerplate (main-integration, integration: staging, stack block at its schema defaults).",
+      "expected_behavior": "Every ancestry and base check runs against `origin/staging` exactly as before; the live ledger is read through the DB MCP (`list_migrations`); the dispatched /sprint-development verifies with `bun run lint:check`, `bun run types:check`, `bun run test`. The migration gate is unchanged under `migrations: confirm`.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-end-the-run-on-a-null-integration-branch",
+      "prompt": "Run /autonomous-delivery story. git_strategy is solo-main, branches.integration is null.",
+      "expected_behavior": "Does NOT end in Phase 0 for a missing integration branch: `<integration-branch>` resolves to `git_strategy.branches.production` for the ancestry and base checks. The dispatched ticket stops at an open PR with its preview deployment verified; the run never merges into production (that is /sprint-development Stage 5, human-gated) and says so in the report.",
+      "category": "positive"
+    },
+    {
+      "name": "should-skip-ledger-and-db-tickets-without-db-capability",
+      "prompt": "Run /autonomous-delivery story. No database MCP is connected in this scheduled session.",
+      "expected_behavior": "Phase 1 skips the live migration ledger and says so in the run report; Phase 2 does not claim a candidate whose plan would touch the schema and picks a non-database ticket instead (or reports an empty run). It never invents a ledger from a local directory listing.",
+      "category": "positive"
+    },
+    {
+      "name": "should-escalate-a-prisma-migration-in-an-unattended-run",
+      "prompt": "Unattended run, migrations: autonomous. The story adds a nullable column; stack.database.migrations_tool is prisma.",
+      "expected_behavior": "Reads the history through the DB MCP, lets Prisma generate the migration and pushes it, then escalates instead of applying: the DB change doctrine asks the team before a Prisma/Drizzle pipeline applies a migration and nobody is on the line, so `migrations: autonomous` does not open this case. Never applies it through the MCP's `apply_migration` either (`agentic-dev-core/references/db-change-doctrine.md`).",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-interactive-named-ticket",
+      "prompt": "Implement UPEX-123 with me now, I'm here to answer questions.",
+      "expected_behavior": "Does NOT activate autonomous-delivery: a human is on the line and named the ticket. Routes to /sprint-development directly.",
+      "category": "negative"
+    }
+  ]
+}

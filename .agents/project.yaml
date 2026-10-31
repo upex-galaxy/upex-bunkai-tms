@@ -26,6 +26,45 @@ frontend:
 database:
   db_type: Supabase (PostgreSQL 16) # MVP. pgvector planned for semantic ATC search (Phase 2). Self-hosted edition uses plain Postgres in Docker.
 
+# The application's REAL stack, structured, so a skill reads a value instead of
+# hardcoding one. Read by path (`stack.database.schema_source`), never as a bare {{VAR}}.
+# Values detected from this repo on 2026-10-30 (boilerplate sync); re-detect with
+# `bun run agents:setup --stack`, check with `bun run setup:doctor`.
+# Rule for a skill: an app command is `<package_manager> run <scripts.X>`; a null script
+# means the app has none, so the step is skipped and said so, never invented.
+stack:
+  app_root: . # directory holding the app's package.json, relative to the repo root
+  framework: nextjs-app-router # nextjs-app-router | nextjs-pages | other
+  package_manager: bun # bun | pnpm | npm | yarn
+  scripts: # script NAMES in the app's package.json; null = the app has no such script
+    dev: dev
+    build: build # Critical: never run locally (see .agents/instructions/agent-project.md, no local build)
+    lint: lint:check
+    types: types:check
+    test: test
+    db_types: types:gen # scripts/gen-supabase-types.ts
+  database:
+    engine: postgres # postgres | other | none
+    provider: supabase # supabase | other | none
+    schema_source: migrations # live | migrations. The repo files are the schema source of truth (supabase/migrations/README.md)
+    migrations_dir: supabase/migrations # relative to app_root
+    migrations_tool: supabase-mcp # supabase-mcp | supabase-cli | prisma | drizzle | none. Applied with Supabase MCP apply_migration, ledger per supabase/migrations/README.md
+    types_path: lib/types/supabase.ts # generated database types, relative to app_root
+  ui:
+    css: tailwind-v3 # tailwind-v3 | tailwind-v4 | css-modules | other
+    kit: shadcn # shadcn | other | none
+    icons: lucide # lucide | other | none
+  hosting: vercel # vercel | netlify | other | none
+  ci: none # github-actions | gitlab | other | none. No .github/workflows in this repo; Vercel builds on push
+  test_runner: bun # vitest | jest | bun | playwright | other | none
+  conventions:
+    import_alias: '@/' # tsconfig paths: @/*, @app/*, @components/*, @lib/*
+    testid_style: data-testid kebab-case # e.g. data-testid="create-project-form". Skills never rename an existing test id
+
+# Harnesses this project runs on (ADR-0013). Bunkai runs all three (CLAUDE.md shim,
+# opencode.jsonc, .codex/config.toml).
+harnesses: [claude, opencode, codex]
+
 issue_tracker:
   issue_tracker: Jira
   issue_tracker_cli: acli
@@ -49,7 +88,7 @@ testing:
 # nothing under .git. An invalid entry is reported and ignored. Empty by default.
 updater:
   protected_paths: # e.g. [scripts/lint-vars.ts, .agents/skills/acli/SKILL.md]
-    - CONTEXT.md # Bunkai facts on top of the synced text: six-server MCP set, Critical Rule #19 numbering
+    - CONTEXT.md # Bunkai facts on top of the synced text: six-server MCP set
     - .agents/skills/autonomous-delivery/SKILL.md # Bunkai-only 'both files or neither' rule (§8 US->Screen row + dev-roadmap entry), seven recorded instances
     - .env.example # Bunkai-only DBHUB MCP block (dbhub.toml placeholders)
     - scripts/sync-jira-issues.ts # BK-502 fix: --include-comments for non-coverable types (embedCommentsSection); upstream sync reverted it twice (d383dd3c, a5ba427d)
@@ -136,9 +175,11 @@ git_strategy:
     feature_merge: merge-commit # merge-commit | squash | rebase-merge | n/a
     hotfix_policy: branch-off-prod-backmerge # branch-off-prod-backmerge | via-integration | none | n/a
   policy: # how strictly protected branches are guarded (set by Strategy Setup Q4; defaults are safe)
-    direct_push_to_protected: confirm # forbidden | confirm | allowed — ACCEPTED DIVERGENCE from the host, which requires a PR on main/staging via ruleset. Rationale in AGENTS.md § Git Strategy; do not re-raise as drift.
+    direct_push_to_protected: confirm # forbidden | confirm | allowed — ACCEPTED DIVERGENCE from the host, which requires a PR on main/staging via ruleset. Rationale in .agents/instructions/agent-project.md § Git Strategy (this repository); do not re-raise as drift.
     admin_bypass: true # team POLICY: a repo admin MAY bypass PR/protection for urgent changes — offer is enabled. Actual capability still depends on the GitHub user's role, and git-flow-master re-confirms BOTH (a) operator is really a repo admin and (b) the specific action, at runtime, every time — this flag does not make bypass silent or automatic.
     require_pr_reviews: 0 # null | 0 | N — min approvals before merge to a protected branch (informational)
+    # Host divergences that are ACCEPTED, not drift (`git:policy verify` finding names, verbatim).
+    accepted_divergences: []
   branch_prefixes:
     precedence: [feat, fix, refactor, test, docs, chore]
     naming_with_key: '{prefix}/{ISSUE-KEY}-{kebab-slug}'
@@ -148,10 +189,12 @@ git_strategy:
     created: 2026-06-24 # YYYY-MM-DD stamped by Strategy Setup
     policy_verified: 2026-08-22 # YYYY-MM-DD of the last reconciliation of `policy:` against the host (git-flow-master Step 1b). null = never verified. Per-project — this file is a template; a fresh project starts unverified
     policy_source: verified # verified | declared — `declared` means `policy:` records team INTENT and has never been checked against the remote. Never state what the remote requires from a `declared` reading
+    # Did anyone actually CHOOSE this strategy? `chosen`: Strategy Setup ran on 2026-06-24 (see `created`).
+    strategy_source: chosen # inherited | chosen
 
 # WHO decides what, when a question has no settled answer. Read by every skill that
 # routes a decision, via agentic-dev-core/references/decision-protocol.md §5.1.
-# `decide` here is the config form of AGENTS.md Critical Rule #18: Bunkai TMS is
+# `decide` here is the config form of Bunkai rule AI-LED-DECISIONS (.agents/instructions/agent-project.md): Bunkai TMS is
 # specified and built end-to-end by AI with no human PO in the loop, so an open
 # product/business/functional question is work to do, not a blocker. It used to live
 # as a ~240-line fork across three synced skill files, which `bun run up` overwrote
@@ -186,7 +229,7 @@ autonomous_delivery:
   # of migration unattended, including DROP / RENAME / CREATE OR REPLACE rewrites of live objects.
   # Set to `unrestricted` 2026-08-06 (operator decision, made live in session): the shared Supabase
   # project ref (fmbpikzpkafptqximhxn / ADR-0009) backs an MVP still in development, not a real
-  # production tenant, and this project is AI-led by design (AGENTS.md Critical Rule #18) — so gating
+  # production tenant, and this project is AI-led by design (Bunkai rule AI-LED-DECISIONS, .agents/instructions/agent-project.md) — so gating
   # destructive DDL bought ceremony, not safety. Two rules still bind at every level, `unrestricted`
   # included: never apply a migration merely to clear a local error, and always re-read the live
   # definition after every apply (incl. re-applies) and diff it against the committed file. Reverses
@@ -206,3 +249,68 @@ autonomous_delivery:
   # Posted via the Slack MCP tool (slack_send_message), which authenticates as the operator's own user, not a
   # bot. Wired 2026-08-07 (operator decision, made live in session).
   escalation_log: .session/autonomous-delivery/escalation-log.md # append-only, shared across modes.
+
+# Agentic-work profile (ADR-0020, boilerplate). Upstream defaults: neither this file nor
+# .agents/instructions/agent-project.md set other values for Bunkai (boilerplate sync 2026-10-30).
+orchestration:
+  max_workers: 3 # concurrent workers per round (merge + staging deploy stay serialized through the conductor)
+  default_agent: claude # claude | codex | opencode
+  # The WORKER model: the full provider model id, never an alias (an alias moves
+  # on its own between rounds: gotcha G29). The name stays `default_model` for
+  # compatibility (`bun sync` only inserts keys, it never renames one). Empty ''
+  # is allowed only when the conductor reads the model off the worker's screen
+  # at readiness and records it in the roster.
+  default_model: claude-opus-5-5 # e.g. claude-opus-5-5
+  default_effort: high # harness effort level when supported
+  # The CONDUCTOR tier: the session the human types into, or a middle conductor
+  # another session launched. Same rule as `default_model`: a full model id.
+  conductor_model: claude-opus-5-5 # e.g. claude-opus-5-5
+  conductor_effort: high # e.g. high
+  # The SUBAGENT tier: one-shot dispatches inside a turn. Written in the
+  # harness's own subagent vocabulary, never a full id: Claude Code's Agent tool
+  # takes sonnet | opus | haiku | fable.
+  subagent_model: sonnet # e.g. sonnet
+  # Permission mode per tier, in the repo vocabulary bypass | auto | ask | inherit.
+  # Translated per harness in ONE table:
+  # .agents/skills/orca-orchestration/references/orca-machine-setup.md §3.1.
+  # A supervised worker's REAL mode comes from the orchestrator app's per-agent
+  # default arguments (the native launch takes no argv); this map declares what
+  # the conductor verifies at readiness. Why these defaults and the security
+  # tradeoff of `bypass`: .context/ADR/ADR-0020-agentic-work-profile-and-permission-posture.md.
+  # A map, read by path (`orchestration.permission_modes.<tier>`), not a {{VAR}}.
+  permission_modes:
+    conductor: auto # e.g. auto
+    worker: bypass # e.g. bypass
+    subagent: inherit # e.g. inherit (the mode of the session that launches it)
+  # Model by topic: the conductor matches a brief's topics against these entries
+  # when it picks a model and effort for a tier. Empty = the tier defaults above.
+  # Entry shape: {topics: [security, migration], tier: worker, model: <full id>, effort: max}
+  # (tier: worker | conductor | subagent). A list, read by path, not a {{VAR}}.
+  model_overrides: [] # e.g. [{topics: [security, migration], tier: worker, model: claude-opus-5-5, effort: max}]
+  # WHICH orchestrator, named here instead of hardcoded in a skill. Empty
+  # `orchestrator_cli` = no orchestrator on this machine: every workflow skill
+  # falls back to the pasted-launch-line path and says NOTHING about it.
+  orchestrator_name: Orca # the application the operator sees
+  orchestrator_cli: orca # the binary on PATH (Linux outside a managed terminal: orca-ide)
+  # THE TWO VERBS ARE NOT INTERCHANGEABLE. `message_verb` carries every message
+  # BETWEEN sessions and is byte-intact. `terminal_verb` DRIVES a terminal
+  # (commands, CLI calls, harness slash-commands, keystrokes): it truncates a
+  # long payload silently, keeps only the TAIL, and still reports success.
+  # One structural exception: a supervised worker's first prompt goes through
+  # `terminal_verb`, because the native launch has no argv. Keep it short and
+  # pointing at a file. Canon: orca-orchestration/references/channel-discipline.md.
+  message_verb: orca orchestration # session-to-session messages ONLY
+  terminal_verb: orca terminal # commands and keystrokes ONLY
+  # Vendor skills the orchestrator installs at USER level, loaded ALONGSIDE the
+  # repo's own `orca-orchestration` skill, never instead of it: the repo skill
+  # owns WHEN and WHAT, these own the command grammar. Empty list = none
+  # installed; the repo skill then asks the binary for its grammar.
+  orchestrator_skills: [orca-cli, orchestration]
+
+# Where secret VALUES live (ADR-0011). Bunkai keeps them in the local .env (no secret manager).
+secrets:
+  provider: local # local | 1password
+  onepassword:
+    vault: null # vault the op:// references point at (e.g. myproject-dev; Private on a personal plan)
+    account: null # sign-in shorthand from `op account list`; null = the CLI default account
+    auth: app # app (desktop app locally, service account in CI) | service-account (token only)

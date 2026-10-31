@@ -9,7 +9,7 @@
 
 Every workflow skill in this boilerplate (`agentic-dev-core`, `project-foundation`, `project-bootstrap`, `product-management`, `sprint-development`, `unit-testing`) declares a `model_preferences` block immediately after its YAML frontmatter. The block is HTML-comment-wrapped YAML and documents which model tier is most appropriate for each broad **phase** of the workflow.
 
-This is **pure documentation today**. Claude Code reads `SKILL.md` frontmatter for `name` / `description` / `phase` and ignores the comment block. But the block is structured so that dispatchers (this repo's orchestrators, OpenCode profiles, future cross-agent tooling) can parse it and use it to pass `model:` when launching subagents.
+This is **pure documentation**. Claude Code reads `SKILL.md` frontmatter for `name` / `description` / `phase` and ignores the comment block. But the block is structured so that dispatchers (this repo's orchestrators, OpenCode profiles, future cross-agent tooling) can parse it and use it to pass `model:` when launching subagents.
 
 The block is identical across all six workflow skills — the same default mapping applies everywhere. Per-skill nuance lives in the **Per-skill primary phases** table below, not inside each `SKILL.md`.
 
@@ -62,7 +62,7 @@ HTML comments are:
 
 ## How dispatchers use it (advisory)
 
-Today, no dispatcher in this repo enforces `model_preferences`. The block is documentation. But the **shape** is fixed so that future tooling can rely on it. A future orchestrator (or this repo's own scripts) could:
+No dispatcher in this repo enforces `model_preferences`. The block is documentation. But the **shape** is fixed so that future tooling can rely on it. A future orchestrator (or this repo's own scripts) could:
 
 1. Resolve a skill at dispatch time (e.g. `/sprint-development` -> `sprint-development/SKILL.md`).
 2. Identify the current phase (e.g. Stage 3 Code Review -> `review`).

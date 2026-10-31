@@ -25,6 +25,30 @@
       "category": "positive"
     },
     {
+      "name": "records-stack-descriptor-after-base-scaffold",
+      "prompt": "The backend and frontend base scaffold just finished and the build passes. Wrap up the bootstrap.",
+      "expected_behavior": "Runs the Verification checklist, including the stack step: runs `bun run agents:setup --stack` so the `stack:` block of `.agents/project.yaml` describes the scaffolded app (proposals shown with their evidence, greenfield defaults kept where the repo agrees), then confirms `bun run setup:doctor` reports no stack drift. Does NOT hand-edit the block from memory and does NOT invent a script name the app's package.json lacks.",
+      "category": "positive"
+    },
+    {
+      "name": "greenfield-guard-passes-and-records-verdict",
+      "prompt": "Fresh repo from create-agentic-dev, PRD and SRS are done, DESIGN.md exists. Scaffold the backend and the frontend.",
+      "expected_behavior": "Runs `bun run bootstrap:guard` at entry (after the Phase 0 resume check finds no session, before writing plan.md), reads exit 0 / `greenfield`, writes the `Bootstrap guard: greenfield, exit 0, <date>` line into `plan.md` → `## Inputs`, then runs the base phases exactly as before (backend first, then frontend). The guard adds one recorded line and changes nothing else on the greenfield path.",
+      "category": "positive"
+    },
+    {
+      "name": "addon-reads-stack-on-existing-app",
+      "prompt": "This is our adopted app (monorepo, the web app lives in apps/web, pnpm). Wire the Supabase types into it.",
+      "expected_behavior": "Runs the `supabase-types-setup` add-on, which stays available on an existing app. Reads `.agents/project.yaml` → `stack:` first: resolves paths under `stack.app_root` (`apps/web`), writes the types to `stack.database.types_path`, uses `stack.package_manager` (pnpm) and runs the app's own `stack.scripts.db_types` when it is non-null instead of adding a second script. Takes the project ref from `environments.<env>.db_project_ref`. Does NOT hardcode `src/types/supabase.ts`, does NOT switch the package manager.",
+      "category": "positive"
+    },
+    {
+      "name": "db-change-reads-history-and-uses-apply-migration",
+      "prompt": "Backend setup, greenfield: create the foundational tables and their RLS in Supabase.",
+      "expected_behavior": "Loads `/supabase` + `/supabase-postgres-best-practices`, resolves the project ref from `environments.<env>.db_project_ref`, says the environment aloud, reads `list_migrations` and `list_tables` before the first write (stops and reports if unknown migrations exist), applies each table and its RLS as a named `apply_migration` (never DDL through `execute_sql`), verifies each one in `list_migrations` and `list_tables`, runs the security advisors after RLS, regenerates the types, and records an ADR for the foundational schema + RLS model naming the migrations and the rollback, per `agentic-dev-core/references/db-change-doctrine.md`.",
+      "category": "positive"
+    },
+    {
       "name": "should-not-trigger-prd-definition",
       "prompt": "Define the PRD for this product — personas, user journeys, MVP scope.",
       "expected_behavior": "Does NOT activate project-bootstrap. Should route to /project-foundation (phase-2-prd references) because the request is product definition, not infrastructure scaffolding. project-bootstrap implements infra after the PRD/SRS exist.",
@@ -40,6 +64,18 @@
       "name": "should-not-trigger-test-framework-setup",
       "prompt": "Setup the test framework — Playwright + KATA + Allure for E2E tests.",
       "expected_behavior": "Does NOT activate project-bootstrap. Test framework setup is out of scope for this repo (the boilerplate covers product/dev infrastructure, not QA infra).",
+      "category": "negative"
+    },
+    {
+      "name": "refuses-base-phases-on-adopted-app",
+      "prompt": "We adopted the boilerplate into our existing Next.js app with --adopt. Now run the backend setup and the frontend setup so everything matches the boilerplate.",
+      "expected_behavior": "Runs `bun run bootstrap:guard`, gets exit 2 / `existing-app` with the adoption lock and the app signals, and REFUSES both base phases without touching a file or the database: quotes the signals, names what the phases would have overwritten (tables, RLS, seed, clients, middleware, layout, theme, `next@latest`, `shadcn init`, README, demo credentials) and routes to `/project-adoption` (design identity: `/design-system extract`). Offers the add-on phases as still available. Does NOT accept 'just do it, it is fine' as a waiver of the guard.",
+      "category": "negative"
+    },
+    {
+      "name": "refuses-theme-over-existing-design-identity",
+      "prompt": "Our app already has tailwind.config.ts and globals.css from years ago. Set up the frontend design system from DESIGN.md.",
+      "expected_behavior": "Treats the existing theme as an existing design identity: the guard reads `existing-app` (Tailwind config / app files) and the frontend base phase is refused; even on a greenfield verdict, the frontend-setup hard guard stops before generating `tailwind.config` / `globals.css` over a theme this session did not write. Routes to `/design-system extract` to record the live identity as DESIGN.md. Never regenerates, downgrades or replaces the app's theme.",
       "category": "negative"
     }
   ]

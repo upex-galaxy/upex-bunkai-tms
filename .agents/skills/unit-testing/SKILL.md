@@ -2,7 +2,7 @@
 name: unit-testing
 description: 'Focused skill for unit-test design — TDD workflow (red-green-refactor), test naming (AAA, Given-When-Then), mocking patterns (mocks/spies/stubs/fakes, dependency injection), and coverage strategy (line vs branch, mutation testing). Composable: invokable standalone (write unit tests for this function, qué mockear aquí, what to mock) or mid-flight from sprint-development for TDD slices. Triggers on: write unit tests, TDD this function, test-driven development, qué mockear aquí, what to mock, test naming, AAA pattern, Given-When-Then, test coverage, branch coverage, Jest, Vitest, unit testing. Do NOT use for: feature implementation orchestration (use /sprint-development), E2E or integration testing (out of scope, see playwright-cli skill), production deploy, or formal QA workflow.'
 license: MIT
-compatibility: [claude-code, copilot, cursor, codex, opencode]
+compatibility: [claude-code, codex, opencode]
 phase: implementation
 complementary_categories:
   - language
@@ -18,6 +18,11 @@ compact_rules: |
   - **U7.** NEVER mock what you own without a real reason. Prefer dependency injection at the seam so the test can pass a fake or stub explicitly; reach for `jest.mock` / `vi.mock` only when the seam is unavoidable (module-level side effects, third-party SDK).
   - **U8.** NEVER let a flaky test ship green. Either fix the root cause (timing, shared state, network) or quarantine with a tracked ticket — ignoring flakes erodes trust in the entire suite.
   - **U9.** NEVER write tests for framework code (matchers behaving correctly, library internals, ORM mechanics). Test YOUR logic; trust the framework's own test suite.
+  - **Runner and command come from `stack:`** (`.agents/project.yaml`): the runner is `stack.test_runner`, the command is `{{stack.package_manager}} run {{stack.scripts.test}}`, test files live under `stack.app_root` next to their siblings. A non-null runner is the app's own: extend it, never add or swap in a second one. Only `stack.test_runner: null` (not chosen yet) opens runner setup, and the choice is recorded with `bun run agents:setup --stack`. A null `stack.scripts.test` is said, never invented.
+  - **Capabilities** (`metadata.requires_capabilities`): resolve each by tool-name suffix, any prefix; none available at the step that needs it → STOP per `agentic-dev-core/references/mcp-capabilities.md` §4, never a silent substitute (built-in `WebSearch` / `WebFetch` only when the user chooses it).
+metadata:
+  kind: workflow
+  requires_capabilities: [library-docs]
 ---
 
 <!-- Model preferences (advisory; dispatchers may use to route) -->
@@ -32,7 +37,7 @@ model_preferences:
 
 # Unit Testing
 
-Focused skill for designing and writing unit-level tests. Covers TDD cycles, test naming conventions, mocking decisions, and coverage strategy. TDD-friendly and stack-agnostic (Jest, Vitest, Mocha, or any runner with a similar API). Plays well as a standalone skill or as a mid-flight callee from `/sprint-development` when a slice benefits from test-first development.
+Focused skill for designing and writing unit-level tests. Covers TDD cycles, test naming conventions, mocking decisions, and coverage strategy. TDD-friendly and stack-agnostic (Vitest, Jest, Bun's test runner, or any runner with a similar API): the runner is whichever one the app already uses, read from the `stack:` block (see `## Stack parameters`). Plays well as a standalone skill or as a mid-flight callee from `/sprint-development` when a slice benefits from test-first development.
 
 ## When to use
 
@@ -51,10 +56,21 @@ When invoked standalone (no `sprint-development` parent), it operates self-suffi
 
 ## Pre-requisites
 
-- Project has a unit test runner configured (Jest, Vitest, Mocha, or similar)
-- Test command exists in `package.json` (`bun test`, `npm test`, `vitest`, etc.)
-- For TDD: test runner supports watch mode (`--watch`)
-- If no runner is configured, the first task is to set one up — see `references/unit-testing.md` § Setup
+- The app has a unit test runner: `stack.test_runner` in `.agents/project.yaml` names it (`vitest`, `jest`, `bun`, …)
+- The app's test script exists: `stack.scripts.test` names it in the app's `package.json`
+- For TDD: the runner supports watch mode (`--watch`)
+- `stack.test_runner: null` means no runner was chosen yet: the first task is to set one up (`references/unit-testing.md` § Setup). Any other value, including `none` on an app that decided against unit tests, is the app's decision: ask before changing it
+
+## Stack parameters
+
+Read the `stack:` block once per run. Every runner, command and path below resolves from it; the literal examples in the references (`src/lib/…`, `jest.mock`) are illustrations, never defaults to impose.
+
+| Parameter | Use |
+| --------- | --- |
+| `{{stack.test_runner}}` | the runner whose API the tests use (`vi.*` for `vitest`, `jest.*` for `jest`, `bun:test` for `bun`). Non-null = extend it; never add or swap in a second runner. `null` = runner setup first, then `bun run agents:setup --stack` records the choice |
+| `{{stack.package_manager}} run {{stack.scripts.test}}` | the command that runs the suite. A null `stack.scripts.test` is reported, never invented; adding the script is a change to the app's `package.json` the user approves |
+| `{{stack.app_root}}` | where the code under test and its tests live (a monorepo app sits under e.g. `apps/web`). Test files follow the convention the sibling tests already use (colocated `*.test.ts`, a `__tests__/` folder, a top-level `tests/`), whatever the references show |
+| `{{stack.conventions.import_alias}}` | the import alias tests use for app modules, when non-null |
 
 ## Inputs — read these first, in this order
 
@@ -73,12 +89,12 @@ Run once when this skill is invoked, before any workflow below. Follows the cont
 Steps:
 
 1. Read `complementary_categories` from this skill's frontmatter (`language`).
-2. Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.agents/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
+2. Scan the skills actually installed (strategy doc §3.1): the session's skill list plus every `.agents/skills/*/SKILL.md` on disk, git-ignored community folders included. `.agents/skills/REGISTRY.md` lists committed skills only, so it is never this scan.
 3. For each matched skill, classify tier per strategy doc §2.
 4. Apply threshold rule per strategy doc §3.2:
    - **T1 / T3** matches → load silently. Cache for the session.
    - **T4** matches → ASK user once: `"Detected <skill> (T4). Apply for this unit-test work? Y/N"`. Cache the answer for the session.
-5. When dispatching sub-agents (test author, mock designer, coverage auditor), inject a `## Composable Skills` block per strategy doc §6.2.
+5. When dispatching sub-agents (test author, mock designer, coverage auditor), inject a `## Composable Skills` block per strategy doc §5.2.
 
 Expected matches (illustrative — actual list depends on what the user has installed):
 
@@ -86,7 +102,7 @@ Expected matches (illustrative — actual list depends on what the user has inst
 | ---------- | -------------------------------------------------------------------------------------------------- |
 | `language` | `typescript-advanced-types` (T3) — applied when designing type-aware mocks, generic test utilities |
 
-Skip step only if the registry cache is missing AND no session-start skill list is available. When skipped, log `skill_resolution: "fallback-inline"` plus `missing: [<categories with no resolution>]` in the result envelope (per strategy doc §3.4).
+Skip step only if neither the session skill list nor the `.agents/skills/` folder can be read. When skipped, log `skill_resolution: "fallback-inline"` plus `missing: [<categories with no resolution>]` in the result envelope (per strategy doc §3.4).
 
 ## Workflow
 
@@ -124,7 +140,7 @@ When in doubt, start with `references/unit-testing.md` — it covers the broad w
 
 - **Implementing a feature with TDD** → return to `/sprint-development` Stage 2 once tests are green and the slice is refactored
 - **Integration / E2E tests** → out of scope here; handled by a separate QA workflow
-- **First-time test runner setup in a fresh repo** → `/sprint-development` Stage 4 (deploy/scaffolding) covers tooling installation; this skill assumes a runner exists
+- **First-time test runner setup in a fresh repo** → set the runner up first per `references/unit-testing.md` § Setup; the rest of this skill assumes a runner exists
 - **Bug-fix workflow with reproducer-first** → invoke this skill from `/sprint-development` for the reproducer test, then continue with the fix
 
 ## Anti-patterns — NEVER do these
@@ -141,7 +157,7 @@ When in doubt, start with `references/unit-testing.md` — it covers the broad w
 
 ## Variables consumed
 
-- `{{BACKEND_STACK}}`, `{{FRONTEND_STACK}}` — informs which test runner conventions apply (Jest is more common with Node/React, Vitest with Vite-based projects)
+- `{{stack.test_runner}}`, `{{stack.package_manager}}`, `{{stack.scripts.test}}`, `{{stack.app_root}}`, `{{stack.conventions.import_alias}}` — the runner, the command and the paths (`## Stack parameters`)
 - (No `{{jira.*}}` references — unit tests are pre-Jira; they're a developer concern, not a workflow artifact)
 
 ## Notes

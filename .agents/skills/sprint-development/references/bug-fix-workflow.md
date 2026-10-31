@@ -20,7 +20,7 @@ Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO vive
 - `{{jira.evidence}}` — Evidence (attachments/links). Screenshots, logs, traces.
 - `{{jira.fix}}` — Fix (Radio). Bugfix (standard) / Hotfix (critical, immediate deploy).
 
-**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `AGENTS.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.agents/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
+**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `.agents/instructions/agent-tool-resolution.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.agents/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
 
 ---
 
@@ -42,7 +42,7 @@ Analyze, triage, and fix bugs/defects reported during exploratory testing or pro
 - Bug reported in Jira (from exploratory testing or production)
 - Access to `[ISSUE_TRACKER_TOOL]` (e.g., Atlassian/Jira MCP)
 - Access to GitHub CLI (`gh`)
-- Optional: Browser testing tools (e.g., Playwright MCP)
+- Optional: `/playwright-cli` for browser reproduction (session rules: `live-ui-validation.md` §3)
 - Optional: API testing tools (e.g., Postman MCP)
 - Optional: Context7 MCP for library documentation
 
@@ -59,7 +59,7 @@ Analyze, triage, and fix bugs/defects reported during exploratory testing or pro
 This workflow splits Jira access two ways — they resolve to **different tools**:
 
 - **Detailed READS** (bug custom fields: `actual_result`, `expected_result`, `error_type`, `severity`, `test_environment`, `root_cause`, `fix`; description; comments for context) → **`bun run jira:sync-issues get <BUG-KEY> --include-comments`**, then read the materialized `.md` files under `.context/PBI/`. The sync materializes the FULL synced bug folder (every per-field `.md` + `comments.md`); to fix a bug you MUST read the whole synced bug folder + comments — never omit custom fields, description, or comment context. The sync resolves every slug and converts ADF→Markdown; `[ISSUE_TRACKER_TOOL]` `view` returns `null` for `customfield_*` and MUST NOT be used to read these.
-- **WRITES** (transition issue status, add documentation comment, set bug custom fields) → `[ISSUE_TRACKER_TOOL]` (primary `/acli`, fallback Atlassian MCP per `AGENTS.md` §6).
+- **WRITES** (transition issue status, add documentation comment, set bug custom fields) → `[ISSUE_TRACKER_TOOL]` (primary `/acli`, fallback Atlassian MCP per `.agents/instructions/agent-tool-resolution.md` §6).
 
 **Check before starting:**
 
@@ -105,7 +105,7 @@ This workflow requires GitHub CLI for:
 - Reproducing user interaction bugs
 - Taking screenshots of before/after state
 
-**Examples:** Playwright MCP, browser automation tools
+**Tool:** `/playwright-cli`, in a named in-memory session logged in as the declared automation identity (`live-ui-validation.md` §3, `live-ui-identity.md`)
 
 > **Attaching a screenshot as inline evidence** (to the bug, or to `{{jira.evidence}}`): `![](path)` does NOT embed in Jira ADF. Use the bundled helper, which uploads the file and posts it inline as a real image so a reviewer sees the before/after state without opening the Attachments panel:
 > ```bash
@@ -271,10 +271,10 @@ Check issue links for:
 
 **Default branching pattern (user can override):**
 
-| Type       | Branch Pattern                           | Target  |
-| ---------- | ---------------------------------------- | ------- |
-| **Bugfix** | `fix/{ISSUE_KEY}/{short-description}`    | staging |
-| **Hotfix** | `hotfix/{ISSUE_KEY}/{short-description}` | main    |
+| Type       | Branch Pattern                           | Target                                                                                 |
+| ---------- | ---------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Bugfix** | `fix/{ISSUE_KEY}/{short-description}`    | `git_strategy.branches.integration` (production branch when integration is null)       |
+| **Hotfix** | `hotfix/{ISSUE_KEY}/{short-description}` | `git_strategy.branches.production`                                                     |
 
 **Ask user if they have a different git strategy before creating branches.**
 
@@ -448,14 +448,16 @@ Which would you prefer?
 
 **Decision Matrix:**
 
-| Finding                       | Action                     | Jira Transition                |
-| ----------------------------- | -------------------------- | ------------------------------ |
-| Real bug, reproducible        | Proceed to fix             | → In Progress                  |
-| Duplicate of existing bug     | Link and close             | → Duplicate                    |
-| Not a bug (works as designed) | Document reasoning         | → Won't Fix (WAD)              |
-| Enhancement request           | Reclassify as enhancement  | → Enhancement / Backlog        |
-| Cannot reproduce              | Request more info or close | → Need Info / Cannot Reproduce |
-| Deferred (low priority/risk)  | Document and defer         | → Deferred                     |
+| Finding                       | Action                     | Jira Transition (slug → status)        |
+| ----------------------------- | -------------------------- | -------------------------------------- |
+| Real bug, reproducible        | Proceed to fix             | `start_fixing` → `in_progress`         |
+| Duplicate of existing bug     | Link and close             | `is_duplicated` → `duplicated`         |
+| Not a bug (works as designed) | Document reasoning         | `is_wad` → `rejected`                  |
+| Enhancement request           | Reclassify as enhancement  | `is_not_a_bug` → `enhancement`         |
+| Cannot reproduce              | Request more info or close | comment, then `is_cnr` → `cannot_reproduce` (or leave `open`) |
+| Deferred (low priority/risk)  | Document and defer         | `defer` → `deferred`                   |
+
+Slugs resolve through `{{jira.transition.bug.<slug>}}` (same slugs for `defect` / `improvement`). A slug this project's catalog lacks follows the unmapped-status fallback in `agentic-dev-core/references/artifact-lifecycle.md` §4: never a remembered id, never a status name typed from memory.
 
 **For "Real Bug" - Check if Hotfix needed:**
 
@@ -473,8 +475,8 @@ Which would you prefer?
 
 **Decision:**
 
-- [ ] **HOTFIX** → Use `hotfix/*` branch, PR to main
-- [ ] **BUGFIX** → Use `fix/*` branch, PR to staging
+- [ ] **HOTFIX** → Use `hotfix/*` branch, PR to the production branch (`git_strategy.branches.production`)
+- [ ] **BUGFIX** → Use `fix/*` branch, PR to the integration branch (`git_strategy.branches.integration`)
 ```
 
 **For "Not a Bug" scenarios:**
@@ -505,7 +507,7 @@ Do you want me to:
 ```
 Use [ISSUE_TRACKER_TOOL] to transition issue:
   issue_key: "[BUG_ID]"
-  transition: "In Progress"
+  transition: {{jira.transition.bug.start_fixing}}
 ```
 
 ---
@@ -597,14 +599,16 @@ git checkout -b hotfix/[ISSUE_KEY]/[short-description]
 **Step 1: Code Quality Checks**
 
 ```bash
-# TypeScript check (adjust command per project)
-npm run typecheck  # or: bun run typecheck
+# The app's own scripts (`## Stack parameters` in ../SKILL.md), run from {{stack.app_root}}.
+# A null role is skipped and reported, never replaced by an invented command.
+# TypeScript check
+{{stack.package_manager}} run {{stack.scripts.types}}
 
 # Linting
-npm run lint:check  # or: bun run lint:check
+{{stack.package_manager}} run {{stack.scripts.lint}}
 
 # Build
-npm run build  # or: bun run build
+{{stack.package_manager}} run {{stack.scripts.build}}
 ````
 
 **Step 2: Manual Verification**
@@ -617,7 +621,7 @@ npm run build  # or: bun run build
 **Step 3: Run Tests (if available)**
 
 ```bash
-npm run test  # or: bun run test
+{{stack.package_manager}} run {{stack.scripts.test}}
 ```
 
 **Verification Checklist:**
@@ -691,7 +695,8 @@ git push -u origin [branch-name]
 **Step 3: Create Pull Request**
 
 ```bash
-# For BUGFIX (to staging/develop)
+# For BUGFIX (to the integration branch: <integration> = git_strategy.branches.integration;
+#   when it is null, the PR targets git_strategy.branches.production)
 gh pr create \
   --title "fix(ISSUE_KEY): brief description" \
   --body "$(cat <<'EOF'
@@ -730,13 +735,13 @@ Fixes [ISSUE_KEY]: [Bug summary from Jira]
 Fixes: [ISSUE_KEY]
 EOF
 )" \
-  --base staging
+  --base <integration>
 
-# For HOTFIX (to main)
+# For HOTFIX (to the production branch, git_strategy.branches.production)
 gh pr create \
   --title "fix(ISSUE_KEY): brief description [HOTFIX]" \
   --body "..." \
-  --base main
+  --base <production>
 ```
 
 **Confirm PR creation:**
@@ -747,7 +752,7 @@ gh pr create \
 Title: fix(PROJ-123): resolve email validation
 PR #: [NUMBER]
 URL: [PR_URL]
-Base: [staging/main]
+Base: [integration branch, or production when integration is null]
 
 Next steps:
 1. Request code review
@@ -791,7 +796,7 @@ Use [ISSUE_TRACKER_TOOL] to add comment to issue:
 ```
 Use [ISSUE_TRACKER_TOOL] to transition issue:
   issue_key: "[BUG_ID]"
-  transition: "Ready For QA"  // or appropriate transition name
+  transition: {{jira.transition.bug.fixed_and_deployed}}  // from in_review; urgent hotfix with no review: hard_pushed
 ```
 
 **Step 4: Assign to QA (if known)**
@@ -1025,7 +1030,7 @@ _Please provide additional details to help us investigate._
 After investigation, this is **not a bug** but rather a **feature request/enhancement**.
 
 **Current Behavior:**
-[What the system currently does - correctly]
+[What the system does - correctly]
 
 **Requested Behavior:**
 [What the reporter wants it to do]
@@ -1066,23 +1071,23 @@ _Reclassifying and moving to backlog._
 
 ### Hotfix Workflow:
 
-1. [ ] Branch from `main`: `hotfix/[ISSUE_KEY]/[description]`
+1. [ ] Branch from `<production>` (`git_strategy.branches.production`): `hotfix/[ISSUE_KEY]/[description]`
 2. [ ] Implement minimal fix
 3. [ ] Verify fix locally
-4. [ ] Create PR to `main` with [HOTFIX] tag
+4. [ ] Create PR to `<production>` with [HOTFIX] tag
 5. [ ] Request expedited review
-6. [ ] After merge to main:
+6. [ ] After merge to `<production>`:
    - [ ] Verify production deployment
-   - [ ] Backport to staging/develop
+   - [ ] Backport to the integration branch (`git_strategy.branches.integration`, e.g. `staging`)
 7. [ ] Update Jira with hotfix documentation
 ```
 
 ### Hotfix Branch Strategy
 
 ```bash
-# 1. Create hotfix branch from main
-git checkout main
-git pull origin main
+# 1. Create hotfix branch from <production> (git_strategy.branches.production)
+git checkout <production>
+git pull origin <production>
 git checkout -b hotfix/[ISSUE_KEY]/[description]
 
 # 2. Implement fix (minimal changes only)
@@ -1097,15 +1102,16 @@ git commit -m "fix(ISSUE_KEY): description [HOTFIX]
 
 Fixes: ISSUE_KEY"
 
-# 4. Push and create PR to main
+# 4. Push and create PR to <production>
 git push -u origin hotfix/[ISSUE_KEY]/[description]
-gh pr create --base main --title "fix(ISSUE_KEY): description [HOTFIX]"
+gh pr create --base <production> --title "fix(ISSUE_KEY): description [HOTFIX]"
 
-# 5. After merge to main, backport to staging
-git checkout staging
-git pull origin staging
+# 5. After merge to <production>, backport to <integration> (git_strategy.branches.*;
+#    skip when integration is null). Hotfix policy: git_strategy.decisions.hotfix_policy
+git checkout <integration>
+git pull origin <integration>
 git cherry-pick [hotfix-commit-hash]
-git push origin staging
+git push origin <integration>
 ```
 
 ### Hotfix PR Template
@@ -1140,7 +1146,7 @@ git push origin staging
 ### Deployment Notes
 
 - [ ] Requires immediate deployment to production
-- [ ] Backport needed to: staging, develop
+- [ ] Backport needed to: the integration branch (`git_strategy.branches.integration`, e.g. `staging`)
 
 ### Rollback Plan
 
@@ -1209,7 +1215,7 @@ Fixes: [ISSUE_KEY]
 **Action:**
 
 1. Add Jira comment with specific questions
-2. Transition to "Need Info" status
+2. Leave the bug `open` with the questions in the comment, or `is_cnr` → `cannot_reproduce` if the user chooses to close it (the bug workflow has no "Need Info" status; a project that added one is the `artifact-lifecycle.md` §4 case)
 3. List exactly what information is needed
 4. Do NOT guess or assume
 
@@ -1280,7 +1286,7 @@ Is Crítica + Production? ───Yes──> HOTFIX Flow
 ┌───────────────────┐
 │ Phase 4: Fix      │
 │ Implementation    │
-│ (fix/* → staging) │
+│ (fix/* → integ.)  │
 └─────────┬─────────┘
           │
           v
@@ -1353,7 +1359,7 @@ After completing the workflow, present this consolidated report to the user in t
 | Jira - Assign     | Asignado a [Tester name] para re-test                     |
 | Git - Branch      | `fix/[ISSUE_KEY]/[description]`                           |
 | Git - Commit      | `fix([ISSUE_KEY]): [commit message]`                      |
-| Git - Push        | → [target branch: staging/main]                           |
+| Git - Push        | → [target branch: integration, or production when null]   |
 | Verificación      | typecheck ✓, lint ✓, build ✓                              |
 
 ---
@@ -1464,7 +1470,7 @@ Add this banner at the top:
 | Aspecto      | Detalle                      |
 | ------------ | ---------------------------- |
 | Issue Key    | [ISSUE_KEY]                  |
-| Estado Final | Need Info / Cannot Reproduce |
+| Estado Final | Open (pending info) / Cannot Reproduce |
 | Intentos     | [N] intentos de reproducción |
 | URL Jira     | [Jira URL]                   |
 
@@ -1474,7 +1480,7 @@ Add this banner at the top:
 | ----------------- | --------------------------------- |
 | Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments`      |
 | Jira - Comment    | Preguntas específicas al reporter |
-| Jira - Transition | [Status] → Need Info              |
+| Jira - Transition | none (stays Open) / `is_cnr` → Cannot Reproduce |
 
 **Análisis:**
 [Qué se intentó, qué información falta, preguntas para el reporter]
@@ -1535,26 +1541,28 @@ Before presenting the final report, verify:
 | Take screenshot       | `[AUTOMATION_TOOL]` (if available)         |
 | Check library docs    | `[DOCS_TOOL]`                              |
 
-## Quick Reference: Jira Transition IDs (UPEX Galaxy)
+## Quick Reference: Jira Transitions (by slug)
 
-> **Note:** Transition IDs may vary by workspace. Use `[ISSUE_TRACKER_TOOL]` to get available transitions for a specific issue.
+> Transition IDs differ per workspace, so this file names slugs only. Each resolves through `{{jira.transition.bug.<slug>}}` against `.agents/jira-workflows.json` (refreshed by `bun run jira:sync-workflows`). Who fires each one, and what to do when a slug is missing: `agentic-dev-core/references/artifact-lifecycle.md`.
 
-| ID  | Transition Name | From → To                  |
-| --- | --------------- | -------------------------- |
-| 121 | start fixing    | OPEN → In Progress         |
-| 5   | Hard pushed     | In Progress → Ready For QA |
-| 141 | is not a Bug    | OPEN → Enhancement         |
-| 71  | is duplicated   | OPEN → Duplicated          |
-| 8   | is CNR          | OPEN → Cannot Reproduce    |
-| 111 | is WAD          | OPEN → Working As Designed |
-| 51  | defer           | OPEN → Deferred            |
+| Slug                 | From → To                       |
+| -------------------- | ------------------------------- |
+| `start_fixing`       | `open` → `in_progress`          |
+| `pull_request`       | `in_progress` → `in_review`     |
+| `fixed_and_deployed` | `in_review` → `ready_for_qa`    |
+| `hard_pushed`        | `in_progress` → `ready_for_qa`  |
+| `is_not_a_bug`       | `open` → `enhancement`          |
+| `is_duplicated`      | `open` → `duplicated`           |
+| `is_cnr`             | `open` → `cannot_reproduce`     |
+| `is_wad`             | `open` → `rejected`             |
+| `defer`              | `open` → `deferred`             |
 
 **Usage:**
 
 ```
 Use [ISSUE_TRACKER_TOOL] to transition issue:
   issue_key: "PROJ-123"
-  transition_id: "121"  // or transition name: "start fixing"
+  transition: {{jira.transition.bug.start_fixing}}
 ```
 
 ## Quick Reference: Git Commands
@@ -1571,12 +1579,14 @@ Use [ISSUE_TRACKER_TOOL] to transition issue:
 
 ## Quick Reference: Code Quality Commands
 
-| Check      | Command (npm)        | Command (bun)        |
-| ---------- | -------------------- | -------------------- |
-| TypeScript | `npm run typecheck`  | `bun run typecheck`  |
-| Lint       | `npm run lint:check` | `bun run lint:check` |
-| Build      | `npm run build`      | `bun run build`      |
-| Test       | `npm run test`       | `bun run test`       |
+Run from `{{stack.app_root}}`; a null role is skipped and reported.
+
+| Check      | Command                                                  |
+| ---------- | -------------------------------------------------------- |
+| TypeScript | `{{stack.package_manager}} run {{stack.scripts.types}}`  |
+| Lint       | `{{stack.package_manager}} run {{stack.scripts.lint}}`   |
+| Build      | `{{stack.package_manager}} run {{stack.scripts.build}}`  |
+| Test       | `{{stack.package_manager}} run {{stack.scripts.test}}`   |
 
 ---
 
@@ -1747,7 +1757,7 @@ To continue a previous session, paste this block with updated data:
 | Cannot reproduce bug             | Request more info, check environment differences     |
 | Fix breaks other tests           | Investigate regression, consider scope of fix        |
 | PR conflicts                     | Rebase on target branch, resolve conflicts           |
-| Hotfix needs backport            | Use cherry-pick to apply to staging/develop          |
+| Hotfix needs backport            | Use cherry-pick to apply to the integration branch   |
 
 ### Custom Fields Not Returned (Common Issue)
 

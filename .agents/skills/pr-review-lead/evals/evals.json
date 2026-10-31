@@ -1,0 +1,46 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-review-teammate-pr",
+      "prompt": "Revisa el PR #57 de Ana, actúa de tech lead.",
+      "expected_behavior": "Activates pr-review-lead. Asks the strictness question (Flexible / Standard / Strict) through the harness prompt before reading any diff, loads /git-flow-master before gh, loads AGENTS.md and the sections its router names plus the doctrine files the PR touches, reads the real diff with gh pr diff, and presents a findings table bucketed Real / Pattern / Positive with BLOCKER/MAJOR/MINOR/NIT severities, citations, and a score out of 10. Posts nothing.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-external-repo-review",
+      "prompt": "Review acme/shop-app#12 strictly and tell me if it's any good.",
+      "expected_behavior": "Activates pr-review-lead with strictness Strict already given (does not re-ask). Probes acme/shop-app for its own AGENTS.md, .agents/skills and .context via gh api before analyzing; if found, grades against that repo's doctrine and cites its paths; if none, says once up front that findings are graded against agentic-dev-boilerplate's doctrine.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-recalibrate-pattern",
+      "prompt": "Ese punto de que la página llama a Supabase directo no es un error, es un patrón. Y postealo cuando esté listo.",
+      "expected_behavior": "Activates pr-review-lead triage. Reclassifies the finding from Real to Pattern, restates the score with the new weighting and asks whether it is acceptable, drafts the sandwich comment in English, shows the full draft, and still waits for an explicit go-ahead on that final draft before gh pr comment. After posting, reports the comment URL and reads it back.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-ui-fidelity-check",
+      "prompt": "Dame feedback de este PR que cambia el dashboard; quiero saber si respeta el diseño.",
+      "expected_behavior": "Activates pr-review-lead. Reads DESIGN.md and, when present, .context/design/master-design-plan.md; treats the current live UI plus design tokens as the reference (Critical Rule #14 LIVE-UI-FIRST), flags only divergences from both that carry no §5 ratification, and does not flag a PR that follows the improved live UI where the mockup differs.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-story-pipeline-review",
+      "prompt": "Implement UPEX-301 and run it through code review before staging.",
+      "expected_behavior": "Does NOT activate pr-review-lead. The in-pipeline review belongs to /sprint-development Stage 3 with references/review-pr.md and orchestrator adjudication.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-open-pr",
+      "prompt": "Open a PR for my branch against main.",
+      "expected_behavior": "Does NOT activate pr-review-lead. Opening a PR is /git-flow-master.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-own-working-tree",
+      "prompt": "Check my uncommitted changes for bugs before I commit.",
+      "expected_behavior": "Does NOT activate pr-review-lead. Reviewing one's own working-tree diff is the harness's code-review flow, not a scored peer review of a PR.",
+      "category": "negative"
+    }
+  ]
+}

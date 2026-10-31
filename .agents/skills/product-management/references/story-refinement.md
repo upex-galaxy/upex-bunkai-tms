@@ -26,16 +26,16 @@ A cold-start refinement needs the following files loaded in this exact sequence.
 5. `.agents/jira-link-types.json` — slug → workspace link-type mapping (when present).
 6. `.context/master-implementation-plan.md` — Master Sprint roadmap.
 7. `.context/PRD/mvp-scope.md` — what is in vs out of the MVP.
-8. `.context/PRD/user-personas.md` — actor model (for the `As a` line).
+8. `.context/PRD/user-personas.md` — actor model (for the `As a` line). No PRD (existing app): the glossary's actors + the data map's `access-control` roles (`../SKILL.md` → "Product docs: PRD/SRS or business maps").
 9. `.context/PRD/user-journeys.md` — flow-level expectations.
 10. `.context/SRS/functional-specs.md` — FR catalog (source of `**Source spec:**` references).
 11. `.context/SRS/non-functional-specs.md` — NFRs (perf, security, a11y).
-12. `.context/business/business-data-map.md` — entity graph (source of entity-level dependencies).
-13. `.context/business/business-feature-map.md` — CRUD matrix.
-14. `.context/business/business-api-map.md` — endpoint catalog (auth model, journey breakdown).
+12. `bun run context:map business-data-context` — entity graph (source of entity-level dependencies).
+13. `bun run context:map business-feature-context` — CRUD matrix.
+14. `bun run context:map business-api-context` — endpoint catalog (auth model, journey breakdown).
 15. `.context/PBI/epic-tree.md` — current backlog state.
 
-Optional inputs (present in mature projects, may be missing at seed time): business maps (12–14) arrive after `/business-*-map` runs; treat as soft prerequisites and continue refining with the rest if absent.
+Optional inputs (present in mature projects, may be missing at seed time): business maps (12–14) arrive after `/project-context` modes `data` / `features` / `api` run; treat as soft prerequisites and continue refining with the rest if absent.
 
 ---
 
@@ -196,7 +196,7 @@ A 3-amigos session aligns Product, Engineering, and QA on a story before it ente
 - [ ] Edge cases discussed and either covered, deferred (with story link), or out-of-scope
 - [ ] Dependencies (Blocked By / Blocks) named
 - [ ] Tech approach has no major unknowns (or a spike is split out)
-- [ ] Estimate confirmed ≤8 SP
+- [ ] Size fits one sprint (Story Points only when the user asked for estimation, anti-pattern `I16`)
 
 If any item is unchecked at the end of the session, schedule a follow-up — do not mark Ready.
 
@@ -207,21 +207,21 @@ If any item is unchecked at the end of the session, schedule a follow-up — do 
 A story is Ready when **all** of these are true:
 
 - [ ] **Jira issue exists** with full key (`{PROJECT_KEY}-{NUM}`, no `TBD`)
-- [ ] **Local folder exists** under the parent epic (`.context/PBI/epics/EPIC-.../stories/STORY-.../`)
-- [ ] **`story.md` populated** — no `[placeholder]` left
+- [ ] **Local cache synced** — `bun run jira:sync-issues get <KEY>` materialized the story folder under its epic (read-only cache, never hand-written: `.agents/instructions/agent-local-context-pbi.md` §9)
+- [ ] **Jira description populated** — no `[placeholder]` left (read back in the synced `story.md`)
 - [ ] **User story line** uses real persona, single action, real benefit
 - [ ] **Source spec line** present as the first body line (`**Source spec:** FR-XXX`) when an FR motivates the story, otherwise omitted
 - [ ] **Scope** explicitly populated in `{{jira.scope}}` (in-scope) and `{{jira.out_of_scope}}` (exclusions) — never in the description body
 - [ ] **INVEST** — all six criteria pass
 - [ ] **Acceptance Criteria** — minimum 3 Gherkin Scenarios (happy + error + edge) in `{{jira.acceptance_criteria}}`, each wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`)
 - [ ] **Voice gate passed** — AC / Scope / Out-of-Scope / Workflow describe persona-observable behavior; no endpoint paths, HTTP status codes, table/column names, framework names, or internal algorithms appear (anti-pattern `I15`). Exception: API-consumer persona.
-- [ ] **Persona grounded** — `As a` line names a persona that exists in `.context/PRD/user-personas.md`; no generic "user" / "system" actors (anti-pattern `I19`).
+- [ ] **Persona grounded** — `As a` line names a persona that exists in `.context/PRD/user-personas.md` (or, with no PRD, in the glossary / the data map's `access-control` roles); no generic "user" / "system" actors (anti-pattern `I19`).
 - [ ] **Deduplication audit passed** — run the dedup audit per `references/description-custom-field-dedup.md`. Confirm the description body excludes AC / Scope / OOS H2 sections and that those contents live in `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}` respectively. If a duplicate is found, strip from the description and keep the custom field as canonical.
 - [ ] **Story Points** — leave `{{jira.story_points}}` EMPTY by default. Populate ONLY if the user explicitly requested estimation in this session. Estimation belongs to the team that will build the story (Design + Dev + Test), not to the PO/BA. When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
-- [ ] **Dependency Discovery executed** — active pass over the current backlog graph (epic-tree + Jira link graph + business-data-map) ran BEFORE creation/edit. Candidate `(from, to, source)` matrix surfaced to the user; global/infrastructural noise filtered out; only feature-level explicit dependencies kept. See anti-pattern `I18`.
-- [ ] **Dependencies declared locally** — Blocked By / Blocks / Related sections present in `story.md`
+- [ ] **Dependency Discovery executed** — active pass over the current backlog graph (epic-tree + Jira link graph + the data map in `business-data-context`) ran BEFORE creation/edit. Candidate `(from, to, source)` matrix surfaced to the user; global/infrastructural noise filtered out; only feature-level explicit dependencies kept. See anti-pattern `I18`.
+- [ ] **Dependencies named** — Blocked By / Blocks / Related confirmed with the user from the discovery matrix (they live as Jira issue links; the sync renders them into `story.md`)
 - [ ] **Dependencies published to Jira** — see the "Dependency-link verification" step below
-- [ ] **Mockups linked** if a UI change (or "N/A — no UI change" stated)
+- [ ] **UI touch flagged** — a UI-touching story says so and, where a master design plan exists, has its §8 US→Screen row (SKILL.md). No mockup is required to be Ready: screens come later from `/sprint-development`'s design gate
 - [ ] **Technical notes** include any non-obvious implementation considerations
 - [ ] **3-amigos done** if triggered (>5 SP or integration-heavy)
 - [ ] **Definition of Done** present and project-standard
@@ -231,14 +231,15 @@ When all are checked, the story can enter a sprint.
 
 ### Dependency-link verification step
 
-Local `### Blocked By` / `### Blocks` declarations in `story.md` are not enough — they must exist as Jira issue links so downstream sprint-sequencing and JQL filters see them. For each declared dependency:
+A dependency agreed in conversation is not enough — it must exist as a Jira issue link so downstream sprint-sequencing and JQL filters see it. For each dependency in the matrix the user confirmed:
 
-1. Re-read the `### Blocked By` and `### Blocks` sections in the local `story.md`.
+1. Take the confirmed `(from, to)` rows from the Dependency Discovery matrix.
 2. For each declared key, use `[ISSUE_TRACKER_TOOL]` to check whether the corresponding Jira issue link already exists on the story (the link type is `{{jira.link_types.dependencies}}`; direction follows the dependent → prerequisite rule documented in `references/dependency-linking.md`).
 3. If a declared dependency has no matching Jira link, create it via `[ISSUE_TRACKER_TOOL]` per `references/dependency-linking.md` — including the directionality + fallback semantics for workspaces missing the canonical link type.
-4. If a Jira link exists with no matching local declaration, surface it to the user for triage (do not silently delete).
+4. If a Jira link exists with no matching row in the confirmed matrix, surface it to the user for triage (do not silently delete).
+5. Re-sync (`bun run jira:sync-issues get <KEY>`) and confirm the synced `story.md` lists exactly the confirmed links.
 
-Anti-pattern: NEVER skip this step on the assumption that the local declarations "speak for themselves." They do not — Jira-side automations (sprint-sequencing, board filters, blocked-flag rendering) only see the issue links.
+Anti-pattern: NEVER skip this step on the assumption that the agreed matrix "speaks for itself." They do not — Jira-side automations (sprint-sequencing, board filters, blocked-flag rendering) only see the issue links.
 
 ### Status transition step
 
@@ -289,7 +290,7 @@ Pick the one that produces the smallest **shippable** unit.
 
 ## Story Dependencies & Ordering
 
-Make dependencies explicit in `story.md`:
+Dependencies live as Jira issue links (`references/dependency-linking.md`); the sync renders them into the synced `story.md` in this shape (read-only, for reference):
 
 ```markdown
 ## Dependencies
@@ -376,7 +377,7 @@ Scenario: Discount code applies before tax calculation
 - **Skipping INVEST when in a hurry** — every skipped check shows up as rework mid-sprint.
 - **Missing Out of Scope** — invites scope creep during development.
 - **Implementation details in the AC** — ACs should describe **what**, not **how**. "The system stores the password hashed with bcrypt" — wrong layer; that is a tech note.
-- **Mockups missing for UI stories** — engineering will guess, and guesses are usually wrong.
+- **UI touch not flagged** — the design gate cannot route a story nobody marked as UI-touching, and engineering will guess.
 
 ---
 

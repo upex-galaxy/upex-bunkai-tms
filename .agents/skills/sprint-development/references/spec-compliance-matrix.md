@@ -15,7 +15,7 @@ The gate is simple: **no row may sit at `uncovered` when the PR merges**. Anythi
 
 ## When the matrix is generated
 
-At the **end of Stage 3 (Code Review)**, after the static review checklist passes and before the PR is merged to `staging`. The reviewer subagent (or orchestrator, when reviewing inline) produces it. It lands in the PR description or as a comment on the PR (the durable copy); a working copy also lands in the gitignored `.context/PBI/` cache at `epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/compliance-matrix.md` with topic_key `pbi/{ticket}/compliance-matrix`.
+At the **end of Stage 3 (Code Review)**, after the static review checklist passes and before the PR is merged into the integration branch (`git_strategy.branches.integration`). The reviewer subagent (or orchestrator, when reviewing inline) produces it. It lands in the **PR body** (the durable copy, and the one the merge gate reads); a working copy also lands at `.session/sprint-development/<KEY>/compliance-matrix.md` (session scratch, beside `progress.md`) with topic_key `pbi/{ticket}/compliance-matrix`.
 
 If the matrix exposes any `uncovered` row, the PR loops back to Stage 2 with a TODO list (add test, add manual evidence, or reclassify with a real reason). The matrix is never green-lit by hand-waving; the reviewer either edits one of the cells with a real evidence pointer or writes a concrete `exempt:<reason>`.
 
@@ -23,7 +23,7 @@ If the matrix exposes any `uncovered` row, the PR loops back to Stage 2 with a T
 
 ## Matrix format (verbatim)
 
-One row per AC scenario. Scenarios come from the story's Gherkin AC (Jira `acceptance_criteria` field, or `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/spec.md` fallback). The row count of the matrix MUST equal the scenario count of the story; missing rows are themselves a defect.
+One row per AC scenario. Scenarios come from the story's Gherkin AC (Jira `acceptance_criteria` field, or the story's delta spec at `.context/specs/changes/<KEY>/spec.md` as fallback, `product-management/references/delta-specs.md`). The row count of the matrix MUST equal the scenario count of the story; missing rows are themselves a defect.
 
 ```
 | AC scenario (Gherkin)                          | covered_by                          | evidence                              | status           |
@@ -65,8 +65,8 @@ Manual verification was performed and recorded. The path points to a markdown fi
 Examples:
 
 ```
-manual:.context/PBI/epics/EPIC-UPEX-100-<epic>/stories/STORY-UPEX-123-<slug>/manual-evidence.md#scenario-3
-manual:.context/PBI/epics/EPIC-UPEX-100-<epic>/stories/STORY-UPEX-123-<slug>/evidence/login-flow.mp4
+manual:https://github.com/<org>/<repo>/pull/<n>#issuecomment-<id>
+manual:jira:UPEX-123/attachment/login-flow.mp4
 manual:https://staging.example.com/_test-runs/2026-05-06-login.html
 ```
 
@@ -128,9 +128,9 @@ Five values. Mechanically derived from `covered_by`:
 
 The reviewer subagent walks each AC scenario in order and applies these steps:
 
-1. **Read all AC scenarios** for the story. Source-of-truth order: (1) Jira `acceptance_criteria` custom field, (2) `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/spec.md`, (3) story description fallback. Every Given/When/Then block is one row.
+1. **Read all AC scenarios** for the story. Source-of-truth order: (1) Jira `acceptance_criteria` custom field, (2) the delta spec at `.context/specs/changes/<KEY>/spec.md` (committed tree, `product-management/references/delta-specs.md`; never under the `.context/PBI/` cache), (3) story description fallback. Every Given/When/Then block is one row.
 2. **For each scenario, ask: is there an automated test that exercises it?** Walk the diff + the existing test suite. If yes, mark `covered_by: test:<id>`, `status: covered`. The test must assert the scenario's outcome, not just the same code path.
-3. **If no test exists, ask: is there manual evidence on file?** Look in `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/evidence/` and PR comments. If a markdown / screenshot / video shows the scenario passing, mark `covered_by: manual:<evidence-path>`, `status: manual`.
+3. **If no test exists, ask: is there manual evidence on file?** Look in the PR comments, the Jira attachments and the working folder `.session/sprint-development/<KEY>/evidence/`. If a markdown / screenshot / video shows the scenario passing, mark `covered_by: manual:<evidence-pointer>`, `status: manual`; the pointer names the durable copy (PR comment or Jira attachment), never only the local working file.
 4. **If no evidence and the scenario is impractical to test in dev**, write a specific `exempt:<reason>`. Vague reasons are rejected. Mark `status: exempt`. The PR comment should also state how the scenario will be verified post-deploy (synthetic monitor, staging smoke, prod observability, etc.).
 5. **If a human reviewer has read the code and certifies correctness**, mark `covered_by: review-approved:<@reviewer>`, `status: review-approved`. The reviewer handle must be a real person who actually read the diff — not the author.
 6. **Else** mark `status: uncovered`. This is a blocker. Generate a TODO and loop back to Stage 2 to add a test, add manual evidence, or reclassify with a real reason.
@@ -165,7 +165,7 @@ If instead row 4 had read `covered_by: review-approved:@author` (the PR author c
 Acceptable mitigations to clear an `uncovered` row, in priority order:
 
 1. **Add an automated test** that asserts the scenario. This is the strongest mitigation — promotes the row to `covered` and locks in regression protection.
-2. **Add manual evidence** (screenshot, video, session log) and persist it under `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/evidence/`. Promotes the row to `manual`.
+2. **Add manual evidence** (screenshot, video, session log) and persist it on the PR (comment) or the Jira issue (attachment); the working copy sits in `.session/sprint-development/<KEY>/evidence/`. Promotes the row to `manual`.
 3. **Reclassify to `exempt:<specific reason>`** if the scenario genuinely cannot be tested in dev. Reason MUST be concrete — name the third-party / infra / scale dependency. Should be paired with a post-deploy verification plan (synthetic monitor, staging smoke, prod observability).
 4. **Get a real human review-approval** from someone other than the author. Promotes the row to `review-approved`. Use sparingly; reserve for trivial diffs.
 
@@ -201,7 +201,7 @@ If the matrix exposes a scenario that nobody can figure out how to verify at all
 
 The matrix lives in two places:
 
-- **Inline in the PR** (description or top-of-thread comment) so reviewers see it without leaving GitHub. This copy is the durable, canonical one — it survives a fresh clone and is what a future reader (or a different machine) can actually see.
-- **In `.context/PBI/`** at `epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/compliance-matrix.md`, topic_key `pbi/{ticket}/compliance-matrix`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`. `.context/PBI/` is a gitignored, machine-local cache (not a tracked file in the repo) — nothing downstream may depend on this copy existing; the engram-saved observation and the PR copy are what persist.
+- **In the PR body** so reviewers see it without leaving GitHub. This copy is the durable, canonical one, and the merge gate reads it there: it survives a fresh clone and is what a future reader (or a different machine) can actually see.
+- **In the session folder** at `.session/sprint-development/<KEY>/compliance-matrix.md` (at `<<PRIMARY_ROOT>>`, beside `progress.md`), topic_key `pbi/{ticket}/compliance-matrix`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`. It is working scratch: nothing downstream may depend on it existing; the engram-saved observation and the PR copy are what persist. Never under the gitignored `.context/PBI/` cache, whose story folders hold only Jira-synced files and `[LOCAL]` disposables (`.agents/instructions/agent-local-context-pbi.md` §9).
 
-Both copies should agree while the local one exists. If they drift, the PR copy is canonical — regenerate the local cache copy from it, never the other way around.
+Both copies should agree while the session one exists. If they drift, the PR copy is canonical: regenerate the session copy from it, never the other way around.

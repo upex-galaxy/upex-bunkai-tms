@@ -1,8 +1,8 @@
 ---
 name: acli
-description: "Atlassian CLI (official `acli` binary, v1.3+ as of 2026) for Jira Cloud, Confluence Cloud, and org admin tasks from the terminal. Use whenever the user wants to create, view, edit, transition, assign, clone, archive, comment on, link, or bulk-operate on Jira work items; list or manage projects, boards, sprints, filters, dashboards, or custom-field definitions; create or update Confluence spaces, pages, or blog posts; activate/deactivate users at the org level; or authenticate to Atlassian from a shell or CI pipeline. Triggers on: `acli`, Atlassian CLI, Jira from the terminal, Confluence from the terminal, bulk Jira operations, scripting Jira, automate Jira tickets, transition a bunch of issues, create issues from a JSON/CSV file, CI pipeline that touches Jira, log in to Jira CLI, switch Atlassian sites, API-token auth for Jira. Use this skill even when the user does not say the word `acli` — if the task is CLI-driven Jira or Confluence work, this is the right tool. Do NOT use for: Atlassian MCP server work (that is a different integration), REST-API-only workflows where no CLI is involved, Bitbucket command-line needs (acli does not cover Bitbucket yet), or the legacy Appfire/Bob Swift `acli` tool (a different product that happens to share the binary name). The Atlassian MCP server is OPT-IN, documented in docs/mcp/."
+description: "Atlassian CLI (official `acli` binary) for Jira Cloud, Confluence Cloud, and org admin tasks from the terminal. Use whenever the user wants to create, view, edit, transition, assign, clone, archive, comment on, link, or bulk-operate on Jira work items; list or manage projects, boards, sprints, filters, dashboards, or custom-field definitions; create or update Confluence spaces, pages, or blog posts; activate/deactivate users at the org level; or authenticate to Atlassian from a shell or CI pipeline. Triggers on: `acli`, Atlassian CLI, Jira from the terminal, Confluence from the terminal, bulk Jira operations, scripting Jira, automate Jira tickets, transition a bunch of issues, create issues from a JSON/CSV file, CI pipeline that touches Jira, log in to Jira CLI, switch Atlassian sites, API-token auth for Jira. Use this skill even when the user does not say the word `acli` — if the task is CLI-driven Jira or Confluence work, this is the right tool. Do NOT use for: Atlassian MCP server work (that is a different integration), REST-API-only workflows where no CLI is involved, Bitbucket command-line needs (acli does not cover Bitbucket yet), or the legacy Appfire/Bob Swift `acli` tool (a different product that happens to share the binary name). The Atlassian MCP server is OPT-IN, documented in docs/mcp/."
 license: MIT
-compatibility: [claude-code, cursor, codex, opencode]
+compatibility: [claude-code, codex, opencode]
 allowed-tools: Bash(acli:*)
 complementary_categories: [issue-tracker]
 # compact_rules is consumed VERBATIM by scripts/build-skill-registry.ts (frontmatter-first,
@@ -12,12 +12,15 @@ compact_rules: |
   - **T2.** NEVER hardcode Jira `customfield_NNNNN` IDs in scripts or AI output that consumes `acli`. Resolve via the host project's slug catalog (see the host repo's `acli-integration.md`). IDs differ per workspace; slugs travel.
   - **T3.** NEVER assume `acli` accepts custom-field input on `workitem edit`. It hard-rejects every shape (`additionalAttributes`, `fields`, flat `customfield_X`) with exit 1. Use the REST `PUT /rest/api/3/issue/{KEY}` workaround documented above — there is no acli-native path.
   - **T4.** NEVER run a bulk `acli` mutation (transition, edit, comment, link, archive) without first verifying `acli jira auth status`. Silent auth expiry cascades into HTTP 401s mid-loop, leaving the batch half-applied with no clean rollback.
+  - **T5.** NEVER write a rich-text value (description, comment, rich-text custom field) without measuring its serialized ADF first: `jq -c . <file>.adf.json | wc -m` must stay at or under 30000. Jira's 32,767-character cap counts the ADF JSON, not the Markdown. Over budget → STOP and propose which sections move where; never truncate, never split one value across two fields. Detail: "Size budget" under "Publishing rich text".
   - **`--paginate` is opt-in.** Default limit is server-side (30–50 depending on command). No warning on truncation. If you are counting, iterating, or making decisions based on the result, pass `--paginate`.
   - **Custom fields on `workitem create` go through `additionalAttributes` in `--from-json`.** Numeric IDs only (`customfield_NNNN`), no name-addressing. Documented value shapes in the `create` template are: `{"value": "..."}` (single-select), bare number, bare string. **`workitem edit` actively REJECTS custom-field input — hard error, exit 1, not a silent drop** (empirically confirmed across `additionalAttributes`, `fields`, and flat `customfield_X` shapes). For editing custom-field values on existing items, the **only** working path is REST `PUT /rest/api/3/issue/{KEY}` via `curl` using the session env vars — see the "WORKAROUND" subsection in "Publishing rich text" above, plus `references/gotchas.md` §4 and `references/workitem.md`.
   - **`acli` cannot enumerate custom fields.** `acli jira field` only does create/update/delete/cancel-delete. To discover field IDs, use `workitem view --json | jq` against an item that has the field set, or call `GET /rest/api/3/field` directly. There is no in-CLI listing. Host repos typically cache the catalog under `.agents/` and resolve fields by slug — see `<repo-core>/references/acli-integration.md`.
   - **Transitions match by status name, not transition ID.** When two transitions lead to the same status with different validators, the CLI picks one and may fail. No `--transition-id` escape hatch exists — fall back to REST if this hits.
   - **Trace IDs are the only debug signal.** An `unexpected error, trace id: XXXXXXXX` line is all you get on backend failures. Capture and log the trace ID always; Atlassian Support needs it.
   - **`workitem link create` flag names are misleading — `--out` and `--in` are EMPIRICALLY INVERTED relative to Jira's outward/inward semantics.** Running `acli jira workitem link create --out X --in Y --type Dependencies` produces "**Y** depends on **X**" — NOT "X depends on Y" as the flag names suggest. Y becomes the outward party (the one that performs the outward verb, e.g. "depends on" / "blocks" / "causes"); X becomes the inward party. Confirmed empirically against Dependencies; the same inversion applies to ALL outward-asymmetric link types (Blocks, Blocking, Causes, Duplicate, Cloners, Defect, Test, Test Automation, Test Design, Test Execute). Symmetric types (Relates) are immune — direction is lost either way. **Reverse-mapping rule of thumb**: `--out` takes the PREREQUISITE (the inward partner in Jira's UI); `--in` takes the DEPENDENT (the outward partner in Jira's UI). **Mandatory verification after every link create**: run `acli jira workitem link list --key <expected-dependent> --json` and confirm the response shows `outwardIssueKey: <expected-prerequisite>`. If the direction is wrong, delete the link and recreate with swapped flags. Deep recipe + per-type mapping table → `references/workitem.md`.
+metadata:
+  kind: utility
 ---
 
 # Atlassian CLI (`acli`)
@@ -45,7 +48,7 @@ The body below covers the core that applies to almost every session. The `refere
 Steps for protocol consistency:
 
 1. Read `complementary_categories` from this skill's frontmatter (`issue-tracker`).
-2. Resolve via the host repo's skill-registry cache (`.agents/skills/REGISTRY.md`, built by `scripts/build-skill-registry.ts`). Fallback: scan the session-start `system-reminder` skill list.
+2. Scan the skills actually installed (strategy doc §3.1): the session's skill list plus every `.agents/skills/*/SKILL.md` on disk, git-ignored community folders included. `.agents/skills/REGISTRY.md` lists committed skills only, so it is never this scan.
 3. Apply the threshold rule per the host repo's skill-composition strategy doc (T1 / T3 silent; T4 ASK).
 4. The Atlassian MCP fallback documented below is OPT-IN, not a skill — enable manually via `docs/mcp/`.
 
@@ -146,7 +149,7 @@ acli jira workitem transition --jql "project = {{PROJECT_KEY}} AND assignee = cu
 | `auth`     | login · logout · status · switch — same model as `jira auth`         |
 | `space`    | archive · create · list · restore · update · view (full CRUD)        |
 | `blog`     | create · list · view                                                 |
-| `page`     | view (read-only as of v1.3.18 — page CRUD not yet exposed)           |
+| `page`     | view (read-only — page CRUD not exposed; re-check `--help` on upgrade) |
 
 ### Admin (`acli admin`)
 
@@ -269,6 +272,21 @@ bun .agents/skills/acli/scripts/md-to-adf.ts --check field.adf.json   # exit 0 v
 
 **Recommended habit**: after splicing ADF into a `--from-json` create payload or a REST `PUT` body (where the wrapper is assembled outside the converter), run `--check` on each ADF field before sending. The gate is necessary but not sufficient — a round-trip `GET` of the field after write is still the only way to catch server-side coercion (Jira silently drops some invalid nodes).
 
+### Size budget (Jira counts the serialized ADF, not the text)
+
+Jira Cloud caps every rich-text value (description, comment, rich-text custom field) at 32,767 characters, and the cap is not configurable on Cloud. What it counts is the **serialized ADF JSON** of the value, not the visible text: every node, mark and attribute is paid for. ADF is several times longer than the Markdown it came from, and structure-heavy content (tables, nested lists, panels, code blocks) expands the most. The measurements behind this paragraph are in `.context/ADR/ADR-0003-forensic-measurements-ledger.md`.
+
+So every write of a rich-text value measures the FULL value as it will be stored, before sending it:
+
+```bash
+bun .agents/skills/acli/scripts/md-to-adf.ts body.md body.adf.json
+jq -c . body.adf.json | wc -m        # must stay at or under 30000
+```
+
+The budget is **30,000**, which leaves room under the cap for text a human adds to the same field later. When the field already holds content you keep (a section rewrite inside a longer description), measure the merged document, not only your part.
+
+Over budget → **STOP before writing.** Propose which sections move out of this field and where (the owning workflow names the destinations), with the size each move saves, and wait for the user's decision. A Jira rejection for length (`CONTENT_LIMIT_EXCEEDED` on REST v3, or a `400` naming the field length) is the same STOP. Never truncate, never split one value across two fields or two comments, never drop the formatting to squeeze under the cap.
+
 ### Recipe by Jira surface
 
 | Surface | How to publish ADF | Notes |
@@ -342,9 +360,9 @@ This pattern scales cleanly to dozens of items in one run. The bottleneck is aut
 
 ### WORKAROUND: Editing rich-text custom fields on existing work items (REST PUT)
 
-This is the **only** working path as of acli v1.3.18 — there is no acli-native channel for editing custom-field values on existing items. The recipe below is the turnkey workaround.
+This is the **only** working path in the `acli` release this skill was checked against (recorded in `.context/ADR/ADR-0003-forensic-measurements-ledger.md`; re-check `acli jira workitem edit --help` after an upgrade) — there is no acli-native channel for editing custom-field values on existing items. The recipe below is the turnkey workaround.
 
-**Prerequisites.** Two env vars must be exported in the current shell. They are loaded automatically by the project tooling (`bun claude`, `bun opencode`, or `direnv`) from `.env`:
+**Prerequisites.** Two variables in `.env` (or the secret manager). They are NEVER exported into the shell: the `curl` runs inside `bunx varlock run --`, which loads `.env` for that one process only, so the values reach `curl` and never the AI's shell (Critical Rule #1):
 
 - `ATLASSIAN_EMAIL` — the API-token owner's email
 - `ATLASSIAN_API_TOKEN` — the API token paired with the email
@@ -373,13 +391,14 @@ bun .agents/skills/acli/scripts/md-to-adf.ts /tmp/new.md /tmp/new.adf.json
 jq -n --slurpfile adf /tmp/new.adf.json \
   '{fields: {customfield_NNNNN: $adf[0]}}' > /tmp/put.json
 
-# 4. PUT against the issue
-curl -sS -w "\nHTTP %{http_code}\n" \
+# 4. PUT against the issue. Single quotes: the variables expand inside the
+#    varlock child, never in the calling shell.
+bunx varlock run -- sh -c 'curl -sS -w "\nHTTP %{http_code}\n" \
   -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
   -X PUT "$(bun run --silent jira:url)/rest/api/3/issue/{{PROJECT_KEY}}-123" \
   -H "Accept: application/json" \
   -H "Content-Type: application/json" \
-  --data-binary @/tmp/put.json
+  --data-binary @/tmp/put.json'
 # Expected: HTTP 204 (Jira returns no body on a successful PUT)
 ```
 
@@ -399,14 +418,15 @@ Same ADF doc through REST PUT: HTTP 204 OK.
 **Batch variant.** Loop the recipe per `--data-binary @/tmp/put-N.json` and capture HTTP codes:
 
 ```bash
+bunx varlock run -- sh -c 'host=$(bun run --silent jira:url)
 for KEY in {{PROJECT_KEY}}-1 {{PROJECT_KEY}}-2 {{PROJECT_KEY}}-3; do
   status=$(curl -sS -o /dev/null -w "%{http_code}" \
     -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
-    -X PUT "$(bun run --silent jira:url)/rest/api/3/issue/$KEY" \
+    -X PUT "$host/rest/api/3/issue/$KEY" \
     -H "Content-Type: application/json" \
     --data-binary @/tmp/put-"$KEY".json)
   echo "$KEY -> HTTP $status"
-done
+done'
 ```
 
 **When this becomes unnecessary.** If Atlassian adds an `additionalAttributes`-style channel to `acli workitem edit`, retire this workaround and update the recipe table.
@@ -426,6 +446,7 @@ These are tool-level anti-patterns intrinsic to the `acli` binary and its REST c
 - **T2.** NEVER hardcode Jira `customfield_NNNNN` IDs in scripts or AI output that consumes `acli`. Resolve via the host project's slug catalog (see the host repo's `acli-integration.md`). IDs differ per workspace; slugs travel.
 - **T3.** NEVER assume `acli` accepts custom-field input on `workitem edit`. It hard-rejects every shape (`additionalAttributes`, `fields`, flat `customfield_X`) with exit 1. Use the REST `PUT /rest/api/3/issue/{KEY}` workaround documented above — there is no acli-native path.
 - **T4.** NEVER run a bulk `acli` mutation (transition, edit, comment, link, archive) without first verifying `acli jira auth status`. Silent auth expiry cascades into HTTP 401s mid-loop, leaving the batch half-applied with no clean rollback.
+- **T5.** NEVER write a rich-text value without measuring its serialized ADF against the 30,000 budget (`jq -c . <file>.adf.json | wc -m`). Jira's cap counts the ADF JSON, which is several times the Markdown length, so a plan that "looks short" is still rejected. Over budget → STOP and propose which sections move where; never truncate, never split one value across two fields.
 
 > **Repo-specific anti-patterns** (workflow abstraction, project-key portability, TMS modality boundaries, prod-workspace safety, CI batching, version pinning, sync-script auth) live in `<repo-core>/references/acli-integration.md`. Load it whenever a session touches the host repo's Jira workflow.
 
@@ -515,7 +536,7 @@ Load the reference that matches the user's current need. Do not preload all of t
 - **Capture the trace ID on any failure** and surface it when reporting to the user.
 - **Do not invent flags.** When unsure, run `acli <path> --help` — it is authoritative and version-pinned to the installed binary. Convention: every multi-word flag is **kebab-case** (`--from-json`, `--searcher-key`, `--filter-id`, `--order-by`). camelCase variants will fail.
 - **Verify subcommand existence before assuming.** Unknown subcommands silently fall back to parent help with exit 0 — they do NOT error. Read the help body, don't trust the exit code.
-- **Know what `acli` cannot do.** All of the following require REST or MCP — `acli` does not cover them as of v1.3.18:
+- **Know what `acli` cannot do.** All of the following require REST or MCP — `acli` does not cover them in the checked release (ADR-0003 ledger; re-check `--help` after an upgrade):
   - Enumerate custom fields (`field` has no `list`).
   - Edit custom-field values on existing work items (`workitem edit` does not document custom-field input).
   - Manage workflows, workflow schemes, statuses, or transition definitions.
@@ -524,7 +545,7 @@ Load the reference that matches the user's current need. Do not preload all of t
   - Upload attachments, add watchers.
   - Retrieve the cached auth token for reuse in another tool.
   - Bitbucket operations (out of scope entirely).
-  - Confluence page CRUD beyond `page view` (as of v1.3.18 — space and blog have full CRUD).
+  - Confluence page CRUD beyond `page view` (space and blog have full CRUD).
 
   See `references/gotchas.md` for the full list with REST recipes.
 

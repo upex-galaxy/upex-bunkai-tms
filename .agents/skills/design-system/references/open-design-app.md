@@ -6,15 +6,15 @@
 
 Use este camino cuando el user quiere **iterar visualmente** antes de fijar los tokens: explorar variantes de paleta, jugar con composiciones, ver previews HTML/PDF/PPTX en vivo, todo local. Open Design (nexu-io, Apache-2.0) es OSS, free, sin signup, sin SaaS lock-in. Comparte el catálogo de brands con `getdesign` (Path B), pero le suma una capa interactiva de Q&A visual encima. La UI no emite `DESIGN.md` nativo: produce artifacts HTML/PDF/PPTX/ZIP/Markdown que después se convierten al spec Google Labs vía Path E.
 
-> **Verificado contra `open-design-v0.16.1`** (release 2026-07-23), instalado en macOS arm64.
-> El producto evoluciona rápido y el README del repo suele ir por delante del release publicado
+> Antes de citar un comportamiento de este archivo, chequeá la versión instalada (`GET /api/health`
+> devuelve `version`). El producto evoluciona rápido y el README del repo suele ir por delante del release publicado
 > (ver "README drift" abajo). Ante discrepancia, el binario real manda y este doc se actualiza.
 > Para screen mockups (fase screen-mapping), el user pega el `BRIEF.md` generado por
 > `references/screen-design-brief.md` en el formulario Discover / brief field.
 
 ## Install: tres vías, elegí una
 
-El surface principal a 0.16.1 es una **desktop app Electron con daemon local-first**. Docker sigue existiendo pero ya no es el camino recomendado, y **no** hace falta para este path.
+El surface principal es una **desktop app Electron con daemon local-first**. Docker sigue existiendo pero ya no es el camino recomendado, y **no** hace falta para este path.
 
 | Vía                     | Requisitos                     | Cuándo                                                        |
 | ----------------------- | ------------------------------ | ------------------------------------------------------------- |
@@ -24,12 +24,12 @@ El surface principal a 0.16.1 es una **desktop app Electron con daemon local-fir
 
 ### Vía 1: desktop app (recomendada)
 
-Assets del release (GitHub Releases o `open-design.ai`): `mac-arm64.dmg` (~279 MB), `mac-x64.dmg` (~289 MB), `win-x64-setup.exe` (~301 MB). A 0.16.1 **no** hay AppImage de Linux publicado aunque el README lo liste como opcional.
+Assets del release (GitHub Releases o `open-design.ai`): `.dmg` para macOS (arm64 y x64) y un instalador `.exe` para Windows. Si la release no trae un AppImage de Linux, no lo hay, aunque el README lo liste como opcional.
 
 Descargar, verificar el hash publicado junto al asset, montar e instalar:
 
 ```bash
-V=0.16.1
+V=<version>   # tag de la release a instalar, de GitHub Releases
 BASE="https://github.com/nexu-io/open-design/releases/download/open-design-v$V"
 curl -sL -O "$BASE/open-design-$V-mac-arm64.dmg.sha256"
 curl -L  -O "$BASE/open-design-$V-mac-arm64.dmg"
@@ -50,7 +50,7 @@ spctl -a -vvv "/Applications/Open Design.app"
 #   origin=Developer ID Application: Wei Huang (236R69AWW2)
 ```
 
-Bundle id `io.open-design.desktop`. Ocupa ~648 MB instalada, porque trae los catálogos bundleados: **155 design systems, 166 skills, 117 design templates, 460 plugins**.
+Bundle id `io.open-design.desktop`. Pesa cientos de MB instalada porque trae los catálogos bundleados (design systems, skills, design templates, plugins); `list_skills` y `list_plugins` dan el catálogo real.
 
 ### Vía 2: Docker Compose
 
@@ -130,7 +130,7 @@ Subcomandos útiles para este path: `od tools directions` (imprime la paleta y l
 
 `od mcp` levanta un MCP server stdio que proxea al daemon corriendo. **No uses `node <cli> mcp` a secas**: sin más contexto el CLI cae al default `http://127.0.0.1:7456` (puerto del modo Docker) y toda tool call muere con `cannot reach the Open Design daemon`, porque la desktop app usa puerto dinámico.
 
-La config canónica la publica la propia app en **Settings → MCP server** — copiala de ahí. Evita el puerto por completo: habla con el daemon vía socket Unix (`OD_SIDECAR_IPC_PATH`, path fijo entre arranques) y corre sobre el Electron Helper del bundle (`ELECTRON_RUN_AS_NODE=1`), no sobre el node del sistema. Forma general (paths verificados a 0.16.1):
+La config canónica la publica la propia app en **Settings → MCP server** — copiala de ahí. Evita el puerto por completo: habla con el daemon vía socket Unix (`OD_SIDECAR_IPC_PATH`, path fijo entre arranques) y corre sobre el Electron Helper del bundle (`ELECTRON_RUN_AS_NODE=1`), no sobre el node del sistema. Forma general (copiá los paths reales de Settings → MCP server):
 
 ```bash
 claude mcp add-json --scope user open-design '{
@@ -149,7 +149,7 @@ claude mcp get open-design    # Status: ✔ Connected
 
 Scope `user`, no `project`: es una herramienta de la máquina del dev, no una dependencia del repo, y no debe entrar en `.mcp.json` compartido.
 
-Expone **18 tools**: `list_projects`, `get_active_context`, `get_artifact`, `get_project`, `get_file`, `search_files`, `list_files`, `create_artifact`, `write_file`, `delete_file`, `delete_project`, `create_project`, `list_skills`, `list_plugins`, `start_run`, `get_run`, `cancel_run`, `list_agents`.
+Las tools las anuncia el propio server al conectarse (proyectos, archivos, artifacts, skills, runs: por ejemplo `create_project`, `write_file`, `list_skills`, `start_run`, `get_run`); esa lista manda, no una copiada acá.
 
 Cuatro de esas escriben o borran (`write_file`, `delete_file`, `delete_project`, `create_artifact`). `delete_project` es irreversible y exige `confirm: true`. Aplican las reglas normales de confirmación antes de invocarlas.
 
@@ -182,8 +182,8 @@ remedio concreto.
    ciegas si la red o los permisos no están.
 4. **¿MCP imposible pero daemon alcanzable?** (caso real: el MCP server se desconecta mid-session
    — p.ej. tras un límite de sesión del agente — y no se puede re-conectar sin reiniciar la sesión,
-   pero la app sigue viva.) El daemon expone REST con las mismas operaciones. Contrato verificado
-   contra 0.16.1 (base = la URL del log del daemon, p.ej. `http://127.0.0.1:50027`):
+   pero la app sigue viva.) El daemon expone REST con las mismas operaciones. Contrato (base = la
+   URL del log del daemon, p.ej. `http://127.0.0.1:50027`):
 
    ```bash
    curl -s $B/api/health                          # {"ok":true,"version":"0.16.1"}
@@ -205,7 +205,7 @@ remedio concreto.
 5. **¿Nada de lo anterior?** Degradá al flujo manual original: generá `BRIEF.md`, pausá, el user
    itera en la UI y te avisa (contrato de espera de siempre).
 
-### Flujo MCP autónomo — screen mockups end-to-end (verificado 2026-07-30)
+### Flujo MCP autónomo — screen mockups end-to-end
 
 Camino estándar cuando la fase screen-mapping (skill `design-system`) corre con el MCP disponible.
 El agente **comisiona** los diseños a Open Design; nunca los escribe él (S1 sigue vigente: el que
@@ -217,7 +217,7 @@ Prerequisito: el design system del repo instalado como paquete de usuario `user:
    `<producto>-<batch-slug>`). Verificá `designSystemId` en la respuesta. `400
    DESIGN_SYSTEM_NOT_PUBLISHED` → PATCH publish (sección repo → OD) y reintentá.
 2. **Skill de OD**: para screens de aplicación usá `frontend-design` ("application screens,
-   production-grade"). A 0.16.x NO existen `web-prototype` ni `dashboard` — no los cites. Ojo:
+   production-grade"). `web-prototype` y `dashboard` NO existen en el catálogo: no los cites. Ojo:
    `list_skills` devuelve ~200KB; no lo leas entero, grepeá el archivo persistido que deja el
    harness (`grep '"id":' <persisted>.txt`).
 3. **Un run por screen, secuencial**: `start_run {project, skill, agent, prompt}` con el prompt =
@@ -261,7 +261,7 @@ Presupuesto de tiempo real: 2–6 min por screen con `claude` como agente intern
 rango que documenta OD). Los runs de refinamiento (traducción, polish) son mucho más cortos que los
 de generación.
 
-### Gotchas de señal (verificados en producción, 2026-07-30)
+### Gotchas de señal (verificados en producción)
 
 - **`agentMessage` en idioma equivocado ≠ artifact en idioma equivocado.** El self-report del
   agente interno hereda el idioma de la conversación orquestadora aunque el HTML haya salido
@@ -277,15 +277,15 @@ de generación.
   (el `sleep` corto DENTRO de un loop con timeout es válido; el `sleep` desnudo está bloqueado).
   Si briefeás una flota de agentes de diseño, poné esta regla explícita en el briefing.
 
-**README drift**: el README anuncia `od mcp install <agent>` para auto-registrar en claude/codex/cursor/etc. Ese subcomando **no existe en 0.16.1**; el registro es manual como arriba. Re-chequealo en releases futuros antes de citarlo.
+**README drift**: el README anuncia `od mcp install <agent>` para auto-registrar en claude/codex/cursor/etc. Ese subcomando **no existía** en la release contra la que se verificó este path; el registro es manual como arriba. Re-chequealo (`od --help`) antes de citarlo.
 
 ## Instalar TU design system como paquete de usuario (repo → OD)
 
-Path C originalmente fluye OD → repo (iterar allá, convertir acá). El flujo inverso también existe y es prerequisito cuando el repo YA tiene un `DESIGN.md` congelado (Rule #15): antes de generar nada en Open Design, espejá el design system del proyecto como paquete de usuario para que toda generación herede los tokens reales en vez de inventar una paleta.
+Path C originalmente fluye OD → repo (iterar allá, convertir acá). El flujo inverso también existe y es prerequisito cuando el repo YA tiene un `DESIGN.md` congelado (Critical Rule #14, contrato de fidelidad de UI): antes de generar nada en Open Design, espejá el design system del proyecto como paquete de usuario para que toda generación herede los tokens reales en vez de inventar una paleta.
 
-**Formato**: mismo contrato que los ~151 bundleados — `manifest.json` + `DESIGN.md` (Google Labs, igual que el del repo) + `tokens.css`, opcional `USAGE.md`. Contratos en `<bundle>/Contents/Resources/open-design/design-systems/_schema/` (leé `AGENTS.md` ahí).
+**Formato**: mismo contrato que los bundleados — `manifest.json` + `DESIGN.md` (Google Labs, igual que el del repo) + `tokens.css`, opcional `USAGE.md`. Contratos en `<bundle>/Contents/Resources/open-design/design-systems/_schema/` (leé `AGENTS.md` ahí).
 
-**Ubicación** (no documentada; verificada en el código del daemon 0.16.1 — `USER_DESIGN_SYSTEMS_DIR = join(RUNTIME_DATA_DIR, "design-systems")`):
+**Ubicación** (no documentada; verificada en el código del daemon — `USER_DESIGN_SYSTEMS_DIR = join(RUNTIME_DATA_DIR, "design-systems")`):
 
 ```
 ~/Library/Application Support/Open Design/namespaces/release-stable/data/design-systems/<slug>/
@@ -319,8 +319,8 @@ Primer arranque: `app-config.json` queda con `onboardingCompleted: false` hasta 
 Después, guialo por estos pasos:
 
 1. **Create new project** → nombre + workspace local.
-2. **Pick a skill** del catálogo (166 bundleadas): `web-prototype`, `dashboard`, `saas-landing`, `deck`, etc. Le dice al motor qué tipo de output querés.
-3. **Pick a design system** (155 en el catálogo, mismo origen que `getdesign`). Se puede previsualizar la paleta antes de comprometerse.
+2. **Pick a skill** del catálogo: `frontend-design` para screens de aplicación; el resto del catálogo lo da `list_skills`. Le dice al motor qué tipo de output querés.
+3. **Pick a design system** (del catálogo bundleado, mismo origen que `getdesign`). Se puede previsualizar la paleta antes de comprometerse.
 4. **Provide brief**: contexto de producto (industria, tone, target persona, competitor references). Si hay PRD, sugerile copiar el executive summary. Para screen mockups, acá va el `BRIEF.md`.
 5. **Iterate**: el motor es BYOK. Auto-detecta CLIs de coding agents en el PATH (claude, codex, cursor-agent, opencode, devin, ...) y les proxea los mensajes por spawn de child process. Si no detecta ninguno, el user mete una API key de cualquier endpoint OpenAI-compatible en Settings → BYOK. Alternativa paga: Open Design Cloud.
 

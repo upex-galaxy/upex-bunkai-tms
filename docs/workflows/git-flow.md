@@ -1,20 +1,36 @@
-# GitFlow Simplificado - Proyecto AI-Driven
+# Flujo Git - Proyecto AI-Driven
 
 > **Idioma:** Español
 > **Nivel:** Introductorio
-> **Audiencia:** QA Engineers trabajando con herramientas AI
+> **Audiencia:** Developers trabajando con herramientas AI
 
 ---
 
 ## Filosofía del Flujo
 
-Este proyecto usa un GitFlow adaptado para trabajar con inteligencia artificial. La AI genera código y lo commitea inteligentemente, pero **tú mantienes el control** en los puntos clave.
+La AI genera código y lo commitea inteligentemente, pero **tú mantienes el control** en los puntos clave: la política de push a una branch protegida (la fijás vos en `git_strategy.policy`) y qué se mergea.
 
-> **Fuente de verdad:** la estrategia activa de CADA proyecto vive en el bloque `git_strategy:` de `.agents/project.yaml`, y la skill `git-flow-master` la detecta y adapta cada commit/branch/PR a ella (verifícala contra el host con `bun run git:policy verify`). Este documento describe el sabor de referencia **main + staging** (main-integration). El repo del boilerplate en sí opera como **solo-main**: una sola branch `main`, sin `staging`.
+> **Fuente de verdad:** la estrategia activa de CADA proyecto vive en el bloque `git_strategy:` de `.agents/project.yaml`, y la skill `git-flow-master` la lee y adapta cada commit, branch, push y PR a ella. Este documento explica los conceptos con un sabor de referencia (**main + staging**); tu proyecto puede usar otro.
 
 ---
 
-## Estructura de Branches
+## Estrategias
+
+`git-flow-master` soporta varias estrategias de branching (el catálogo con sus trade-offs está en `.agents/skills/git-flow-master/references/branching-strategies.md`). Las más comunes:
+
+| Estrategia         | Branches largas               | Cuándo encaja                                            |
+| ------------------ | ----------------------------- | -------------------------------------------------------- |
+| `solo-main`        | `main`                        | Un solo mantenedor, prototipos. Es el valor por defecto que trae el boilerplate |
+| `main-integration` | `main` + `staging` (o `dev`)  | Un equipo con ambiente de staging y promoción a producción |
+| `github-flow`      | `main` + `feature/*` cortas   | `main` siempre deployable, todo entra por PR             |
+
+`meta.strategy_source` en el mismo bloque dice si alguien eligió la estrategia (`chosen`) o si es la heredada del template (`inherited`). Con `inherited`, `git-flow-master` ofrece correr **Strategy Setup** en el primer pedido de git: elige el flujo, crea las branches que necesita y escribe el bloque. Pedilo cuando quieras con "configura el flujo de git".
+
+La política de protección declarada (`git_strategy.policy`) es una intención. Lo que el host realmente exige se verifica con `bun run git:policy verify`, que consulta las branch protections clásicas y los rulesets de GitHub.
+
+---
+
+## Estructura de Branches (sabor main + staging)
 
 ### main
 
@@ -22,17 +38,17 @@ Código de producción. Solo recibe merges desde `staging` a través de pull req
 
 ### staging
 
-Branch de integración y testing. Aquí la AI commitea cambios agrupados mientras trabajas. Representa tu ambiente de QA/pre-producción.
+Branch de integración. Aquí entran las features terminadas antes de promoverse a producción. Representa tu ambiente de pre-producción.
 
 ### feature/nombre-tarea
 
-Una branch por funcionalidad específica. La AI crea estas branches cuando inicias una nueva tarea.
+Una branch por funcionalidad específica. La AI crea estas branches cuando inicias una nueva tarea, con el prefijo según el cambio dominante (`feat/`, `fix/`, `docs/`, `refactor/`, `test/`, `chore/`) y la key de Jira cuando existe.
 
 **Ejemplos de nombres:**
 
-- `feature/login-validation`
-- `feature/dashboard-analytics`
-- `feature/payment-integration`
+- `feat/UPEX-123-login-validation`
+- `fix/UPEX-456-discount-rounding`
+- `refactor/split-auth-utils`
 
 ---
 
@@ -41,11 +57,13 @@ Una branch por funcionalidad específica. La AI crea estas branches cuando inici
 ### 1. Iniciar Nueva Tarea
 
 ```bash
-# Desde staging
+# Desde la branch base de tu estrategia (staging en este sabor)
 git checkout staging
 git pull origin staging
-git checkout -b feature/nombre-tarea
+git checkout -b feat/UPEX-123-nombre-tarea
 ```
+
+Para trabajar en paralelo sin mezclar cambios (otra sesión de AI, un hotfix mientras una feature sigue abierta), usa un **worktree**: un segundo directorio de trabajo sobre su propia branch. Ver [Worktrees](#worktrees).
 
 ### 2. Desarrollo con AI
 
@@ -55,7 +73,7 @@ git checkout -b feature/nombre-tarea
 
 ### 3. Commits Agrupados
 
-La AI analiza cambios y propone commits separados:
+La AI analiza cambios y propone commits separados, y espera tu OK antes de ejecutarlos:
 
 **feat:** Nueva funcionalidad
 
@@ -87,21 +105,27 @@ test: agregar casos de prueba para login
 docs: actualizar README con nuevas variables de entorno
 ```
 
-### 4. Push Opcional
+### 4. Push
 
-Después de cada grupo de commits, tú decides:
+Pushear tu branch de trabajo es libre. Pushear directo a una branch protegida (`main`, o `staging` en este sabor) depende de `git_strategy.policy.direct_push_to_protected`:
 
-- **Push ahora:** Subir cambios al repo remoto
-- **Continuar local:** Seguir iterando sin push
+| Valor       | Qué hace la AI                                               |
+| ----------- | ------------------------------------------------------------ |
+| `confirm`   | Pregunta antes de cada push a la branch protegida            |
+| `forbidden` | Se niega y lleva el trabajo por PR                           |
+| `allowed`   | Pushea directo sin preguntar: el valor ya es tu autorización |
+
+Si el bloque `git_strategy` falta o está en `null` (proyecto recién scaffoldeado), se comporta como `confirm`. La variable decide, no la AI (`AGENTS.md` Regla #4): con `allowed` preguntar igual la convertiría en `confirm`. Nunca usa `--force` ni `--no-verify`.
 
 ### 5. Pull Request
 
 Cuando la feature está completa:
 
-- Haces push final de la branch
-- Creas PR desde `feature/nombre` hacia `staging` o `main`
-- Revisas cambios en GitHub
-- Apruebas y haces merge
+- La AI pushea la branch y crea el PR con `gh pr create`, hacia la base que dicta la estrategia (`staging` en este sabor, `main` en `solo-main` o `github-flow`)
+- Revisas los cambios en GitHub
+- Apruebas y haces merge: **la AI se detiene al crear el PR**, el merge es tuyo
+
+Si un cambio supera unas 400 líneas, `git-flow-master` propone partirlo en PRs encadenados (stacked) antes de empezar.
 
 ---
 
@@ -111,12 +135,12 @@ Cuando la feature está completa:
 | -------------------- | ------------------------------------------------------------------- |
 | **Historial limpio** | Cada commit cuenta una historia clara de qué problema resolvió      |
 | **Reversibilidad**   | Puedes revertir cambios específicos sin destruir todo el trabajo    |
-| **Control humano**   | La AI ejecuta, pero tú decides cuándo y qué se sube                 |
-| **Iteración rápida** | Trabajas localmente sin "contaminar" el repo hasta estar satisfecho |
+| **Control humano**   | La AI ejecuta, pero tú decides qué llega a las branches protegidas  |
+| **Iteración rápida** | Trabajas en tu branch sin tocar `main` hasta estar satisfecho       |
 
 ---
 
-## Flujo Visual
+## Flujo Visual (sabor main + staging)
 
 ```
 main ─────────────●─────────────●─────────────●
@@ -130,6 +154,18 @@ feature/x ──●───●       │   │
                         │   │
 feature/y ──────────────●───●
 ```
+
+---
+
+## Worktrees
+
+Un worktree es una segunda carpeta de trabajo del mismo repo, sobre su propia branch. Sirve para correr dos sesiones de AI en paralelo sin que una pise los cambios sin commitear de la otra.
+
+- Un worktree nuevo trae solo los archivos versionados. `bun run worktree:provision` (corrido desde el worktree) copia lo que falta: `.env`, `.vercel/`, settings locales, `node_modules` y el alias `.claude/skills` (los MCP leen ese `.env` con el loader; no se deriva ningún archivo de credenciales)
+- Antes de borrarlo, `bun run worktree:audit` lista lo que el worktree tiene y git no; `--rescue` copia el estado de sesión (`.session/`) a la carpeta principal sin sobrescribir nada
+- En Orca, `orca.yaml` en la raíz corre ambos scripts solo, al crear y al archivar un worktree
+
+Detalle completo: `.agents/skills/git-flow-master/references/worktrees.md`.
 
 ---
 
@@ -149,17 +185,21 @@ git diff
 git diff --stat
 ```
 
-### Revertir Último Commit (mantiene cambios)
+### Deshacer el Último Commit (mantiene cambios)
 
 ```bash
 git reset HEAD~1
 ```
+
+Solo para un commit que **todavía no pusheaste**. Un commit ya pusheado se corrige con un commit nuevo, nunca reescribiendo la historia (`AGENTS.md` Regla #5).
 
 ### Ver Historial de Branches
 
 ```bash
 git log --graph --oneline --all
 ```
+
+> **Nunca descartes cambios en todo el repo** (`git restore .`, `git checkout -- .`, `git reset --hard`, `git stash` sin ruta, `git clean -f`): si otra sesión comparte la carpeta, borras su trabajo sin recuperación (`AGENTS.md` Regla #13). Descarta solo las rutas que tocaste.
 
 ---
 
@@ -175,14 +215,14 @@ git log --graph --oneline --all
 
 ## Integración con GitHub
 
-Este flujo se potencia con el CLI `gh` (que la skill `git-flow-master` opera), y permite a la AI:
+Este flujo se apoya en el CLI `gh` (que la skill `git-flow-master` opera), y permite a la AI:
 
 - Ver pull requests existentes
 - Crear nuevos PRs con descripción automática
 - Listar issues y vincularlos a commits
 - Revisar estado de checks automáticos
 
-Sin `gh` autenticado (`gh auth status`), el flujo funciona pero pierdes automatización en la parte de PRs.
+Sin `gh` autenticado (`gh auth status`), la AI se detiene antes de crear el PR y te lo dice; no simula uno.
 
 ---
 
@@ -191,12 +231,21 @@ Sin `gh` autenticado (`gh auth status`), el flujo funciona pero pierdes automati
 ### Formato Estándar
 
 ```
-<tipo>: <descripción breve>
+<tipo>(<KEY-123>): <descripción breve>
 
 [cuerpo opcional]
 
-[footer opcional]
+Worktree: <nombre del worktree | primary>
+Session: <etiqueta de la sesión>
 ```
+
+Sin key de Jira, el formato es `<tipo>: <descripción breve>`.
+
+### Trailers forenses
+
+Todo commit que escribe una sesión de AI termina con dos líneas: `Worktree:` y `Session:`. Dicen qué carpeta de trabajo y qué sesión produjeron el commit, para encontrar la conversación correcta en un bisect o un post-mortem. La AI las copia de la línea `AGENT IDENTITY:` que el hook inyecta en cada turno (`unknown` cuando no se pudo resolver).
+
+No son atribución: no nombran ninguna herramienta. Siguen prohibidas las líneas tipo "Generated with…", un `Co-Authored-By:` de una AI y cualquier trailer con marca de harness (`Claude-Session:`). `.husky/commit-msg` avisa, sin bloquear, si faltan o si aparece uno prohibido. Decisión en `.context/ADR/ADR-0004-harness-agnostic-commit-trailers.md`.
 
 ### Tipos de Commits
 
@@ -226,6 +275,5 @@ Sin `gh` autenticado (`gh auth status`), el flujo funciona pero pierdes automati
 
 ## Navegación
 
-- [Ambientes](./environments.md) - Entender dev, staging, production
-- [TMLC](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/workflows/test-manual-lifecycle.md) - Ciclo de vida del testing manual
-- [TALC](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/workflows/test-automation-lifecycle.md) - Ciclo de vida de la automatización
+- [Ambientes](./environments.md) - Entender local, staging, producción
+- Skill `/git-flow-master` - Operador completo de git (`.agents/skills/git-flow-master/SKILL.md`)

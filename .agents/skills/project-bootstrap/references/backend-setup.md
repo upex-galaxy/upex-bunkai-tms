@@ -10,6 +10,18 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
 
 ---
 
+## ⛔ GUARD DE ENTRADA: SOLO GREENFIELD
+
+Esta fase SOLO crea (tablas, RLS, seed, Supabase clients, `src/lib/config.ts`, `middleware.ts`, upgrades de dependencias). Antes de cualquier paso, confirmar el veredicto del guard (`SKILL.md` → "Entry gate", anti-pattern **B0**):
+
+- Hay `.session/project-bootstrap/plan.md` con la línea `Bootstrap guard: greenfield, exit 0` → continuar.
+- No hay plan (pedido suelto, subagente con solo esta referencia) → correr `bun run bootstrap:guard`. Exit 0 → continuar. Exit 2 → **DETENER**.
+- Veredicto `existing-app`, ilegible o ausente → **DETENER** sin tocar nada: citar las señales que imprimió el script, decir qué habría pisado esta fase y derivar a `/project-adoption` (y a `/design-system extract` si el pedido era sobre el aspecto de la UI). Las add-ons de la Fase 3 siguen disponibles y leen el bloque `stack:`.
+
+Nunca reemplazar el veredicto mirando el árbol a mano, ni aceptar "es greenfield" como dispensa del usuario.
+
+---
+
 ## 📥 INPUT REQUERIDO
 
 ### 1. Contexto del Proyecto
@@ -21,26 +33,18 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
 - `.context/SRS/non-functional-specs.md` - Security, performance requirements
 - `.context/PRD/executive-summary.md` - Nombre del proyecto, descripción
 - `.context/PRD/mvp-scope.md` - Épicas del MVP, funcionalidades principales
-- `src/types/index.ts` - Tipos del dominio actuales
-- `src/app/**/page.tsx` - Páginas implementadas (analizar estructura)
+- `.agents/project.yaml` - Identidad del proyecto, stack y `environments.<env>.db_project_ref` (el Supabase project ref, `{{DB_PROJECT_REF}}`)
 - `package.json` - Versiones de Next.js, React, dependencias existentes
 
-### 2. Frontend Mock Data
+**Orden de la skill:** el backend va PRIMERO. El frontend (`frontend-setup.md`) corre después y consume `src/types/supabase.ts` y los Supabase clients que produce esta fase. No hay frontend previo que analizar; si el repo ya tiene código bajo `src/app/`, se detecta para no pisarlo (B3), no como fuente de datos.
 
-**Buscar y analizar:**
-
-- Archivos de mock data: `lib/data.ts`, `mock/*.ts`, `constants/*.ts`
-- Componentes que consumen mock data
-- Estructura de datos en estado global (contexts, stores)
-
-**Qué identificar:**
+### 2. Qué identificar
 
 1. **ERD del SRS:** Todas las tablas, relaciones, constraints del schema completo
-2. **Mock data en frontend:** Qué datos están hardcodeados y cómo se estructuran
-3. **Tablas fundacionales:** Las que el frontend YA consume (no todas del ERD)
-4. **Roles de usuario:** Admin, user, vendor, etc. (para RLS policies)
-5. **Páginas protegidas:** Rutas que requieren autenticación
-6. **Seed data estructura:** Replicar mock UX con datos reales
+2. **Tablas fundacionales:** Las que las épicas del MVP (`mvp-scope.md`) necesitan primero, incluida `profiles` para auth (no todas del ERD)
+3. **Roles de usuario:** Admin, user, vendor, etc. (para RLS policies)
+4. **Rutas protegidas:** Las que el PRD/SRS marca como autenticadas (las consume el middleware)
+5. **Seed data:** Entidades y volúmenes que el PRD/SRS describe, para que el frontend tenga datos reales que mostrar
 
 ---
 
@@ -56,6 +60,11 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
    - Para verificar paquetes y APIs actualizadas
    - Consultar ANTES de instalar cualquier dependencia
 
+### Required skills (load BEFORE installing anything or making any DB-MCP call)
+
+- **`/supabase` + `/supabase-postgres-best-practices`** (category `backend-db`): load both before Paso 0.3 (CLI install) and before the first schema, RLS or migration call through the Supabase MCP. They carry the Supabase and Postgres rules (RLS shape, indexes, migration hygiene) this phase writes against.
+- Not installed → say so once, point at `bun setup` (project-level list in `cli/install.ts`) or the single `bunx skills add` line from that list, then continue. Never a silent skip, never a hard STOP (`agentic-dev-core/references/skill-composition-strategy.md` §3.5).
+
 ### CLIs Requeridos:
 
 - Supabase CLI (se instalará si falta)
@@ -64,10 +73,12 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
 
 ### Credenciales Necesarias:
 
-- Supabase Project ID (se solicitará al usuario)
+- Supabase project ref: `.agents/project.yaml` → `environments.<env>.db_project_ref` (se pide al usuario solo si está en `null`)
 - Supabase Project URL
-- Supabase Anon Key
-- Supabase Service Role Key
+- Supabase Publishable Key
+- Supabase Secret Key
+
+Nombres canónicos: los de `.env.example` (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`). El par legacy (`NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`) sigue funcionando mientras Supabase lo provisione.
 
 ---
 
@@ -80,11 +91,11 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
 **Incluye:**
 
 - ✅ Configuración de Supabase (proyecto, credenciales, CLI)
-- ✅ Database schema (tablas fundacionales que el frontend actual necesita)
+- ✅ Database schema (tablas fundacionales que el MVP necesita)
 - ✅ Row Level Security (RLS) básico
-- ✅ Integración de Auth real (reemplazar mock)
+- ✅ Supabase Auth (configuración, clients, middleware de sesión)
 - ✅ API Layer (Supabase clients + tipados)
-- ✅ Seed data realista (replicar UX del frontend mockeado)
+- ✅ Seed data realista (derivado de las entidades del PRD/SRS)
 - ✅ Documentación (`.context/backend-setup.md`, `.context/api-auth.md`)
 
 **NO incluye:**
@@ -94,7 +105,7 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
 - ❌ Features específicas de cada story (eso es Fase 6)
 - ❌ Configuración de múltiples ambientes (dev/staging/prod)
 
-**Resultado:** Backend funcional + Frontend conectado a DB real + UX idéntica a mock pero con datos reales.
+**Resultado:** Backend funcional (DB + Auth + clients + tipos) listo para que `frontend-setup.md` lo consuma.
 
 ---
 
@@ -110,12 +121,11 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
 
 - ✅ `src/lib/supabase/client.ts` - Browser client con @supabase/ssr
 - ✅ `src/lib/supabase/server.ts` - Server client para Server Components
-- ✅ `src/lib/supabase/admin.ts` - (Opcional) Admin client con service_role
+- ✅ `src/lib/supabase/admin.ts` - (Opcional) Admin client con la secret key
 
 ### Middleware y Auth:
 
 - ✅ `middleware.ts` - Protección de rutas + refresh de sesión
-- ✅ `src/contexts/auth-context.tsx` - Refactorizado con Supabase Auth real
 
 ### TypeScript Types:
 
@@ -133,10 +143,8 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
 - ✅ Índices optimizados para performance
 - ✅ Seed data realista insertado
 
-### Frontend Actualizado:
+### Dependencias:
 
-- ✅ 1-2 páginas principales conectadas a DB real (reemplazan mock)
-- ✅ AuthContext usando Supabase Auth
 - ✅ Dependencias actualizadas (@supabase/ssr)
 
 ---
@@ -145,9 +153,10 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
 
 ### ❌ NO HACER:
 
-- **NO crear tablas que el frontend actual no usa** - Solo fundacionales
+- **NO crear tablas que el MVP todavía no necesita** - Solo fundacionales
 - **NO hardcodear valores del proyecto** - Leer del contexto
-- **NO crear SQL scripts manuales** - Usar MCP de Supabase
+- **NO correr esta fase sobre una app existente** - El guard de entrada (`bun run bootstrap:guard`) la rechaza; la app se adopta con `/project-adoption`
+- **NO crear SQL scripts manuales** - Usar MCP de Supabase bajo `agentic-dev-core/references/db-change-doctrine.md` (DDL solo por `apply_migration`, nunca por `execute_sql`)
 - **NO proceder sin MCP de Supabase** - Es crítico
 - **NO escribir código completo en el prompt** - Usar pseudocódigo + Context7
 - **NO hacer commits automáticos** - Solo recomendar
@@ -159,18 +168,17 @@ Crear la **infraestructura de backend base** (Database + Auth + API Layer) que s
 ### ✅ SÍ HACER:
 
 - **Verificar herramientas necesarias** - MCP, CLI, credenciales, git
-- **Leer contexto completo** - PRD, SRS, frontend existente
+- **Leer contexto completo** - PRD, SRS, `.agents/project.yaml`
 - **Usar Context7 MCP SIEMPRE** - Antes de instalar/usar cualquier dependencia
 - **Verificar archivo de env existente** - .env, .env.example
 - **Centralizar configuración** - Crear archivo config para env vars
-- **Analizar mock data del frontend** - Entender qué datos mostrar en DB
-- **Crear solo tablas fundacionales** - Analizar qué usa el frontend
+- **Crear solo tablas fundacionales** - Las que piden las épicas del MVP
 - **Optimizar con índices** - Queries rápidas desde el inicio
 - **Aplicar RLS básico** - Seguridad desde el inicio
 - **Generar tipados TypeScript** - Supabase CLI
-- **Crear seed data realista** - Replicar UX del frontend mockeado
+- **Crear seed data realista** - Entidades y volúmenes del PRD/SRS
 - **Documentar todo** - Backend setup + API endpoints
-- **Validar integración** - Frontend conectado a DB real
+- **Validar integración** - Clients, middleware y tipos compilan contra la DB real
 - **Verificar versiones de Next.js y React** - Puede afectar el setup de Supabase
 
 ---
@@ -248,16 +256,18 @@ git status
 
 ---
 
-### Paso 0.2: Solicitar PROJECT_ID de Supabase
+### Paso 0.2: Resolver el Supabase project ref
 
-**Pregunta:** "¿Cuál es tu Supabase Project ID?"
+**Leer primero** `.agents/project.yaml` → `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` del ambiente activo). Si tiene valor, usarlo sin preguntar.
+
+**Solo si está en `null`, preguntar:** "¿Cuál es tu Supabase project ref?"
 
 **Opciones:**
 
-1. **Tengo un proyecto existente** → Pedir PROJECT_ID
+1. **Tengo un proyecto existente** → Pedir el ref
 2. **Necesito crear un proyecto nuevo** → Mostrar instrucciones
 
-**Guardar PROJECT_ID para uso posterior.**
+**Guardar el ref en `.agents/project.yaml` (`environments.<env>.db_project_ref`) con OK del usuario**, nunca en `AGENTS.md` ni en un archivo aparte (`.agents/instructions/agent-project-variables.md` §7).
 
 ---
 
@@ -364,25 +374,19 @@ supabase --version
 - `.context/SRS/architecture-specs.md` → ERD completo, tech stack
 - `.context/SRS/functional-specs.md` → Requerimientos funcionales
 - `.context/PRD/mvp-scope.md` → Funcionalidades principales
-- `src/types/index.ts` → Tipos del dominio
-- `src/app/**/page.tsx` → Páginas implementadas
 
 **Qué identificar:**
 
 1. **ERD del SRS:** Todas las tablas, relaciones, constraints
-2. **Mock data en frontend:**
-   - Buscar archivos como `lib/data.ts`, `mock/*.ts`, etc.
-   - Analizar qué datos muestran las páginas
-   - Identificar estructura de datos mockeados
-3. **Tablas fundacionales:** Las que el frontend YA consume
-4. **Roles de usuario:** Admin, user, vendor, etc.
+2. **Tablas fundacionales:** Las que piden las épicas del MVP
+3. **Roles de usuario:** Admin, user, vendor, etc.
+4. **Seed data:** Entidades, volúmenes y rangos realistas que describe el PRD/SRS
 
 **Output interno (no mostrar):**
 
 - ERD completo
-- Listado de mock data encontrado
 - Tablas fundacionales a crear
-- Estructura de seed data a replicar
+- Plan de seed data por entidad
 
 ---
 
@@ -415,18 +419,16 @@ supabase --version
 Ejemplo:
 
 ```pseudocode
-- `profiles` - Requerida por: auth, /[ruta_principal]
-- `[entidad_core]` - Requerida por: /[ruta], [Entity]Card component
+- `profiles` - Requerida por: auth
+- `[entidad_core]` - Requerida por: [épica del MVP]
 ```
 ````
 
-### Mock Data Detectado:
+### Plan de Seed Data:
 
 ```pseudocode
-- Archivo: lib/data.ts
-  - mock[Entity1]: [X] registros
-  - mock[Entity2]: [Y] registros
-- Esta estructura se replicará en seed data
+- [entity1]: [X] registros (fuente: [sección del PRD/SRS])
+- [entity2]: [Y] registros, vinculados a [entity1]
 ```
 
 ### Stack Técnico Verificado:
@@ -525,9 +527,17 @@ A instalar:
 
 **Objetivo:** Crear tablas fundacionales usando MCP de Supabase.
 
+### Paso 2.0: Leer el historial antes de escribir
+
+**Doctrina:** `agentic-dev-core/references/db-change-doctrine.md`. Con `/supabase` + `/supabase-postgres-best-practices` ya cargadas:
+
+1. `list_migrations` sobre el project ref del Paso 0.2: en un proyecto greenfield el historial está vacío o solo trae lo que el usuario aplicó a mano. Si trae migraciones que esta sesión no conoce, **DETENER** y mostrárselas al usuario: la base no es nueva.
+2. `list_tables` (verbose) para confirmar que las tablas que se van a crear no existen.
+3. Decir en voz alta el ambiente y el ref antes de la primera escritura.
+
 ### Paso 2.1: Crear Tablas Fundacionales
 
-**IMPORTANTE:** Usar MCP de Supabase, NO scripts SQL manuales.
+**IMPORTANTE:** Usar MCP de Supabase, NO scripts SQL manuales. Cada cambio de schema (tabla + sus índices, o el RLS de una tabla) es UNA migración con `apply_migration` y un nombre snake_case que diga qué cambia, así queda en el historial (`list_migrations`). `execute_sql` nunca lleva DDL. Si `stack.database.migrations_tool` es `supabase-cli`, el mismo SQL se escribe además en `stack.database.migrations_dir` como `<version>_<name>.sql` (versión leída de `list_migrations`).
 
 **Para cada tabla fundacional:**
 
@@ -543,11 +553,11 @@ Para tabla [TABLE_NAME] del ERD:
      - FKs: [según relaciones]
      - Constraints: [unique, not null, defaults]
 
-  2. Crear via MCP Supabase:
-     MCP_CALL: create_table(definition)
+  2. Crear via MCP Supabase, como migración registrada:
+     MCP_CALL: apply_migration(name: "create_[table_name]", query: [DDL])
 
-  3. Validar creación:
-     Verificar que tabla existe en Supabase
+  3. Validar creación en el destino:
+     list_migrations muestra "create_[table_name]"; list_tables (verbose) muestra la tabla
 ```
 
 **Convenciones:**
@@ -615,8 +625,8 @@ Para cada tabla:
 **Pseudocódigo:**
 
 ```
-1. Habilitar RLS:
-   MCP_CALL: enable_rls([table_name])
+1. Habilitar RLS (DDL: va por apply_migration, nunca por execute_sql):
+   MCP_CALL: apply_migration(name: "rls_[table_name]", query: "ALTER TABLE ... ENABLE ROW LEVEL SECURITY; CREATE POLICY ...")
 
 2. Crear políticas según tipo de tabla:
 
@@ -635,13 +645,16 @@ Para cada tabla:
 
 3. Validar políticas:
    Probar con query simulado
+   get_advisors (security), si el MCP lo expone: reportar cada hallazgo nuevo
 ```
+
+**ADR:** el schema fundacional y su modelo de RLS (quién lee qué en toda la app) pasan las dos compuertas de `adr-doctrine.md`. Registrar un ADR que nombre las migraciones (`<version>_<name>` de `list_migrations`), el ambiente donde se aplicaron y el statement de rollback (`db-change-doctrine.md` §4).
 
 **Security Checklist:**
 
 - [ ] ¿Users pueden leer datos ajenos? (Si no deben, política restrictiva)
 - [ ] ¿Policies son lo más restrictivas posible?
-- [ ] ¿Service role key nunca expuesto en frontend?
+- [ ] ¿Secret key nunca expuesta en frontend?
 
 **Output:**
 
@@ -661,78 +674,62 @@ Para cada tabla:
 
 ### Paso 2.3: Seed Data Inteligente
 
-**CRÍTICO - Replicar UX del frontend mockeado**
-
-**Objetivo:** Usuario debe ver la MISMA experiencia visual, pero con datos reales de DB.
+**Objetivo:** Que el frontend (que se scaffoldea después) tenga datos reales y creíbles que mostrar desde el primer día.
 
 **Acción:**
 
 **Pseudocódigo:**
 
 ````
-1. Analizar mock data del frontend:
-   - Leer archivos de mock (lib/data.ts)
-   - Identificar estructura de cada entidad
-   - Contar cuántos registros existen
-   - Analizar relaciones entre entidades
+1. Derivar el plan de seed del PRD/SRS (Fase 1):
+   - Entidades fundacionales y sus relaciones
+   - Volumen razonable por entidad para una demo
+   - Rangos y valores realistas del dominio
 
 2. Preguntar al usuario:
-   "Detecté [X] [entidad1], [Y] [entidad2] en mock data.
-    ¿Quieres crear seed data similar en la DB para replicar la UX?"
+   "Propongo [X] [entidad1], [Y] [entidad2] como seed data.
+    ¿Lo creo en la DB?"
 
    Opciones:
-   a) Sí, replicar mock data (recomendado)
-   b) Crear mínimo (2-3 registros)
+   a) Sí, el plan propuesto (recomendado)
+   b) Crear mínimo (2-3 registros por tabla)
    c) No, dejar tablas vacías
 
 3. SI usuario elige (a):
-   Para cada entidad mockeada:
-     - Crear registros similares (mismo número aprox)
+   Para cada entidad:
+     - Crear los registros del plan
      - Mantener tipos de datos (nombres realistas, valores apropiados)
      - Preservar relaciones (FK válidos)
-     - Usar datos creativos (NO copiar mock exacto, generar nuevos)
-
-   Ejemplo:
-   ```pseudocode
-   SI mock[Entity] tiene [N] registros con [propiedad] entre [min-max]:
-     Crear [N] [entity] en DB con [propiedad] similares
-     [Atributos] diferentes pero realistas
-     [Características] variadas como en mock
-````
 
 4. SI usuario elige (b):
    Crear 2-3 registros básicos por tabla
    Suficiente para validar queries
 
-5. Insertar via MCP Supabase:
-   Para cada registro:
-   MCP_CALL: insert_row([table], [data])
+5. Insertar via MCP Supabase (DML, solo en un ambiente que no sea producción, con los registros aprobados por el usuario):
+   MCP_CALL: execute_sql(INSERT ...)
 
 6. Validar inserción:
    Query para confirmar datos en DB
-
 ````
 
 **Output:**
+
 ```pseudocode
 ✅ Seed data creado:
-   - profiles: [N] registros (replicando mock)
-   - [entity1]: [X] registros (similar a mock[Entity1])
+   - profiles: [N] registros
+   - [entity1]: [X] registros
    - [entity2]: [Y] registros (vinculados a [entity1])
 
 📊 Datos generados:
    - [Atributos] realistas (no Lorem Ipsum)
    - Relaciones válidas (FKs correctos)
-   - UX del frontend preservada
-
-⚠️ Nota: Mock data del frontend puede removerse ahora
-````
+```
 
 ---
 
 ## 🔐 FASE 3: AUTH INTEGRATION
 
-**Objetivo:** Reemplazar auth mock con Supabase Auth real.
+**Objetivo:** Dejar Supabase Auth configurado del lado servidor: clients, config y middleware de sesión. La UI de auth (login, signup) la construye `frontend-setup.md` sobre estos clients.
 
 ### Paso 3.1: Configurar Supabase Auth
 
@@ -763,8 +760,8 @@ Crear archivo config que:
 
 Estructura:
 - supabaseUrl: NEXT_PUBLIC_SUPABASE_URL
-- supabaseAnonKey: NEXT_PUBLIC_SUPABASE_ANON_KEY
-- supabaseServiceRoleKey: SUPABASE_SERVICE_ROLE_KEY (solo server)
+- supabasePublishableKey: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+- supabaseSecretKey: SUPABASE_SECRET_KEY (solo server)
 - appUrl: NEXT_PUBLIC_APP_URL
 
 Validaciones:
@@ -799,18 +796,16 @@ INCORRECTO:
 SI estrategia = "usar .env existente":
   Agregar variables a .env:
   - NEXT_PUBLIC_SUPABASE_URL=...
-  - NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-  - SUPABASE_SERVICE_ROLE_KEY=...
+  - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+  - SUPABASE_SECRET_KEY=...
 
 SI estrategia = "usar .env":
   Crear/actualizar .env con variables
 
 SIEMPRE:
-  Actualizar .env.example con:
-  - Instrucciones claras
-  - URLs de donde obtener credenciales
-  - Warnings de seguridad
-  - Valores de ejemplo (placeholder)
+  Verificar que .env.example ya declara estas variables (vienen en el template).
+  NUNCA reescribirlo: se mantiene en paridad con cli/lib/variables-manifest.ts.
+  Variable nueva → agregarla en .env.example Y en el manifest (ver Paso 6.3).
 ```
 
 **Mostrar al usuario:**
@@ -818,14 +813,14 @@ SIEMPRE:
 ```
 ✅ Variables de entorno configuradas
    - Archivo: .env
-   - Template: .env.example actualizado
+   - Template: .env.example verificado (sin reescribir)
 
 ⚠️ ACCIÓN REQUERIDA:
    Agrega tus credenciales reales al archivo [.env]
 
    Obtener credenciales:
    1. https://supabase.com/dashboard/project/[PROJECT_ID]/settings/api
-   2. Copiar: URL, anon key, service_role key
+   2. Copiar: URL, publishable key, secret key
    3. Pegar en tu archivo de env
 ```
 
@@ -894,7 +889,7 @@ NOTA: Si Next.js 13-14, cookies() es sync (sin await)
 
 ```
 Crear solo si necesario (bypass RLS)
-Usar service_role key
+Usar secret key (`SUPABASE_SECRET_KEY`)
 Advertir: NUNCA usar en frontend
 ```
 
@@ -956,113 +951,14 @@ Config matcher:
 
 ---
 
-### Paso 3.6: Actualizar AuthContext
+### Paso 3.6: Hand-off de auth al frontend
 
-**Archivo:** `src/contexts/auth-context.tsx`
-
-**Pseudocódigo (NO código completo):**
+No se crea ni se refactoriza ningún AuthContext en esta fase: todavía no hay frontend. Lo que esta fase entrega para que `frontend-setup.md` (Paso 5.1, página de login con `supabase.auth.signInWithPassword()`) lo use:
 
 ```
-Refactorizar AuthContext:
-
-1. Importar createClient desde @/lib/supabase/client
-
-2. Reemplazar localStorage con Supabase Auth:
-   - login() → supabase.auth.signInWithPassword()
-   - signup() → supabase.auth.signUp()
-   - logout() → supabase.auth.signOut()
-
-3. Sincronizar estado:
-   useEffect(() => {
-     supabase.auth.onAuthStateChange((event, session) => {
-       SI session:
-         Fetch profile desde DB
-         Actualizar estado user
-       SINO:
-         setState(null)
-     })
-   })
-
-4. Mantener misma API pública para componentes
-5. Manejar errores apropiadamente
-```
-
-**Output:**
-
-```
-✅ AuthContext refactorizado
-   - Usa Supabase Auth SDK
-   - API compatible con componentes
-   - Sincroniza con auth state
-```
-
----
-
-## 🌐 FASE 4: FRONTEND INTEGRATION
-
-**Objetivo:** Conectar frontend con DB real, reemplazar mock data.
-
-### Paso 4.1: Identificar Páginas con Mock Data
-
-**Análisis:**
-
-```pseudocode
-Buscar en codebase:
-- Imports de mock data (import { mock[Entity] } from '@/lib/data')
-- Archivos de datos (lib/data.ts, mock/*.ts)
-- Componentes que consumen estos datos
-
-Crear lista:
-- Página [X] usa mock[Entity1]
-- Página [Y] usa mock[Entity2]
-- etc.
-```
-
----
-
-### Paso 4.2: Reemplazar Mock con DB Queries
-
-**Para 1-2 páginas principales (no todas):**
-
-**Pseudocódigo:**
-
-```
-Para página [PageName]:
-
-1. Identificar mock data usada
-2. Convertir a Server Component (si no lo es)
-3. Refactor:
-
-   ANTES:
-   import { mockItems } from '@/lib/data'
-   const items = mockItems
-
-   DESPUÉS:
-   import { createServer } from '@/lib/supabase/server'
-
-   const supabase = await createServer()  // await si Next.js 15+
-   const { data: items, error } = await supabase
-     .from('[table_name]')
-     .select('*')
-     .order('created_at', { ascending: false })
-
-   SI error:
-     Manejar (mostrar mensaje, logging, etc.)
-
-4. Validar UX:
-   - Mismos datos visibles que con mock
-   - Misma estructura de datos
-   - Sin errores de tipos
-```
-
-**Output:**
-
-```pseudocode
-✅ Páginas conectadas a DB:
-   - /[ruta1]: Consume tabla '[entity1]'
-   - /[ruta2]: Consume tabla '[entity2]'
-✅ Mock data removido de estas páginas
-✅ UX idéntica a versión mockeada
+✅ src/lib/supabase/client.ts y server.ts listos
+✅ middleware.ts refrescando la sesión
+✅ Rutas protegidas listadas (Fase 1) para el middleware
 ```
 
 ---
@@ -1096,7 +992,7 @@ para limpiar caché después de modificar `.env`.
 [package-manager] list | grep -E "(next|react|supabase)"
 ```
 
-**Output esperado (Noviembre 2025):**
+**Output esperado (ejemplo; las versiones reales son las que imprime el comando):**
 
 ```
 ✅ Versiones Validadas:
@@ -1135,7 +1031,7 @@ supabase gen types typescript --project-id [PROJECT_ID] > src/types/supabase.ts
 - Archivo creado: `src/types/supabase.ts`
 - Contiene tipos de todas las tablas
 - No hay errores de sintaxis
-- Tamaño del archivo > 0 bytes
+- El archivo no está vacío
 
 **Explicar:**
 
@@ -1161,7 +1057,7 @@ type [Entity] = Database['public']['Tables']['[table_name]']['Row']
 ### Paso 5.3: Validar TypeScript
 
 ```bash
-[package-manager] run typecheck
+[package-manager] run types:check
 # O: npx tsc --noEmit
 ```
 
@@ -1200,7 +1096,6 @@ type [Entity] = Database['public']['Tables']['[table_name]']['Row']
 - ✅ Sin warnings de env vars
 - ✅ Middleware compila correctamente
 - ✅ Server Components OK (sin errores de cookies)
-- ✅ AuthContext compila
 
 **Si errores:** Analizar, corregir, documentar.
 
@@ -1300,9 +1195,9 @@ type [Entity] = Database['public']['Tables']['[table_name]']['Row']
 
 [Uso de middleware y RLS]
 
-### AuthContext en componentes
+### Auth en componentes
 
-[Cómo usar el contexto de auth]
+[Cómo leer la sesión desde Server Components (server client) y Client Components (browser client)]
 
 ## Para QA/Testing
 
@@ -1325,7 +1220,7 @@ type [Entity] = Database['public']['Tables']['[table_name]']['Row']
 ## Consideraciones de Seguridad
 
 - RLS policies aplicadas a todas las tablas
-- NUNCA exponer service_role key en frontend
+- NUNCA exponer secret key en frontend
 - Validar permisos en cada endpoint
 ```
 
@@ -1333,37 +1228,12 @@ type [Entity] = Database['public']['Tables']['[table_name]']['Row']
 
 ---
 
-### Paso 6.3: Actualizar .env.example
+### Paso 6.3: Verificar .env.example (no reescribir)
 
-**Hacer archivo MUY descriptivo:**
+`.env.example` ya trae el bloque de Supabase y se mantiene en paridad con `cli/lib/variables-manifest.ts` (`scripts/check-vars.ts` falla si divergen). NUNCA lo reescribas con un bloque propio: borraría las demás variables del template.
 
-```env
-# =============================================================================
-# Supabase Configuration
-# =============================================================================
-# Obtén credenciales en:
-# https://supabase.com/dashboard/project/[PROJECT_ID]/settings/api
-#
-# IMPORTANTE:
-# - Copia este archivo como .env
-# - Reemplaza valores placeholder
-# - NUNCA commitees archivos .env con credenciales reales
-# =============================================================================
-
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGc... # ⚠️ SOLO servidor
-
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# =============================================================================
-# Instrucciones:
-# 1. cp .env.example .env
-# 2. Ve a Supabase dashboard → Settings → API
-# 3. Copia URL, anon key, service_role key
-# 4. Reinicia dev server
-# =============================================================================
-```
+- Verifica que declara `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY`.
+- Si el backend agrega una variable que el template no tiene, agrégala en `.env.example` Y en `cli/lib/variables-manifest.ts`, en el mismo commit.
 
 ---
 
@@ -1392,19 +1262,16 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ### 3. Authentication
 
 - Supabase Auth con @supabase/ssr
-- AuthContext refactorizado
 - Middleware de protección
 
 ### 4. API Layer
 
 - Clients configurados
 - Config centralizado: src/lib/config.ts
-- Frontend conectado a DB real
 
 ### 5. Seed Data
 
 - [x] registros creados
-- UX del frontend replicada
 - Datos realistas
 
 ### 6. TypeScript
@@ -1445,12 +1312,9 @@ El archivo src/lib/config.ts validará automáticamente.
 **Checklist:**
 
 1. ✅ App inicia sin errors de env
-2. ✅ Signup funciona
-3. ✅ Login funciona
-4. ✅ Datos reales visibles en páginas
-5. ✅ UX idéntica a versión mock
-6. ✅ Logout funciona
-7. ✅ Redirects de middleware funcionan
+2. ✅ Una query con el server client devuelve el seed data
+3. ✅ Redirects de middleware funcionan en una ruta protegida
+4. ✅ Signup / login / logout se prueban cuando `frontend-setup.md` cree la página de login
 
 ---
 
@@ -1465,20 +1329,22 @@ El archivo src/lib/config.ts validará automáticamente.
 
 ### 4️⃣ Commit (RECOMENDADO)
 
-```bash
-git add .
-git commit -m "feat: Supabase backend setup
+Hacerlo con `/git-flow-master` (rutas explícitas, nunca `git add .`). Mensaje sugerido:
+
+```
+feat: Supabase backend setup
 
 - Database schema con [X] tablas
 - RLS policies configuradas
-- Auth integration con @supabase/ssr
-- Middleware de rutas
+- Auth con @supabase/ssr + middleware de sesión
 - Config centralizado
 - Seed data realista
-- Frontend conectado a DB
 - Documentación completa
-"
 ```
+
+### 5️⃣ Siguiente fase
+
+Frontend setup (`frontend-setup.md`): consume `src/types/supabase.ts` y los clients de esta fase. Requiere `DESIGN.md` (B5).
 
 ---
 
@@ -1486,8 +1352,7 @@ git commit -m "feat: Supabase backend setup
 
 **Antes:**
 
-- ❌ Auth mock
-- ❌ Datos hardcodeados
+- ❌ Sin auth
 - ❌ Sin API real
 - ❌ Sin DB
 
@@ -1499,7 +1364,6 @@ git commit -m "feat: Supabase backend setup
 - ✅ Type-safety completo
 - ✅ Config centralizado
 - ✅ Dependencias actualizadas
-- ✅ UX idéntica pero con DB real
 - ✅ Lista para features
 
 ---
@@ -1531,7 +1395,6 @@ Ahora implementa features con:
 - ✅ API documentada
 - ✅ Type-safety garantizado
 
-```
 
 ---
 
@@ -1566,15 +1429,11 @@ Ahora implementa features con:
 
 ### Auth:
 - ✅ Supabase Auth configurado
-- ✅ AuthContext refactorizado
 - ✅ Middleware con patrón actualizado
 
 ### API:
 - ✅ Clients configurados
 - ✅ Server client async (si Next.js 15+)
-- ✅ Frontend conectado (1-2 páginas)
-- ✅ Mock data reemplazado
-- ✅ UX idéntica verificada
 
 ### Validaciones:
 - ✅ TypeScript check passed
@@ -1588,39 +1447,3 @@ Ahora implementa features con:
 - ✅ Troubleshooting incluido
 
 ---
-
-## 📋 MEJORAS vs PROMPT ORIGINAL
-
-### 🆕 Nuevas Fases:
-
-1. **Paso 0.0** - Verificar git status (evitar sobrescribir)
-2. **Paso 0.4** - Detectar estrategia env vars
-3. **Paso 0.5** - Verificar versiones con Context7
-4. **Fase 1.5** - Instalación verificada
-5. **Paso 2.1.5** - Optimización con índices
-6. **Paso 2.3 mejorado** - Seed data inteligente (replica mock UX)
-7. **Fase 3.2** - Config centralizado
-8. **Fase 3.3** - Actualizar env files
-9. **Paso 5.3** - Validar full build
-
-### 🔧 Correcciones Clave:
-
-- ✅ Más pseudocódigo, menos código literal
-- ✅ Condensado secciones repetitivas
-- ✅ Verificación git obligatoria
-- ✅ Estrategia env vars pregunta al usuario
-- ✅ Context7 obligatorio antes de instalar
-- ✅ @supabase/ssr verificado (no deprecado)
-- ✅ Análisis inteligente de mock data
-- ✅ Seed data replica UX del frontend
-- ✅ Índices para performance
-- ✅ Security checklist
-- ✅ Validación completa de build
-
-### 🚫 NO Incluido (según tus preferencias):
-
-- ❌ Múltiples ambientes (demasiado complejo)
-- ❌ Separar en múltiples prompts
-- ❌ Preservar mock data (se reemplaza)
-- ❌ Dependencias extra (faker.js, etc.)
-```

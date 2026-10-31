@@ -2,7 +2,7 @@
 
 Per-epic and per-story workspace shared by `/product-management` (backlog + AC refinement) and `/sprint-development` (story-level dev loop).
 
-> **This tree is a GITIGNORED CACHE of Jira, owned by `scripts/sync-jira-issues.ts`.** Module = Epic (1:1). **Jira is the source of truth; every `[SYNC]` `.md` here is a read-only cache.** NEVER hand-write a Jira-mirrored file — author the content, push it to the Jira field (or fallback comment), run the sync, then read the materialized file back. Rebuild the whole tree with `bun run context:hydrate`. Authoritative tier rules also live in `AGENTS.md` §9.
+> **This tree is a GITIGNORED CACHE of Jira, owned by `scripts/sync-jira-issues.ts`.** Module = Epic (1:1). **Jira is the source of truth; every `[SYNC]` `.md` here is a read-only cache.** NEVER hand-write a Jira-mirrored file — author the content, push it to the Jira field (or fallback comment), run the sync, then read the materialized file back. Rebuild the whole tree with `bun run context:hydrate`. Authoritative tier rules also live in `.agents/instructions/agent-local-context-pbi.md` §9.
 
 ## Why the cache is not committed
 
@@ -105,4 +105,4 @@ Issues are created in Jira before the local folder, so folder names always use r
 
 ## Cross-session resumability
 
-DEV uses **Jira** (canonical content, via the sync) + **engram** (session memory) as cross-session state. `/sprint-development` rehydrates from `.session/sprint-development/<JIRA-KEY>/progress.md` (Phase 0 resume check, per `.agents/skills/agentic-dev-core/references/session-management.md`) plus the synced story folder and engram — see `AGENTS.md` §9. Nothing in the resume path reads a `[LOCAL]` file.
+DEV uses **Jira** (canonical content, via the sync) + **engram** (session memory) as cross-session state. `/sprint-development` rehydrates from `.session/sprint-development/<JIRA-KEY>/progress.md` (Phase 0 resume check, per `.agents/skills/agentic-dev-core/references/session-management.md`) plus the synced story folder and engram — see `.agents/instructions/agent-local-context-pbi.md` §9. Nothing in the resume path reads a `[LOCAL]` file.

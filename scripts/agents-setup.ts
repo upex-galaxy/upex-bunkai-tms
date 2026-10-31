@@ -46,6 +46,8 @@
  *   bun run agents:setup --non-interactive        # env-driven, no prompts
  *   bun run agents:setup --dry-run                # print result, do not write
  *   bun run agents:setup --reset                  # set every field back to null
+ *   bun run agents:setup --reseed                 # consent (non-interactive) to replace a copied maintainer yaml
+ *   bun run agents:setup --stack                  # detect the app's stack and fill the `stack:` block
  *   bun run agents:setup --help                   # show help
  *
  * ENV-VAR MAPPING (--non-interactive):
@@ -88,10 +90,14 @@
  * ============================================================================
  */
 
+import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { confirm, input, select } from '@inquirer/prompts';
 import { parse as parseYaml } from 'yaml';
+
+import { classifyProjectYaml, SCHEMA_FILE, seedFromSchema } from '../cli/lib/agents-schema.ts';
+import { detectStack, readStack, STACK_FIELDS, validateStack, writeDerivedIdentity, writeStack } from '../cli/lib/stack-descriptor.ts';
 
 // ============================================================================
 // CONSTANTS
@@ -212,6 +218,10 @@ interface CliFlags {
   nonInteractive: boolean
   dryRun: boolean
   reset: boolean
+  /** Consent, in --non-interactive mode, to replace a copied maintainer yaml. */
+  reseed: boolean
+  /** Walk only the `stack:` block, proposing what the repo shows. */
+  stack: boolean
   help: boolean
 }
 
@@ -220,6 +230,8 @@ function parseArgs(argv: string[]): CliFlags {
     nonInteractive: false,
     dryRun: false,
     reset: false,
+    reseed: false,
+    stack: false,
     help: false,
   };
   for (const arg of argv) {
@@ -232,6 +244,12 @@ function parseArgs(argv: string[]): CliFlags {
         break;
       case '--reset':
         flags.reset = true;
+        break;
+      case '--reseed':
+        flags.reseed = true;
+        break;
+      case '--stack':
+        flags.stack = true;
         break;
       case '--help':
       case '-h':
@@ -262,6 +280,24 @@ FLAGS:
   --reset              Reset every field back to \`null\` and restore the
                        original \`# TODO:\` prefix on each comment. Asks for
                        confirmation. Useful for re-onboarding.
+  --reseed             Consent, with --non-interactive, to replace a
+                       .agents/project.yaml that is the boilerplate
+                       maintainers' own copy (its header carries
+                       \`MAINTAINER COPY:\` and origin is not the
+                       boilerplate) with the blank template from
+                       .agents/project.schema.yaml. Interactive runs ask.
+  --stack              Fill only the \`stack:\` block: detect the app's real
+                       stack from the repo (package.json, lockfile, migration
+                       directory, tsconfig, CI and hosting files) and propose
+                       it. Interactive: one prompt per field the repo shows
+                       differently. With --non-interactive: writes every
+                       detected value, leaves undetected fields as they are.
+                       Inserts the block from .agents/project.schema.yaml when
+                       the project lacks it. Once an app exists, also fills
+                       the identity leaves that restate the stack
+                       (backend_stack, frontend_stack, db_type, the entry
+                       points) where they are still null; a filled one is
+                       never overwritten. Combine with --dry-run to preview.
   --help, -h           Show this help.
 
 VARIABLE MODEL:
@@ -287,8 +323,8 @@ INTERACTIVE FLOW (default):
   - For each environment, prompts for the four env-scoped vars.
   - Validates that default_env matches a real env (re-prompts if not).
   - For unfilled fields: prompts with the # TODO: description as helper text,
-    suggests the example value as a default, and validates input. Empty input
-    keeps the field as null (skip).
+    shows the example next to the question (never as the default), and
+    validates input. Empty input keeps the field as null (skip).
   - For filled fields: shows current value and asks keep / change / clear.
   - At the end: shows a summary, asks for confirmation, then writes the file
     back preserving every comment, blank line and section header.
@@ -583,9 +619,11 @@ async function promptFlatField(
   }
 
   while (true) {
+    // The example is shown, never pre-filled: Enter on an empty field must not
+    // write a made-up value (analysis §8 #12).
     const answer = await input({
-      message: `${field.section}.${field.key} — ${desc}`,
-      default: currentValue ?? example ?? undefined,
+      message: `${field.section}.${field.key} — ${desc}${!currentValue && example ? ` (e.g. ${example})` : ''}`,
+      default: currentValue ?? undefined,
     });
     if (!answer.trim()) {
       log.dim('  (skipped — kept as null)');
@@ -636,8 +674,8 @@ async function promptEnvScopedField(
 
   while (true) {
     const answer = await input({
-      message: `environments.${envName}.${field.key} — ${desc}`,
-      default: currentValue ?? example ?? undefined,
+      message: `environments.${envName}.${field.key} — ${desc}${!currentValue && example ? ` (e.g. ${example})` : ''}`,
+      default: currentValue ?? undefined,
     });
     if (!answer.trim()) {
       log.dim('  (skipped — kept as null)');
@@ -944,7 +982,7 @@ function renderCommentForEnvLeaf(envName: string, sf: EnvScopedFieldSpec, filled
   const descriptions: Record<string, string> = {
     web_url: `Frontend URL for ${envName} env (e.g. https://example.com)`,
     api_url: `API base URL for ${envName} env (e.g. https://api.example.com)`,
-    db_project_ref: `Supabase project ref for ${envName} (e.g. czuusjchqpgvanvbdrnz — visible in your Supabase dashboard URL)`,
+    db_project_ref: `Supabase project ref for ${envName} (the 20-character id in your Supabase dashboard URL: supabase.com/dashboard/project/<ref>)`,
   };
   const desc = descriptions[sf.key];
   if (!desc) { return ''; }
@@ -1129,6 +1167,116 @@ async function runInteractive(loaded: LoadedConfig, dryRun: boolean): Promise<vo
   }
   writeFileSync(PROJECT_YAML_PATH, updated, 'utf8');
   log.success(`Wrote ${relative(process.cwd(), PROJECT_YAML_PATH)}.`);
+  log.dim('The app\'s stack (`stack:` block) is filled separately: bun run agents:setup --stack, once the app exists.');
+}
+
+// ============================================================================
+// FLOW: STACK (--stack)
+// ============================================================================
+
+const KEEP = '__keep__';
+const SET_NULL = '__null__';
+
+/**
+ * Detect the app's stack and write it into the `stack:` block.
+ *
+ * Detection proposes, the yaml decides: a field the repo says nothing about is
+ * never touched, and in interactive mode every proposal that differs from the
+ * yaml is one prompt with the evidence beside it. Before /project-bootstrap
+ * there is no app, so nothing app-level is proposed and the shipped greenfield
+ * defaults stay.
+ */
+async function runStack(loaded: LoadedConfig, flags: CliFlags): Promise<void> {
+  log.header('agents-setup — stack descriptor');
+  const schemaPath = join(REPO_ROOT, SCHEMA_FILE);
+  const schemaText = existsSync(schemaPath) ? readFileSync(schemaPath, 'utf8') : null;
+  const current = readStack(loaded.rawText);
+  if (current.error) {
+    log.error(current.error);
+    process.exit(1);
+  }
+  const detection = detectStack(REPO_ROOT);
+  if (!detection.appFound) {
+    log.info('No app found (no package.json declaring `next` at the root, apps/* or packages/*): only repo-level fields are proposed, the rest keep their value.');
+  }
+
+  const updates: Record<string, string | null> = {};
+  for (const field of STACK_FIELDS) {
+    const hit = detection.fields[field.path];
+    const have = current.values[field.path];
+    if (!hit || (have !== undefined && have === hit.value)) { continue; }
+    if (flags.nonInteractive) {
+      updates[field.path] = hit.value;
+      continue;
+    }
+    const shown = (v: string | null | undefined): string => v === undefined ? '(absent)' : v === null ? 'null' : v;
+    const message = `stack.${field.path} (${field.label}): yaml ${shown(have)}, repo shows ${shown(hit.value)} [${hit.evidence}]`;
+    let answer: string;
+    if (field.values !== null) {
+      const choices = [
+        { value: hit.value ?? SET_NULL, name: `${shown(hit.value)} (detected)` },
+        ...(have !== undefined ? [{ value: KEEP, name: `keep ${shown(have)}` }] : []),
+        ...field.values.filter(v => v !== hit.value && v !== have).map(v => ({ value: v, name: v })),
+      ];
+      answer = await select({ message, choices, default: choices[0].value });
+    }
+    else {
+      const typed = await input({ message: `${message}\n  value (empty = null, \`=\` = keep):`, default: hit.value ?? '' });
+      answer = typed.trim() === '=' ? KEEP : typed.trim() === '' ? SET_NULL : typed.trim();
+    }
+    if (answer === KEEP) { continue; }
+    const value = answer === SET_NULL ? null : answer;
+    if (value === null && !field.nullable) {
+      log.warn(`  stack.${field.path} cannot be null; kept as is.`);
+      continue;
+    }
+    updates[field.path] = value;
+  }
+
+  const result = writeStack(loaded.rawText, schemaText, updates);
+  if (result.error) {
+    log.error(result.error);
+    process.exit(1);
+  }
+  if (result.inserted.length > 0) { log.info(`Inserted from ${SCHEMA_FILE}: ${result.inserted.join(', ')}`); }
+  // The identity leaves that restate the stack (`backend_stack`, `db_type`,
+  // the entry points) are filled where still null, only once an app exists:
+  // before /project-bootstrap the block holds defaults, not a measured stack.
+  const identity = detection.appFound
+    ? writeDerivedIdentity(result.text, REPO_ROOT)
+    : { text: result.text, filled: {}, error: null };
+  if (identity.error) {
+    log.error(identity.error);
+    process.exit(1);
+  }
+  const filled = Object.entries(identity.filled);
+  if (result.changed.length === 0 && result.inserted.length === 0 && filled.length === 0) {
+    log.success('stack: nothing to change, the yaml already matches what the repo shows.');
+    return;
+  }
+  for (const path of result.changed) {
+    err(`  stack.${path}: ${current.values[path] ?? 'null'} -> ${updates[path] ?? 'null'}`);
+  }
+  for (const [path, value] of filled) {
+    err(`  ${path}: null -> ${value} (derived from stack:)`);
+  }
+  for (const issue of validateStack(readStack(identity.text))) {
+    log.warn(`stack.${issue.path} ${issue.message}`);
+  }
+  if (flags.dryRun) {
+    out(identity.text);
+    log.success('Dry run complete — file NOT written.');
+    return;
+  }
+  if (!flags.nonInteractive) {
+    const proceed = await confirm({ message: 'Save the stack block to .agents/project.yaml?', default: true });
+    if (!proceed) {
+      log.warn('Cancelled. No changes saved.');
+      process.exit(0);
+    }
+  }
+  writeFileSync(PROJECT_YAML_PATH, identity.text, 'utf8');
+  log.success(`Wrote the stack block of ${relative(process.cwd(), PROJECT_YAML_PATH)}.`);
 }
 
 // ============================================================================
@@ -1255,6 +1403,56 @@ async function runReset(loaded: LoadedConfig): Promise<void> {
 }
 
 // ============================================================================
+// COPIED MAINTAINER YAML
+// ============================================================================
+
+function gitOrigin(): string | null {
+  try {
+    return execSync('git remote get-url origin', { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || null;
+  }
+  catch { return null; }
+}
+
+/**
+ * Replace a `.agents/project.yaml` copied from the boilerplate with the blank
+ * template, BEFORE any field is read: the file carries the maintainers'
+ * git_strategy (their ruleset notes, their standing push authorization), so a
+ * walkthrough over it would mix their answers into this project. Asks once;
+ * `--non-interactive` needs `--reseed` as its consent; a refusal exits 1
+ * before anything else runs.
+ */
+async function reseedCopiedTemplate(flags: CliFlags): Promise<void> {
+  if (!existsSync(PROJECT_YAML_PATH)) { return; }
+  const current = readFileSync(PROJECT_YAML_PATH, 'utf8');
+  if (classifyProjectYaml(current, gitOrigin()) !== 'copied-template') { return; }
+
+  const schemaPath = join(REPO_ROOT, SCHEMA_FILE);
+  const seeded = existsSync(schemaPath) ? seedFromSchema(readFileSync(schemaPath, 'utf8')) : null;
+  if (seeded === null) {
+    log.error(`.agents/project.yaml is the boilerplate maintainers' copy, and ${SCHEMA_FILE} is missing or malformed, so there is no template to reseed it from. Restore it from upstream (bun sync), then re-run.`);
+    process.exit(1);
+  }
+
+  log.warn('.agents/project.yaml is the boilerplate maintainers\' own copy (copied by hand or through GitHub "Use this template"): their git_strategy, their ruleset notes, their standing push authorization.');
+  if (flags.dryRun) {
+    log.info(`Dry run: would replace it with the blank template from ${SCHEMA_FILE}. Nothing written.`);
+    return;
+  }
+  let proceed = flags.reseed;
+  if (!proceed && !flags.nonInteractive) {
+    proceed = await confirm({ message: `Replace it with the blank template from ${SCHEMA_FILE}? (any value you already filled is re-asked next)`, default: true });
+  }
+  if (!proceed) {
+    log.error(flags.nonInteractive
+      ? 'Refusing to fill the maintainers\' copy. Re-run with --reseed to replace it with the template first.'
+      : 'Kept as is. Nothing else ran: filling the maintainers\' copy would mix their answers into this project. Re-run when ready.');
+    process.exit(1);
+  }
+  writeFileSync(PROJECT_YAML_PATH, seeded, 'utf8');
+  log.success(`Reseeded ${relative(process.cwd(), PROJECT_YAML_PATH)} from ${SCHEMA_FILE}: every identity field is null, git_strategy is inherited.`);
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
 
@@ -1272,7 +1470,22 @@ async function main(): Promise<void> {
     process.exit(1);
   });
 
+  await reseedCopiedTemplate(flags);
   const loaded = loadProjectYaml();
+
+  if (flags.stack) {
+    try {
+      await runStack(loaded, flags);
+    }
+    catch (e) {
+      if (isAbortError(e)) {
+        log.warn('Cancelled. No changes saved.');
+        process.exit(1);
+      }
+      throw e;
+    }
+    return;
+  }
 
   if (flags.reset) {
     try {

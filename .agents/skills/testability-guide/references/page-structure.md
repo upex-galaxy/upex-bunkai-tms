@@ -4,7 +4,7 @@
 >
 > **When to read**: Phase 4 of `SKILL.md`. Pair with `page-craft.md` (components) + `routing-patterns.md` (file location).
 >
-> Code identifiers + `data-testid`s stay English. Visible copy uses Q5 language (**Spanish is the default in this ecosystem** — the page is for QA; English only if no signal AND the user picks it).
+> Code identifiers + `data-testid`s stay English. Visible copy uses the Q5 language, which follows the host's language signal (with no signal, Q5 asks; no assumed default).
 
 ---
 
@@ -13,6 +13,7 @@
 - Title: `Software Testability Guide for QA` (translate only if Q5 demands).
 - Subtitle: one sentence — audience is manual QA + AI-driven testers exercising the app at DB, API, and UI layers.
 - Root container: `data-testid="qa-page"`. Title node: `data-testid="qa-title"`.
+- Build stamp under the subtitle: `data-testid="qa-build-sha"`. Shows the deployed short commit SHA, linked to the commit when a repo URL was detected, read at RUNTIME from the env var names in `qaConfig.build` (`page-craft.md` → Build stamp). No SHA available → the same node renders a gap line (es: `build local, sin SHA de despliegue`). The SHA is never written into the page source.
 - Snapshot comment at the very top of the file (`idempotency-snapshot.md`).
 - Layout: own shell with sticky TOC + hero — NOT a flat accordion list. See `page-craft.md`.
 
@@ -47,13 +48,13 @@
 `data-testid="qa-section-trinity"`. Cyan accent.
 
 - Overview: the three layers + the formula `UI (Playwright) + API (OpenAPI/Postman) + DB (DBHub) = Testing Completo`. Three cards (DB / API / UI), each deep-links to §4 / §5 / §6. Content from `mcp-and-env-setup.md` §3.
-- **Env setup** (`data-testid="qa-env-setup"`): the `.env` slots (names only), the strategy-B note (configs committed, secrets in `.env`), the activation mechanisms detected (wrapper `bun run claude`/`opencode` and/or `direnv` `.envrc`), and the critical "if a var doesn't load → 401/403 → exit, fix `.env`, re-enter" warning. Content from `mcp-and-env-setup.md` §"Env-var strategy".
+- **Env setup** (`data-testid="qa-env-setup"`): the `.env` slots (names only), the strategy-B note (configs committed, secrets in `.env`), the activation mechanisms detected (the agent opened bare, the MCP `.env` loader entries, and `bunx varlock run -- sh -c '...'` for a command needing a value), and the critical "if a var doesn't load → 401/403 → exit, fix `.env`, re-enter" warning. Content from `mcp-and-env-setup.md` §"Env-var strategy".
 
 ### §4 — Backend testing: Database (TWO ways)
 
 `data-testid="qa-section-database"`. Emerald accent. Two-way tabs (`data-testid="qa-db-ways"`).
 
-- **Way 1 — DBHub MCP**: the committed `dbhub.toml` (`${VAR}` interpolation), the `.env` `DBHUB_*` slots, the silent-substitution warning + `env | grep DBHUB`, and the MCP config block per agent (4-agent tabs). All from `mcp-and-env-setup.md` §4.
+- **Way 1 — DBHub MCP** (the default `mcp-and-env-setup.md` §4.0 resolves from `stack.database`; a Supabase app adds the read-only Supabase MCP tab for team members there): the committed `dbhub.toml` (`${VAR}` interpolation), the `.env` `DBHUB_*` slots, the silent-substitution warning + `env | grep DBHUB`, and the MCP config block per agent (4-agent tabs). All from `mcp-and-env-setup.md` §4.
 - **Way 2 — Connection URI (VSCode/Cursor extension)**: the `postgresql://…` / `sqlserver://…` string shape for the detected engine, credentials by name. Same read-only QA role as Way 1.
 - A callout: `Host, user, password viven en <destination>. Nunca en esta página.`
 - Short generic example queries: `Mostrame todas las tablas`, `Contá las <rows> del usuario <email>`.
@@ -72,9 +73,9 @@ The connection-string-vs-`[[sources]]` distinction is generic. The concrete form
 `data-testid="qa-section-api"`. Violet accent.
 
 - **Auth requests — Postman-style RequestCards (default, Q8)** (`data-testid="qa-auth-methods"`, cards `qa-request-card`, toggle `qa-request-toggle`): one tab per DETECTED auth request, each a read-only `RequestCard` with a METHOD badge (verb-colored), URL+copy, Headers table, Body/Response panels, and a **Visual/curl toggle**. Cards are filled from `api.apiRequests[]` — a structured restructure of the project's REAL auth calls (`<METHOD> <path>` placeholders, `<API_BASE_URL>`, `<see credentials source>`), never invented endpoints. **Plain-curl `AuthMethods` is the Q8 fallback** (host kit can't render tabs/tables). Detection rules unchanged: this maps to the DETECTED methods (Supabase token / Bearer `access_token` / cookie `sb-<ref>-auth-token` / `X-API-Key` / custom JWT route). NEVER assume Auth.js `/api/auth/callback/credentials` — that path is the internal provider callback; if pre-flight only finds it, surface the warning from `pre-flight-discovery.md`. If the ONLY auth is passwordless / OAuth / SSO with no programmatic token issuer, raise the API testability flag (`testability-assessment.md`), render the honest "no headless token path" gap + the remediation, and NEVER fabricate a token endpoint.
-- **Auth flow**: the cards already show the **detected** `loginEndpoint` + `tokenShape` (Visual + curl per request). If `bun run api:login` (or an equivalent PAT-bootstrap CLI) exists, promote it as the RECOMMENDED API-auth bootstrap — see `mcp-and-env-setup.md` §5 (it mints the tester's own per-tester token into `.env`; restart terminal/agent after so MCPs pick it up).
+- **Auth flow**: the cards already show the **detected** `loginEndpoint` + `tokenShape` (Visual + curl per request). If `bun run api:login` (or an equivalent PAT-bootstrap CLI) exists, promote it as the RECOMMENDED API-auth bootstrap — see `mcp-and-env-setup.md` §5 (it mints the tester's own per-tester token where the testing project keeps it, never into an MCP config; curl uses it by name, so no agent restart is needed).
 - Two-way tabs (`data-testid="qa-api-ways"`):
-  - **Way 1 — OpenAPI MCP**: `--tools dynamic` (mandatory), env `API_BASE_URL`/`OPENAPI_SPEC_PATH`/`API_TOKEN`, config per agent. Tools: `list-api-endpoints`, `get-api-endpoint-schema`, `invoke-api-endpoint`. From `mcp-and-env-setup.md` §5.
+  - **Way 1 — OpenAPI MCP**: `--tools dynamic` (mandatory), schema-read-only, env `API_BASE_URL`/`OPENAPI_SPEC_PATH` only (no token; `OPENAPI_SPEC_PATH` = full spec URL or repo-root-relative file), config per agent. Tools: `list-api-endpoints`, `get-api-endpoint-schema`; authenticated calls are curl's job. From `mcp-and-env-setup.md` §5.
   - **Way 2 — Postman MCP**: formal collection-based testing; remote MCP, `POSTMAN_API_KEY`, config per agent.
 - Link to `/api/docs` (`data-testid="qa-docs-button"`): the DETECTED docs UI (Scalar / Redoc / Swagger) at its DETECTED route + spec URL. Never assume.
 
@@ -127,7 +128,7 @@ The page is a Server Component by default. `QaShell` is an **async Server Compon
 - Dark/light: mirror the host (CSS vars, `dark:` variants, theme provider). Per-domain accent hues all have `dark:` variants.
 - Responsive: mobile-first. TOC rail, diagram, two-way/agent tabs, demo-user table all degrade gracefully under `md`/`lg`.
 - A11y: tabs/accordions keyboard-navigable, semantic headings, icon-only buttons `aria-label`.
-- Language: visible copy = Q5 (Spanish default). Code, `data-testid`s, inline tech labels (`JWT`, `Bearer`, `OpenAPI`) stay English.
+- Language: visible copy = Q5 (the host's language signal). Code, `data-testid`s, inline tech labels (`JWT`, `Bearer`, `OpenAPI`) stay English.
 
 ---
 

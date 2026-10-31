@@ -271,7 +271,7 @@ A few practical notes:
 Patterns that recur across features regardless of domain. Use this list as a final sanity check.
 
 - **Off-by-one** at boundaries — `<=` vs. `<`, inclusive vs. exclusive ranges
-- **Timezone confusion** — server in UTC, user in local, DST transitions, "today" semantics across midnight
+- **Timezone confusion** — server in UTC, user in local, DST transitions, "which day is it" semantics across midnight
 - **Decimal precision** — money in floats, rounding inconsistencies between client and server
 - **Unicode pitfalls** — counting characters vs. bytes vs. code points; emoji and combining marks
 - **Null vs. empty vs. missing** — three different states often collapsed into one

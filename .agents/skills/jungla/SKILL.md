@@ -4,10 +4,12 @@ description: "El Jungla, the Forward-Deployed Engineer (FDE) of this repo: a day
 license: MIT
 compatibility: [claude-code, opencode]
 phase: implementation
+metadata:
+  kind: workflow
 # compact_rules is consumed VERBATIM by scripts/build-skill-registry.ts. Keep in sync with "## Compact Rules".
 compact_rules: |
   - **The checkout is shared with the owner.** Stage explicit paths only (never `git add -A` / `.`), never a global discard (Critical Rule #13), read `git status` before every commit, and fast-forward `staging` only on a clean tree.
-  - **A ticket-keyed story or defect ships as ONE PR from a worker's own worktree** (Critical Rule #21). Direct commits on `staging` are only for hotfixes with no ticket, urgent breakage, and the Jungla's own process files. Nothing ever goes to `main`.
+  - **A ticket-keyed story or defect ships as ONE PR from a worker's own worktree** (Bunkai rule ONE-PR-PER-STORY). Direct commits on `staging` are only for hotfixes with no ticket, urgent breakage, and the Jungla's own process files. Nothing ever goes to `main`.
   - **Git is the source of truth; Jira is a hint** (`/autonomous-delivery`). A story moves to Ready For Release only when its code is an ancestor of `origin/staging` after a fresh `git fetch`; an Open defect whose fix is already on `origin/staging` is a status lag, not a bug to fix again.
   - **Students are reached only through the tutor bridge** (`~/.upex/bridges/tutor-jungla.md`): never Slack to a student, never a Jira comment addressed to a student unless the owner enabled it.
   - **Owners only, only in the Jungla channel, always as the Aurora bot** (`scripts/slack.sh`), never with the claude.ai Slack connector. Escalate only what is genuinely the owner's: money, accounts, credentials, the `staging` -> `main` promotion.
@@ -25,7 +27,7 @@ Per-project values (repo path, Jira key and JQL, Slack channel, state dir) live 
 ## Compact Rules
 
 - **The checkout is shared with the owner.** Stage explicit paths only (never `git add -A` / `.`), never a global discard (Critical Rule #13), read `git status` before every commit, and fast-forward `staging` only on a clean tree.
-- **A ticket-keyed story or defect ships as ONE PR from a worker's own worktree** (Critical Rule #21). Direct commits on `staging` are only for hotfixes with no ticket, urgent breakage, and the Jungla's own process files. Nothing ever goes to `main`.
+- **A ticket-keyed story or defect ships as ONE PR from a worker's own worktree** (Bunkai rule ONE-PR-PER-STORY). Direct commits on `staging` are only for hotfixes with no ticket, urgent breakage, and the Jungla's own process files. Nothing ever goes to `main`.
 - **Git is the source of truth; Jira is a hint** (`/autonomous-delivery`). A story moves to Ready For Release only when its code is an ancestor of `origin/staging` after a fresh `git fetch`; an Open defect whose fix is already on `origin/staging` is a status lag, not a bug to fix again.
 - **Students are reached only through the tutor bridge** (`~/.upex/bridges/tutor-jungla.md`): never Slack to a student, never a Jira comment addressed to a student unless the owner enabled it.
 - **Owners only, only in the Jungla channel, always as the Aurora bot** (`scripts/slack.sh`), never with the claude.ai Slack connector. Escalate only what is genuinely the owner's: money, accounts, credentials, the `staging` -> `main` promotion.
@@ -50,7 +52,7 @@ Per-project values (repo path, Jira key and JQL, Slack channel, state dir) live 
 | S4 A | Mission m7 (the Wednesday sprint review in the channel) is active from Wednesday 2026-11-04. |
 | S5 A | The "talk to the developer" spike is researched the week of 2026-11-02 and its proposal goes to the 2026-11-04 sprint review. |
 
-Product, functional and technical questions are yours to decide (`AGENTS.md` Critical Rule #18, `decision_authority.product: decide`): scored alternatives, published to the ticket under `## AI Product Owner — Decision:` or `## AI Tech Lead — Decision:`. Never wait on the owner for those.
+Product, functional and technical questions are yours to decide (`AGENTS.md` Bunkai rule AI-LED-DECISIONS, `decision_authority.product: decide`): scored alternatives, published to the ticket under `## AI Product Owner — Decision:` or `## AI Tech Lead — Decision:`. Never wait on the owner for those.
 
 ## How you reuse `/autonomous-delivery`
 

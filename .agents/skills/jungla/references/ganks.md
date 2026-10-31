@@ -2,7 +2,7 @@
 
 A gank is showing up the moment the QA needs you. Four come from the owner's decision D7 (the "ganks" note), plus the student blocker the tutor relays (D1). The watcher wakes you on the first three and on the blocker; the fourth you sweep yourself.
 
-The gank JQL (`JUNGLA_GANK_JQL` in `jungla.conf`), measured 2026-10-30 at 34 items: 8 `BLOCKED`, 18 Defects `Open`, 6 `QA Approved`, 2 `Ready For Dev`:
+The gank JQL (`JUNGLA_GANK_JQL` in `jungla.conf`), measured 2026-10-30 at 34 items: 8 `BLOCKED`, 18 Defects `Open`, 6 `QA Approved`, 2 `Ready For Dev`: <!-- volatile-ok: dated measurement of a live run, kept as evidence -->
 
 ```
 project = BK AND ((issuetype = Story AND status in ("Ready For Dev", "QA Approved", "BLOCKED")) OR (issuetype in (Bug, Defect) AND status = Open))
@@ -34,14 +34,14 @@ A `student-blocker` file from the tutor: the app under test fails (403/5xx, a mi
 It passed shift-left and is ready. Take it and implement it.
 
 1. Audit first (`/autonomous-delivery` Phase 1): no open PR or branch for the key, not already on `origin/staging`, dependencies in `.context/dev-roadmap.md` satisfied. A dependency that is not met is a real blocker: note it in `ganks` and on the ticket, move on.
-2. Dispatch a worker in its own worktree from `origin/staging` with `/sprint-development <KEY>`. Brief: one PR per story (Critical Rule #21), merge commit into `staging` when green and reviewed, migrations per `project.yaml`, design gate per `master-design-plan.md`, report the PR and merge SHA.
+2. Dispatch a worker in its own worktree from `origin/staging` with `/sprint-development <KEY>`. Brief: one PR per story (Bunkai rule ONE-PR-PER-STORY), merge commit into `staging` when green and reviewed, migrations per `project.yaml`, design gate per `master-design-plan.md`, report the PR and merge SHA.
 3. On `worker_done`: verify the merge commit is an ancestor of `origin/staging` (after `git fetch`) and that Jira moved it to `Ready For QA`. Journal line.
 
 ## G2 · New defect
 
 A Defect `Open` (usually traced to a story that is now `BLOCKED`). Fix it as soon as possible.
 
-1. **Status lag check first.** `git fetch` and `git log origin/staging --oneline --grep '<KEY>'`: if a merged fix already exists, the defect is not open in reality (measured 2026-10-30: BK-1282 and BK-1220 sat in `Open` after their PRs merged). Comment that on the defect, leave the transition to the QA's retest, and stop.
+1. **Status lag check first.** `git fetch` and `git log origin/staging --oneline --grep '<KEY>'`: if a merged fix already exists, the defect is not open in reality (measured 2026-10-30: BK-1282 and BK-1220 sat in `Open` after their PRs merged). Comment that on the defect, leave the transition to the QA's retest, and stop. <!-- volatile-ok: dated measurement of a live run, kept as evidence -->
 2. Read the defect and its linked story (`bun run jira:sync-issues get <KEY> --include-comments`): repro steps, AC, environment.
 3. Dispatch a worker with `/sprint-development <KEY>` (bug entry point), fast lane: one PR, merge into `staging` as soon as it is green. A data-only cause you fix yourself, then comment on the defect.
 4. After the merge: comment on the defect and on the story with the merge SHA and what to retest. The story leaves `BLOCKED` through the QA's retest flow (`Fix defect` / their transitions), not through you.
@@ -70,7 +70,7 @@ The DoD is the QA boilerplate's: `/Users/ely/Desktop/projects/boilerplates/agent
 
 ## G4 · Own shift-left
 
-Only on stories **no student took in 7 days** (D7 note 4). This overrides, for those stories only, Critical Rule #18's "missing shift-left is not yours to invent".
+Only on stories **no student took in 7 days** (D7 note 4). This overrides, for those stories only, Bunkai rule AI-LED-DECISIONS's "missing shift-left is not yours to invent".
 
 ```
 project = BK AND issuetype = Story AND status in (Backlog, Estimation, "Shift-Left QA") AND assignee is EMPTY AND updated <= -7d ORDER BY rank

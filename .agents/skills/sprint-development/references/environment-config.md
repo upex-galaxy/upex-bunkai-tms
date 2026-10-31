@@ -4,7 +4,7 @@ Actúa como Senior DevOps Engineer especializado en configuración de secrets y 
 
 ## 🎯 TAREA
 
-**FASE 9: ENVIRONMENT CONFIGURATION (Una sola vez por proyecto)**
+**STAGE 4: ENVIRONMENT CONFIGURATION (Una sola vez por proyecto)**
 
 Configurar variables de entorno separadas por ambiente (Development, Staging, Production) en las plataformas correspondientes.
 
@@ -18,7 +18,7 @@ Configurar variables de entorno separadas por ambiente (Development, Staging, Pr
 
 **Leer:**
 
-- `.context/infrastructure-setup.md` - **CRÍTICO** - URLs, credenciales, configuración de servicios
+- `.agents/project.yaml` → `environments` - **CRÍTICO** - URLs por ambiente (las credenciales viven en `.env`, nunca en un doc)
 - `.env.example` - Template de variables necesarias
 - `package.json` - Framework usado (Next.js, etc.)
 
@@ -56,12 +56,12 @@ Configurar environment variables en:
 
 - ✅ **Development:** Variables en `.env` para local dev
 - ✅ **Staging:** Variables en Vercel/Railway para staging environment
-- ✅ **Production:** (Placeholder para Fase 12) Estructura preparada
+- ✅ **Production:** (Placeholder para Stage 5) Estructura preparada
 - ✅ Validar que no hay secrets hardcodeados en código
 
 **NO incluye:**
 
-- ❌ Configurar production environment completo (eso es Fase 12)
+- ❌ Configurar production environment completo (eso es Stage 5)
 - ❌ Secrets de terceros no configurados aún (se agregan cuando se integran)
 
 **Resultado:** Cada ambiente tiene sus propias variables configuradas correctamente.
@@ -92,9 +92,9 @@ Configurar environment variables en:
 
 - **NO hardcodear valores** - Usar variables de entorno
 - **NO commitear secrets reales** - Solo .env.example
-- **NO exponer service role keys** - Solo en server-side
+- **NO exponer secret keys** - Solo en server-side
 - **NO usar mismos valores en todos los ambientes** - Cada ambiente separado
-- **NO configurar production todavía** - Eso es Fase 12
+- **NO configurar production todavía** - Eso es Stage 5
 
 ### ✅ SÍ HACER:
 
@@ -111,14 +111,15 @@ Configurar environment variables en:
 
 ## 📋 PASO 1: IDENTIFICAR VARIABLES NECESARIAS
 
-**Leer `.env.example` y `.context/infrastructure-setup.md`**
+**Leer `.env.example` y `.agents/project.yaml` → `environments`**
 
 **Clasificar variables en:**
 
 1. **Supabase Variables:**
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_SECRET_KEY` (server-only)
+   - Nombres canónicos: los de `.env.example`. El par legacy de Supabase (`NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`) sigue funcionando mientras Supabase lo provisione, pero el boilerplate usa publishable + secret.
 
 2. **Vercel Variables:**
    - `NEXT_PUBLIC_APP_URL`
@@ -134,8 +135,8 @@ Configurar environment variables en:
 ### Core Variables (Supabase):
 
 - `NEXT_PUBLIC_SUPABASE_URL` - URL del proyecto Supabase
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Anon key pública
-- `SUPABASE_SERVICE_ROLE_KEY` - Service role (server-only)
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` - Publishable key (pública)
+- `SUPABASE_SECRET_KEY` - Secret key (server-only)
 
 ### App Variables:
 
@@ -184,10 +185,10 @@ cp .env.example .env
 # Supabase (Development)
 # =============================================================================
 NEXT_PUBLIC_SUPABASE_URL=https://[project-id].supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 
 # ⚠️ NUNCA commitear este archivo - está en .gitignore
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+SUPABASE_SECRET_KEY=sb_secret_...
 
 # =============================================================================
 # App Configuration (Development)
@@ -205,7 +206,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ### 3️⃣ Verificar
 
 ```bash
-npm run dev
+{{stack.package_manager}} run {{stack.scripts.dev}}
 ```
 
 - ✅ App inicia sin errores de variables faltantes
@@ -232,17 +233,17 @@ https://vercel.com/[org]/[project]/settings/environment-variables
 
 ### 2️⃣ Para cada variable, agregar con Scope "Preview":
 
-| Variable Name                   | Value                                 | Environment |
-| ------------------------------- | ------------------------------------- | ----------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | https://[staging-project].supabase.co | Preview     |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | eyJhbGc...                            | Preview     |
-| `SUPABASE_SERVICE_ROLE_KEY`     | eyJhbGc...                            | Preview     |
-| `NEXT_PUBLIC_APP_URL`           | https://[project]-develop.vercel.app  | Preview     |
+| Variable Name                          | Value                                 | Environment |
+| -------------------------------------- | ------------------------------------- | ----------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | https://[staging-project].supabase.co | Preview     |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | sb_publishable_...                    | Preview     |
+| `SUPABASE_SECRET_KEY`                  | sb_secret_...                         | Preview     |
+| `NEXT_PUBLIC_APP_URL`                  | https://[project]-staging.vercel.app  | Preview     |
 
 **⚠️ IMPORTANTE:**
 
-- **Scope "Preview"** = Solo para staging (develop branch)
-- **Scope "Production"** = Configurar en Fase 12
+- **Scope "Preview"** = Solo para staging (rama de integración)
+- **Scope "Production"** = Configurar en Stage 5
 - **Encrypted** = Vercel encripta automáticamente los valores
 
 ### 3️⃣ Click "Save" después de cada variable
@@ -264,8 +265,8 @@ https://railway.app/project/[project-id]/settings
 Click en "New Variable" y agrega:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
 - `NEXT_PUBLIC_APP_URL`
 
 ### 4️⃣ Deploy nuevamente para aplicar cambios
@@ -290,12 +291,12 @@ Click en "New Variable" y agrega:
 
 **Archivo:** `.env` (gitignored)
 
-| Variable                        | Descripción                    | Ejemplo                 |
-| ------------------------------- | ------------------------------ | ----------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | URL del proyecto Supabase dev  | https://xxx.supabase.co |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key pública de Supabase   | eyJhbGc...              |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Service role key (server-only) | eyJhbGc...              |
-| `NEXT_PUBLIC_APP_URL`           | URL base de la app             | http://localhost:3000   |
+| Variable                               | Descripción                   | Ejemplo                 |
+| -------------------------------------- | ----------------------------- | ----------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | URL del proyecto Supabase dev | https://xxx.supabase.co |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key de Supabase   | sb_publishable_...      |
+| `SUPABASE_SECRET_KEY`                  | Secret key (server-only)      | sb_secret_...           |
+| `NEXT_PUBLIC_APP_URL`                  | URL base de la app            | http://localhost:3000   |
 
 ---
 
@@ -303,29 +304,29 @@ Click en "New Variable" y agrega:
 
 **Platform:** Vercel Dashboard → Settings → Environment Variables
 
-**Scope:** Preview (solo deploy de `develop` branch)
+**Scope:** Preview (solo deploy de `staging` branch)
 
-| Variable                        | Valor                                 | Notas                           |
-| ------------------------------- | ------------------------------------- | ------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | https://[staging-project].supabase.co | Proyecto de staging en Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | [anon key staging]                    | Diferente de production         |
-| `SUPABASE_SERVICE_ROLE_KEY`     | [service key staging]                 | Solo server-side                |
-| `NEXT_PUBLIC_APP_URL`           | https://[project]-develop.vercel.app  | URL auto-generada por Vercel    |
+| Variable                               | Valor                                 | Notas                           |
+| -------------------------------------- | ------------------------------------- | ------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | https://[staging-project].supabase.co | Proyecto de staging en Supabase |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | [publishable key staging]             | Diferente de production         |
+| `SUPABASE_SECRET_KEY`                  | [secret key staging]                  | Solo server-side                |
+| `NEXT_PUBLIC_APP_URL`                  | https://[project]-staging.vercel.app  | URL auto-generada por Vercel    |
 
 ---
 
-### Production (Configurar en Fase 12)
+### Production (Configurar en Stage 5)
 
 **Platform:** Vercel Dashboard → Settings → Environment Variables
 
 **Scope:** Production (solo deploy de `main` branch)
 
-| Variable                        | Valor                              | Notas                    |
-| ------------------------------- | ---------------------------------- | ------------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL`      | https://[prod-project].supabase.co | ⚠️ Configurar en Fase 12 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | [anon key production]              | ⚠️ Configurar en Fase 12 |
-| `SUPABASE_SERVICE_ROLE_KEY`     | [service key production]           | ⚠️ Configurar en Fase 12 |
-| `NEXT_PUBLIC_APP_URL`           | https://[domain].com               | ⚠️ Configurar en Fase 12 |
+| Variable                               | Valor                              | Notas                    |
+| -------------------------------------- | ---------------------------------- | ------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`             | https://[prod-project].supabase.co | ⚠️ Configurar en Stage 5 |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | [publishable key production]       | ⚠️ Configurar en Stage 5 |
+| `SUPABASE_SECRET_KEY`                  | [secret key production]            | ⚠️ Configurar en Stage 5 |
+| `NEXT_PUBLIC_APP_URL`                  | https://[domain].com               | ⚠️ Configurar en Stage 5 |
 
 ---
 
@@ -361,13 +362,13 @@ Agregar fila a tabla correspondiente explicando para qué sirve.
 ### Variables Públicas (NEXT*PUBLIC*)
 
 - ✅ Expuestas en frontend (browser)
-- ✅ Ejemplo: URLs públicas, anon keys
-- ❌ NUNCA service role keys o API secrets
+- ✅ Ejemplo: URLs públicas, publishable keys
+- ❌ NUNCA secret keys o API secrets
 
 ### Variables Privadas (Server-only)
 
 - ✅ Solo accesibles en server-side (API routes, server components)
-- ✅ Ejemplo: service role keys, API secrets
+- ✅ Ejemplo: secret keys, API secrets
 - ❌ NUNCA usar en componentes client
 
 ### .gitignore
@@ -380,7 +381,7 @@ Agregar fila a tabla correspondiente explicando para qué sirve.
 
 ### Rotation
 
-- Rotar service role keys cada 90 días
+- Rotar secret keys cada 90 días
 - Si compromiso de secret → regenerar inmediatamente
 
 ````
@@ -393,7 +394,7 @@ Agregar fila a tabla correspondiente explicando para qué sirve.
 
 ```bash
 # Iniciar dev server
-npm run dev
+{{stack.package_manager}} run {{stack.scripts.dev}}
 
 # Verificar:
 # ✅ No hay errores de variables faltantes
@@ -406,9 +407,12 @@ npm run dev
 **Trigger deploy a staging:**
 
 ```bash
-git checkout develop
+# <integration> = git_strategy.branches.integration (.agents/project.yaml); null under
+#   solo-main / github-flow / trunk-based: there, trigger the Preview deploy from a work branch instead
+# Direct push to a protected branch: resolved by git_strategy.policy.direct_push_to_protected (/git-flow-master)
+git checkout <integration>
 git commit --allow-empty -m "test: trigger staging deploy to validate env vars"
-git push origin develop
+git push origin <integration>
 ```
 
 **Verificar en Vercel Dashboard:**
@@ -442,9 +446,9 @@ git push origin develop
 
 - [x] variables configuradas en Vercel con scope "Preview"
 - Deploy de staging validado
-- URL: https://[project]-develop.vercel.app
+- URL: https://[project]-staging.vercel.app
 
-### ⏭️ Production (Fase 12)
+### ⏭️ Production (Stage 5)
 
 - Estructura documentada
 - Variables placeholder en `.context/environment-variables.md`
@@ -457,7 +461,7 @@ git push origin develop
 
 1. ✅ Environment variables configuradas
 2. ⏭️ Ejecutar `deploy-to-staging.md` para deploy inicial
-3. ⏭️ Fase 10: Exploratory Testing en staging
+3. ⏭️ QA exploratorio en staging (workflow de QA, fuera de este skill)
 
 ---
 
@@ -510,7 +514,7 @@ API_SECRET_KEY=secret123
 
 ```
 Development:  NEXT_PUBLIC_APP_URL=http://localhost:3000
-Staging:      NEXT_PUBLIC_APP_URL=https://[project]-develop.vercel.app
+Staging:      NEXT_PUBLIC_APP_URL=https://[project]-staging.vercel.app
 Production:   NEXT_PUBLIC_APP_URL=https://[domain].com
 ```
 

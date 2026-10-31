@@ -29,7 +29,7 @@ For exploratory questions ("what could we do about X?", "how should we approach 
 - No error handling for impossible scenarios.
 - If you write 200 lines and it could be 50, rewrite it.
 
-**Scope note** — this rule applies to code authored by the agent within a task. Do **not** collapse the architecture layers of the scaffold (`api/`, `schemas/`, `db/` boundaries in backend; design system structure in frontend) — they are framework architecture, not speculative abstraction.
+**Scope note** — this rule applies to code authored by the agent within a task. Do **not** collapse the architecture layers the app already has (on a scaffolded project the `api/`, `schemas/`, `db/` boundaries in backend and the design system structure in frontend; on an adopted app whatever layering its code shows under `stack.app_root`) — they are framework architecture, not speculative abstraction. The reverse holds too: never impose the scaffold's layers on an app that does not have them.
 
 Don't add error handling, fallbacks, or validation for scenarios that can't happen. Trust internal code and framework guarantees. Only validate at system boundaries (user input, external APIs). Don't use feature flags or backwards-compatibility shims when you can just change the code.
 
@@ -50,7 +50,7 @@ Don't add error handling, fallbacks, or validation for scenarios that can't happ
 - `/project-foundation` (PRD, SRS, Discovery)
 - `/design-system` (DESIGN.md generation, including rebrand)
 - `/project-bootstrap` (backend + frontend scaffolding)
-- `/sync-ai-memory` (project memory + cross-doc consistency + HTML rendered-from sync)
+- the docs follow-through (`docs-follow-through.md`: cross-doc consistency + standalone-HTML text patches)
 - `/sprint-development` implementation-plan stage
 - `/product-management` AC-writing (Gherkin scenarios)
 
@@ -76,7 +76,7 @@ For multi-step tasks, state a brief plan with explicit checks:
 3. [Step] → verify: [observable check]
 ```
 
-`verify` = an observable signal that the step actually landed (test passes, file exists, command exits 0, types:check clean). This format **complements** the 6-component subagent briefing in `references/briefing-template.md` — it does **not** replace it. Use this format for thinking-out-loud during execution; use the briefing for delegation.
+`verify` = an observable signal that the step actually landed (test passes, file exists, command exits 0, types:check clean). This format **complements** the 7-component subagent briefing in `references/briefing-template.md` — it does **not** replace it. Use this format for thinking-out-loud during execution; use the briefing for delegation.
 
 ---
 
@@ -88,7 +88,9 @@ These guidelines are working if:
 - Fewer rewrites due to overcomplication
 - Clarifying questions come BEFORE implementation rather than after mistakes
 - Plans are presented and approved before code is written
-- Sub-agent dispatches happen via the 6-component briefing instead of vague hand-offs
+- Sub-agent dispatches happen via the 7-component briefing instead of vague hand-offs
+- For PM Voice: fewer "what does that mean?" follow-ups, faster sign-off on reported work, headlines that can be copy-pasted into Slack / Jira without rewriting
+- For Visual Mapping: users grasp impact at a glance and can paste tables / diagrams into docs without redrawing
 
 ---
 
@@ -104,17 +106,15 @@ Don't explain WHAT the code does (well-named identifiers already do that). Don't
 
 This repo defaults to two combined conversational behaviors. Both apply to every T1 workflow that loads `agentic-dev-core` (sprint-development, project-foundation, project-bootstrap, design-system, testability-guide, product-management, unit-testing, agentic-dev-onboard).
 
-### Caveman compression (default)
+### Concision without a mode plugin
 
-If the `caveman` skill is installed user-level, respond in caveman level `full`. See `AGENTS.md` §1 #13 for the canonical rule. Brief recap:
+Concision comes from this layer and the user-level OUTPUT STYLE, never from a communication-mode plugin. See `AGENTS.md` §1 #11 for the canonical rule. Brief recap:
 
-- Drop articles, fillers, pleasantries.
-- Fragments OK. Short synonyms.
+- Terse by default: no fillers, no pleasantries, no restating the question.
 - Technical terms exact. Code blocks unchanged. Errors quoted exact.
-- Code/commits/PRs/security warnings write normal English (built-in boundary).
-- Revert triggers (EN + ES): "normal mode", "habla normal", "stop caveman", "speak normally", "be verbose", "más detallado".
-
-If caveman is not installed, write normal terse English/Spanish per §1 #14 language rule. Caveman is multiplier, not requirement.
+- Code/commits/PRs/security warnings always in full sentences.
+- More detail on request ("más detallado", "be verbose", "habla normal"), for that thread.
+- Reply language follows §1 #12.
 
 ### Butler pattern (expandable responses)
 
@@ -122,9 +122,28 @@ Default to a terse headline that answers the user's literal question. Then surfa
 
 - Atomicity over aggregation: 12 specific bullets beats 3 broad ones.
 - No artificial cap: bullet count tracks actual information richness.
-- Bullet style mirrors caveman: 1-line hook per bullet.
+- Bullet style: 1-line hook per bullet (`topic: fragment`).
 - Headline must stand alone: user got their answer even if they ignore the menu.
 
-Caveman compacts WORDS, butler controls INFORMATION GRANULARITY. They compose.
+Example (sprint-development closing): headline "Sprint shipped, 12 files, deploy live" + atomic bullets per file/change/flag/test/rollback step, not 3 buckets like "Code", "Tests", "Deploy".
 
 Full canonical text in `AGENTS.md` §2 EXPANDABLE RESPONSES.
+
+### PM Voice (default register)
+
+The rules live in `AGENTS.md` §2 PM VOICE. Example of the same work in each register:
+
+- ❌ Senior-dev register: "Refactored `useAuthState` to memoize the Supabase session subscription and moved the listener into a `useEffect` with cleanup."
+- ✅ PM Voice: "App stops doing extra background work when users navigate between private screens: should feel lighter." Bullet menu underneath mixes UX impact, file paths, and follow-ups at each bullet's appropriate register.
+
+### Visual mapping
+
+The rule (prefer a visual when content is naturally mappable, where to place it, when to skip it) lives in `AGENTS.md` §2 VISUAL MAPPING. Which visual fits which content:
+
+- **Tables** (`| col | col |`): comparisons (A vs B, before / after), key/value mappings (old name → new name), counts and metrics
+- **ASCII flow diagrams** (`A ──→ B ──→ C`): sequences, pipelines, propagation paths
+- **Trees** (`├── └──`): hierarchies, file structure, taxonomy
+- **Boxes** (`┌──┐ │ │ └──┘`): architecture components, system maps, state containers
+- **State machines** (labelled arrows between states): workflows, transitions, lifecycle
+
+**Rendering safety**: prefer plain ASCII (`+--+`, `->`, `|`) over Unicode box-drawing (`┌──┐`, `→`) when uncertain about target terminal. Markdown tables render in most agent UIs but degrade in raw terminal output: judge per channel.

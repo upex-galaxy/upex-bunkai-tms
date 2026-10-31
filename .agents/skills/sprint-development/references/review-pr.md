@@ -1,5 +1,7 @@
 Actúa como Senior Tech Lead y Code Reviewer experto.
 
+> **Scope (English, orchestrator-owned).** This file is the Stage 3 reviewer of ONE story inside `/sprint-development`: it proposes findings, the orchestrator adjudicates them, nothing is posted. Reviewing a teammate's or an external repo's PR for a human, with a strictness lens, a score and a posted comment, is `/pr-review-lead`, which walks this same checklist by reference and shares the severity scale in §"Adjudication contract". Change the checklist here, never in a copy.
+
 ---
 
 ## 🎯 TAREA
@@ -61,6 +63,8 @@ references/data-testid-standards.md
 - Reglas de manejo de errores
 - Estándares de data-testid para identidad de componentes
 
+Son los defaults para una app sin convención propia. Donde la app ya tiene una (alias `{{stack.conventions.import_alias}}`, estructura, manejo de errores, test ids `{{stack.conventions.testid_style}}`), se revisa contra la de la app: apartarse de la convención de la app es un hallazgo; apartarse de un default de estas references donde la app tiene la suya, no (`../SKILL.md` → `## Stack parameters` → "Existing conventions win").
+
 ### 3. Design System + Screen Design (si hay UI):
 
 ```
@@ -102,8 +106,9 @@ DESIGN.md                              # token + component-system authority
 **Ejecutar (si es posible):**
 
 ```bash
-npm run lint:check    # o: bun run lint:check
-npm run build   # o: bun run build
+# Scripts de la app, desde {{stack.app_root}}; un rol null se omite y se reporta
+{{stack.package_manager}} run {{stack.scripts.lint}}
+{{stack.package_manager}} run {{stack.scripts.build}}
 ```
 
 **Revisar:**
@@ -370,7 +375,7 @@ import { Button } from '@/components/ui/button';
 
 ### 8. 🧪 **Data-TestID para Identidad de Componentes**
 
-**Revisar según `references/data-testid-standards.md`:**
+**Revisar según la convención de test ids de la app** (`{{stack.conventions.testid_style}}`, o la que ya usa su código); sin ninguna, según `references/data-testid-standards.md`. Un test id existente renombrado, re-caseado o borrado es un hallazgo MAJOR: otra herramienta puede seleccionar por él.
 
 - [ ] **Componentes de dominio** (MentorCard, LoginForm, etc.) tienen `data-testid` en su **definición**
 - [ ] **Componentes UI base** (Button, Card, Input de shadcn) reciben `data-testid` donde se **usan**, NO en su definición
@@ -612,7 +617,7 @@ The orchestrator verifies each finding against the **actual diff + AC** and reco
 
 1. Only `legitimate` findings loop back to Stage 2. Applying a false positive is as much a defect as ignoring a real one.
 2. Every `false-positive` needs an explicit one-line reason (e.g. "Postgres `search_path` is set per-session by the framework; not reachable from this diff").
-3. Record the full per-finding verdict table in `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/review.md` (topic_key `pbi/{ticket}/review`).
+3. Record the full per-finding verdict table in `.session/sprint-development/<KEY>/review.md` (session working state at `<<PRIMARY_ROOT>>`, beside `progress.md`; topic_key `pbi/{ticket}/review`).
 4. In **SOLO** mode the orchestrator runs a deliberate fresh-eyes review pass inline, then adjudicates with the same table.
 5. Architectural rework (rare) does not loop to Stage 2 — it loops to Stage 1 with a new spec (+ ADR if the decision is architectural and hard to reverse).
 
