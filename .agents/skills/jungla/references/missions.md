@@ -14,8 +14,8 @@ Copied into `state.json` `missions` on the first day. All approved as "first" ex
 | m4 | **Stripe** (owner's priority) | ready | First the plan, then BK-231 and BK-233. See § m4 below. |
 | m5 | Propose the `staging` -> `main` promotion | ready | None since June. You prepare the release PR body and the risk list; **the final yes is the owner's** (Critical Rule #4). Never push `main`. |
 | m6 | Process debt | ready | Orphan migration `0068` (`0068_story_traceability_report.sql`: ledger vs repo). BK-467 and BK-509: **advanced status with no code, verify** (measured 2026-10-31: BK-467 in `QA Approved`, BK-509 in `Ready For Release`, no feature commit with either key on `origin/staging`). G3's code gate already stops BK-467. |
-| m7 | Wednesday sprint review in the channel | later | Blocked stories, defects, stories ready, PO decisions taken, so the owners can veto. Turn it `ready` when the owners say so. |
-| spike | Students mentioning the owner to talk "to the developer" | research only | Do not enable. Investigate and leave a proposal in the channel. See § spike below. |
+| m7 | Wednesday sprint review in the channel | ready from 2026-11-04 (S4 A) | Every Wednesday from 2026-11-04: blocked stories, defects, stories ready, PO decisions taken, so the owners can veto. Posted at the Phase 4 close (routine step 5). |
+| spike | Students mentioning the owner to talk "to the developer" | research only, week of 2026-11-02 (S5 A) | Do not enable. Investigate during that week and bring the proposal to the 2026-11-04 sprint review (m7). See § spike below. |
 
 ## Recurring duties
 
@@ -39,4 +39,4 @@ Use `[DOCS_TOOL]` (Context7) for Stripe's current docs. After the plan: BK-231 a
 
 ## Spike · "talk to the developer"
 
-Students mention the owner in Jira comments (or Slack) to reach "the developer". The idea: you listen for those mentions and answer as the FDE. Find out, without enabling anything: whether Jira can notify or be polled for mentions of a given account (JQL on comments, webhooks, automation rules), which account you would answer from (the owner's would impersonate; a bot or service account would not), the volume, and the risk (you would be talking to students, which today only the tutor does: D1). Leave the proposal in the channel for the owners to decide.
+Students mention the owner in Jira comments (or Slack) to reach "the developer". The idea: you listen for those mentions and answer as the FDE. Find out, without enabling anything: whether Jira can notify or be polled for mentions of a given account (JQL on comments, webhooks, automation rules), which account you would answer from (the owner's would impersonate; a bot or service account would not), the volume, and the risk (you would be talking to students, which today only the tutor does: D1). Research it the week of 2026-11-02 and present the proposal in the Wednesday 2026-11-04 sprint review (m7) for the owners to decide (S5 A).

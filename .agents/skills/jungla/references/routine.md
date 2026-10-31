@@ -1,6 +1,6 @@
 # The Jungla's daily routine
 
-You run from 6:00 to 21:00 ART, started by the Orca automation "Jungla Bunkai" through `~/.upex/aurora/bin/aurora-launch.sh jungla-bunkai`, in the main checkout (`JUNGLA_REPO`), with nobody watching the terminal. The key of the day: **waiting costs no tokens.** A bash watcher waits in the background and you do nothing until it ends.
+You run Monday to Friday from 6:00 to 21:00 ART, started by the Orca automation "Jungla Bunkai" through `~/.upex/aurora/bin/aurora-launch.sh jungla-bunkai`, in the main checkout (`JUNGLA_REPO`), with nobody watching the terminal. At 21:00 the day closes softly (Phase 4, decision S1 A); on Saturday and Sunday you only wake on demand (§ Weekend mode, S2 A). The key of the day: **waiting costs no tokens.** A bash watcher waits in the background and you do nothing until it ends.
 
 Load the values once: `. <skill>/jungla.conf` in any shell that needs them (`<skill>` = `.agents/skills/jungla`). State lives in `$JUNGLA_STATE_DIR` (`~/.upex/jungla/bunkai`): `state.json`, `day-<AAAA-MM-DD>.md`, `jira-seen.json` (the watcher's), `watcher.alive`, `working`, `guard-exit`, `runs/`.
 
@@ -41,7 +41,7 @@ Then the watcher, with the Bash tool and **`run_in_background: true`**:
 | `PROACTIVE` | Phase 2 · PROACTIVE |
 | `HEARTBEAT`, or the task ends `killed` by the 2-hour cap | relaunch the watcher with the same arguments, reading nothing else |
 | `killed` by low memory | do not relaunch it: the watchdog brings you back |
-| `END_OF_DAY` | Phase 4 |
+| `END_OF_DAY` | Phase 4 (soft close): take no new gank or mission; if a worker is running, wait only for it (launch its mailbox wait, no watcher) and finish it before closing. The launcher leaves you alone until 2:00, the hard stop |
 | `ERROR …` | another watcher in the background after 60 s. At the third `ERROR` in a row, do not close the day (a 20-minute Jira outage must not cost the rest of it): write the error to the journal and to `guard-exit` (the watchdog waits 30 min before relaunching you), **without** `closed_day`, then `~/.upex/aurora/bin/aurora-close.sh jungla-bunkai` as your last action |
 
 ## Phase 2 · Wake-ups
@@ -61,15 +61,26 @@ Per `SKILL.md` § Delegating with Orca. One heavy worker at a time; a second gan
 
 ## Phase 4 · Close
 
+Soft close (S1 A): from 21:00 you take nothing new. Work already in flight finishes first: your own step, and a running worker until its `worker_done`, which you verify, release and clean up as usual. The launcher does not reap you between 21:00 and 2:00 (`SOFT_CLOSE_UNTIL=2` in the launcher config); at 2:00 it is a hard stop, so a worker still unfinished by then is handed off instead (step 2).
+
 1. `closed_day` = today in `state.json`: it tells the watchdog the day ended on purpose. If an owner asks you to close early, the same.
-2. Workers still running stay in `active_runs` for tomorrow.
+2. Handoff in `state.json`: `ganks` in priority order with a note on where each stands, and any worker you could not finish before 2:00 stays in `active_runs` with its state, for the next start's Phase 0 step 7.
 3. Close the journal: ganks handled (by kind), commits and PRs, workers, migrations applied, DB cleanups, decisions published, what is left.
 4. **Learnings**: per `SKILL.md` § Live skill.
-5. On Wednesdays, once mission m7 is `ready`: the sprint review in the channel (blocked, defects, stories ready, PO decisions taken, so the owners can veto).
+5. On Wednesdays from 2026-11-04 (m7, S4 A): the sprint review in the channel (blocked, defects, stories ready, PO decisions taken, so the owners can veto). On 2026-11-04 it also carries the spike's proposal (S5 A).
 6. Final answer (it stays in Orca's history): the same summary plus an estimated cost.
 7. Last action of the day, in its own Bash call: `~/.upex/aurora/bin/aurora-close.sh jungla-bunkai`. The session ends seconds later.
 
 No `mem_session_summary` at the close: the journal and `learnings.md` keep the day.
+
+## Weekend mode (S2 A)
+
+On Saturday and Sunday the launcher starts you only when its `WAKE_CHECK` (`~/.upex/aurora/bin/jungla-bunkai-wake.sh`) finds an owner message in your channel or a `student-blocker` in your inbox (`WEEKDAYS=12345`). On a weekend wake:
+
+1. Phase 0 as usual, but skip the startup audit (step 6) beyond what the wake-up needs.
+2. Handle only what woke you: the owner's message or the student blocker (and a worker you already had running).
+3. No proactive missions, no discovery, no new ganks from the queue. Arm the watcher with `proactive_at` = `-`.
+4. When that is done, Phase 4 and `aurora-close.sh`.
 
 ## `state.json` template
 

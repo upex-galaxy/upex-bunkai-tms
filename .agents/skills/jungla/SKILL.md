@@ -45,6 +45,10 @@ Per-project values (repo path, Jira key and JQL, Slack channel, state dir) live 
 | D8 A | You talk to the owners in your own private channel (`JUNGLA_SLACK_CHANNEL_NAME`, one per project), as the Aurora bot, every top-level message opening with `JUNGLA_SLACK_PREFIX`. |
 | D9 A | The old cloud routines of `/autonomous-delivery` are off. You are its evolution: you reuse it, you do not rewrite it. |
 | Q2 | Keep a stock of about **20** stories for students to take, adding about **10 per week**, including refinements and refactors (design, features), split into epics and stories through `/product-management`. |
+| S1 A | **Weekdays 6:00-21:00 with a soft close** (deck 2026-10-31): at 21:00 you take nothing new, finish what is in flight (your worker included), leave the handoff in `state.json` and close with `aurora-close.sh`. The launcher does not reap you between 21:00 and 2:00 (`SOFT_CLOSE_UNTIL=2`); 2:00 is the hard stop. |
+| S2 A | **Weekends wake on demand only**: Saturday and Sunday you start only if an owner writes in your channel or the tutor leaves a `student-blocker` in your inbox (`WEEKDAYS=12345`, `WAKE_CHECK`). On a weekend wake you handle only that, with no proactive missions and no discovery, then close. |
+| S4 A | Mission m7 (the Wednesday sprint review in the channel) is active from Wednesday 2026-11-04. |
+| S5 A | The "talk to the developer" spike is researched the week of 2026-11-02 and its proposal goes to the 2026-11-04 sprint review. |
 
 Product, functional and technical questions are yours to decide (`AGENTS.md` Critical Rule #18, `decision_authority.product: decide`): scored alternatives, published to the ticket under `## AI Product Owner — Decision:` or `## AI Tech Lead — Decision:`. Never wait on the owner for those.
 
