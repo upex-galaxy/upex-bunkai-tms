@@ -3,12 +3,12 @@
   "templateRepo": "upex-galaxy/agentic-dev-boilerplate",
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
-    "cli": "d6da55a91440de29e93f6f75652b99429c29853f",
+    "cli": "f9cae5618f42706c91a6f77fc1c895062a2c580e",
     "claude": "babed50e23cf3db1d2b4dac69eb784fbba3979d7",
     "claude-config": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
     "agents": "d6da55a91440de29e93f6f75652b99429c29853f",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "d6da55a91440de29e93f6f75652b99429c29853f",
+    "scripts": "f9cae5618f42706c91a6f77fc1c895062a2c580e",
     "docs": "d6da55a91440de29e93f6f75652b99429c29853f",
     "context": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
     "context-engineering": "2815ca05d87c4d4eca75fb63f3792039644eb137",
@@ -21,7 +21,7 @@
     "commands": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
     "agent-root-config": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
     "codex-config": "d6da55a91440de29e93f6f75652b99429c29853f",
-    "instructions": "d6da55a91440de29e93f6f75652b99429c29853f",
+    "instructions": "f9cae5618f42706c91a6f77fc1c895062a2c580e",
     "env-schema": "d6da55a91440de29e93f6f75652b99429c29853f",
     "worktree-include": "d6da55a91440de29e93f6f75652b99429c29853f",
     "orca-config": "d6da55a91440de29e93f6f75652b99429c29853f",
@@ -71,7 +71,7 @@
     }
   },
   "cliVersion": "8.8",
-  "lastSyncedAt": "2026-10-30T13:10:45.666Z",
+  "lastSyncedAt": "2026-10-31T05:19:27.850Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {

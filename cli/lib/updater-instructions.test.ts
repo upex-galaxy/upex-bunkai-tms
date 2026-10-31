@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { parse as parseYaml } from 'yaml';
 
+import { isMaintainerCopy, isSchemaOwner, SCHEMA_SOURCE } from './agents-schema.ts';
 import {
   deliverProjectInstructionsStub,
   findStubLeaks,
@@ -23,6 +24,16 @@ import { collectParityFindings, legacyInstructionsMap, legacyInstructionsNote } 
 
 const REPO = join(import.meta.dir, '..', '..');
 const readRepo = (rel: string): string => readFileSync(join(REPO, rel), 'utf8');
+
+/**
+ * The boilerplate's own checkout: the package name AND the maintainer sentinel
+ * (the same test `contractsEnforced` makes). Downstream, `agent-project.md` is
+ * the project's own overlay, not the maintainers', so a case that pins the
+ * leak gate against the maintainers' file skips there, never fails.
+ */
+const yamlPath = join(REPO, SCHEMA_SOURCE);
+const MAINTAINER_CHECKOUT = isSchemaOwner(readRepo('package.json'))
+  && existsSync(yamlPath) && isMaintainerCopy(readFileSync(yamlPath, 'utf8'));
 
 const roots: string[] = [];
 function tempRoot(): string {
@@ -64,7 +75,7 @@ const legacyAgents = (extra: string[] = []): string =>
   [...LEGACY_HEADINGS, ...extra].map(h => `${h}\n\nbody of ${h}\n`).join('\n');
 
 describe('the shipped stub', () => {
-  test('passes the leak gate against the boilerplate\'s own agent-project.md, which fails it', () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('passes the leak gate against the boilerplate\'s own agent-project.md, which fails it', () => {
     const stub = readRepo(PROJECT_INSTRUCTIONS_TEMPLATE);
     const own = readRepo(PROJECT_INSTRUCTIONS_FILE);
     expect(findStubLeaks(stub, own)).toEqual([]);

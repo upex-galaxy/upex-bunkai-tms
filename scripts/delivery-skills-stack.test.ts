@@ -14,10 +14,18 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
-import { generateSchema, SCHEMA_SOURCE } from '../cli/lib/agents-schema.ts';
+import { generateSchema, isMaintainerCopy, isSchemaOwner, SCHEMA_SOURCE } from '../cli/lib/agents-schema.ts';
 import { readStack, STACK_FIELDS } from '../cli/lib/stack-descriptor.ts';
 
 const REPO_ROOT = join(import.meta.dir, '..');
+/**
+ * The boilerplate's own checkout: the package name AND the maintainer sentinel
+ * (the same test `contractsEnforced` makes). Downstream the real yaml is the
+ * project's own and generation refuses it, so the greenfield cases skip there,
+ * never fail.
+ */
+const MAINTAINER_CHECKOUT = isSchemaOwner(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'))
+  && isMaintainerCopy(readFileSync(join(REPO_ROOT, SCHEMA_SOURCE), 'utf8'));
 const SKILLS = ['sprint-development', 'autonomous-delivery'];
 
 interface Doc { path: string, lines: string[] }
@@ -66,7 +74,7 @@ describe('the delivery skills read the stack', () => {
     expect(unknown).toEqual([]);
   });
 
-  test('greenfield is unchanged: with the schema defaults every app command resolves to the command the skills always ran', () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('greenfield is unchanged: with the schema defaults every app command resolves to the command the skills always ran', () => {
     const appCommands = docs.flatMap(doc => [...doc.lines.join('\n').matchAll(/\{\{stack\.package_manager\}\} run \{\{stack\.scripts\.[a-z_]+\}\}/g)]
       .map(m => resolve(m[0], greenfield)));
     expect(appCommands.length).toBeGreaterThan(0);
@@ -74,7 +82,7 @@ describe('the delivery skills read the stack', () => {
     expect(appCommands.filter(cmd => !before.has(cmd))).toEqual([]);
   });
 
-  test('greenfield applies schema changes through the DB MCP with no migration files', () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('greenfield applies schema changes through the DB MCP with no migration files', () => {
     expect(greenfield['database.migrations_tool']).toBe('supabase-mcp');
     expect(greenfield['database.migrations_dir']).toBeNull();
     expect(greenfield.package_manager).toBe('bun');

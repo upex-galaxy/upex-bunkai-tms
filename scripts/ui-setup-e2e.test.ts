@@ -11,19 +11,40 @@ import type { SetupFixture } from './ui-setup-fixture.ts';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
+import { isMaintainerCopy, isSchemaOwner, SCHEMA_SOURCE } from '../cli/lib/agents-schema.ts';
 import { buildSetupFixture, fixtureEnv } from './ui-setup-fixture.ts';
 
 const SECRET = 'atl-fixture-token-7c1e-not-real';
+const REPO = resolve(import.meta.dir, '..');
+/**
+ * The boilerplate's own checkout: the package name AND the maintainer sentinel
+ * (the same test `contractsEnforced` makes). The fixture is a copy of this
+ * repo that still carries the maintainers' yaml; downstream the copy is the
+ * project itself, so the page walk-through skips there instead of timing out.
+ */
+const MAINTAINER_CHECKOUT = isSchemaOwner(readFileSync(join(REPO, 'package.json'), 'utf8'))
+  && existsSync(join(REPO, SCHEMA_SOURCE)) && isMaintainerCopy(readFileSync(join(REPO, SCHEMA_SOURCE), 'utf8'));
 
 interface Run { exit: number, out: string, events: JournalEntry[] }
 
+/**
+ * `vars` as a child's WHOLE environment: nothing of `process.env` survives.
+ * Built from a `ProcessEnv` spread, never a plain record, so the file still
+ * compiles under a host whose `ProcessEnv` requires `NODE_ENV` (Next.js).
+ */
+function onlyEnv(vars: Record<string, string>): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const key of Object.keys(env)) { delete env[key]; }
+  return Object.assign(env, vars);
+}
+
 /** `bun setup <args>` in the fixture, stdin closed, the page served and never opened. */
 async function runSetup(f: SetupFixture, args: string[], answer?: (e: JournalEntry) => unknown): Promise<Run> {
-  const child = spawn(process.execPath, ['run', 'setup', ...args], { cwd: f.project, env: fixtureEnv(f), stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['run', 'setup', ...args], { cwd: f.project, env: onlyEnv(fixtureEnv(f)), stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
   const events: JournalEntry[] = [];
   let following = false;
@@ -94,7 +115,7 @@ const ANSWERS: Record<string, unknown> = {
 describe('bun setup on a throwaway project', () => {
   const root = mkdtempSync(join(tmpdir(), 'ui-setup-e2e-'));
 
-  test('the page: every question answered in it, phases in order, yaml and .env written, no secret anywhere but .env', async () => {
+  test.skipIf(!MAINTAINER_CHECKOUT)('the page: every question answered in it, phases in order, yaml and .env written, no secret anywhere but .env', async () => {
     const f = buildSetupFixture(join(root, 'page'));
     const run = await runSetup(f, ['--ui'], e => (e.t === 'ask' && e.id in ANSWERS ? ANSWERS[e.id] : defaults(e)));
     expect(run.exit).toBe(0);
