@@ -12,3 +12,11 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - A fresh worktree has no `.claude/skills` alias (gitignored) and no `.env`: its first pre-push fails until it is provisioned (`SKILL.md` § Delegating step 2).
 - The startup guard counts Jungla processes and stops only at 2 or more: the session always sees itself.
 - The launcher's process patterns are anchored on the prompt opening `Eres El Jungla de Bunkai. Lee `: the owner's interactive sessions in this same checkout never match, and neither do your workers.
+
+## 2026-10-31 · First live run (manual, 00:52 ART)
+
+- `git log --grep 'KEY\b' -E` matches nothing on macOS (BSD regex has no `\b`): every count reads 0. Use `-i --grep '<KEY>'` plus `^(feat|fix|refactor|test)\(<KEY>\)` and confirm a fix branch with `git merge-base --is-ancestor origin/<branch> origin/staging`.
+- The standing queue built at startup has no drain step: the watcher only fires on deltas and PROACTIVE requires an empty queue, so queued ganks wait for an unrelated wake-up. This run handled them in the same turn as other wake-ups (G3 sign-offs while the G2 worker ran). Proposal for the routine: after every wake-up, if no heavy worker is running take the head of `ganks`; light ganks (G3, blocked triage) run in the conductor even while a worker runs.
+- `orca worktree create` names the branch `saiotest/<name>`, not the repo's `fix/<KEY>-...` convention: say the expected branch name in the brief so the worker renames it.
+- `worker-start --spec` injects the spec as the worker's first prompt inside its preamble; no separate `terminal send` was needed. Confirm the brief landed with `worker-read --source auto` (its transcript showed the brief being read within seconds).
+- Someone wrote `slack-channel.id` as soon as an owner created `#jungla-bunkai`; the watcher picked up the owner's first message on its next Slack poll without a restart.
