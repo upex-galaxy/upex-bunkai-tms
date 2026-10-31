@@ -12404,6 +12404,16 @@
               }
             }
           },
+          "404": {
+            "description": "The caller is a member of the Run's workspace and the Owner has deleted it (`not_found`, reason `workspace_deleted`, BK-1129).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "409": {
             "description": "The run is already closed and cannot be aborted (`conflict`, reason `run_not_abortable`).",
             "content": {
@@ -12850,6 +12860,16 @@
               }
             }
           },
+          "404": {
+            "description": "The caller is a member of the Run's workspace and the Owner has deleted it (`not_found`, reason `workspace_deleted`, BK-1129).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "409": {
             "description": "The run is already closed and cannot be finished (`conflict`, reason `run_not_finishable`).",
             "content": {
@@ -12945,7 +12965,7 @@
             }
           },
           "404": {
-            "description": "Run not found (missing, not visible, or foreign workspace — non-disclosing).",
+            "description": "Run not found (missing, not visible, or foreign workspace — non-disclosing). A member of a workspace the Owner has deleted gets `not_found` with reason `workspace_deleted` instead (BK-1129).",
             "content": {
               "application/json": {
                 "schema": {
@@ -13388,7 +13408,7 @@
             }
           },
           "404": {
-            "description": "Run step not found — missing, or belonging to a different run than {id} (non-disclosing).",
+            "description": "Run step not found — missing, or belonging to a different run than {id} (non-disclosing). A member of a workspace the Owner has deleted gets `not_found` with reason `workspace_deleted` instead (BK-1129).",
             "content": {
               "application/json": {
                 "schema": {

@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-10-30T17:40:25.543Z`
+> Generated: `2026-10-31T05:12:44.509Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.agents/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -8,7 +8,7 @@ This file is the per-session compact-rules cache for the Skill Resolver protocol
 The orchestrator copies one or more `## Skill: <slug>` blocks below into every subagent briefing under `## Project Standards (auto-resolved)`.
 Subagents trust those compact rules and only read the full SKILL.md when explicitly instructed.
 
-Skills indexed: 38
+Skills indexed: 39
 
 ---
 ## Skill: acli
@@ -377,6 +377,26 @@ Skills indexed: 38
 **Read full SKILL.md when**: the mode is ambiguous, a dry-run diff or migration audit looks wrong, or you need the selected reference's step-by-step phases and verification list.
 
 > Source: `.agents/skills/jira-administration/SKILL.md` · phase: `unknown` · kind: `workflow` · extraction strategy: A
+
+---
+
+## Skill: jungla
+
+**Purpose**: El Jungla, the Forward-Deployed Engineer (FDE) of this repo: a day-long conductor session (6:00-21:00 ART) that is half product owner, ha...
+
+**Compact Rules**:
+- **The checkout is shared with the owner.** Stage explicit paths only (never `git add -A` / `.`), never a global discard (Critical Rule #13), read `git status` before every commit, and fast-forward `staging` only on a clean tree.
+- **A ticket-keyed story or defect ships as ONE PR from a worker's own worktree** (Bunkai rule ONE-PR-PER-STORY). Direct commits on `staging` are only for hotfixes with no ticket, urgent breakage, and the Jungla's own process files. Nothing ever goes to `main`.
+- **Git is the source of truth; Jira is a hint** (`/autonomous-delivery`). A story moves to Ready For Release only when its code is an ancestor of `origin/staging` after a fresh `git fetch`; an Open defect whose fix is already on `origin/staging` is a status lag, not a bug to fix again.
+- **Students are reached only through the tutor bridge** (`~/.upex/bridges/tutor-jungla.md`): never Slack to a student, never a Jira comment addressed to a student unless the owner enabled it.
+- **Owners only, only in the Jungla channel, always as the Aurora bot** (`scripts/slack.sh`), never with the claude.ai Slack connector. Escalate only what is genuinely the owner's: money, accounts, credentials, the `staging` -> `main` promotion.
+- **One heavy worker at a time** (the owner's machine overloads). A second gank waits in `state.json` `ganks`.
+- **Never end a turn without the watcher running in the background**, except at the final close (`aurora-close.sh`). Never wait with `sleep` or a loop of your own.
+- **No personal data in any file** (state, journal, briefs, bridge files): a Slack thread ts or a Jira key identifies the person.
+
+**Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
+
+> Source: `.agents/skills/jungla/SKILL.md` · phase: `implementation` · kind: `workflow` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 

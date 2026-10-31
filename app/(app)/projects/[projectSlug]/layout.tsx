@@ -8,11 +8,14 @@ import {
   fetchTreeModules,
   fetchTreeStories,
 } from '@lib/projects/workbench-tree-query';
+import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { buildModuleTree } from '@lib/tree';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
+import { WORKSPACE_DELETED_LANDING } from '@lib/workspaces/deleted-notice';
+import { isProjectInDeletedWorkspaceOf } from '@lib/workspaces/deleted-project';
 import { cookies } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ProjectShell } from './project-shell';
 
 interface LayoutProps {
@@ -41,7 +44,10 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     cookieActive,
     (workspaceRows ?? []).map(w => w.id),
   );
-  if (!activeWorkspaceId) { notFound(); }
+  if (!activeWorkspaceId) {
+    await redirectIfWorkspaceDeleted(supabase, projectSlug);
+    notFound();
+  }
 
   const { data: project, error: projectErr } = await supabase
     .from('projects')
@@ -51,7 +57,10 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     .limit(1)
     .maybeSingle();
 
-  if (projectErr || !project) { notFound(); }
+  if (projectErr || !project) {
+    await redirectIfWorkspaceDeleted(supabase, projectSlug);
+    notFound();
+  }
 
   const { data: workspace } = await supabase
     .from('workspaces')
@@ -149,4 +158,21 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       {children}
     </ProjectShell>
   );
+}
+
+// BK-1129 — BK-512 Scenario N3 on a reload (or any navigation) of a project
+// URL, the Runner included: when the project is gone because the Owner deleted
+// the caller's workspace, send them to the shell's re-point + announcement
+// instead of the generic 404. Runs only on the not-found paths, BEFORE the
+// no-workspace branch too, so a member whose last workspace was deleted ends
+// on onboarding. The service-role read is scoped to the caller's own
+// memberships (see isProjectInDeletedWorkspaceOf).
+async function redirectIfWorkspaceDeleted(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectSlug: string,
+): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user && await isProjectInDeletedWorkspaceOf(createAdminClient(), { projectSlug, userId: user.id })) {
+    redirect(WORKSPACE_DELETED_LANDING);
+  }
 }
