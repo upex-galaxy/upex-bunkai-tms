@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { refuseIfRunWorkspaceDeleted } from '@lib/runs/deleted-workspace';
 import { mapRunRpcError } from '@lib/runs/errors';
 import { createAdminClient } from '@lib/supabase/admin';
 import { getRunExpanded } from '@lib/supabase/rpc';
@@ -24,6 +25,9 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const supabase = createAdminClient();
   const { data, error } = await getRunExpanded(supabase, { actorUserId: principal.userId, runId });
   if (error) {
+    // BK-1129 — a member of a soft-deleted workspace gets a not-found that
+    // says so (BK-512 N3); everyone else keeps the RPC's own refusal.
+    await refuseIfRunWorkspaceDeleted(supabase, { error, runId, userId: principal.userId });
     mapRunRpcError(error);
   }
 

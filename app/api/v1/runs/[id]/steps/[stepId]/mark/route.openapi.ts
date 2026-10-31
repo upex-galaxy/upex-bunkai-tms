@@ -56,7 +56,7 @@ registry.registerPath({
     400: { description: 'Malformed ids (not UUIDs) or malformed JSON body (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Run/step the caller cannot see).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    404: { description: 'Run step not found — missing, or belonging to a different run than {id} (non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'Run step not found — missing, or belonging to a different run than {id} (non-disclosing). A member of a workspace the Owner has deleted gets `not_found` with reason `workspace_deleted` instead (BK-1129).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'The run is already closed and cannot accept new step results (`conflict`, reason `run_step_marking_closed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not an http:// or https:// URL (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
