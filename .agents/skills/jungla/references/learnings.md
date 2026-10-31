@@ -20,3 +20,11 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - `orca worktree create` names the branch `saiotest/<name>`, not the repo's `fix/<KEY>-...` convention: say the expected branch name in the brief so the worker renames it.
 - `worker-start --spec` injects the spec as the worker's first prompt inside its preamble; no separate `terminal send` was needed. Confirm the brief landed with `worker-read --source auto` (its transcript showed the brief being read within seconds).
 - Someone wrote `slack-channel.id` as soon as an owner created `#jungla-bunkai`; the watcher picked up the owner's first message on its next Slack poll without a restart.
+
+## 2026-10-31 · Second worker and the Saturday close
+
+- Claude Code reaps idle background shells under memory pressure (the keepalive and a mailbox wait died at ~25% free with ~18 sessions alive). The session survived because the watcher was still running, and Orca injected "You have N orchestration messages" into the session on its own, so a background mailbox wait is optional: the watcher alone keeps the session.
+- `orca worktree create --reference <BK-KEY>` fails with `jira_summary_lookup:not-found`: Orca's Jira connection does not see this site. Create the worktree without `--reference`.
+- One worker can take several small defects of the same story in sequence, each on its own branch from a fresh `origin/staging` and its own PR (BK-1171, BK-1173, BK-1172 in about two hours, PRs #303, #305, #306).
+- The boilerplate sync (#301, merged 2026-10-31) changed Critical Rule #3: `Claude-Session:` is now forbidden; every agent commit ends with `Worktree: <name|primary>` then `Session: <label>` from the prompt hook's `AGENT IDENTITY:` line (`unknown` when absent). Commits 3fba21ad and b3e1b8ec predate the merge and keep the old trailer (pushed, not rewritten). The same sync made Critical Rule #1 forbid reading `.env` by value: use `wait-jungla.sh`/`slack.sh` (which load it themselves) or the repo's redacted presence check, never `grep .env` in an ad hoc command.
+- Since #301 the full `bun test` on `staging` is red: 51 `cli/` and `scripts/` tooling tests fail even alone (reported by the BK-443 worker, none in app code). Queued as `staging-suite-red`.
