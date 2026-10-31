@@ -2,7 +2,7 @@ import type { ViewKind } from './constants';
 import { BUG_SEVERITY_VALUES, BUG_STATUS_VALUES } from '@lib/bugs/constants';
 import { RUN_HISTORY_OUTCOMES } from '@lib/runs/history-constants';
 import { isValidDateParam, RESULT_FILTER_VALUES } from '@lib/traceability/chain-view';
-import { countCodePoints, SAVED_VIEW_TEXT_MAX } from './constants';
+import { countCodePoints, hasUnstorableCharacter, SAVED_VIEW_TEXT_MAX } from './constants';
 
 // BK-443 — the saved-view state codec. A view's `state` is the surface's own
 // URL query-parameter map (flat string -> string), so "restores exactly what
@@ -59,9 +59,11 @@ function listOf(allowed: readonly string[]): KeySpec['normalize'] {
 
 const uuid: KeySpec['normalize'] = raw => (UUID.test(raw) ? raw.toLowerCase() : null);
 const date: KeySpec['normalize'] = raw => (isValidDateParam(raw) ? raw : null);
+// Other control characters stay accepted: the database stores them and they
+// were never refused; only what it cannot store is (BK-1171).
 const text: KeySpec['normalize'] = (raw) => {
   const trimmed = raw.trim();
-  return trimmed !== '' && countCodePoints(trimmed) <= SAVED_VIEW_TEXT_MAX ? trimmed : null;
+  return trimmed !== '' && countCodePoints(trimmed) <= SAVED_VIEW_TEXT_MAX && !hasUnstorableCharacter(trimmed) ? trimmed : null;
 };
 
 const SPECS: Record<ViewKind, Record<string, KeySpec>> = {

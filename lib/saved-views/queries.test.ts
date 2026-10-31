@@ -290,3 +290,64 @@ describe('hostile state keys answer the documented 422 envelope', () => {
     expect(calls).toHaveLength(1);
   });
 });
+
+// BK-1171 — PostgreSQL text and jsonb cannot hold U+0000 or a lone UTF-16
+// surrogate, so a write carrying either used to reach the database and come
+// back as a 500. The payloads go through `JSON.parse` so the strings are
+// exactly what a direct API call delivers.
+describe('characters the database cannot store answer the documented 422 envelope', () => {
+  const scope = { userId: USER, projectId: PROJECT };
+  const UNSTORABLE = ['a\\u0000b', 'a\\ud800b', 'a\\udfffb', 'a\\udc00\\ud800b'];
+
+  async function envelopeFor(run: () => Promise<unknown>) {
+    const error = await failure(run);
+    const response = errorResponse(error);
+    return { status: response.status, body: await response.json() as { error: { code: string, details?: { reason?: string } } } };
+  }
+
+  for (const key of ['atc_q', 'tag']) {
+    test.each(UNSTORABLE)(`POST with "%s" in the workbench "${key}" filter`, async (value) => {
+      const { db, calls } = fakeDb([]);
+      const { status, body } = await envelopeFor(async () => createSavedView(db, scope, parseSavedViewInput(
+        SavedViewCreateBodySchema,
+        JSON.parse(`{"view_kind":"workbench","name":"BK-443 rb","state":{"${key}":"${value}"}}`),
+      )));
+      expect(status).toBe(422);
+      expect(body.error.code).toBe('validation_failed');
+      expect(body.error.details?.reason).toBe('state_invalid');
+      expect(calls).toHaveLength(0);
+    });
+
+    test.each(UNSTORABLE)(`PATCH with "%s" in the workbench "${key}" filter`, async (value) => {
+      const { db, calls } = fakeDb([{ data: { view_kind: 'workbench' }, error: null }]);
+      const { status, body } = await envelopeFor(async () => updateSavedView(db, { ...scope, viewId: VIEW }, parseSavedViewInput(
+        SavedViewPatchBodySchema,
+        JSON.parse(`{"state":{"${key}":"${value}"}}`),
+      )));
+      expect(status).toBe(422);
+      expect(body.error.details?.reason).toBe('state_invalid');
+      expect(calls).toHaveLength(1);
+    });
+  }
+
+  test.each(UNSTORABLE)('POST and PATCH with "%s" in the view name', async (value) => {
+    for (const json of [
+      `{"view_kind":"workbench","name":"BK-443 rb ${value}","state":{"atc_q":"login"}}`,
+      `{"name":"BK-443 rb ${value}"}`,
+    ]) {
+      const schema = json.includes('view_kind') ? SavedViewCreateBodySchema : SavedViewPatchBodySchema;
+      const { status, body } = await envelopeFor(async () => parseSavedViewInput(schema, JSON.parse(json)));
+      expect(status).toBe(422);
+      expect(body.error.details?.reason).toBe('name_invalid');
+    }
+  });
+
+  test('a valid surrogate pair (an emoji) is still accepted in a filter and in the name', async () => {
+    const { db, calls } = fakeDb([{ data: { ...ROW, view_kind: 'workbench' }, error: null }]);
+    await createSavedView(db, scope, parseSavedViewInput(
+      SavedViewCreateBodySchema,
+      JSON.parse('{"view_kind":"workbench","name":"\\ud83d\\udd34 P1s","state":{"atc_q":"\\ud83d\\udd34 login","tag":"smoke"}}'),
+    ));
+    expect(calls[0].payload).toMatchObject({ name: '🔴 P1s', state: { atc_q: '🔴 login', tag: 'smoke' } });
+  });
+});

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { countCodePoints, SAVED_VIEW_NAME_MAX, VIEW_KINDS } from './constants';
+import { countCodePoints, hasUnstorableCharacter, SAVED_VIEW_NAME_MAX, VIEW_KINDS } from './constants';
 
 // BK-443 — request validation for the saved-views routes. Mirrors the rules
 // migration 0093 enforces (the database stays the authority): trimmed name of
@@ -31,8 +31,8 @@ export const SavedViewNameSchema = z
   .string()
   .transform(value => value.normalize('NFC').trim())
   .superRefine((value, ctx) => {
-    if (hasControlCharacter(value)) {
-      ctx.addIssue({ code: 'custom', message: 'Name cannot contain control characters.', params: { reason: 'name_invalid' } });
+    if (hasControlCharacter(value) || hasUnstorableCharacter(value)) {
+      ctx.addIssue({ code: 'custom', message: 'Name cannot contain control characters or unpaired surrogates.', params: { reason: 'name_invalid' } });
       return;
     }
     const length = countCodePoints(value);

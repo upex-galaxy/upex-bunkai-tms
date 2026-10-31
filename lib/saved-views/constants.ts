@@ -37,6 +37,17 @@ export function countCodePoints(value: string): number {
   return Array.from(value).length;
 }
 
+// PostgreSQL text and jsonb cannot hold U+0000 or a lone UTF-16 surrogate: the
+// write fails (SQLSTATE 22P05) and the route answered 500 instead of 422
+// (BK-1171). `Array.from` walks code points, so a valid pair (an emoji) is one
+// point above U+FFFF and only an unpaired half lands in the surrogate range.
+export function hasUnstorableCharacter(value: string): boolean {
+  return Array.from(value).some((char) => {
+    const code = char.codePointAt(0) ?? 0;
+    return code === 0 || (code >= 0xD800 && code <= 0xDFFF);
+  });
+}
+
 // The workbench's two free-text filters are capped at the control, in code
 // points, so what the member sees is always what a saved view and the address
 // keep (an over-long value used to be dropped from the state silently).
