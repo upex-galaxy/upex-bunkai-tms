@@ -24,6 +24,6 @@ registry.registerPath({
     400: { description: 'Malformed id (not a UUID).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    404: { description: 'Run not found (missing, not visible, or foreign workspace — non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'Run not found (missing, not visible, or foreign workspace — non-disclosing). A member of a workspace the Owner has deleted gets `not_found` with reason `workspace_deleted` instead (BK-1129).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

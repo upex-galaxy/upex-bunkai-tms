@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ChatDock } from '@components/chat/ChatDock';
 import { ChatProvider } from '@components/chat/ChatProvider';
 import { AppSidebar } from '@components/layout/AppSidebar';
+import { WorkspaceDeletedNotice } from '@components/layout/WorkspaceDeletedNotice';
 import { AuthProvider } from '@components/providers/auth-context';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { countAtcsInWorkspace } from '@lib/atcs/library';
@@ -10,6 +11,7 @@ import { listNotifications } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
+import { Suspense } from 'react';
 
 // Resolves the global-shell data server-side (workspaces, active workspace,
 // its projects, signed-in email) so the AppSidebar renders without a client
@@ -72,10 +74,15 @@ async function getShellData() {
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const shell = await getShellData();
+  const activeWorkspaceName = shell.workspaces.find(w => w.id === shell.activeWorkspaceId)?.name ?? null;
 
   return (
     <AuthProvider>
       <ChatProvider>
+        {/* BK-1129 — announces a workspace deleted under an open Runner. */}
+        <Suspense fallback={null}>
+          <WorkspaceDeletedNotice activeWorkspaceName={activeWorkspaceName} />
+        </Suspense>
         <div className="grid h-screen min-h-0 grid-cols-[224px_1fr_auto] overflow-hidden bg-surface-0">
           <AppSidebar
             workspaces={shell.workspaces}

@@ -35,6 +35,7 @@ registry.registerPath({
     400: { description: 'Malformed id (not a UUID) or malformed JSON body (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Run the caller cannot see).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'The caller is a member of the Run\'s workspace and the Owner has deleted it (`not_found`, reason `workspace_deleted`, BK-1129).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'The run is already closed and cannot be aborted (`conflict`, reason `run_not_abortable`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed — the reason is shorter than 3 or longer than 500 characters (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
