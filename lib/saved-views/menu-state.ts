@@ -44,12 +44,19 @@ export function pruneNotice(notice: MenuNotice | null, currentState: SavedViewSt
   return notice !== null && notice.forKey === stateKey(currentState) ? notice : null;
 }
 
-// Mirrors the database order: case-folded name, then id.
+// The database's collation: ICU, locale en-US (Postgres `datlocprovider = i`).
+// Comparing with `<` gave character-code order, so a list re-sorted here after
+// a save disagreed with the API's for punctuation, digits and accents (BK-1172).
+const NAME_COLLATOR = new Intl.Collator('en-US');
+
+// Mirrors the database order: `name_key` (case-folded name) under that
+// collation, then id. Postgres breaks a collation tie between different
+// strings by their bytes, hence the code-order step before the id.
 export function sortViews(views: readonly SavedViewItem[]): SavedViewItem[] {
   return [...views].sort((a, b) => {
     const left = a.name.toLowerCase();
     const right = b.name.toLowerCase();
-    if (left !== right) { return left < right ? -1 : 1; }
+    if (left !== right) { return NAME_COLLATOR.compare(left, right) || (left < right ? -1 : 1); }
     return a.id < b.id ? -1 : 1;
   });
 }
