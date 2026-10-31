@@ -3,14 +3,11 @@ import { RunnerView } from '@components/runs/RunnerView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { formatBugListRow } from '@lib/bugs/list-view';
 import { toAttachmentView } from '@lib/runs/attachment-access';
-import { isRunInDeletedWorkspaceOf } from '@lib/runs/deleted-workspace';
-import { createAdminClient } from '@lib/supabase/admin';
 import { getRunExpanded } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
-import { WORKSPACE_DELETED_LANDING } from '@lib/workspaces/deleted-notice';
 import { cookies } from 'next/headers';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 interface PageProps {
   params: Promise<{ projectSlug: string, runId: string }>
@@ -48,19 +45,13 @@ export default async function RunDetailPage({ params, searchParams }: PageProps)
     cookieActive,
     (workspaceRows ?? []).map(w => w.id),
   );
-  if (!activeWorkspaceId) {
-    await redirectIfWorkspaceDeleted(runId, user.id);
-    notFound();
-  }
+  if (!activeWorkspaceId) { notFound(); }
 
   const { data, error } = await getRunExpanded(supabase, {
     actorUserId: user.id,
     runId,
   });
-  if (error || !data) {
-    await redirectIfWorkspaceDeleted(runId, user.id);
-    notFound();
-  }
+  if (error || !data) { notFound(); }
 
   const run = data as unknown as RunDetail;
 
@@ -160,16 +151,4 @@ export default async function RunDetailPage({ params, searchParams }: PageProps)
       linkedBug={linkedBug}
     />
   );
-}
-
-// BK-1129 — BK-512 Scenario N3 on a reload. The Run read has already refused;
-// when the reason is that the Owner deleted the caller's workspace, send them
-// to the shell's re-point + announcement instead of the generic 404. Checked
-// BEFORE the no-workspace branch too, so a member whose only workspace was
-// deleted reaches onboarding rather than a 404. The service-role read is
-// scoped to the caller's own membership row (see isRunInDeletedWorkspaceOf).
-async function redirectIfWorkspaceDeleted(runId: string, userId: string): Promise<void> {
-  if (await isRunInDeletedWorkspaceOf(createAdminClient(), { runId, userId })) {
-    redirect(WORKSPACE_DELETED_LANDING);
-  }
 }

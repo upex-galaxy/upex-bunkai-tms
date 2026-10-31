@@ -1,3 +1,4 @@
+import { isProjectInDeletedWorkspaceOf } from '@lib/workspaces/deleted-project';
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'bun:test';
 import { isRunInDeletedWorkspaceOf, refuseIfRunWorkspaceDeleted } from './deleted-workspace';
@@ -13,7 +14,8 @@ import { isRunInDeletedWorkspaceOf, refuseIfRunWorkspaceDeleted } from './delete
 // `bunkai_create_run`. While the workspace is live the discriminator says no.
 // After `deleted_at` is stamped: the step mark is refused and records nothing,
 // the discriminator says yes for the member and no for a stranger, and the
-// route wrapper turns the refusal into `not_found` / `workspace_deleted`.
+// route wrapper turns the refusal into `not_found` / `workspace_deleted`; the
+// project layout's slug check (reload path) answers the same way.
 //
 // Env-gated like its siblings: without Supabase + automation identity env the
 // suite SKIPS. The fixture is removed in a `finally`.
@@ -34,6 +36,7 @@ const STRANGER = '00000000-0000-0000-0000-000000000000';
 interface Fixture {
   workspaceId: string
   projectId: string
+  projectSlug: string
   runId: string
   stepId: string
 }
@@ -61,7 +64,7 @@ async function buildFixture(db: Db, actorId: string, onWorkspace: (f: Fixture) =
     .select('id')
     .single();
   if (wsError) { throw wsError; }
-  const f: Fixture = { workspaceId: ws.id as string, projectId: '', runId: '', stepId: '' };
+  const f: Fixture = { workspaceId: ws.id as string, projectId: '', projectSlug: `${PREFIX}-proj`, runId: '', stepId: '' };
   onWorkspace(f);
 
   const { error: wmError } = await db
@@ -71,7 +74,7 @@ async function buildFixture(db: Db, actorId: string, onWorkspace: (f: Fixture) =
 
   const { data: project, error: projectError } = await db
     .from('projects')
-    .insert({ workspace_id: f.workspaceId, slug: `${PREFIX}-proj`, name: `${PREFIX} proj` })
+    .insert({ workspace_id: f.workspaceId, slug: f.projectSlug, name: `${PREFIX} proj` })
     .select('id')
     .single();
   if (projectError) { throw projectError; }
@@ -184,6 +187,7 @@ describeOrSkip('BK-1129: a Run in a soft-deleted workspace is refused as workspa
 
       // ---- Live workspace: the discriminator never fires ------------------
       expect(await isRunInDeletedWorkspaceOf(db, { runId: f.runId, userId: actorId })).toBe(false);
+      expect(await isProjectInDeletedWorkspaceOf(db, { projectSlug: f.projectSlug, userId: actorId })).toBe(false);
 
       // ---- The Owner deletes the workspace (ADR-0015 soft-delete) ----------
       const { error: deleteError } = await db
@@ -212,6 +216,9 @@ describeOrSkip('BK-1129: a Run in a soft-deleted workspace is refused as workspa
       // The member is told; a stranger is not.
       expect(await isRunInDeletedWorkspaceOf(db, { runId: f.runId, userId: actorId })).toBe(true);
       expect(await isRunInDeletedWorkspaceOf(db, { runId: f.runId, userId: STRANGER })).toBe(false);
+      // The project layout's reload check, same discriminator by slug.
+      expect(await isProjectInDeletedWorkspaceOf(db, { projectSlug: f.projectSlug, userId: actorId })).toBe(true);
+      expect(await isProjectInDeletedWorkspaceOf(db, { projectSlug: f.projectSlug, userId: STRANGER })).toBe(false);
 
       let refusal: { code?: string, status?: number, details?: unknown } | null = null;
       try {
