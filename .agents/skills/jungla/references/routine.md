@@ -9,7 +9,7 @@ Load the values once: `. <skill>/jungla.conf` in any shell that needs them (`<sk
 ## Phase 0 · Start
 
 1. Read `SKILL.md` (done if the agent file sent you here), `references/learnings.md` (newest entries are at the end), `references/ganks.md`. The rest loads when a wake-up needs it. Load `humanizer` before your first Slack message of the day.
-2. **Is another Jungla already awake?** Two Junglas gank the same ticket twice. If `watcher.alive` is younger than 90 s (`echo $(( $(date +%s) - $(stat -f %m $JUNGLA_STATE_DIR/watcher.alive) ))`), or `ps -axww -o args= | grep -E '^claude ([^ ]+ ){0,6}Eres El Jungla de Bunkai\. Lee '` finds a process other than yours, you do not start: `echo "<time> <reason>" > $JUNGLA_STATE_DIR/guard-exit` (the watchdog will not relaunch you for 30 min), say it in your final answer and end, without launching the watcher.
+2. **Is another Jungla already awake?** Two Junglas gank the same ticket twice. If `watcher.alive` is younger than 90 s (`echo $(( $(date +%s) - $(stat -f %m $JUNGLA_STATE_DIR/watcher.alive) ))`), or `ps -axww -o args= | grep -cE '^claude ([^ ]+ ){0,6}Eres El Jungla de Bunkai\. Lee '` counts **2 or more** (one of them is always you), you do not start: `echo "<time> <reason>" > $JUNGLA_STATE_DIR/guard-exit` (the watchdog will not relaunch you for 30 min), say it in your final answer and end, without launching the watcher.
 3. **State.** Read `state.json`; if it does not exist, create it from the template at the end of this file.
    - Always: remove `closed_day` and `guard-exit` (if you started, someone started you on purpose).
    - **New day** (`day_started` is not today ART): `last_seen_ts` = now (epoch with decimals), `day_started` = today, `proactive_done` = [].
@@ -42,7 +42,7 @@ Then the watcher, with the Bash tool and **`run_in_background: true`**:
 | `HEARTBEAT`, or the task ends `killed` by the 2-hour cap | relaunch the watcher with the same arguments, reading nothing else |
 | `killed` by low memory | do not relaunch it: the watchdog brings you back |
 | `END_OF_DAY` | Phase 4 |
-| `ERROR …` | another watcher in the background after 60 s; at the third `ERROR` in a row, Phase 4 with the error in the report |
+| `ERROR …` | another watcher in the background after 60 s. At the third `ERROR` in a row, do not close the day (a 20-minute Jira outage must not cost the rest of it): write the error to the journal and to `guard-exit` (the watchdog waits 30 min before relaunching you), **without** `closed_day`, then `~/.upex/aurora/bin/aurora-close.sh jungla-bunkai` as your last action |
 
 ## Phase 2 · Wake-ups
 
