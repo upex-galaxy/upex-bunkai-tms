@@ -117,7 +117,7 @@ export interface QaConfig {
   }
   env: {
     strategy: 'expansion' | 'literal'
-    activation: ('wrapper' | 'direnv' | 'auto')[]
+    activation: ('mcp-loader' | 'varlock-run' | 'auto')[]
     slots: string[]
   }
   demoUsers: { email: string, note: string }[]
@@ -139,16 +139,24 @@ export interface QaConfig {
 // uses ${VAR}; OpenCode uses {env:VAR}.
 // ---------------------------------------------------------------------------
 
-const dbhubClaude = `// Claude Code → .mcp.json
+const dbhubClaude = `// Claude Code → .mcp.json   (el loader del .env le pasa solo las vars DBHUB_*)
 "dbhub": {
   "command": "bunx",
-  "args": ["-y", "@bytebase/dbhub@1.2.3", "--config", "dbhub.toml"]
+  "args": [
+    "-p", "varlock@1.20.0", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
+    "--filter", "DBHUB_TYPE,DBHUB_HOST,DBHUB_PORT,DBHUB_DATABASE,DBHUB_USER,DBHUB_PASSWORD",
+    "--", "bunx", "-y", "@bytebase/dbhub@1.2.3", "--config", "dbhub.toml"
+  ]
 }`;
 
-const dbhubOpencode = `// OpenCode → opencode.jsonc
+const dbhubOpencode = `// OpenCode → opencode.jsonc   (el loader del .env le pasa solo las vars DBHUB_*)
 "dbhub": {
   "type": "local",
-  "command": ["bunx", "-y", "@bytebase/dbhub@1.2.3", "--config", "dbhub.toml"],
+  "command": [
+    "bunx", "-p", "varlock@1.20.0", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
+    "--filter", "DBHUB_TYPE,DBHUB_HOST,DBHUB_PORT,DBHUB_DATABASE,DBHUB_USER,DBHUB_PASSWORD",
+    "--", "bunx", "-y", "@bytebase/dbhub@1.2.3", "--config", "dbhub.toml"
+  ],
   "enabled": true
 }`;
 
@@ -707,7 +715,7 @@ export const qaConfig: QaConfig = {
   },
   env: {
     strategy: 'expansion',
-    activation: ['wrapper', 'direnv'],
+    activation: ['mcp-loader', 'varlock-run'],
     slots: [
       'DBHUB_TYPE',
       'DBHUB_HOST',

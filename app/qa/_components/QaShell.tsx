@@ -655,19 +655,19 @@ export async function QaShell({ config }: { config: QaConfig }) {
                   {' '}
                   <code className="rounded bg-surface-2 px-1 text-fg-1">DBHUB_*</code>
                   {' '}
-                  falta (sustituye el literal). Verificá la inyección con
+                  falta (sustituye el literal). Verificá lo que ve el MCP con
                   {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">dotenv -e .env -- env | grep DBHUB</code>
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">bunx varlock run -- env | grep '^DBHUB' | cut -d= -f1</code>
                   {' '}
-                  (un
+                  (solo nombres; un
                   {' '}
                   <code className="rounded bg-surface-2 px-1 text-fg-1">env | grep DBHUB</code>
                   {' '}
-                  pelado sale vacío: el
+                  pelado sale vacío: el loader le pasa el
                   {' '}
                   <code className="rounded bg-surface-2 px-1 text-fg-1">.env</code>
                   {' '}
-                  se inyecta solo en el proceso del agente, no en tu terminal).
+                  a cada proceso MCP, no al agente ni a tu terminal).
                 </li>
               </ul>
             </Callout>

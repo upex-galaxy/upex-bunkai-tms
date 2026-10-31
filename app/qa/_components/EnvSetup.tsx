@@ -3,22 +3,22 @@ import { Badge } from '@components/ui/badge';
 import { AlertTriangle, Database } from 'lucide-react';
 import { CodeBlock } from './CodeBlock';
 
-// Activation snippet — wrapper scripts, source-into-current-shell, and direnv.
-const wrapperBlock = `# Wrapper dotenv-cli (cross-platform) — lanza el agente con .env ya cargado:
-bun run claude       # = dotenv -e .env -- claude
-bun run opencode     # = dotenv -e .env -- opencode`;
+// Activation snippets: the agent opens bare and .env reaches only the process
+// that needs it (each MCP server through its loader entry, a one-off command
+// through varlock run). Never a wrapper, a sourced .env or a shell autoloader.
+const openBareBlock = `# Abrí el agente pelado, en la carpeta del proyecto (o su app de escritorio). No carga ningún valor del .env:
+claude
+opencode`;
 
-const envShellBlock = `# Cargar .env en tu shell ACTUAL — corré esto directo en la terminal (Mac/Linux/Git Bash):
-set -a; source .env; set +a
-# Después corré 'claude' / 'opencode' pelados, con las vars ya exportadas.
-# Ojo: tiene que SER sourceado en tu shell; 'bun run' lo correría en subshell y no persiste.`;
+const mcpLoaderBlock = `# Cada MCP que necesita un valor arranca por el loader del .env (su entrada commiteada en la config):
+bunx varlock run --filter <SUS_VARS> -- <comando del server>`;
 
-const direnvBlock = `# direnv + .envrc (Mac/Linux) — autocarga al entrar al directorio:
-direnv allow         # una vez; luego cada cd al repo exporta .env solo`;
+const varlockRunBlock = `# Un comando que necesita un valor carga el .env solo para ESE proceso (nunca en tu shell):
+bunx varlock run -- sh -c '<comando que usa "$VAR">'`;
 
 export async function EnvSetup({ config }: { config: QaConfig }) {
-  const hasWrapper = config.env.activation.includes('wrapper');
-  const hasDirenv = config.env.activation.includes('direnv');
+  const hasMcpLoader = config.env.activation.includes('mcp-loader');
+  const hasVarlockRun = config.env.activation.includes('varlock-run');
   const hasAuto = config.env.activation.includes('auto');
 
   return (
@@ -27,7 +27,7 @@ export async function EnvSetup({ config }: { config: QaConfig }) {
         Los archivos de config de los MCP están
         {' '}
         <strong className="text-fg-0">commiteados a git y no llevan secretos</strong>
-        : referencian variables por expansión. Los valores reales viven en
+        : nombran las variables, nunca sus valores. Los valores reales viven en
         {' '}
         <code className="rounded bg-surface-2 px-1 text-fg-1">.env</code>
         {' '}
@@ -41,22 +41,22 @@ export async function EnvSetup({ config }: { config: QaConfig }) {
 
       <div className="space-y-3">
         <p className="text-sm font-semibold text-fg-1">
-          Activar
+          Abrí el agente pelado: el
           {' '}
           <code className="rounded bg-surface-2 px-1">.env</code>
           {' '}
-          antes de lanzar el agente — tres caminos:
+          llega solo al proceso que lo necesita, nunca al agente ni a tu shell.
         </p>
-        {hasWrapper && <CodeBlock language="bash" code={wrapperBlock} title="wrapper" />}
-        <CodeBlock language="bash" code={envShellBlock} title="source .env (shell actual)" />
-        {hasDirenv && <CodeBlock language="bash" code={direnvBlock} title="direnv" />}
+        <CodeBlock language="bash" code={openBareBlock} title="abrir el agente" />
+        {hasMcpLoader && <CodeBlock language="bash" code={mcpLoaderBlock} title="loader del .env (MCP)" />}
+        {hasVarlockRun && <CodeBlock language="bash" code={varlockRunBlock} title="varlock run" />}
         {hasAuto && (
           <p className="text-sm text-fg-2">
-            El runtime autocarga
+            Los scripts del proyecto autocargan el
             {' '}
             <code className="rounded bg-surface-2 px-1 text-fg-1">.env</code>
             {' '}
-            (igual exportá las vars para el launcher del MCP).
+            (Bun lo hace solo); los MCP igual reciben el suyo por el loader.
           </p>
         )}
       </div>
@@ -110,25 +110,28 @@ export async function EnvSetup({ config }: { config: QaConfig }) {
           ). Salí del agente, corregí
           {' '}
           <code>.env</code>
-          , reentrá — las vars se leen una vez al spawnear el MCP. Verificá que se
-          inyecten con
-          {' '}
-          <code>dotenv -e .env -- env | grep DBHUB</code>
-          {' '}
-          (un
+          , reentrá: las vars se leen una vez, al spawnear el MCP. Un
           {' '}
           <code>env | grep DBHUB</code>
           {' '}
-          pelado sale vacío aunque esté bien:
-          {' '}
-          <code>bun run claude</code>
-          {' '}
-          inyecta el
-          {' '}
-          <code>.env</code>
-          {' '}
-          solo en el proceso del agente, no en tu terminal).
+          pelado sale vacío aunque todo esté bien, porque el loader le pasa las vars a cada proceso
+          MCP al arrancar, nunca al agente ni a tu terminal. Verificá con estos tres, que imprimen
+          solo nombres, nunca valores:
         </p>
+        <ul className="ml-5 mt-1 list-disc text-fg-2">
+          <li>
+            <code>grep -E '^DBHUB[A-Z0-9_]*=.' .env | cut -d= -f1</code>
+            : la var está en el archivo?
+          </li>
+          <li>
+            <code>bunx varlock run -- env | grep '^DBHUB' | cut -d= -f1</code>
+            : lo que ve el MCP al arrancar.
+          </li>
+          <li>
+            <code>bunx varlock load --agent</code>
+            : cada valor pasa el schema? (redactado)
+          </li>
+        </ul>
       </div>
     </div>
   );
