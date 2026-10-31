@@ -52,11 +52,6 @@ export default antfu({
     // MCP reference templates — syntax-sensitive opt-in configs. Linting them
     // (e.g. toml/array-bracket-newline) corrupts the layout users copy from.
     'docs/mcp/**',
-    // Synced e2e tests that do not type-check under Next.js's ProcessEnv (NODE_ENV
-    // required); excluded from tsconfig.json too, so the type-aware parser cannot
-    // load them. They still run under `bun test`.
-    'scripts/ui-setup-e2e.test.ts',
-    'scripts/ui-up-e2e.test.ts',
   ],
 
   // Custom rules

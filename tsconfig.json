@@ -28,12 +28,5 @@
     "plugins": [{ "name": "next" }]
   },
   "include": ["**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next-env.d.ts"],
-  "exclude": [
-    "node_modules",
-    "packages/*/node_modules",
-    "packages/*/dist",
-    ".next",
-    "scripts/ui-setup-e2e.test.ts",
-    "scripts/ui-up-e2e.test.ts"
-  ]
+  "exclude": ["node_modules", "packages/*/node_modules", "packages/*/dist", ".next"]
 }
