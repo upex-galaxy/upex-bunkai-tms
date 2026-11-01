@@ -27,7 +27,7 @@ describe('mapMilestonePlanRpcError', () => {
     { code: '23505', status: 409, reason: 'milestone_plan_exists' },
     { code: '45505', status: 422, reason: 'plan_outside_project' },
     { code: '45506', status: 422, reason: 'milestone_plan_limit' },
-    { code: '22023', status: 400, reason: 'plan_selection_empty' },
+    { code: '22023', status: 422, reason: 'plan_selection_empty' },
   ];
 
   for (const c of cases) {

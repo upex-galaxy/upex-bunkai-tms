@@ -9,6 +9,10 @@ import { NextRequest } from 'next/server';
 // Real exported handlers, a real Bearer PAT (`mintPat`), real RPCs through the
 // caller's own RLS-scoped client: no mocked stand-in.
 //
+// The PAT is minted for the declared automation identity (`QA_E2E_USER_*`,
+// `.agents/project.yaml` -> `testing.automation_identity`), never for a borrowed
+// real member, and expires in one day so an aborted run leaves no lasting token.
+//
 // DB-dependent: skips when the Supabase env is absent or migration 0112 is not
 // applied yet (the readiness function answers "does not exist"); any other
 // unexpected state fails loudly.
@@ -19,8 +23,11 @@ const { DELETE } = await import('./[testPlanId]/route');
 const { mintPat } = await import('@lib/api/pat');
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const hasEnv = Boolean(url && serviceKey);
+const qaEmail = process.env.QA_E2E_USER_EMAIL;
+const qaPassword = process.env.QA_E2E_USER_PASSWORD;
+const hasEnv = Boolean(url && anonKey && serviceKey);
 
 function service() {
   return createClient(url!, serviceKey!, { auth: { persistSession: false } });
@@ -56,10 +63,22 @@ interface ErrorBody { error?: { code?: string, details?: { reason?: string } } }
 
 let fixtureCount = 0;
 
+let qaUserId: string | null = null;
+
+async function automationIdentity(): Promise<string> {
+  if (qaUserId) { return qaUserId; }
+  if (!qaEmail || !qaPassword) {
+    throw new Error('[milestone plans route] QA_E2E_USER_EMAIL and QA_E2E_USER_PASSWORD are required when a database environment is present.');
+  }
+  const client = createClient(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await client.auth.signInWithPassword({ email: qaEmail, password: qaPassword });
+  if (error || !data.user) { throw new Error(`[milestone plans route] QA_E2E login failed (${error?.message ?? 'no user'}).`); }
+  qaUserId = data.user.id;
+  return qaUserId;
+}
+
 async function buildFixture(db: Db): Promise<Fixture> {
-  const { data: member } = await db.from('workspace_members').select('user_id').eq('status', 'active').limit(1).maybeSingle();
-  const actorUserId = member?.user_id as string | undefined;
-  if (!actorUserId) { throw new Error('[milestone plans route] need at least one active workspace member (seed state).'); }
+  const actorUserId = await automationIdentity();
   fixtureCount += 1;
   const tag = `${PREFIX}-${fixtureCount}`;
 
@@ -123,25 +142,34 @@ describeOrSkip('BK-206 — attach / detach plans route wiring', () => {
 
   afterAll(async () => {
     const db = service();
-    for (const id of workspaceIds) {
-      await db.from('milestone_plans').delete().eq('workspace_id', id);
-      await db.from('milestones').delete().eq('workspace_id', id);
-      await db.from('test_plans').delete().eq('workspace_id', id);
-      await db.from('workspaces').delete().eq('id', id);
-    }
+    const failures: string[] = [];
+    const attempt = async (what: string, op: PromiseLike<{ error: { message: string } | null }>) => {
+      const { error } = await op;
+      if (error) { failures.push(`${what}: ${error.message}`); }
+    };
     for (const id of tokenIds) {
-      await db.from('access_token_secrets').delete().eq('token_id', id);
-      await db.from('access_tokens').delete().eq('id', id);
+      await attempt('access_token_secrets', db.from('access_token_secrets').delete().eq('token_id', id));
+      await attempt('access_tokens', db.from('access_tokens').delete().eq('id', id));
     }
-    const { count } = await db.from('workspaces').select('id', { count: 'exact', head: true }).like('slug', `${PREFIX}%`);
-    expect(count ?? 0).toBe(0);
+    for (const id of workspaceIds) {
+      await attempt('milestone_plans', db.from('milestone_plans').delete().eq('workspace_id', id));
+      await attempt('milestones', db.from('milestones').delete().eq('workspace_id', id));
+      await attempt('test_plans', db.from('test_plans').delete().eq('workspace_id', id));
+      await attempt('workspaces', db.from('workspaces').delete().eq('id', id));
+    }
+    const { count, error } = await db.from('workspaces').select('id', { count: 'exact', head: true }).like('slug', `${PREFIX}%`);
+    if (error) { failures.push(`leftover count: ${error.message}`); }
+    else if ((count ?? 0) !== 0) { failures.push(`${count} workspaces with prefix ${PREFIX} survived`); }
+    if (failures.length > 0) {
+      throw new Error(`[milestone plans route] teardown left fixtures behind: ${failures.join('; ')}`);
+    }
   });
 
   async function setup() {
     const db = service();
     const fixture = await buildFixture(db);
     workspaceIds.push(fixture.workspaceId);
-    const pat = await mintPat({ admin: db, userId: fixture.actorUserId, name: 'bk206-route', scopes: ['atc:read', 'atc:write'], expiresInDays: null });
+    const pat = await mintPat({ admin: db, userId: fixture.actorUserId, name: 'bk206-route', scopes: ['atc:read', 'atc:write'], expiresInDays: 1 });
     tokenIds.push(pat.id);
     return { db, fixture, token: pat.token };
   }

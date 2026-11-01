@@ -80,7 +80,8 @@ export function mapMilestonePlanRpcError(error: { code?: string, message: string
         details: { reason: 'milestone_plan_limit' },
       });
     case '22023':
-      throw new ApiError('bad_request', 'Select at least one test plan to attach.', {
+      // Same answer as the route's Zod guard for an empty selection (422).
+      throw new ApiError('validation_failed', 'Select at least one test plan to attach.', {
         details: { reason: 'plan_selection_empty' },
       });
     default:
