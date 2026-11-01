@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 
 interface NewTestBuilderProps {
   projectSlug: string
-  // Workspace ATC library (id, slug, title, layer) — loaded server-side.
+  // The Project's ATC library (id, slug, title, layer) — loaded server-side (BK-620).
   atcs: AtcLibraryItem[]
 }
 
@@ -140,7 +140,7 @@ export function NewTestBuilder({ projectSlug, atcs }: NewTestBuilderProps) {
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-6">
         <header className="flex-shrink-0">
           <p className="mb-3 text-sm text-fg-3">
-            Chain ATCs from your workspace library — selection order is run order.
+            Chain ATCs from this project's library — selection order is run order.
           </p>
           <label className="block">
             <span className="mb-1 flex items-baseline justify-between font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">

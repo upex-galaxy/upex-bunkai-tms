@@ -17,8 +17,8 @@ export interface AtcLibraryItem {
 }
 
 interface AtcChainPickerProps {
-  // Workspace ATC library — every non-archived ATC across the workspace's
-  // projects (Decision 2: Tests are workspace-scoped, ATCs are project-scoped).
+  // Project ATC library — every non-archived ATC of the current Project
+  // (BK-620; superseded BK-27 Decision 2, which spanned the whole workspace).
   atcs: AtcLibraryItem[]
   // Ordered chain. Duplicates are legal — a chain is a sequence, not a set —
   // so the same library ATC may appear at several positions.
@@ -27,7 +27,7 @@ interface AtcChainPickerProps {
   onRemove: (index: number) => void
 }
 
-// Two-column picker: filterable workspace library on the left (click = APPEND
+// Two-column picker: filterable project library on the left (click = APPEND
 // to the chain; re-click re-appends), ordered chain on the right. Selection
 // order IS run order — no reorder affordance here (drag/move-up-down = BK-28).
 export function AtcChainPicker({ atcs, chain, onAppend, onRemove }: AtcChainPickerProps) {
@@ -49,7 +49,7 @@ export function AtcChainPicker({ atcs, chain, onAppend, onRemove }: AtcChainPick
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-2 gap-4">
-      {/* left: workspace ATC library */}
+      {/* left: project ATC library */}
       <section className="flex min-h-0 flex-col">
         <div className="mb-1.5 flex items-baseline justify-between">
           <span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
