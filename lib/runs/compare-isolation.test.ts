@@ -78,6 +78,9 @@ const describeOrSkip = hasDbEnv && deployed ? describe : describe.skip;
 const PREFIX = `bk442-compare-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
 const BUDGET_MS = 2000;
+// When 0092_run_compare.sql (the backfill) was applied: the version of its row in
+// the migration ledger, supabase_migrations.schema_migrations (20261019191921).
+const MIGRATION_0092_APPLIED_AT = '2026-10-19T19:19:21Z';
 
 type StepStatus = 'passed' | 'failed' | 'blocked' | 'skipped' | 'pending';
 interface StepSpec { content: string, status: StepStatus, input?: string | null, expected?: string | null }
@@ -557,10 +560,13 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
     expect(rows[0].atc_id).toBe(f.atcId);
     expect(rows[0].source_atc_id).toBe(f.atcId);
 
-    // Post-apply backfill check over the WHOLE table: no row may have a non-null
-    // atc_id and no key. A null key with a null atc_id is the legitimate
-    // "unreliable" case and is not counted here.
-    const missing = await db.from('run_atcs').select('id', { count: 'exact', head: true }).is('source_atc_id', null).not('atc_id', 'is', null);
+    // Post-apply backfill check: no row that EXISTED when 0092 was applied may have a
+    // non-null atc_id and no key. A null key with a null atc_id is the legitimate
+    // "unreliable" case and is not counted here. Rows of Runs created after the
+    // apply went through the insert trigger (proven above); one of them can lack
+    // the key only through a deliberate UPDATE, such as a QA seed of the
+    // "unreliable" state on the shared database, which the backfill never covered.
+    const missing = await db.from('run_atcs').select('id, runs!inner(created_at)', { count: 'exact', head: true }).is('source_atc_id', null).not('atc_id', 'is', null).lt('runs.created_at', MIGRATION_0092_APPLIED_AT);
     if (missing.error) { throw new Error(`backfill check failed: ${missing.error.message}`); }
     expect(missing.count).toBe(0);
   });
