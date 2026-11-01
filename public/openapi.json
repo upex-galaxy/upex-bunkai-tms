@@ -3382,6 +3382,39 @@
           "cycle_seconds"
         ]
       },
+      "MilestoneAttachPlansResponse": {
+        "type": "object",
+        "properties": {
+          "milestone_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attached_count": {
+            "type": "integer",
+            "description": "Distinct plans attached by this call."
+          },
+          "plan_count": {
+            "type": "integer",
+            "description": "Plans attached to the milestone after this call (at most 50)."
+          }
+        },
+        "required": ["milestone_id", "attached_count", "plan_count"]
+      },
+      "MilestoneAttachPlansBody": {
+        "type": "object",
+        "properties": {
+          "test_plan_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "description": "At least one Test Plan id from the milestone's own project. A repeated id is attached once."
+          }
+        },
+        "required": ["test_plan_ids"]
+      },
       "ModuleCreateResponse": {
         "type": "object",
         "properties": {
@@ -10931,6 +10964,214 @@
           },
           "404": {
             "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/milestones/{milestoneId}/plans/{testPlanId}": {
+      "delete": {
+        "tags": ["Milestones"],
+        "summary": "Detach a test plan from a milestone",
+        "description": "Member-only (role >= member), re-checked live server-side. Idempotent: detaching a plan that is not attached also answers 204. Detaching never changes the plan, its tests or its progress, and leaves the plan attached to any other milestone.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The project the milestone belongs to.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "testPlanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Detached, or was not attached."
+          },
+          "400": {
+            "description": "Malformed id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or the caller is a viewer (details.reason forbidden_role).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Milestone not found in this project (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/milestones/{milestoneId}/plans": {
+      "post": {
+        "tags": ["Milestones"],
+        "summary": "Attach test plans to a milestone",
+        "description": "Member-only (role >= member), re-checked live server-side. Every submitted plan must belong to the milestone's own project; a plan of another project, of another workspace or an unknown id are all rejected uniformly (422 plan_outside_project) with no id disclosed back. A plan may serve several milestones. A selection containing a plan already attached to this milestone is rejected WHOLE (409 milestone_plan_exists). A milestone holds at most 50 plans (422 milestone_plan_limit). Requires an `Idempotency-Key` header: a replay of the same key and body answers the stored 201, and the database unique constraint is an independent backstop. Readiness is derived on view: the milestone page reflects the change on its next load.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The project the milestone belongs to.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MilestoneAttachPlansBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Plans attached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneAttachPlansResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id, invalid JSON body or a missing Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or the caller is a viewer (details.reason forbidden_role).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Milestone not found in this project (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A selected plan is already attached (details.reason milestone_plan_exists), or the Idempotency-Key was reused with a different body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Empty test_plan_ids, a plan outside the milestone's project (plan_outside_project), or more than 50 plans (milestone_plan_limit).",
             "content": {
               "application/json": {
                 "schema": {
