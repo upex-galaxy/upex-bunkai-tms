@@ -206,7 +206,7 @@ Created 2026-07-11. `A ──> B` = A depends on B (hard, Jira `Dependencies`); 
 ```
 BK-201 Test Plans & Milestones:
   BK-202 Create plan ──> epic BK-24 (**gate SATISFIED** — children BK-27 `54749ba`, BK-28 `d4fb8e2`, BK-32 `2f509e4`, BK-33 `856a613` ALL merged + ancestor-verified; the epic's own `Planning` status is stale bookkeeping, same shape already ruled on for BK-211 and BK-48) ✅ **dev-done (2026-08-20)** — merged to staging via PR #188, merge `5fddd4c`, ancestor-verified; migration `0073_test_plans` applied live ─┐   BK-205 Create milestone ──> (free) ✅ dev-done (2026-08-05) — PR #132, merge `5054716`, ancestor-verified
-  BK-203 Add/remove tests ──> BK-202 ✅ — **UNBLOCKED 2026-08-20** (mockup ✅ `plan-detail.html`) │   BK-206 Assign plans ──> BK-205 ✅, BK-204 (still blocked — BK-204 has no commit on staging)
+  BK-203 Add/remove tests ──> BK-202 ✅ — **UNBLOCKED 2026-08-20** (mockup ✅ `plan-detail.html`) │   BK-206 Assign plans ──> BK-205 ✅, BK-204 ✅ (PR #275) — built in PR #315 (migration `0112_milestone_plans`)
   BK-204 Track progress ──> BK-203, epic BK-30
   BK-207 Close plan ──> BK-202 ✅ — hard edge RELEASED 2026-08-20; still soft-gated on BK-204 (no commit on staging)  ··> BK-204
 
