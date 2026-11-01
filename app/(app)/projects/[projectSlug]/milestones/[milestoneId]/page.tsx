@@ -1,7 +1,8 @@
 import type { MilestoneDetail } from '@components/milestones/MilestoneDetailView';
 import { MilestoneDetailView } from '@components/milestones/MilestoneDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
-import { resolveActivityActors } from '@lib/supabase/rpc';
+import { overdueInfo, parseMilestonesReadiness } from '@lib/milestones/readiness-view';
+import { milestonesReadiness, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -11,6 +12,11 @@ interface PageProps {
   params: Promise<{ projectSlug: string, milestoneId: string }>
 }
 
+// BK-206 — the page also reads the milestone's readiness (one
+// `bunkai_milestones_readiness` call on the caller's own client), evaluates the
+// overdue predicate HERE on the server UTC date (never in the browser, D7), and
+// reads the project's open test plans for the Attach-plans picker (member+ only).
+//
 // BK-205 — read-only Milestone detail page. Milestones are project-scoped;
 // the read is keyed by `milestoneId` + RLS (any workspace member of the
 // milestone's project), `projectSlug` is the route's display/back-link
@@ -39,7 +45,7 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
 
   const { data: row, error } = await supabase
     .from('milestones')
-    .select('id, name, target_date, description, created_by')
+    .select('id, project_id, name, target_date, description, created_by')
     .eq('id', milestoneId)
     .maybeSingle();
   if (error || !row) { notFound(); }
@@ -64,8 +70,27 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
       ?.email ?? '';
   }
 
+  // A failed read leaves readiness null: the card says "unavailable" and no overdue
+  // state is claimed.
+  const { data: readinessData, error: readinessError } = await milestonesReadiness(supabase, { milestoneIds: [row.id] });
+  const readiness = readinessError ? null : (parseMilestonesReadiness(readinessData).get(row.id) ?? null);
+  const overdue = readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }) : null;
+
+  let attachablePlans: { id: string, name: string }[] = [];
+  if (canEdit) {
+    const { data: openPlans } = await supabase
+      .from('test_plans')
+      .select('id, name')
+      .eq('project_id', row.project_id)
+      .eq('status', 'open')
+      .order('name', { ascending: true })
+      .order('id', { ascending: true });
+    attachablePlans = openPlans ?? [];
+  }
+
   const milestone: MilestoneDetail = {
     id: row.id,
+    projectId: row.project_id,
     projectSlug,
     name: row.name,
     targetDate: row.target_date,
@@ -73,5 +98,13 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
     creatorLabel,
   };
 
-  return <MilestoneDetailView milestone={milestone} canEdit={canEdit} />;
+  return (
+    <MilestoneDetailView
+      milestone={milestone}
+      canEdit={canEdit}
+      readiness={readiness}
+      overdue={overdue}
+      attachablePlans={attachablePlans}
+    />
+  );
 }
