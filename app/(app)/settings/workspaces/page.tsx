@@ -1,6 +1,7 @@
 import { WorkspacesList, WorkspacesListSkeleton } from '@components/settings/WorkspacesList';
-import { buildWorkspaceRows, countActiveMembersByWorkspace, countActiveOwnersByWorkspace } from '@lib/account/workspaces';
+import { buildWorkspaceRows, countActiveMembersByWorkspace, countActiveOwnersByWorkspace, selectInIdBatches } from '@lib/account/workspaces';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { fetchAllPages } from '@lib/atcs/export-query';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -63,17 +64,19 @@ async function WorkspacesSection({ userId, activeWorkspaceId }: { userId: string
   try {
     const supabase = await createClient();
 
-    const { data: memberships, error: membershipsError } = await supabase
+    // BK-1122: drained past PostgREST's 1000-row cap, which would otherwise
+    // truncate a caller in that many workspaces with an HTTP 200 and no
+    // error. `workspace_id` breaks `joined_at` ties so the pages are stable.
+    const memberships = await fetchAllPages<{ workspace_id: string, role: string }>(async (offset, limit) => supabase
       .from('workspace_members')
       .select('workspace_id, role')
       .eq('user_id', userId)
       .eq('status', 'active')
-      .order('joined_at', { ascending: true });
-    if (membershipsError) {
-      throw membershipsError;
-    }
+      .order('joined_at', { ascending: true })
+      .order('workspace_id', { ascending: true })
+      .range(offset, offset + limit - 1));
 
-    const workspaceIds = (memberships ?? []).map(m => m.workspace_id);
+    const workspaceIds = memberships.map(m => m.workspace_id);
 
     // Active-member count spans every member of the workspace, not just rows
     // the caller's own RLS grants them, so this aggregate deliberately goes
@@ -82,32 +85,21 @@ async function WorkspacesSection({ userId, activeWorkspaceId }: { userId: string
     // already belongs to. The owner-count query (BK-90 Slice B, Decision 1)
     // is the same shape, narrowed to `role='owner'`, feeding `isSoleOwner`'s
     // count-based lock-UI gate.
-    const [
-      { data: workspaceRows, error: workspacesError },
-      { data: memberCountRows, error: countError },
-      { data: ownerCountRows, error: ownerCountError },
-    ] = workspaceIds.length > 0
-      ? await Promise.all([
-          supabase.from('workspaces').select('id, slug, name').in('id', workspaceIds),
-          createAdminClient().from('workspace_members').select('workspace_id').eq('status', 'active').in('workspace_id', workspaceIds),
-          createAdminClient().from('workspace_members').select('workspace_id').eq('status', 'active').eq('role', 'owner').in('workspace_id', workspaceIds),
-        ])
-      : [{ data: [], error: null }, { data: [], error: null }, { data: [], error: null }];
-    if (workspacesError) {
-      throw workspacesError;
-    }
-    if (countError) {
-      throw countError;
-    }
-    if (ownerCountError) {
-      throw ownerCountError;
-    }
+    // BK-1122: every `.in()` over the membership ids goes in batches
+    // (`selectInIdBatches`), since one id list per request grows past the
+    // gateway's URL limit for a caller in hundreds of workspaces.
+    const admin = createAdminClient();
+    const [workspaceRows, memberCountRows, ownerCountRows] = await Promise.all([
+      selectInIdBatches(workspaceIds, async batch => supabase.from('workspaces').select('id, slug, name').in('id', batch)),
+      selectInIdBatches(workspaceIds, async batch => admin.from('workspace_members').select('workspace_id').eq('status', 'active').in('workspace_id', batch)),
+      selectInIdBatches(workspaceIds, async batch => admin.from('workspace_members').select('workspace_id').eq('status', 'active').eq('role', 'owner').in('workspace_id', batch)),
+    ]);
 
     const rows = buildWorkspaceRows({
-      memberships: memberships ?? [],
-      workspaces: workspaceRows ?? [],
-      memberCounts: countActiveMembersByWorkspace(memberCountRows ?? []),
-      ownerCounts: countActiveOwnersByWorkspace(ownerCountRows ?? []),
+      memberships,
+      workspaces: workspaceRows,
+      memberCounts: countActiveMembersByWorkspace(memberCountRows),
+      ownerCounts: countActiveOwnersByWorkspace(ownerCountRows),
       activeWorkspaceId,
     });
 

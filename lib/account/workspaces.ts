@@ -3,7 +3,9 @@
 // this file is what makes that page's transform logic unit-testable without
 // a live DB (TC-AC2/6/7).
 
+import type { PageResult } from '@lib/atcs/export-query';
 import type { MemberRole } from '@lib/types';
+import { batchIds } from '@lib/projects/workbench-tree-query';
 
 export interface WorkspaceMembershipRow {
   workspace_id: string
@@ -90,6 +92,28 @@ export function buildWorkspaceRows({ memberships, workspaces, memberCounts, owne
       // regardless of the owner-count map.
       isSoleOwner: role === 'owner' && ownerCounts[membership.workspace_id] === 1,
     });
+  }
+  return rows;
+}
+
+// BK-1122 — the Settings reads filter by the caller's membership ids with
+// `.in()`, and PostgREST puts that list in the GET query string. Past ~640
+// uuids the gateway rejects the request (HTTP 400 "Bad Request", measured
+// against this project), so a caller in hundreds of workspaces got the error
+// state instead of the list. The ids are sent in batches of 100, the same
+// precedent as `lib/projects/workbench-tree-query.ts`. Any failed batch
+// throws: a partial workspace list is worse than the error state.
+export async function selectInIdBatches<T>(
+  ids: string[],
+  fetchBatch: (batch: string[]) => PromiseLike<PageResult<T>>,
+): Promise<T[]> {
+  const results = await Promise.all(batchIds(ids).map(fetchBatch));
+  const rows: T[] = [];
+  for (const { data, error } of results) {
+    if (error) {
+      throw new Error(error.message);
+    }
+    rows.push(...(data ?? []));
   }
   return rows;
 }

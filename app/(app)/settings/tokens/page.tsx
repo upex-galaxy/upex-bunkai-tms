@@ -1,5 +1,6 @@
 import type { TokenRow, WorkspaceOption } from '@lib/tokens/view-state';
 import { TokensList, TokensListSkeleton } from '@components/settings/TokensList';
+import { selectInIdBatches } from '@lib/account/workspaces';
 import { createClient } from '@lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
@@ -120,15 +121,12 @@ async function loadWorkspaceOptions(userId: string): Promise<WorkspaceOption[]> 
       return [];
     }
 
-    const { data: workspaces, error: workspacesError } = await supabase
+    // BK-1122: batched, since one id list per request grows past the
+    // gateway's URL limit for a caller in hundreds of workspaces.
+    return await selectInIdBatches(workspaceIds, async batch => supabase
       .from('workspaces')
       .select('id, slug, name')
-      .in('id', workspaceIds);
-    if (workspacesError) {
-      throw workspacesError;
-    }
-
-    return workspaces ?? [];
+      .in('id', batch));
   }
   catch {
     return [];

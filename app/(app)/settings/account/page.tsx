@@ -1,8 +1,9 @@
 import type { MemberRole } from '@lib/types';
 import { IdentityCard } from '@components/settings/IdentityCard';
 import { WorkspacesList, WorkspacesListSkeleton } from '@components/settings/WorkspacesList';
-import { buildWorkspaceRows, countActiveMembersByWorkspace } from '@lib/account/workspaces';
+import { buildWorkspaceRows, countActiveMembersByWorkspace, selectInIdBatches } from '@lib/account/workspaces';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { fetchAllPages } from '@lib/atcs/export-query';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -108,17 +109,18 @@ async function WorkspacesSection({ userId, activeWorkspaceId }: { userId: string
   try {
     const supabase = await createClient();
 
-    const { data: memberships, error: membershipsError } = await supabase
+    // BK-1122: drained past PostgREST's 1000-row cap (same as
+    // `settings/workspaces/page.tsx`); `workspace_id` breaks `joined_at` ties.
+    const memberships = await fetchAllPages<{ workspace_id: string, role: string }>(async (offset, limit) => supabase
       .from('workspace_members')
       .select('workspace_id, role')
       .eq('user_id', userId)
       .eq('status', 'active')
-      .order('joined_at', { ascending: true });
-    if (membershipsError) {
-      throw membershipsError;
-    }
+      .order('joined_at', { ascending: true })
+      .order('workspace_id', { ascending: true })
+      .range(offset, offset + limit - 1));
 
-    const workspaceIds = (memberships ?? []).map(m => m.workspace_id);
+    const workspaceIds = memberships.map(m => m.workspace_id);
 
     // The active-member count spans every member of the workspace, not just
     // rows the caller's own RLS grants them (workspace_members RLS only
@@ -126,23 +128,19 @@ async function WorkspacesSection({ userId, activeWorkspaceId }: { userId: string
     // aggregate deliberately goes through the admin client, same as the
     // identity lookup above. It only ever returns a workspace_id (no PII),
     // scoped to workspaces the caller already belongs to.
-    const [{ data: workspaceRows, error: workspacesError }, { data: memberCountRows, error: countError }] = workspaceIds.length > 0
-      ? await Promise.all([
-          supabase.from('workspaces').select('id, slug, name').in('id', workspaceIds),
-          createAdminClient().from('workspace_members').select('workspace_id').eq('status', 'active').in('workspace_id', workspaceIds),
-        ])
-      : [{ data: [], error: null }, { data: [], error: null }];
-    if (workspacesError) {
-      throw workspacesError;
-    }
-    if (countError) {
-      throw countError;
-    }
+    // BK-1122: the `.in()` reads go in batches (`selectInIdBatches`), since
+    // one id list per request grows past the gateway's URL limit for a caller
+    // in hundreds of workspaces.
+    const admin = createAdminClient();
+    const [workspaceRows, memberCountRows] = await Promise.all([
+      selectInIdBatches(workspaceIds, async batch => supabase.from('workspaces').select('id, slug, name').in('id', batch)),
+      selectInIdBatches(workspaceIds, async batch => admin.from('workspace_members').select('workspace_id').eq('status', 'active').in('workspace_id', batch)),
+    ]);
 
     const rows = buildWorkspaceRows({
-      memberships: memberships ?? [],
-      workspaces: workspaceRows ?? [],
-      memberCounts: countActiveMembersByWorkspace(memberCountRows ?? []),
+      memberships,
+      workspaces: workspaceRows,
+      memberCounts: countActiveMembersByWorkspace(memberCountRows),
       activeWorkspaceId,
     });
 
