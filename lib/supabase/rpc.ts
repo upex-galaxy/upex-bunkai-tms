@@ -574,6 +574,23 @@ export async function reportProjectCoverage(supabase: Client, args: ReportProjec
   });
 }
 
+// BK-1169 — the workspace-wide coverage kpis in ONE call (0109): the same
+// per-AC states as reportProjectCoverage, summed over every project of the
+// workspace inside Postgres. Same explicit-actor contract; a missing, foreign,
+// deleted or non-member workspace raises the non-disclosing P0002. Returns
+// `{ kpis, project_count }`.
+export interface ReportWorkspaceCoverageArgs {
+  actorUserId: string
+  workspaceId: string
+}
+
+export async function reportWorkspaceCoverage(supabase: Client, args: ReportWorkspaceCoverageArgs) {
+  return supabase.rpc('bunkai_report_workspace_coverage', {
+    p_actor_user_id: args.actorUserId,
+    p_workspace_id: args.workspaceId,
+  });
+}
+
 // BK-47 — read a Project's per-user-story recovery-cycle report (first
 // failing terminal run -> first subsequent all-passing terminal run). Same
 // explicit-actor contract as reportProjectRuns/reportProjectCoverage; the

@@ -49,3 +49,12 @@ only; zero schema impact — remote objects already matched the repo end-state):
 
 Post-repair state: 22 ledger rows, 1:1 with `0001`–`0022` repo files, all named
 by basename.
+
+### 2026-11-01 — BK-1169: 0109 re-apply collapsed to one row
+
+`0109_workspace_coverage_report.sql` was applied, then amended in the same PR
+(an explicit `qa_inspector_ro` revoke the 0085 default privilege made
+necessary) and re-applied whole, minting a second row with the same name. The
+first row (`20261101112125`, the pre-amendment content) was deleted; the
+surviving row (`20261101112228`) holds the final file content byte for byte
+(md5 match), and the live `prosrc` matches the file's function body.

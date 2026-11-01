@@ -1,12 +1,7 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { clampedPercent } from '@lib/coverage/clamped-percent';
-import {
-  HOME_COVERAGE_CACHE_TTL_MS,
-  HOME_COVERAGE_MAX_PROJECTS,
-  HOME_COVERAGE_PROJECT_CONCURRENCY,
-} from '@lib/home/constants';
-import { reportProjectCoverage } from '@lib/supabase/rpc';
+import { reportWorkspaceCoverage } from '@lib/supabase/rpc';
 
 // BK-259 — the workspace-level rollup behind Home's "Coverage" stat card: how
 // much of the workspace's acceptance criteria actually has test coverage, and
@@ -33,7 +28,11 @@ import { reportProjectCoverage } from '@lib/supabase/rpc';
 // different definition of "covered", and two coverage percentages that disagree
 // about the same product is worse than one: a lead who reads 78% on Home and
 // 71% on the project's Metrics screen has no way to tell which is the bug. So
-// this module only ever ADDS UP what that RPC already decided.
+// this module only ever ADDS UP what that RPC already decided. Since BK-1169
+// the adding up happens inside Postgres: `bunkai_report_workspace_coverage`
+// (0109) runs that RPC's own CTE chain over every project of the workspace in
+// one statement and returns the summed kpis, equal by construction to the sum
+// of the per-project calls (see the 0109 header).
 //
 // THE ROLL-UP RULE — AC-WEIGHTED, NOT A MEAN OF PROJECT PERCENTAGES
 // -----------------------------------------------------------------
@@ -97,50 +96,25 @@ import { reportProjectCoverage } from '@lib/supabase/rpc';
 //
 // COST SHAPE — read this before adding anything to Home
 // ----------------------------------------------------
-// One RPC call per project in the workspace, issued at most
-// `HOME_COVERAGE_PROJECT_CONCURRENCY` at a time. This is the honest price of
-// reusing the shipped per-project computation instead of writing a second one:
-// a workspace-wide coverage figure has to visit every acceptance criterion in
-// the workspace, and the RPC is the only thing entitled to decide what each
-// one's state is.
+// ONE RPC call per render, whatever the number of projects (BK-1169). BK-259
+// first shipped this as one `bunkai_report_project_coverage` call per project,
+// at most four at a time, behind a 60-project ceiling that failed to the error
+// state. "QA Automation Workspace" grew to 1171 projects on staging, tripped
+// that ceiling on every request (GET /api/v1/workspaces/{id}/coverage
+// answered 500), and could not simply have the ceiling raised: each call paid
+// its own pass over `run_atcs` (~200 ms), so a full sweep was about a minute.
+// The workspace RPC computes `atc_real_status` once for the workspace (82 ms
+// for those 1171 projects), so the ceiling, the worker pool and the
+// stampede-damping memo that existed only to bound the per-project fan-out are
+// gone with it.
 //
-// Three consequences worth naming rather than discovering later:
-//   * The per-project payload carries `modules` and `no_coverage` arrays this
-//     rollup discards — it needs the `kpis` object only. Nothing on this page
-//     renders per-AC gaps; the project Metrics screen owns that. It cannot be
-//     trimmed from here either: PostgREST cannot project into a jsonb-returning
-//     function, so the whole payload crosses the wire whatever we ask for.
-//   * `bunkai_report_project_coverage`'s `atc_real_status` CTE (0050) is not
-//     project-scoped, so each call costs one pass over `run_atcs`. That cost is
-//     the existing RPC's, not this rollup's, and it is not fixable from here —
-//     narrowing it means redefining a shipped, in-QA function.
-//   * Therefore total work per uncached render grows with (projects × run
-//     history), on the app's LANDING page, for every member on every sign-in.
-//     Concurrency caps how much of that runs at once; it caps neither how often
-//     it runs nor how large it can get. Two bounds below do:
-//       - a short-TTL memo per workspace (`HOME_COVERAGE_CACHE_TTL_MS`), so
-//         repeat loads and simultaneous members share one sweep;
-//       - a hard project ceiling (`HOME_COVERAGE_MAX_PROJECTS`) that fails to
-//         the card's error state rather than printing a partial percentage.
-//     If a real workspace ever reaches that ceiling, the fix is NOT a bigger
-//     number: it is a `bunkai_report_workspace_coverage` RPC that computes
-//     `atc_real_status` ONCE for the workspace and returns just the kpi counts.
-//     That would reuse this same CTE chain rather than re-derive it, so it does
-//     not create the second definition of "covered" this module exists to
-//     avoid — it extracts the existing one. Out of scope here (BK-259 ships no
-//     schema change); flagged so the next person has the design, not a puzzle.
-// No index is added for this story: this module issues no ordering, no
-// filtering and no scan of its own beyond the workspace's project list, which
-// `lib/home/recent-projects.ts` already reads the same way.
-//
-// RLS + non-disclosure: the project list is read through the CALLER's own
-// client, so `projects_select_workspace_member` (0002) scopes it — a forged
-// `bk_active_ws` cookie pointing at someone else's workspace yields zero
-// projects, therefore zero acceptance criteria, therefore the same answer an
-// empty workspace gets, never a leak. Each RPC call then re-checks the actor's
-// active membership on that project's workspace on its own account
-// (`bunkai_assert_actor_can_read_workspace`), so the isolation does not depend
-// on this module getting the project list right.
+// RLS + non-disclosure: the RPC binds the actor to `auth.uid()` and re-checks
+// active membership of a live workspace
+// (`bunkai_assert_actor_can_read_workspace`), raising the same P0002 for a
+// missing, foreign, deleted or non-member workspace. That P0002 is answered
+// below exactly as an empty workspace is (zero projects, zero acceptance
+// criteria), so a forged `bk_active_ws` cookie or an arbitrary id on the API
+// path learns nothing, as before.
 
 export interface WorkspaceCoverageRollup {
   // Every non-archived acceptance criterion under a non-archived user story in
@@ -193,7 +167,7 @@ export function coveragePercent(numerator: number, denominator: number): number 
   return clampedPercent(numerator, denominator);
 }
 
-// The `kpis` object of `bunkai_report_project_coverage`'s payload. Declared
+// The `kpis` object of `bunkai_report_workspace_coverage`'s payload. Declared
 // locally and validated below rather than cast: the RPC returns `jsonb`, and a
 // shape that does not parse must fail the rollup instead of contributing a
 // silent zero to a percentage.
@@ -219,146 +193,32 @@ export async function summarizeWorkspaceCoverage(
   db: SupabaseClient<Database>,
   params: SummarizeWorkspaceCoverageParams,
 ): Promise<WorkspaceCoverageResult> {
-  const { data: projects, error: projectsError } = await db
-    .from('projects')
-    .select('id')
-    .eq('workspace_id', params.workspaceId);
+  const { data, error } = await reportWorkspaceCoverage(db, {
+    actorUserId: params.actorUserId,
+    workspaceId: params.workspaceId,
+  });
 
-  if (projectsError !== null) {
+  // Non-disclosure: a workspace the caller cannot read answers like an empty
+  // one. Any other error is a failed read, never a zeroed rollup.
+  if (error !== null) {
+    return error.code === 'P0002'
+      ? { ok: true, ...EMPTY_ROLLUP, projectCount: 0 }
+      : { ok: false };
+  }
+
+  const kpis = parseKpis(data);
+  const projectCount = readCount((data as { project_count?: unknown } | null)?.project_count);
+  if (kpis === null || projectCount === null) {
     return { ok: false };
   }
 
-  const projectIds = (projects ?? []).map(project => project.id);
-  if (projectIds.length === 0) {
-    return { ok: true, ...EMPTY_ROLLUP, projectCount: 0 };
-  }
-
-  // THE CACHE GATE IS THIS LINE, NOT THE LOOKUP BELOW.
-  //
-  // The project list above is read through the CALLER's own RLS-scoped client
-  // and is re-read on every request — it is never cached and never skipped.
-  // That ordering is what keeps a shared cache safe: `projects_select_workspace_member`
-  // (0002) returns rows only to members, so reaching this point at all proves
-  // the caller belongs to this workspace. A non-member (or someone whose
-  // membership was just revoked, or an API caller passing a workspace id that
-  // is not theirs — the route takes an arbitrary id from the path) gets an
-  // EMPTY list and returns above, without ever consulting or populating the
-  // cache.
-  //
-  // Caching on workspace id ALONE, ahead of that read, would have been a
-  // cross-tenant leak rather than an optimization: one member's sweep would
-  // populate an entry that `GET /api/v1/workspaces/{id}/coverage` would then
-  // serve to anybody who guessed the id, turning the endpoint's documented
-  // non-disclosure answer into a real coverage posture. Every member who DOES
-  // pass this gate sees the same workspace-level figures, so sharing the result
-  // among them discloses nothing they could not read themselves.
-  //
-  // The key carries the project id set, so adding or removing a project
-  // invalidates immediately instead of waiting out the TTL; only the coverage
-  // WITHIN an unchanged set of projects is allowed to be up to
-  // `HOME_COVERAGE_CACHE_TTL_MS` stale.
-  const cacheKey = `${params.workspaceId}:${[...projectIds].sort().join(',')}`;
-  const cached = readCachedRollup(cacheKey);
-  if (cached !== null) {
-    return { ok: true, ...cached };
-  }
-
-  // Refuse rather than approximate. A partial rollup would be a confident
-  // percentage over a denominator missing whole projects — see
-  // `HOME_COVERAGE_MAX_PROJECTS` for why that is worse than the error card.
-  if (projectIds.length > HOME_COVERAGE_MAX_PROJECTS) {
-    return { ok: false };
-  }
-
-  const perProject = await mapWithConcurrency(
-    projectIds,
-    HOME_COVERAGE_PROJECT_CONCURRENCY,
-    async (projectId) => {
-      const { data, error } = await reportProjectCoverage(db, {
-        actorUserId: params.actorUserId,
-        projectId,
-      });
-      if (error !== null) {
-        return null;
-      }
-      return parseKpis(data);
-    },
-  );
-
-  // One unreadable project fails the whole card. Summing the rest would print a
-  // percentage over a denominator that silently excludes a project's entire
-  // acceptance criteria — a confident figure about a workspace the reader
-  // cannot see all of, which is worse than an honest error state.
-  if (perProject.includes(null)) {
-    return { ok: false };
-  }
-
-  const totals = { ...EMPTY_ROLLUP };
-  for (const kpis of perProject) {
-    if (kpis === null) {
-      continue;
-    }
-    totals.acTotal += kpis.acTotal;
-    totals.acBound += kpis.acBound;
-    totals.acExecuted += kpis.acExecuted;
-    totals.modulesTotal += kpis.modulesTotal;
-    totals.modulesFullyCovered += kpis.modulesFullyCovered;
-  }
-
-  const rollup: WorkspaceCoverageRollup = {
-    ...totals,
-    acNotRun: totals.acBound - totals.acExecuted,
-    acUncovered: totals.acTotal - totals.acBound,
-    projectCount: projectIds.length,
+  return {
+    ok: true,
+    ...kpis,
+    acNotRun: kpis.acBound - kpis.acExecuted,
+    acUncovered: kpis.acTotal - kpis.acBound,
+    projectCount,
   };
-
-  // Only a COMPLETE rollup is ever cached. Every failure path above returns
-  // before here, so a transient RPC error cannot be pinned into the cache and
-  // replayed at everyone for a minute.
-  writeCachedRollup(cacheKey, rollup);
-
-  return { ok: true, ...rollup };
-}
-
-// An in-process, per-instance TTL memo of completed rollups. Deliberately NOT
-// Next's `unstable_cache`: that would have to close over the request-scoped
-// Supabase client, whose session refresh can reach for cookies — a dynamic API
-// that throws inside a cache scope — and this repo has no data-cache layer to
-// follow the conventions of. A plain Map is something the next reader can hold
-// entirely in their head, and it needs no framework guarantees to be correct.
-//
-// Being per-instance is a real limit, stated rather than glossed: a cold
-// serverless instance always pays full price, and N instances mean up to N
-// sweeps per TTL instead of one. It still removes the case that actually hurt —
-// the same member reloading Home, and a team all landing on it at 9am, each
-// paying a full per-project sweep of a workspace whose coverage has not moved.
-// A shared cache (Redis, or the Data Cache once something else here needs one)
-// is the upgrade path; it would not change any of the logic above.
-const rollupCache = new Map<string, { expiresAt: number, value: WorkspaceCoverageRollup }>();
-
-function readCachedRollup(key: string): WorkspaceCoverageRollup | null {
-  const entry = rollupCache.get(key);
-  if (entry === undefined) {
-    return null;
-  }
-  if (entry.expiresAt <= Date.now()) {
-    rollupCache.delete(key);
-    return null;
-  }
-  return entry.value;
-}
-
-function writeCachedRollup(key: string, value: WorkspaceCoverageRollup): void {
-  const now = Date.now();
-  // Sweep on write. Without it the map would retain one entry per workspace
-  // (and per project-set) for the life of the instance — a slow leak on a
-  // long-lived server, since nothing else ever visits these keys again.
-  for (const [existingKey, entry] of rollupCache) {
-    if (entry.expiresAt <= now) {
-      rollupCache.delete(existingKey);
-    }
-  }
-  rollupCache.set(key, { expiresAt: now + HOME_COVERAGE_CACHE_TTL_MS, value });
 }
 
 // A missing key, a non-number, or a negative one is a broken read, not a zero.
@@ -401,34 +261,4 @@ function readCount(value: unknown): number | null {
     return null;
   }
   return value;
-}
-
-// A fixed-size worker pool. `Promise.all` over every project at once would fire
-// one heavyweight coverage RPC per project simultaneously from the app's
-// LANDING page — the shape most likely to turn one member's sign-in into a
-// connection-pool spike for everyone else's. Results keep input order; each
-// worker claims the next index, so a slow project delays only itself.
-async function mapWithConcurrency<In, Out>(
-  items: readonly In[],
-  concurrency: number,
-  run: (item: In) => Promise<Out>,
-): Promise<Out[]> {
-  const results = Array.from<Out>({ length: items.length });
-  let next = 0;
-
-  const worker = async (): Promise<void> => {
-    while (next < items.length) {
-      const index = next;
-      next += 1;
-      results[index] = await run(items[index]);
-    }
-  };
-
-  const workers: Promise<void>[] = [];
-  for (let started = 0; started < Math.min(concurrency, items.length); started += 1) {
-    workers.push(worker());
-  }
-  await Promise.all(workers);
-
-  return results;
 }

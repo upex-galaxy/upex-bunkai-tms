@@ -11,10 +11,11 @@ import { coveragePercent, summarizeWorkspaceCoverage } from '@lib/home/coverage'
 // This exists so the Home stat card's percentage is verifiable by API rather
 // than only by eye: the route and the Home server component call the SAME
 // `summarizeWorkspaceCoverage`, so what QA reads here is what the screen
-// renders. That function in turn adds up `bunkai_report_project_coverage` —
-// the same RPC behind `/api/v1/projects/{id}/coverage` — so this endpoint and
-// the per-project one can never disagree about whether a given acceptance
-// criterion is covered.
+// renders. That function calls `bunkai_report_workspace_coverage` (0109,
+// BK-1169), which applies the per-AC rules of `bunkai_report_project_coverage`
+// — the RPC behind `/api/v1/projects/{id}/coverage` — to every project in one
+// statement, so this endpoint and the per-project one can never disagree about
+// whether a given acceptance criterion is covered.
 //
 // THE ROLL-UP RULE, stated so the number is auditable: every acceptance
 // criterion in the workspace counts exactly once, regardless of which project
@@ -35,11 +36,11 @@ import { coveragePercent, summarizeWorkspaceCoverage } from '@lib/home/coverage'
 //
 // Non-disclosure: a foreign, nonexistent, or lost-membership workspace id
 // collapses into the SAME `200` — zero projects, zero acceptance criteria, null
-// percentages — that a brand-new empty workspace returns. The project list is
-// read through the caller's own RLS-scoped client (`getAuth(ctx).db`, never
-// `createAdminClient()`) and each per-project RPC re-checks the actor's
-// membership on its own account, so the isolation is Postgres's, not this
-// handler's.
+// percentages — that a brand-new empty workspace returns. The RPC is called
+// through the caller's own client (`getAuth(ctx).db`, never
+// `createAdminClient()`), binds the actor to `auth.uid()` and re-checks active
+// membership itself, raising P0002 that `summarizeWorkspaceCoverage` maps to
+// the empty answer, so the isolation is Postgres's, not this handler's.
 
 export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const workspaceId = extractWorkspaceId(request);
