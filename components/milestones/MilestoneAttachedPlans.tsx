@@ -20,6 +20,8 @@ import { useState } from 'react';
 // Detach is a per-row icon with the same inline Yes/No confirm the plan's own
 // member-tests table uses; it is structurally absent for a viewer (AC 4.8, 5.3).
 // Detaching never touches the plan: the row simply leaves this milestone.
+// The empty card keeps BK-205's `milestone-detail-plans-empty` test id (existing ids
+// are never renamed).
 
 interface MilestoneAttachedPlansProps {
   projectId: string
@@ -72,7 +74,7 @@ export function MilestoneAttachedPlans({ projectId, projectSlug, milestoneId, pl
         ? (
             <Card>
               <div
-                data-testid="milestone-attached-empty"
+                data-testid="milestone-detail-plans-empty"
                 className="flex flex-col items-center gap-2 px-4 py-8 pt-4 text-center"
               >
                 <Layers size={18} className="text-fg-3" />
