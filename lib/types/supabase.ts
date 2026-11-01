@@ -2031,6 +2031,7 @@ export interface Database {
         Args: { p_module_id: string }
         Returns: Json
       }
+      bunkai_archive_user_story: { Args: { p_story_id: string }, Returns: Json }
       bunkai_assert_actor_can_read_workspace: {
         Args: { p_actor_user_id: string, p_workspace_id: string }
         Returns: undefined

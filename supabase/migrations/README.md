@@ -58,3 +58,13 @@ necessary) and re-applied whole, minting a second row with the same name. The
 first row (`20261101112125`, the pre-amendment content) was deleted; the
 surviving row (`20261101112228`) holds the final file content byte for byte
 (md5 match), and the live `prosrc` matches the file's function body.
+
+### 2026-11-01 — BK-1555: 0111 re-apply collapsed to one row
+
+`0111_user_story_archive_cascade.sql` was applied, then amended in the same PR
+(the project lookup now goes through the story's module, because
+`user_stories.project_id` is nullable) and re-applied whole, minting a second
+row with the same name. The first row (`20261101200302`, the pre-amendment
+content) was deleted; the surviving row (`20261101200450`) holds the final file
+content byte for byte (md5 match), and the live `prosrc` matches the file's
+function body.
