@@ -51,3 +51,40 @@ export function mapMilestoneRpcError(error: { code?: string, message: string }):
       throw new ApiError('internal_error', error.message);
   }
 }
+
+// BK-206 — map a bunkai_attach_plans_to_milestone / bunkai_detach_plan_from_milestone
+// error (0112_milestone_plans.sql) to the API envelope. Same `: never` contract as the
+// mapper above. 45505 deliberately carries no plan id: a plan outside the project, in
+// another workspace or unknown is one indistinguishable answer (non-disclosure).
+export function mapMilestonePlanRpcError(error: { code?: string, message: string }): never {
+  switch (error.code) {
+    case '42501':
+      throw new ApiError('forbidden', 'Attaching or detaching test plans requires the member role or higher.', {
+        details: { reason: 'forbidden_role' },
+      });
+    case 'P0002':
+      throw new ApiError('not_found', 'Milestone not found.', {
+        details: { reason: 'not_found' },
+      });
+    case '45504':
+    case '23505':
+      throw new ApiError('conflict', 'A selected test plan is already attached to this milestone.', {
+        details: { reason: 'milestone_plan_exists' },
+      });
+    case '45505':
+      throw new ApiError('validation_failed', 'Only test plans of this milestone\'s project can be attached.', {
+        details: { reason: 'plan_outside_project' },
+      });
+    case '45506':
+      throw new ApiError('validation_failed', 'A milestone can have at most 50 attached test plans.', {
+        details: { reason: 'milestone_plan_limit' },
+      });
+    case '22023':
+      // Same answer as the route's Zod guard for an empty selection (422).
+      throw new ApiError('validation_failed', 'Select at least one test plan to attach.', {
+        details: { reason: 'plan_selection_empty' },
+      });
+    default:
+      throw new ApiError('internal_error', error.message);
+  }
+}

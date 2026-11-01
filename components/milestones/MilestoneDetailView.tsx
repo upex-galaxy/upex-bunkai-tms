@@ -1,24 +1,36 @@
 'use client';
 
+import type { AttachablePlan } from '@components/milestones/AttachPlansDialog';
+import type { MilestoneReadiness, OverdueInfo } from '@lib/milestones/readiness-view';
+import { AttachPlansDialog } from '@components/milestones/AttachPlansDialog';
 import { EditMilestoneForm } from '@components/milestones/EditMilestoneForm';
+import { MilestoneAttachedPlans } from '@components/milestones/MilestoneAttachedPlans';
+import { MilestoneOverdueBadge } from '@components/milestones/MilestoneOverdueBadge';
+import { MilestoneReadinessCard, MilestoneReadinessUnavailable } from '@components/milestones/MilestoneReadinessCard';
 import { Button } from '@components/ui/button';
 import { Card, CardContent, CardHeader } from '@components/ui/card';
 import { computeCountdown } from '@lib/milestones/countdown';
-import { Layers, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { overdueNoteText } from '@lib/milestones/readiness-view';
+import { AlertTriangle, Pencil, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
 
-// BK-205 — the Milestone detail view (`/projects/[projectSlug]/milestones/
-// [milestoneId]`). Ships ONLY the milestone's own identity — name, target
-// date, countdown, description, creator — over an EMPTY plans area whose
-// empty state names the sibling capability. This is a RATIFIED DEPARTURE
-// from the mockup (`milestones-board.html` renders BK-205+BK-206 as one
-// combined screen) — see `.context/design/master-design-plan.md` §5 D25. The
-// Attach-plans control, readiness card/bar, per-plan breakdown row and
-// overdue block are ABSENT, not disabled: none of them has a data source yet
-// (`milestone_plans` does not exist; BK-202/BK-206 are both Backlog).
+// BK-205 shipped the Milestone detail view (`/projects/[projectSlug]/milestones/
+// [milestoneId]`) with the milestone's own identity over an empty plans area
+// (master-design-plan §5 D25). BK-206 restores the mockup's composition on top of it
+// without altering what BK-205 ships: the Attach-plans control (member+), the overdue
+// badge BESIDE the untouched neutral countdown chip plus the structural overdue note,
+// the readiness card and the attached-plans table. Ratified departures from the
+// mockup are recorded in §5 (BK-206 entry).
+//
+// Readiness and the overdue state are computed on the server (one
+// `bunkai_milestones_readiness` read, one overdue predicate on the server UTC date)
+// and arrive as props; this view never recomputes them. After an attach or a detach it
+// refreshes the route, so readiness is recalculated on view (D1).
 
 export interface MilestoneDetail {
   id: string
+  projectId: string
   projectSlug: string
   name: string
   targetDate: string
@@ -31,13 +43,31 @@ interface MilestoneDetailViewProps {
   // Member+ gate — a viewer sees the detail read-only, the Edit action
   // structurally absent (business-rules.md).
   canEdit: boolean
+  // null when the readiness read failed: the card says so and no overdue state is
+  // claimed, rather than guessing one.
+  readiness: MilestoneReadiness | null
+  overdue: OverdueInfo | null
+  // The project's open test plans, for the Attach-plans picker (member+ only).
+  attachablePlans: AttachablePlan[]
+  // The server's UTC date: the countdown chip is computed from the same day as the
+  // overdue badge, never from the browser's clock (D7, no hydration drift).
+  todayIso: string
 }
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function MilestoneDetailView({ milestone, canEdit }: MilestoneDetailViewProps) {
+export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, attachablePlans, todayIso }: MilestoneDetailViewProps) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const countdown = computeCountdown(milestone.targetDate);
+  const [picking, setPicking] = useState(false);
+  const countdown = computeCountdown(milestone.targetDate, todayIso);
+  // Attaching needs the current attachments to mark them in the picker; when the
+  // readiness read failed, the Attach control is left out rather than offering
+  // plans that may already be attached.
+  const canAttach = canEdit && readiness !== null;
+  const attachedPlanIds = useMemo(() => new Set((readiness?.plans ?? []).map(plan => plan.plan_id)), [readiness]);
+  const note = overdue ? overdueNoteText({ days: overdue.days, readinessPct: readiness?.passed_pct ?? null, planCount: readiness?.plan_count ?? 0 }) : null;
+  const refresh = () => router.refresh();
 
   return (
     <div data-testid="milestone-detail-view" className="flex flex-1 flex-col overflow-hidden">
@@ -57,23 +87,40 @@ export function MilestoneDetailView({ milestone, canEdit }: MilestoneDetailViewP
                   >
                     {countdown.label}
                   </span>
+                  {overdue && <MilestoneOverdueBadge label={overdue.label} testId="milestone-detail-overdue-badge" />}
                 </div>
               </div>
-              {canEdit && !editing && (
-                <Button
-                  type="button"
-                  data-testid="milestone-detail-edit-button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditing(true)}
-                >
-                  <Pencil size={13} />
-                  Edit
-                </Button>
+              {canEdit && (
+                <div className="flex items-center gap-1.5">
+                  {!editing && (
+                    <Button
+                      type="button"
+                      data-testid="milestone-detail-edit-button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditing(true)}
+                    >
+                      <Pencil size={13} />
+                      Edit
+                    </Button>
+                  )}
+                  {canAttach && (
+                    <Button
+                      type="button"
+                      data-testid="milestone-detail-attach-button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setPicking(true)}
+                    >
+                      <Plus size={13} />
+                      Attach plans
+                    </Button>
+                  )}
+                </div>
               )}
               {!canEdit && (
                 <span data-testid="milestone-detail-viewer-note" className="text-xs text-fg-3">
-                  Editing requires the member role or higher.
+                  Editing and attaching plans require the member role or higher.
                 </span>
               )}
             </CardHeader>
@@ -102,23 +149,55 @@ export function MilestoneDetailView({ milestone, canEdit }: MilestoneDetailViewP
             />
           )}
 
-          {/* Empty plans area — BK-205 ships no Attach-plans control, no
-              readiness card, no attached-plans table (§5 D25). The empty
-              state names the sibling capability rather than promising a
-              figure this story cannot compute. */}
-          <Card>
-            <CardContent
-              data-testid="milestone-detail-plans-empty"
-              className="flex flex-col items-center gap-2 px-4 py-8 pt-4 text-center"
+          {overdue && note && (
+            <div
+              data-testid="milestone-detail-overdue-note"
+              role="note"
+              className="flex items-start gap-3 rounded-3 border border-stroke-2 bg-signal-fail-bg p-3 text-sm text-fg-1 shadow-card"
             >
-              <Layers size={18} className="text-fg-3" />
-              <span className="text-md font-semibold text-fg-1">No test plans attached</span>
-              <span className="max-w-[46ch] text-sm text-fg-3">
-                Attaching test plans and tracking readiness against this milestone arrives with a
-                later capability.
+              <AlertTriangle size={16} className="mt-px shrink-0 text-signal-fail" aria-hidden="true" />
+              <span>
+                <b className="font-semibold text-fg-0">This milestone is overdue.</b>
+                {' '}
+                Its target date
+                {' '}
+                <span className="font-mono">{milestone.targetDate}</span>
+                {' '}
+                {note.passed}
+                {' and '}
+                {note.readiness}
+                {' — '}
+                {note.action}
               </span>
-            </CardContent>
-          </Card>
+            </div>
+          )}
+
+          {readiness ? <MilestoneReadinessCard readiness={readiness} /> : <MilestoneReadinessUnavailable />}
+
+          {readiness && (
+            <MilestoneAttachedPlans
+              projectId={milestone.projectId}
+              projectSlug={milestone.projectSlug}
+              milestoneId={milestone.id}
+              plans={readiness.plans}
+              canEdit={canEdit}
+              onAttach={() => setPicking(true)}
+              onDetached={refresh}
+            />
+          )}
+
+          {canAttach && (
+            <AttachPlansDialog
+              open={picking}
+              onClose={() => setPicking(false)}
+              projectId={milestone.projectId}
+              milestoneId={milestone.id}
+              milestoneName={milestone.name}
+              plans={attachablePlans}
+              attachedPlanIds={attachedPlanIds}
+              onAttached={refresh}
+            />
+          )}
         </div>
       </div>
     </div>

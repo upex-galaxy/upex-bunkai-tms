@@ -68,3 +68,14 @@ row with the same name. The first row (`20261101200302`, the pre-amendment
 content) was deleted; the surviving row (`20261101200450`) holds the final file
 content byte for byte (md5 match), and the live `prosrc` matches the file's
 function body.
+
+### 2026-11-01 — BK-206: 0112 re-apply collapsed to one row
+
+`0112_milestone_plans.sql` was applied, then amended in the same PR (the
+readiness function's `frozen` flag is now `coalesce(..., false)`: a closed plan
+with a NULL snapshot made it NULL and dropped the plan from both the frozen and
+the live branch, caught by the DB-integration suite) and re-applied whole,
+minting a second row with the same name. The first row (`20261101213717`, the
+pre-amendment content) was deleted; the surviving row (`20261101214059`) holds
+the final file content byte for byte (md5 match), and the live `prosrc` of all
+three functions matches the file's function bodies.
