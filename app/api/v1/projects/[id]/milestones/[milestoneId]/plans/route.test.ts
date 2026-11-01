@@ -163,7 +163,7 @@ describeOrSkip('BK-206 — attach / detach plans route wiring', () => {
     if (failures.length > 0) {
       throw new Error(`[milestone plans route] teardown left fixtures behind: ${failures.join('; ')}`);
     }
-  });
+  }, 60000);
 
   async function setup() {
     const db = service();
@@ -196,15 +196,19 @@ describeOrSkip('BK-206 — attach / detach plans route wiring', () => {
     expect(reused.status).toBe(409);
   }, 30000);
 
-  it('maps a duplicate under a new key to 409 milestone_plan_exists, and frees the key for a corrected retry', async () => {
+  it('maps a duplicate under a new key to 409 milestone_plan_exists, and frees the key so the same request succeeds once the conflict is gone', async () => {
     const { fixture, token } = await setup();
     expect((await POST(attachRequest(fixture, token, { test_plan_ids: [fixture.planA] }, `bk206-a-${Date.now()}`))).status).toBe(201);
     const key = `bk206-dup-${Date.now()}`;
-    const dup = await POST(attachRequest(fixture, token, { test_plan_ids: [fixture.planA, fixture.planB] }, key));
+    const body = { test_plan_ids: [fixture.planA, fixture.planB] };
+    const dup = await POST(attachRequest(fixture, token, body, key));
     const dupBody = await dup.json() as ErrorBody;
     expect(dup.status).toBe(409);
     expect(dupBody.error?.details?.reason).toBe('milestone_plan_exists');
-    const retried = await POST(attachRequest(fixture, token, { test_plan_ids: [fixture.planB] }, key));
+    // The failed attempt discarded the key (it was not stored as a result): once plan A
+    // is detached, the SAME key and body run again and succeed.
+    expect((await DELETE(detachRequest(fixture, fixture.planA, token))).status).toBe(204);
+    const retried = await POST(attachRequest(fixture, token, body, key));
     expect(retried.status).toBe(201);
   }, 30000);
 

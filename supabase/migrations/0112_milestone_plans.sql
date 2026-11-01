@@ -315,10 +315,13 @@ begin
         tp.name,
         tp.status,
         tp.progress_snapshot as snapshot,
-        (
+        -- coalesce: a closed plan with a NULL snapshot makes jsonb_typeof() NULL, and
+        -- a NULL here would drop the plan from BOTH the frozen and the live branch.
+        coalesce(
           tp.status = 'closed'
           and jsonb_typeof(tp.progress_snapshot -> 'member_count') = 'number'
-          and jsonb_typeof(tp.progress_snapshot -> 'counts') = 'object'
+          and jsonb_typeof(tp.progress_snapshot -> 'counts') = 'object',
+          false
         ) as frozen
       from public.milestone_plans mp
       join public.test_plans tp on tp.id = mp.test_plan_id

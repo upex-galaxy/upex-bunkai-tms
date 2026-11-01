@@ -192,7 +192,7 @@ describeOrSkip('BK-206 — milestone plans and readiness against the real databa
     if (failures.length > 0) {
       throw new Error(`${TAG} teardown left fixtures behind (${PREFIX}): ${failures.join('; ')}`);
     }
-  });
+  }, 60000);
 
   // ---------------------------------------------------------------- seeding
   let counter = 0;
