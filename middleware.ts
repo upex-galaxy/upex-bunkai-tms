@@ -7,15 +7,21 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Exported (not just module-private) so middleware.test.ts can assert the
 // gate directly, without spinning up a NextRequest/NextResponse round-trip.
-export const PROTECTED_PREFIXES = ['/home', '/projects', '/onboarding', '/settings', '/activity'];
+export const PROTECTED_PREFIXES = ['/home', '/projects', '/onboarding', '/settings', '/activity', '/atcs', '/workspaces'];
 const PUBLIC_PREFIXES = ['/login', '/auth', '/api/auth'];
+// Public pages that sit under a protected prefix. The workspace-restore
+// landing (`app/workspaces/[id]/restore`, BK-512) is reached from the
+// deletion-receipt email by a signed-out owner and resolves the session
+// itself, so it stays outside the gate that covers `/workspaces/<id>/members`.
+const PUBLIC_PATTERNS = [/^\/workspaces\/[^/]+\/restore\/?$/];
 
 export function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-function isPublic(pathname: string): boolean {
-  return PUBLIC_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+export function isPublic(pathname: string): boolean {
+  return PUBLIC_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`))
+    || PUBLIC_PATTERNS.some(pattern => pattern.test(pathname));
 }
 
 export async function middleware(request: NextRequest) {
