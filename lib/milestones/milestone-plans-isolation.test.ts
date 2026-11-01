@@ -606,12 +606,15 @@ describeOrSkip('BK-206 — milestone plans and readiness against the real databa
     const ms = await newMilestone();
     const plan = await newPlan();
     const anon = createClient(url!, anonKey!, { auth: { persistSession: false } });
-    for (const client of [service(), anon]) {
-      expect((await attach(ms, [plan], client)).error).not.toBeNull();
-      expect((await detach(ms, plan, client)).error).not.toBeNull();
-    }
+    // The service role keeps EXECUTE (Supabase default privileges) but has no
+    // auth.uid(): it is a member of nothing, so the membership check refuses it.
+    expect((await attach(ms, [plan], service())).error?.code).toBe('P0002');
+    expect((await detach(ms, plan, service())).error?.code).toBe('P0002');
     expect((await service().rpc(READINESS_RPC, { p_milestone_ids: [ms] })).error?.code).toBe('P0002');
-    expect((await anon.rpc(READINESS_RPC, { p_milestone_ids: [ms] })).error).not.toBeNull();
+    // anon holds no EXECUTE at all (revoked in 0112).
+    expect((await attach(ms, [plan], anon)).error?.code).toBe('42501');
+    expect((await detach(ms, plan, anon)).error?.code).toBe('42501');
+    expect((await anon.rpc(READINESS_RPC, { p_milestone_ids: [ms] })).error?.code).toBe('42501');
     expect(await memberships(ms)).toEqual([]);
   });
 

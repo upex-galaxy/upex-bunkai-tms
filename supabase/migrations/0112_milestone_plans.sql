@@ -34,9 +34,10 @@
 --   D5  UNIQUE (milestone_id, test_plan_id) is the database backstop behind the
 --       Idempotency-Key header middleware.
 --   D6  At most 50 plans per milestone; no new index beyond the unique one.
---   TL-3 The attach function locks the milestone row: the 50-plan cap is a
---       count-then-insert check, which is only race-free when attaches to one
---       milestone serialize (0076's plan-row lock convention). Detach needs no lock.
+--   TL-3 The attach function locks the milestone row, AFTER the authorization
+--       checks: the 50-plan cap is a count-then-insert check, which is only
+--       race-free when attaches to one milestone serialize (0076's plan-row lock
+--       convention). Detach needs no lock.
 --   TL-4 Readiness is computed in ONE place (this file) and read by both the list
 --       and the detail, so the strip and the per-plan table cannot disagree.
 --   TL-5 No clock lives here: the overdue predicate is evaluated by the app with the
@@ -118,13 +119,12 @@ declare
   v_existing     int;
   v_added        int;
 begin
-  -- 1. Resolve the milestone under a row lock (TL-3): concurrent attaches to the
-  --    same milestone serialize here, so the cap below is race-free.
+  -- 1. Resolve the milestone, WITHOUT a lock: a caller who may not write must not
+  --    be able to take or wait on the row lock.
   select workspace_id, project_id
     into v_workspace_id, v_project_id
     from public.milestones
-    where id = p_milestone_id
-    for update;
+    where id = p_milestone_id;
   if v_workspace_id is null then
     raise exception 'milestone_not_found' using errcode = 'P0002';
   end if;
@@ -137,6 +137,11 @@ begin
   if not public.bunkai_can_write_workspace(v_workspace_id) then
     raise exception 'forbidden' using errcode = '42501';
   end if;
+
+  -- 2b. Now serialize attaches to this milestone (TL-3), so the cap below is
+  --     race-free. NO KEY UPDATE is enough: it conflicts with itself, and it does
+  --     not block the key-share locks foreign keys take on the milestone row.
+  perform 1 from public.milestones where id = p_milestone_id for no key update;
 
   -- 3. At least one plan id (defense in depth under the route's Zod min(1)).
   if coalesce(array_length(p_test_plan_ids, 1), 0) < 1 then
@@ -284,7 +289,8 @@ $$;
 --      aborted, in_progress, not_run },
 --      plans: [{ plan_id, name, status, frozen, member_count, passed_pct, counts }] }]
 --   passed_pct is null when member_count = 0: no plan attached, or attached plans
---   with no tests at all (both "no readiness"). Plans are in attach order.
+--   with no tests at all (both "no readiness"). Plans are ordered by attach time,
+--   then plan id (plans attached in one call share the time).
 -- ============================================================================
 
 create or replace function public.bunkai_milestones_readiness(p_milestone_ids uuid[])
