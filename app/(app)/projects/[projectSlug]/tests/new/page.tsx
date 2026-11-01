@@ -39,24 +39,17 @@ export default async function NewTestPage({ params }: PageProps) {
 
   if (!project) { notFound(); }
 
-  // Tests are WORKSPACE-scoped while ATCs are project-scoped (Decision 2), so
-  // the library spans every non-archived ATC across ALL the workspace's
-  // projects — not just the project the builder was opened from. Selectable =
-  // every non-archived workspace ATC (no "published" state exists).
-  const { data: projectRows } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('workspace_id', activeWorkspaceId);
-  const projectIds = (projectRows ?? []).map(p => p.id);
-
-  const { data: atcRows } = projectIds.length > 0
-    ? await supabase
-        .from('atcs')
-        .select('id, slug, title, layer')
-        .in('project_id', projectIds)
-        .is('archived_at', null)
-        .order('slug', { ascending: true })
-    : { data: [] };
+  // BK-620 — the library offers only THIS Project's non-archived ATCs. A Test
+  // belongs to the Project its whole chain is in (0076's ALL-match rule), so a
+  // chain built from another Project's ATCs would be listed in neither
+  // Project's Explorer. Supersedes BK-27 Decision 2 for the UI picker (AI
+  // Product Owner decision on BK-620); the headless API stays workspace-scoped.
+  const { data: atcRows } = await supabase
+    .from('atcs')
+    .select('id, slug, title, layer')
+    .eq('project_id', project.id)
+    .is('archived_at', null)
+    .order('slug', { ascending: true });
 
   const atcs = (atcRows ?? []) as AtcLibraryItem[];
 
