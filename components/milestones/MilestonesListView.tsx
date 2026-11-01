@@ -1,9 +1,13 @@
 'use client';
 
+import type { MilestoneReadiness, OverdueInfo } from '@lib/milestones/readiness-view';
 import { CreateMilestoneForm } from '@components/milestones/CreateMilestoneForm';
+import { MilestoneOverdueBadge } from '@components/milestones/MilestoneOverdueBadge';
+import { PlanMiniBar } from '@components/test-plans/TestPlanProgress';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { computeCountdown } from '@lib/milestones/countdown';
+import { asProgressSummary, planCountLabel } from '@lib/milestones/readiness-view';
 import { Flag, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -13,9 +17,14 @@ import { useState } from 'react';
 // `/bugs` already render with (§4.11 spec + Critical Rule #14 live-UI-first).
 //
 // The days-remaining chip is rendered with NEUTRAL styling in every row
-// (2026-07-24 Three Amigos design decision) — no urgency/overdue color
-// treatment here; that arrives with BK-206's readiness. See
-// `lib/milestones/countdown.ts` for the full ratified copy rulebook.
+// (2026-07-24 Three Amigos design decision). See `lib/milestones/countdown.ts`
+// for the full ratified copy rulebook.
+//
+// BK-206 adds the mockup's Readiness column (pooled percentage + mini bar + plan
+// count, or "No plans attached") and the overdue badge BESIDE the untouched
+// countdown chip (Q5; AI Product Owner decisions PO-1/PO-2), plus "· N overdue" in
+// the subline. Readiness and the overdue state are computed on the server and arrive
+// on each item; this view never recomputes them.
 
 export interface MilestoneListItem {
   id: string
@@ -23,6 +32,9 @@ export interface MilestoneListItem {
   targetDate: string
   description: string
   creatorLabel: string
+  // null when the readiness read failed for this milestone: a dash, never a guess.
+  readiness: Pick<MilestoneReadiness, 'plan_count' | 'member_count' | 'passed_pct' | 'counts'> | null
+  overdue: OverdueInfo | null
 }
 
 interface MilestonesListViewProps {
@@ -38,6 +50,7 @@ const UNRESOLVED_CREATOR = 'a workspace member';
 
 export function MilestonesListView({ projectId, projectSlug, milestones, canCreate }: MilestonesListViewProps) {
   const [creating, setCreating] = useState(false);
+  const overdueCount = milestones.filter(milestone => milestone.overdue !== null).length;
 
   return (
     <div data-testid="milestones-list-view" className="flex flex-1 flex-col overflow-hidden">
@@ -50,6 +63,13 @@ export function MilestonesListView({ projectId, projectSlug, milestones, canCrea
                 {milestones.length}
                 {' '}
                 {milestones.length === 1 ? 'milestone' : 'milestones'}
+                {overdueCount > 0 && (
+                  <span data-testid="milestones-overdue-count">
+                    {' · '}
+                    {overdueCount}
+                    {' overdue'}
+                  </span>
+                )}
               </p>
             </div>
             {canCreate && !creating && (
@@ -112,7 +132,7 @@ export function MilestonesListView({ projectId, projectSlug, milestones, canCrea
                     <table className="w-full border-collapse">
                       <thead>
                         <tr>
-                          {['Name', 'Target date', 'Countdown', 'Creator'].map(column => (
+                          {['Name', 'Target date', 'Countdown', 'Readiness', 'Creator'].map(column => (
                             <th
                               key={column}
                               scope="col"
@@ -158,14 +178,40 @@ function MilestoneRow({ milestone, projectSlug }: { milestone: MilestoneListItem
         <span className="font-mono text-xs text-fg-2">{milestone.targetDate}</span>
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-        <span className="inline-flex items-center rounded-1 bg-surface-3 px-2 py-0.5 text-xs text-fg-2" data-testid={`milestone-countdown-${milestone.id}`}>
-          {countdown.label}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex items-center rounded-1 bg-surface-3 px-2 py-0.5 text-xs text-fg-2" data-testid={`milestone-countdown-${milestone.id}`}>
+            {countdown.label}
+          </span>
+          {milestone.overdue && <MilestoneOverdueBadge label={milestone.overdue.label} testId={`milestone-overdue-${milestone.id}`} />}
         </span>
+      </td>
+      <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+        <ReadinessCell milestone={milestone} />
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="text-sm text-fg-2">{milestone.creatorLabel || UNRESOLVED_CREATOR}</span>
       </td>
     </tr>
+  );
+}
+
+function ReadinessCell({ milestone }: { milestone: MilestoneListItem }) {
+  const { readiness } = milestone;
+  if (readiness === null) {
+    return (
+      <span data-testid={`milestone-readiness-unavailable-${milestone.id}`} title="Readiness unavailable" className="text-sm text-fg-4">
+        —
+      </span>
+    );
+  }
+  if (readiness.plan_count === 0) {
+    return <span data-testid={`milestone-readiness-none-${milestone.id}`} className="text-xs text-fg-3">No plans attached</span>;
+  }
+  return (
+    <span data-testid={`milestone-readiness-${milestone.id}`} className="inline-flex items-center gap-2">
+      <PlanMiniBar planId={milestone.id} summary={asProgressSummary({ id: milestone.id, ...readiness })} />
+      <span className="text-xs text-fg-3">{planCountLabel(readiness.plan_count)}</span>
+    </span>
   );
 }
 

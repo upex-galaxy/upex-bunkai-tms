@@ -18,6 +18,9 @@ import { todayUtcIso } from '@lib/milestones/validation';
 //     BK-206). "N days past target" states only what this story knows.
 //     Styling stays NEUTRAL in every row (the 2026-07-24 Three Amigos design
 //     decision), never the mockup's urgency/overdue color treatment.
+//   BK-206 leaves this chip exactly as it is (Q5, ratified 2026-10-25): the
+//   overdue state renders as a separate badge BESIDE it, from the one overdue
+//   predicate in `lib/milestones/readiness-view.ts`.
 
 export type CountdownTone = 'ontrack' | 'neutral-past';
 

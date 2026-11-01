@@ -1,7 +1,9 @@
 import type { MilestoneListItem } from '@components/milestones/MilestonesListView';
+import type { MilestoneReadiness } from '@lib/milestones/readiness-view';
 import { MilestonesListSkeleton, MilestonesListView } from '@components/milestones/MilestonesListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
-import { resolveActivityActors } from '@lib/supabase/rpc';
+import { overdueInfo, parseMilestonesReadiness } from '@lib/milestones/readiness-view';
+import { milestonesReadiness, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -16,6 +18,9 @@ interface PageProps {
 // Reads are plain RLS-scoped PostgREST selects (ADR-0001 Path B; no RPC for
 // list/detail — the Tech Lead decision named this explicitly), mirroring
 // `bugs/page.tsx`'s workspace/project resolution and member-role derivation.
+// BK-206 — plus ONE `bunkai_milestones_readiness` read for every milestone of the
+// list (no per-row query), with the overdue predicate evaluated here on the server
+// UTC date, never in the browser (D7).
 export default async function ProjectMilestonesPage({ params }: PageProps) {
   const { projectSlug } = await params;
 
@@ -88,13 +93,25 @@ async function ProjectMilestonesSection({ projectSlug }: { projectSlug: string }
     }
   }
 
-  const milestones: MilestoneListItem[] = milestoneRows.map(row => ({
-    id: row.id,
-    name: row.name,
-    targetDate: row.target_date,
-    description: row.description,
-    creatorLabel: row.created_by ? (emailByUserId.get(row.created_by) ?? '') : '',
-  }));
+  // A failed read leaves every row's readiness null (a dash) and claims no overdue state.
+  let readinessById = new Map<string, MilestoneReadiness>();
+  if (milestoneRows.length > 0) {
+    const { data: readinessData, error: readinessError } = await milestonesReadiness(supabase, { milestoneIds: milestoneRows.map(row => row.id) });
+    if (!readinessError) { readinessById = parseMilestonesReadiness(readinessData); }
+  }
+
+  const milestones: MilestoneListItem[] = milestoneRows.map((row) => {
+    const readiness = readinessById.get(row.id) ?? null;
+    return {
+      id: row.id,
+      name: row.name,
+      targetDate: row.target_date,
+      description: row.description,
+      creatorLabel: row.created_by ? (emailByUserId.get(row.created_by) ?? '') : '',
+      readiness,
+      overdue: readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }) : null,
+    };
+  });
 
   return (
     <MilestonesListView
