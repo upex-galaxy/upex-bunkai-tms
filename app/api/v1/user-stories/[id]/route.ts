@@ -9,11 +9,15 @@ import { z } from 'zod';
 
 // GET    /api/v1/user-stories/{id} — read one active story.
 // PATCH  /api/v1/user-stories/{id} — edit title / description / Jira key.
-// DELETE /api/v1/user-stories/{id} — soft-archive the story.
+// DELETE /api/v1/user-stories/{id} — soft-archive the story, its acceptance
+//                                   criteria and its ATCs (BK-1555).
 //
 // The Jira key is immutable once set (a change returns 409). Authorization rides
 // the existing user_stories RLS policies; the Markdown description is sanitized
-// on save (BK-16).
+// on save (BK-16). The archive cascade runs inside the SECURITY DEFINER function
+// `bunkai_archive_user_story` (0111), one transaction like the module cascade:
+// every ATC reader filters only `atcs.archived_at`, so an ATC left live under an
+// archived story would stay readable (BK-595: 404 via an archived parent).
 
 const STORY_COLUMNS = 'id, module_id, project_id, title, description, external_id, external_url, status, created_at, archived_at';
 
@@ -222,20 +226,22 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
     });
   }
 
-  const { data, error } = await db
-    .from('user_stories')
-    .update({ archived_at: new Date().toISOString() })
-    .eq('id', storyId)
-    .is('archived_at', null)
-    .select(STORY_COLUMNS)
-    .maybeSingle();
+  const { data, error } = await db.rpc('bunkai_archive_user_story', { p_story_id: storyId });
   if (error) {
-    mapStoryWriteError(error);
-  }
-  if (!data) {
-    throw new ApiError('forbidden', 'You must be a member of this project.', {
-      details: { reason: 'not_a_member' },
-    });
+    if (error.code === '42501') {
+      throw new ApiError('forbidden', 'You must be a member of this project.', {
+        details: { reason: 'not_a_member' },
+      });
+    }
+    if (error.code === 'P0002') {
+      throw new ApiError('not_found', 'Story not found.');
+    }
+    if (error.code === '55000') {
+      throw new ApiError('conflict', 'Story is already archived.', {
+        details: { reason: 'already_archived' },
+      });
+    }
+    throw new ApiError('internal_error', error.message);
   }
 
   return jsonResponse({ user_story: data }, { status: 200 });
