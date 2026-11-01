@@ -1,6 +1,7 @@
 'use client';
 
 import { Input } from '@components/ui/input';
+import { lookupTestIdsByTag } from '@lib/tests/tag-filter-lookup';
 import { Tag, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { useWorkbench } from './workbench-context';
@@ -13,24 +14,17 @@ import { useWorkbench } from './workbench-context';
 // mirroring `atc-search-filter.tsx` — no new visual decisions.
 
 const DEBOUNCE_MS = 250;
-const PAGE_LIMIT = 50;
-
-interface FilteredTestRow {
-  id: string
-  title: string
-  tags: string[]
-  step_count: number
-}
 
 export function TestTagFilter() {
   // BK-443 — the raw text lives in the workbench context (so a saved view can
   // set it and the address can mirror it); this control still owns the lookup.
-  const { setTestTagFilter, tagInput: value, setTagInput: setValue } = useWorkbench();
+  const { setTestTagFilter, tagInput: value, setTagInput: setValue, tagLookupAttempt } = useWorkbench();
 
   // Debounce the tag lookup; an empty (trimmed) value clears the filter and
   // fires no request. AbortController cancels an in-flight fetch. Keyed on the
-  // input value alone (mirrors atc-search-filter); `setTestTagFilter` is stable
-  // across the provider's life (project switch remounts it).
+  // input value (mirrors atc-search-filter) and on `tagLookupAttempt`, which the
+  // explorer's Retry bumps (BK-1548); `setTestTagFilter` is stable across the
+  // provider's life (project switch remounts it).
   useEffect(() => {
     const trimmed = value.trim();
     if (trimmed === '') {
@@ -41,32 +35,19 @@ export function TestTagFilter() {
     const controller = new AbortController();
     const run = async () => {
       try {
-        // BK-742 — the lookup is paged (max 50 per page). Follow `next_cursor`
-        // until it is null so the explorer is scoped to EVERY matching Test,
-        // never just the first page. Any failed page empties the scope rather
-        // than presenting a partial set as the complete match.
-        const ids: string[] = [];
-        let cursor: string | null = null;
-        do {
-          const params = new URLSearchParams({ tag: trimmed, limit: String(PAGE_LIMIT) });
-          if (cursor !== null) {
-            params.set('cursor', cursor);
-          }
-          const res = await fetch(`/api/v1/tests?${params}`, { signal: controller.signal });
-          if (!res.ok) {
-            setTestTagFilter(trimmed, []);
-            return;
-          }
-          const body = (await res.json()) as { items: FilteredTestRow[], next_cursor: string | null };
-          for (const t of body.items ?? []) {
-            ids.push(t.id);
-          }
-          cursor = body.next_cursor ?? null;
-        } while (cursor !== null);
-        setTestTagFilter(trimmed, ids);
+        // BK-742 — the lookup is paged; `lookupTestIdsByTag` follows every page.
+        // BK-1548 — a failed page is a failure, never an empty match: the
+        // explorer shows an error with Retry, never "No Tests carry this tag"
+        // and never the unfiltered list under a filter that holds a tag.
+        const result = await lookupTestIdsByTag(trimmed, controller.signal);
+        if (result.status === 'failed') {
+          setTestTagFilter(trimmed, [], true);
+          return;
+        }
+        setTestTagFilter(trimmed, result.ids);
       }
       catch {
-        // Aborted or network error — leave the previous scope in place.
+        // Aborted: a newer lookup replaced this one, or the control unmounted.
       }
     };
 
@@ -75,7 +56,7 @@ export function TestTagFilter() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [value, setTestTagFilter]);
+  }, [value, setTestTagFilter, tagLookupAttempt]);
 
   const clear = () => {
     setValue('');

@@ -3,6 +3,7 @@
 import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
+import { Button } from '@components/ui/button';
 import { duplicateAtc } from '@lib/atcs/duplicate-client';
 import { moduleBreadcrumb } from '@lib/tree';
 import { cn } from '@lib/utils';
@@ -134,7 +135,9 @@ export function ProjectExplorer({
   const searchParams = useSearchParams();
   // BK-33 — when a tag filter is active, scope the Tests group to the matching
   // id set (an empty set ⇒ "No Tests carry this tag"). No filter ⇒ all Tests.
-  const { testTagFilter, filteredTestIds } = useWorkbench();
+  // BK-1548 — a failed lookup is its own state: an error with Retry, never the
+  // "No Tests carry this tag" answer and never a count that reads as one.
+  const { testTagFilter, filteredTestIds, testTagLookupFailed, retryTestTagLookup } = useWorkbench();
   const tagFilterActive = testTagFilter !== null;
   const visibleTests = useMemo(
     () => (filteredTestIds === null
@@ -352,37 +355,54 @@ export function ProjectExplorer({
                     {testTagFilter}
                   </span>
                 )}
-                <span className="ml-auto font-mono text-xs text-fg-4">{visibleTests.length}</span>
+                {!testTagLookupFailed && (
+                  <span className="ml-auto font-mono text-xs text-fg-4">{visibleTests.length}</span>
+                )}
               </button>
               {testsOpen && (
                 <div className="min-h-0 overflow-auto pb-1.5">
-                  {visibleTests.length === 0
+                  {testTagLookupFailed
                     ? (
-                        <div
-                          data-testid="explorer-tests-empty"
-                          className="flex h-5 items-center px-3 text-xs italic text-fg-4"
-                        >
-                          {tagFilterActive ? 'No Tests carry this tag' : 'No Tests yet'}
+                        <div role="alert" data-testid="explorer-tests-tag-error" className="px-3 py-1">
+                          <p className="m-0 text-xs text-signal-fail">Could not load the Tests with this tag.</p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            data-testid="explorer-tests-tag-retry"
+                            onClick={retryTestTagLookup}
+                          >
+                            Retry
+                          </Button>
                         </div>
                       )
-                    : visibleTests.map(t => (
-                        <Link
-                          key={t.id}
-                          href={`/projects/${projectSlug}/tests/${t.id}`}
-                          data-testid={`explorer-test-${t.id}`}
-                          className={cn(
-                            'flex h-6 items-center gap-1.5 border-l-2 px-3 text-sm',
-                            t.id === selectedTestId
-                              ? 'border-accent bg-accent-soft text-fg-0'
-                              : 'border-transparent text-fg-1 hover:bg-surface-2',
-                          )}
-                        >
-                          <GitBranch size={12} className="shrink-0 text-fg-3" />
-                          <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                          <span className="shrink-0 font-mono text-xs text-fg-4">{t.step_count}</span>
-                          <span className="dot shrink-0" data-status="unrun" />
-                        </Link>
-                      ))}
+                    : visibleTests.length === 0
+                      ? (
+                          <div
+                            data-testid="explorer-tests-empty"
+                            className="flex h-5 items-center px-3 text-xs italic text-fg-4"
+                          >
+                            {tagFilterActive ? 'No Tests carry this tag' : 'No Tests yet'}
+                          </div>
+                        )
+                      : visibleTests.map(t => (
+                          <Link
+                            key={t.id}
+                            href={`/projects/${projectSlug}/tests/${t.id}`}
+                            data-testid={`explorer-test-${t.id}`}
+                            className={cn(
+                              'flex h-6 items-center gap-1.5 border-l-2 px-3 text-sm',
+                              t.id === selectedTestId
+                                ? 'border-accent bg-accent-soft text-fg-0'
+                                : 'border-transparent text-fg-1 hover:bg-surface-2',
+                            )}
+                          >
+                            <GitBranch size={12} className="shrink-0 text-fg-3" />
+                            <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                            <span className="shrink-0 font-mono text-xs text-fg-4">{t.step_count}</span>
+                            <span className="dot shrink-0" data-status="unrun" />
+                          </Link>
+                        ))}
                 </div>
               )}
             </div>
