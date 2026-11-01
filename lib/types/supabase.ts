@@ -2430,6 +2430,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_user_story_id: string }
         Returns: Json
       }
+      bunkai_report_workspace_coverage: {
+        Args: { p_actor_user_id: string, p_workspace_id: string }
+        Returns: Json
+      }
       bunkai_request_workspace_deletion: {
         Args: { p_workspace_id: string }
         Returns: Json

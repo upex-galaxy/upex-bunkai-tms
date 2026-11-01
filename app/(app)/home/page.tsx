@@ -224,15 +224,16 @@ async function OpenBugs({ workspaceId }: { workspaceId: string }) {
 
 // BK-259 — the "Coverage" stat card. Same shape as every other widget on this
 // page: its own async component in its own <Suspense> boundary, so the
-// per-project coverage reads behind it cannot delay — or, on failure, blank —
+// workspace coverage read behind it cannot delay — or, on failure, blank —
 // the banner above or the table below. That boundary matters more here than
 // anywhere else on the page: the open-bug counts above it are four `head`
 // counts, while this one visits every acceptance criterion in the workspace.
 //
 // The rollup lives in `lib/home/coverage.ts` and is shared with
 // GET /api/v1/workspaces/{id}/coverage, so the card and the endpoint cannot
-// drift. That module does not define coverage itself — it sums
-// `bunkai_report_project_coverage`, the same RPC the project Metrics screen
+// drift. That module does not define coverage itself — it reads
+// `bunkai_report_workspace_coverage` (0109, BK-1169), which applies the per-AC
+// rules of `bunkai_report_project_coverage`, the RPC the project Metrics screen
 // (BK-46) reads, so Home and Metrics cannot report two different coverages for
 // the same acceptance criteria.
 //
@@ -240,9 +241,8 @@ async function OpenBugs({ workspaceId }: { workspaceId: string }) {
 // actor and binds it against `auth.uid()` (0048), and this page has already
 // resolved the session above.
 //
-// RLS does the scoping: the project list is read through the caller's own
-// client (`projects_select_workspace_member`, 0002) and each RPC call re-checks
-// the actor's active membership on its own account, so a forged `bk_active_ws`
+// The RPC does the scoping: it is called through the caller's own client and
+// re-checks the actor's active membership itself, so a forged `bk_active_ws`
 // cookie pointing at someone else's workspace measures nothing rather than
 // leaking that workspace's coverage posture.
 async function CoverageSummary({ workspaceId, actorUserId }: { workspaceId: string, actorUserId: string }) {
