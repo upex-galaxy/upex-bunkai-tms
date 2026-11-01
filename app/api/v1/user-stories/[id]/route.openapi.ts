@@ -61,6 +61,7 @@ registry.registerPath({
   path: '/api/v1/user-stories/{id}',
   tags: ['User Stories'],
   summary: 'Soft-delete (archive) a user story',
+  description: 'Bearer `atc:write` (or cookie session). Member-only. Archives the story, its acceptance criteria and its ATCs in one transaction, with one timestamp; afterwards those ATCs answer 404 on every ATC read.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
