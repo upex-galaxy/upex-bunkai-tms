@@ -96,7 +96,8 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     return { modules, stories, acceptanceCriteria };
   };
 
-  // Workspace Tests (BK-27) feed the explorer's flat Tests group; BK-148 adds
+  // The Project's Tests (BK-27, scoped by their chain since BK-620) feed the
+  // explorer's flat Tests group; BK-148 adds
   // the project's environments for the explorer's Environments group (name asc,
   // mirroring the GET route's stable order).
   const loadEnvironments = async () => {
@@ -112,7 +113,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
   const [{ modules, stories, acceptanceCriteria }, atcs, testsData, environmentsData] = await Promise.all([
     loadModuleChain(),
     fetchTreeAtcs(supabase, project.id),
-    fetchExplorerTests(supabase, activeWorkspaceId),
+    fetchExplorerTests(supabase, activeWorkspaceId, project.id),
     loadEnvironments(),
   ]);
 
@@ -133,7 +134,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     id: t.id,
     title: t.title,
     created_at: t.created_at,
-    step_count: t.test_steps[0]?.count ?? 0,
+    step_count: t.test_steps.length,
   }));
 
   const environments: ExplorerEnvironmentItem[] = (environmentsData ?? []).map(e => ({

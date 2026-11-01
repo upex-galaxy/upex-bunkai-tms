@@ -2,6 +2,7 @@ import type { AcceptanceCriterion, Atc, Module, UserStory } from '@lib/types';
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllPages } from '@lib/atcs/export-query';
+import { isTestChainInProject } from '@lib/tests/project-scope';
 
 // BK-1233 — the project layout's reads that feed the workbench explorer tree.
 //
@@ -41,7 +42,8 @@ export interface ExplorerTestSourceRow {
   id: string
   title: string
   created_at: string
-  test_steps: { count: number }[]
+  // One entry per chained ATC: its Project (null when RLS hides the ATC).
+  test_steps: { atcs: { project_id: string } | null }[]
 }
 
 export function batchIds(ids: string[], size: number = TREE_IN_FILTER_BATCH): string[][] {
@@ -138,16 +140,28 @@ export async function fetchTreeAcceptanceCriteria(
   })));
 }
 
-// The workspace's Tests for the explorer's Tests group (BK-27), newest first.
-export async function fetchExplorerTests(db: Db, workspaceId: string): Promise<ExplorerTestSourceRow[]> {
-  return dedupeById(await fetchAllPages<ExplorerTestSourceRow>(async (offset, limit) => {
+// The Project's Tests for the explorer's Tests group (BK-27), newest first.
+// BK-620: Tests carry no `project_id`, so the workspace's Tests are read with
+// the Project of each chained ATC and only those whose WHOLE chain is in this
+// Project are kept (`isTestChainInProject`, 0076's ALL-match rule). Before
+// this, every Project of a workspace listed every Test of that workspace.
+export async function fetchExplorerTests(
+  db: Db,
+  workspaceId: string,
+  projectId: string,
+): Promise<ExplorerTestSourceRow[]> {
+  const rows = dedupeById(await fetchAllPages<ExplorerTestSourceRow>(async (offset, limit) => {
     const { data, error } = await db
       .from('tests')
-      .select('id, title, created_at, test_steps(count)')
+      .select('id, title, created_at, test_steps(atcs(project_id))')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .range(offset, offset + limit - 1);
     return { data: data as ExplorerTestSourceRow[] | null, error };
   }));
+  return rows.filter(row => isTestChainInProject(
+    row.test_steps.map(step => step.atcs?.project_id),
+    projectId,
+  ));
 }

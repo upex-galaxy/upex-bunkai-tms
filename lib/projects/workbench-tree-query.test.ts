@@ -34,9 +34,11 @@ interface FakeOptions {
   // every later window starts this many rows earlier, so it repeats the tail
   // of the previous page (the offset-paging race).
   shiftAfterFirstPage?: number
+  // Extra fields merged into every row served (e.g. a Test's chain).
+  rowFields?: (index: number) => Record<string, unknown>
 }
 
-function fakeDb({ total, failAtOffset, shiftAfterFirstPage = 0 }: FakeOptions) {
+function fakeDb({ total, failAtOffset, shiftAfterFirstPage = 0, rowFields }: FakeOptions) {
   const calls: Call[] = [];
   const db = {
     from(table: string) {
@@ -57,7 +59,10 @@ function fakeDb({ total, failAtOffset, shiftAfterFirstPage = 0 }: FakeOptions) {
           const n = total(call) + shift;
           const length = Math.max(0, Math.min(to + 1, n) - from);
           const batchTag = String((call.ops.find(op => op[0] === 'in')?.[2] as string[] | undefined)?.[0] ?? '');
-          const data = Array.from({ length }, (_, i) => ({ id: `${batchTag}${from - shift + i}` }));
+          const data = Array.from({ length }, (_, i) => ({
+            id: `${batchTag}${from - shift + i}`,
+            ...rowFields?.(from - shift + i),
+          }));
           return { data, error: null };
         },
       };
@@ -170,13 +175,26 @@ describe('BK-1233 — the sibling tree reads are paged too', () => {
   });
 
   it('fetchExplorerTests pages the workspace Tests newest first with an id tiebreak', async () => {
-    const { calls, db } = fakeDb({ total: () => 1500 });
-    expect(await fetchExplorerTests(db, 'workspace-1')).toHaveLength(1500);
+    const { calls, db } = fakeDb({
+      total: () => 1500,
+      rowFields: () => ({ test_steps: [{ atcs: { project_id: 'project-1' } }] }),
+    });
+    expect(await fetchExplorerTests(db, 'workspace-1', 'project-1')).toHaveLength(1500);
     expect(ops(calls[0], 'eq')).toEqual([['eq', 'workspace_id', 'workspace-1']]);
     expect(ops(calls[0], 'order')).toEqual([
       ['order', 'created_at', { ascending: false }],
       ['order', 'id', { ascending: false }],
     ]);
+  });
+
+  it('BK-620: fetchExplorerTests keeps only the Tests whose whole chain is in the Project', async () => {
+    const chains: Array<Array<string | null>> = [['project-1'], ['project-2'], ['project-1', 'project-2'], [], ['project-1', null]];
+    const { calls, db } = fakeDb({
+      total: () => chains.length,
+      rowFields: i => ({ test_steps: chains[i].map(projectId => ({ atcs: projectId ? { project_id: projectId } : null })) }),
+    });
+    expect((await fetchExplorerTests(db, 'workspace-1', 'project-1')).map(t => t.id)).toEqual(['0']);
+    expect(ops(calls[0], 'select')).toEqual([['select', 'id, title, created_at, test_steps(atcs(project_id))']]);
   });
 
   it('fetchTreeStories sends module ids in batches and pages each batch', async () => {
