@@ -13,7 +13,7 @@
 -- read the stored name with the stored path, and run the rename branch (row
 -- rewrite + `module.renamed`) only when the name or the rebuilt path actually
 -- changes. A name that differs only by case is a real rename and still logs.
--- Everything else is 0023's definition byte for byte: same signature, same
+-- Everything else is unchanged from 0023: same signature, same
 -- DEFINER posture, same auth.uid() actor and bunkai_can_write_workspace gate,
 -- same events and payloads.
 --
