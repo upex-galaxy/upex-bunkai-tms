@@ -2,6 +2,7 @@ import type { ExpandedTest } from '@components/tests/TestDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { getTestExpanded } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
+import { fetchTestChainProjectIds, isTestChainInProject } from '@lib/tests/project-scope';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -19,8 +20,10 @@ import { cache } from 'react';
 //
 // Semantics preserved from the original page:
 //   * Tests are workspace-scoped (BK-27 D9), so the read is keyed by `testId` +
-//     active-workspace membership, not by project; `projectSlug` is the route's
-//     display / back-link context and the key for the environments lookup.
+//     active-workspace membership. BK-620: `projectSlug` is ALSO a boundary
+//     now: the Test opens only under the Project its whole chain belongs to
+//     (`isTestChainInProject`, 0076's ALL-match rule); any other Project's
+//     slug 404s, so Project B can no longer open or run Project A's Test.
 //   * One read, one rulebook: this calls the SAME SECURITY DEFINER RPC the
 //     headless API route uses (`bunkai_get_test_expanded`), so both surfaces
 //     return byte-identical data. The cookie client carries a real `auth.uid()`,
@@ -95,14 +98,18 @@ export const loadTestDetail = cache(async (projectSlug: string, testId: string):
     .eq('slug', projectSlug)
     .limit(1)
     .maybeSingle();
+  if (!project) { notFound(); }
 
-  const { data: envRows } = project
-    ? await supabase
-        .from('project_environments')
-        .select('id, name')
-        .eq('project_id', project.id)
-        .order('name', { ascending: true })
-    : { data: [] };
+  // BK-620 — a Test from another Project of the same workspace collapses into
+  // the same `notFound()` as a missing one (no existence signal).
+  const chainProjectIds = await fetchTestChainProjectIds(supabase, testId);
+  if (!isTestChainInProject(chainProjectIds, project.id)) { notFound(); }
+
+  const { data: envRows } = await supabase
+    .from('project_environments')
+    .select('id, name')
+    .eq('project_id', project.id)
+    .order('name', { ascending: true });
 
   return {
     userId: user.id,
