@@ -1,4 +1,4 @@
-import { buildWorkspaceRows, countActiveMembersByWorkspace, countActiveOwnersByWorkspace, resolveWorkspacesViewState } from '@lib/account/workspaces';
+import { buildWorkspaceRows, countActiveMembersByWorkspace, countActiveOwnersByWorkspace, resolveWorkspacesViewState, selectInIdBatches } from '@lib/account/workspaces';
 import { describe, expect, test } from 'bun:test';
 
 // BK-87 PR2 — Workspace-list data-transform + view-state logic (TC-AC2:
@@ -134,5 +134,48 @@ describe('resolveWorkspacesViewState', () => {
 
   test('TC-AC2: one or more rows with no error -> list state', () => {
     expect(resolveWorkspacesViewState({ error: false, rowCount: 1 })).toBe('list');
+  });
+});
+
+// BK-1122 — a caller in 890 workspaces got the error state: one `.in()` with
+// every membership id overflowed the gateway's URL limit (HTTP 400 from 642
+// ids up). The reads now go in batches of at most 100 ids.
+describe('selectInIdBatches', () => {
+  const ids = Array.from({ length: 890 }, (_, i) => `ws-${i}`);
+
+  test('sends 890 ids as 9 batches of at most 100 and concatenates every row', async () => {
+    const batches: string[][] = [];
+    const rows = await selectInIdBatches(ids, async (batch) => {
+      batches.push(batch);
+      return { data: batch.map(id => ({ workspace_id: id })), error: null };
+    });
+    expect(batches).toHaveLength(9);
+    expect(Math.max(...batches.map(b => b.length))).toBe(100);
+    expect(batches.flat()).toEqual(ids);
+    expect(rows.map(r => r.workspace_id)).toEqual(ids);
+  });
+
+  test('throws when any batch fails, never returning a partial list', async () => {
+    const run = selectInIdBatches(ids, async batch => batch[0] === 'ws-400'
+      ? { data: null, error: { message: 'Bad Request' } }
+      : { data: batch.map(id => ({ id })), error: null });
+    let message = '';
+    try {
+      await run;
+    }
+    catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toBe('Bad Request');
+  });
+
+  test('no ids -> no request and no rows', async () => {
+    let calls = 0;
+    const rows = await selectInIdBatches([], async () => {
+      calls += 1;
+      return { data: [], error: null };
+    });
+    expect(calls).toBe(0);
+    expect(rows).toEqual([]);
   });
 });
