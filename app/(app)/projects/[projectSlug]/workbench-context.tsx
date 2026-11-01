@@ -74,7 +74,14 @@ interface WorkbenchContextValue extends WorkbenchData {
   // (empty array = the tag matches no Test → "No Tests carry this tag").
   testTagFilter: string | null
   filteredTestIds: string[] | null
-  setTestTagFilter: (tag: string | null, ids: string[] | null) => void
+  setTestTagFilter: (tag: string | null, ids: string[] | null, failed?: boolean) => void
+  // BK-1548 — the tag lookup failed (a page answered non-2xx or the network
+  // dropped), so the explorer shows an error with Retry instead of reading the
+  // empty scope as "No Tests carry this tag". `tagLookupAttempt` bumps on Retry
+  // so the toolbar filter re-runs the lookup for the same tag.
+  testTagLookupFailed: boolean
+  tagLookupAttempt: number
+  retryTestTagLookup: () => void
   // BK-399 — the ATC table's technique / priority / layer facets. They live
   // here, not inside AtcTable, so switching workbench views or opening an ATC
   // and coming back does not silently drop the filter the user set. Not
@@ -171,12 +178,16 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
   // BK-33 — active tag filter + the matching Test id set (null = no filter).
   const [testTagFilter, setTagFilter] = useState<string | null>(null);
   const [filteredTestIds, setFilteredTestIds] = useState<string[] | null>(null);
+  const [testTagLookupFailed, setTestTagLookupFailed] = useState(false);
+  const [tagLookupAttempt, setTagLookupAttempt] = useState(0);
   // Stable identity so the toolbar filter's debounced effect can list it as a
   // dependency without re-running every render.
-  const setTestTagFilter = useCallback((tag: string | null, ids: string[] | null) => {
+  const setTestTagFilter = useCallback((tag: string | null, ids: string[] | null, failed = false) => {
     setTagFilter(tag);
     setFilteredTestIds(ids);
+    setTestTagLookupFailed(failed);
   }, []);
+  const retryTestTagLookup = useCallback(() => setTagLookupAttempt(n => n + 1), []);
   // BK-399 — ATC list facets. Stable setter identities so the table can list
   // them as effect/callback dependencies without re-running every render.
   const [atcFilters, setAtcFiltersState] = useState<AtcListFilters>(EMPTY_ATC_LIST_FILTERS);
@@ -322,6 +333,9 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     testTagFilter,
     filteredTestIds,
     setTestTagFilter,
+    testTagLookupFailed,
+    tagLookupAttempt,
+    retryTestTagLookup,
     atcFilters,
     setAtcFilters,
     resetAtcFilters,
