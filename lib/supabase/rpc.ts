@@ -959,6 +959,32 @@ export async function updateMilestone(supabase: Client, args: UpdateMilestoneArg
   });
 }
 
+// BK-206 — attach / detach Test Plans on a Milestone (0112_milestone_plans.sql).
+// Same posture as the Milestone pair above: SECURITY DEFINER, NO
+// p_actor_user_id, auth.uid() read inside, granted to `authenticated` only. Call
+// them ONLY through the caller's own RLS-scoped client (`getAuth(ctx).db`).
+export async function attachPlansToMilestone(supabase: Client, args: { milestoneId: string, testPlanIds: string[] }) {
+  return supabase.rpc('bunkai_attach_plans_to_milestone', {
+    p_milestone_id: args.milestoneId,
+    p_test_plan_ids: args.testPlanIds,
+  });
+}
+
+export async function detachPlanFromMilestone(supabase: Client, args: { milestoneId: string, testPlanId: string }) {
+  return supabase.rpc('bunkai_detach_plan_from_milestone', {
+    p_milestone_id: args.milestoneId,
+    p_test_plan_id: args.testPlanId,
+  });
+}
+
+// BK-206 — pooled readiness of a set of milestones plus the per-plan rows behind
+// it, in ONE read (0112). SECURITY INVOKER: RLS on the caller's own client is the
+// only authorization, and a caller with no session is refused with P0002, so the
+// admin client must never call it. Milestones the caller cannot see are left out.
+export async function milestonesReadiness(supabase: Client, args: { milestoneIds: string[] }) {
+  return supabase.rpc('bunkai_milestones_readiness', { p_milestone_ids: args.milestoneIds });
+}
+
 // BK-45 — read a User Story's full AC -> ATC -> Test -> Run -> Defect
 // evidence chain in one round trip. Same explicit-actor contract as
 // reportProjectCoverage/reportProjectRecoveryCycles/reportProjectDefectHeatmap

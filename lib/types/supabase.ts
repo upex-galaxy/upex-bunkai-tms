@@ -813,6 +813,55 @@ export interface Database {
         }
         Relationships: []
       }
+      milestone_plans: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          id: string
+          milestone_id: string
+          test_plan_id: string
+          workspace_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          milestone_id: string
+          test_plan_id: string
+          workspace_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          milestone_id?: string
+          test_plan_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'milestone_plans_milestone_id_fkey'
+            columns: ['milestone_id']
+            isOneToOne: false
+            referencedRelation: 'milestones'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'milestone_plans_test_plan_id_fkey'
+            columns: ['test_plan_id']
+            isOneToOne: false
+            referencedRelation: 'test_plans'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'milestone_plans_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       milestones: {
         Row: {
           created_at: string
@@ -2053,6 +2102,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
+      bunkai_attach_plans_to_milestone: {
+        Args: { p_milestone_id: string, p_test_plan_ids: string[] }
+        Returns: Json
+      }
       bunkai_bootstrap_workspace: {
         Args: { p_name: string, p_slug: string }
         Returns: string
@@ -2189,6 +2242,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_environment_id: string }
         Returns: Json
       }
+      bunkai_detach_plan_from_milestone: {
+        Args: { p_milestone_id: string, p_test_plan_id: string }
+        Returns: Json
+      }
       bunkai_duplicate_atc: {
         Args: {
           p_actor_user_id: string
@@ -2314,6 +2371,10 @@ export interface Database {
           p_run_step_id: string
           p_status: string
         }
+        Returns: Json
+      }
+      bunkai_milestones_readiness: {
+        Args: { p_milestone_ids: string[] }
         Returns: Json
       }
       bunkai_move_acceptance_criterion: {
