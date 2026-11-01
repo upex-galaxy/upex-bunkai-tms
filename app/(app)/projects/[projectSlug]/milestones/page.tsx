@@ -3,6 +3,7 @@ import type { MilestoneReadiness } from '@lib/milestones/readiness-view';
 import { MilestonesListSkeleton, MilestonesListView } from '@components/milestones/MilestonesListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { overdueInfo, parseMilestonesReadiness } from '@lib/milestones/readiness-view';
+import { todayUtcIso } from '@lib/milestones/validation';
 import { milestonesReadiness, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -100,6 +101,7 @@ async function ProjectMilestonesSection({ projectSlug }: { projectSlug: string }
     if (!readinessError) { readinessById = parseMilestonesReadiness(readinessData); }
   }
 
+  const todayIso = todayUtcIso();
   const milestones: MilestoneListItem[] = milestoneRows.map((row) => {
     const readiness = readinessById.get(row.id) ?? null;
     return {
@@ -109,7 +111,7 @@ async function ProjectMilestonesSection({ projectSlug }: { projectSlug: string }
       description: row.description,
       creatorLabel: row.created_by ? (emailByUserId.get(row.created_by) ?? '') : '',
       readiness,
-      overdue: readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }) : null,
+      overdue: readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }, todayIso) : null,
     };
   });
 
@@ -119,6 +121,7 @@ async function ProjectMilestonesSection({ projectSlug }: { projectSlug: string }
       projectSlug={project.slug}
       milestones={milestones}
       canCreate={canCreate}
+      todayIso={todayIso}
     />
   );
 }

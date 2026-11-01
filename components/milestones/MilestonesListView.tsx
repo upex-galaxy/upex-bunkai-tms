@@ -44,11 +44,14 @@ interface MilestonesListViewProps {
   // Member+ gate — a viewer sees the list with the create action
   // STRUCTURALLY absent, not merely hidden (business-rules.md).
   canCreate: boolean
+  // The server's UTC date, so every countdown chip uses the same day as the
+  // overdue badges (D7), never the browser's clock.
+  todayIso: string
 }
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function MilestonesListView({ projectId, projectSlug, milestones, canCreate }: MilestonesListViewProps) {
+export function MilestonesListView({ projectId, projectSlug, milestones, canCreate, todayIso }: MilestonesListViewProps) {
   const [creating, setCreating] = useState(false);
   const overdueCount = milestones.filter(milestone => milestone.overdue !== null).length;
 
@@ -145,7 +148,7 @@ export function MilestonesListView({ projectId, projectSlug, milestones, canCrea
                       </thead>
                       <tbody data-testid="milestones-rows">
                         {milestones.map(milestone => (
-                          <MilestoneRow key={milestone.id} milestone={milestone} projectSlug={projectSlug} />
+                          <MilestoneRow key={milestone.id} milestone={milestone} projectSlug={projectSlug} todayIso={todayIso} />
                         ))}
                       </tbody>
                     </table>
@@ -158,8 +161,8 @@ export function MilestonesListView({ projectId, projectSlug, milestones, canCrea
   );
 }
 
-function MilestoneRow({ milestone, projectSlug }: { milestone: MilestoneListItem, projectSlug: string }) {
-  const countdown = computeCountdown(milestone.targetDate);
+function MilestoneRow({ milestone, projectSlug, todayIso }: { milestone: MilestoneListItem, projectSlug: string, todayIso: string }) {
+  const countdown = computeCountdown(milestone.targetDate, todayIso);
 
   return (
     <tr
@@ -206,6 +209,16 @@ function ReadinessCell({ milestone }: { milestone: MilestoneListItem }) {
   }
   if (readiness.plan_count === 0) {
     return <span data-testid={`milestone-readiness-none-${milestone.id}`} className="text-xs text-fg-3">No plans attached</span>;
+  }
+  if (readiness.member_count === 0) {
+    // Plans attached, no tests in them: a sentence, never the dash a failed read shows.
+    return (
+      <span data-testid={`milestone-readiness-no-tests-${milestone.id}`} className="text-xs text-fg-3">
+        No tests ·
+        {' '}
+        {planCountLabel(readiness.plan_count)}
+      </span>
+    );
   }
   return (
     <span data-testid={`milestone-readiness-${milestone.id}`} className="inline-flex items-center gap-2">

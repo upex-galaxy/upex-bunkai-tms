@@ -49,17 +49,24 @@ interface MilestoneDetailViewProps {
   overdue: OverdueInfo | null
   // The project's open test plans, for the Attach-plans picker (member+ only).
   attachablePlans: AttachablePlan[]
+  // The server's UTC date: the countdown chip is computed from the same day as the
+  // overdue badge, never from the browser's clock (D7, no hydration drift).
+  todayIso: string
 }
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, attachablePlans }: MilestoneDetailViewProps) {
+export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, attachablePlans, todayIso }: MilestoneDetailViewProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [picking, setPicking] = useState(false);
-  const countdown = computeCountdown(milestone.targetDate);
+  const countdown = computeCountdown(milestone.targetDate, todayIso);
+  // Attaching needs the current attachments to mark them in the picker; when the
+  // readiness read failed, the Attach control is left out rather than offering
+  // plans that may already be attached.
+  const canAttach = canEdit && readiness !== null;
   const attachedPlanIds = useMemo(() => new Set((readiness?.plans ?? []).map(plan => plan.plan_id)), [readiness]);
-  const note = overdue ? overdueNoteText({ days: overdue.days, readinessPct: readiness?.passed_pct ?? null }) : null;
+  const note = overdue ? overdueNoteText({ days: overdue.days, readinessPct: readiness?.passed_pct ?? null, planCount: readiness?.plan_count ?? 0 }) : null;
   const refresh = () => router.refresh();
 
   return (
@@ -97,16 +104,18 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, at
                       Edit
                     </Button>
                   )}
-                  <Button
-                    type="button"
-                    data-testid="milestone-detail-attach-button"
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setPicking(true)}
-                  >
-                    <Plus size={13} />
-                    Attach plans
-                  </Button>
+                  {canAttach && (
+                    <Button
+                      type="button"
+                      data-testid="milestone-detail-attach-button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setPicking(true)}
+                    >
+                      <Plus size={13} />
+                      Attach plans
+                    </Button>
+                  )}
                 </div>
               )}
               {!canEdit && (
@@ -157,7 +166,8 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, at
                 {note.passed}
                 {' and '}
                 {note.readiness}
-                {' — move the target date or finish the attached plans.'}
+                {' — '}
+                {note.action}
               </span>
             </div>
           )}
@@ -176,7 +186,7 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, at
             />
           )}
 
-          {canEdit && (
+          {canAttach && (
             <AttachPlansDialog
               open={picking}
               onClose={() => setPicking(false)}

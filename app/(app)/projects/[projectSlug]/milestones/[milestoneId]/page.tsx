@@ -2,6 +2,7 @@ import type { MilestoneDetail } from '@components/milestones/MilestoneDetailView
 import { MilestoneDetailView } from '@components/milestones/MilestoneDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { overdueInfo, parseMilestonesReadiness } from '@lib/milestones/readiness-view';
+import { todayUtcIso } from '@lib/milestones/validation';
 import { milestonesReadiness, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -74,7 +75,8 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
   // state is claimed.
   const { data: readinessData, error: readinessError } = await milestonesReadiness(supabase, { milestoneIds: [row.id] });
   const readiness = readinessError ? null : (parseMilestonesReadiness(readinessData).get(row.id) ?? null);
-  const overdue = readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }) : null;
+  const todayIso = todayUtcIso();
+  const overdue = readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }, todayIso) : null;
 
   let attachablePlans: { id: string, name: string }[] = [];
   if (canEdit) {
@@ -105,6 +107,7 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
       readiness={readiness}
       overdue={overdue}
       attachablePlans={attachablePlans}
+      todayIso={todayIso}
     />
   );
 }

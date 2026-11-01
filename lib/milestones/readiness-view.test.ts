@@ -67,9 +67,15 @@ describe('overdueInfo and the copy (Q5: "Overdue by 1 day" / "Overdue by N days"
   });
 
   test('the detail note states the days and the readiness once, never a zero for no readiness', () => {
-    expect(overdueNoteText({ days: 1, readinessPct: 60 })).toEqual({ passed: 'passed 1 day ago', readiness: 'readiness is at 60%' });
-    expect(overdueNoteText({ days: 3, readinessPct: 0 })).toEqual({ passed: 'passed 3 days ago', readiness: 'readiness is at 0%' });
-    expect(overdueNoteText({ days: 2, readinessPct: null }).readiness).toBe('no readiness has been recorded yet');
+    expect(overdueNoteText({ days: 1, readinessPct: 60, planCount: 2 })).toEqual({
+      passed: 'passed 1 day ago',
+      readiness: 'readiness is at 60%',
+      action: 'move the target date or finish the attached plans.',
+    });
+    expect(overdueNoteText({ days: 3, readinessPct: 0, planCount: 1 }).readiness).toBe('readiness is at 0%');
+    const empty = overdueNoteText({ days: 2, readinessPct: null, planCount: 0 });
+    expect(empty.readiness).toBe('no readiness has been recorded yet');
+    expect(empty.action).toBe('move the target date or attach the test plans that gate it.');
   });
 });
 

@@ -96,12 +96,15 @@ export function overdueInfo(args: { targetDate: string, readinessPct: number | n
 // The detail's overdue note, after the bold "This milestone is overdue." lead. With no
 // readiness it says so instead of printing a zero (PO-3 on BK-206: an empty state is
 // never rendered as 0%).
-export function overdueNoteText(args: { days: number, readinessPct: number | null }): { passed: string, readiness: string } {
+export function overdueNoteText(args: { days: number, readinessPct: number | null, planCount: number }): { passed: string, readiness: string, action: string } {
   return {
     passed: `passed ${dayWord(args.days)} ago`,
     readiness: args.readinessPct === null
       ? 'no readiness has been recorded yet'
       : `readiness is at ${args.readinessPct}%`,
+    action: args.planCount === 0
+      ? 'move the target date or attach the test plans that gate it.'
+      : 'move the target date or finish the attached plans.',
   };
 }
 
