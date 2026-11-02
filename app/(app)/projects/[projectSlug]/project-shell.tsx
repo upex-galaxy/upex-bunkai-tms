@@ -88,7 +88,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface-0">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
       <Topbar
         left={<Breadcrumb items={[workspaceName, projectName, sectionLabel]} />}
         center={(
@@ -153,7 +153,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
         )}
       />
       <ProjectSubNav projectSlug={projectSlug} />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         {explorerVisible && (
           // BK-398 — ProjectExplorer reads `?module=` via `useSearchParams()`
           // for the Command Palette's Module deep-link, which Next requires a

@@ -462,7 +462,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
   const hasWorkspaceRole = userRole != null;
 
   return (
-    <aside className="flex h-screen flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
+    <aside className="flex h-dvh flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
       <Suspense fallback={null}>
         <OpenInboxFromQuery onOpen={() => { if (!notifOpen) { toggleNotifications(); } }} />
       </Suspense>
