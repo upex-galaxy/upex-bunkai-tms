@@ -4,14 +4,13 @@ import type { ReactNode } from 'react';
 import type { WorkbenchData, WorkbenchView } from './workbench-context';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
-import { buttonVariants } from '@components/ui/button';
 import { cn } from '@lib/utils';
-import { GitBranch, ListTree, Network, Play, Plus, Table2, X } from 'lucide-react';
-import Link from 'next/link';
+import { GitBranch, ListTree, Network, Play, Table2, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 import { AtcSearchFilter } from './atc-search-filter';
 import { ExportAtcsButton } from './export-atcs-button';
+import { ProjectCreateLinks } from './project-create-links';
 import { ProjectExplorer } from './project-explorer';
 import { ProjectSubNav, resolveProjectSectionLabel } from './project-sub-nav';
 import { TestTagFilter } from './test-tag-filter';
@@ -133,31 +132,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
               />
             )}
             {showExportAtcs && <ExportAtcsButton projectId={projectId} />}
-            {/* BK-666 (AC-08) — create affordances only for roles that can
-                create, as the explorer already gates its own; a viewer used
-                to see both and hit a refusal. The API stays the authority. */}
-            {canCreate && (
-              <>
-                <Link
-                  href={`/projects/${projectSlug}/atcs/new`}
-                  className={buttonVariants({ size: 'sm' })}
-                  data-testid="project-new-atc"
-                >
-                  <Plus size={11} />
-                  {' '}
-                  New ATC
-                </Link>
-                <Link
-                  href={`/projects/${projectSlug}/tests/new`}
-                  className={buttonVariants({ variant: 'primary', size: 'sm' })}
-                  data-testid="project-new-test"
-                >
-                  <Plus size={11} />
-                  {' '}
-                  New Test
-                </Link>
-              </>
-            )}
+            <ProjectCreateLinks projectSlug={projectSlug} canCreate={canCreate} />
           </>
         )}
       />
