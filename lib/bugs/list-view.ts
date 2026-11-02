@@ -119,3 +119,20 @@ export function formatBugListRow(bug: BugListRowInput): BugListRow {
     runLinkLabel: bug.run_id ? `Run ${bug.run_id.slice(0, 8)}` : '—',
   };
 }
+
+// BK-1557 — the assignee picker's label for a workspace member. The email is
+// resolved per member (`bunkai_resolve_activity_actors`) and can come back
+// null; the picker then showed the first 8 characters of the user id, a raw
+// identifier nobody can recognise. The fallback is a readable role label
+// instead, never an id.
+export interface AssigneeMemberLabelInput {
+  email: string | null
+  role: string
+}
+
+export function assigneeMemberLabel(member: AssigneeMemberLabelInput): string {
+  const email = member.email?.trim();
+  if (email) { return email; }
+  const role = member.role.trim();
+  return role ? `Teammate (${role.charAt(0).toUpperCase()}${role.slice(1)})` : 'Teammate';
+}

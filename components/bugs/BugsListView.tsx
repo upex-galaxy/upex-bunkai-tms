@@ -20,6 +20,7 @@ import {
 } from '@lib/bugs/constants';
 import { bugsFiltersDiffer, bugsFiltersFromSearchParams, bugsFiltersFromState, bugsStateFromFilters, EMPTY_BUGS_FILTERS } from '@lib/bugs/filter-params';
 import {
+  assigneeMemberLabel,
   BUG_LIST_EMPTY_DESCRIPTION,
   BUG_LIST_EMPTY_TITLE,
   formatBugListRow,
@@ -793,7 +794,9 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
 
                 {state === 'rows' && (
                   <>
-                    <div className="overflow-x-auto">
+                    {/* BK-1557 — scroll edge: a fade marks the side with
+                        more columns (Run sits past the card at narrow widths). */}
+                    <div data-testid="bugs-list-scroll" className="scroll-edge-x">
                       <table className="w-full border-collapse">
                         <thead>
                           <tr>
@@ -902,12 +905,12 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                                             onChange={(e) => {
                                               void handleAssign(item.id, e.target.value === '' ? null : e.target.value);
                                             }}
-                                            className="h-7 min-w-[160px] rounded-2 border border-stroke-2 bg-surface-2 px-2 font-mono text-xs text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                                            className="h-7 min-w-[160px] max-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2 text-xs text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
                                           >
                                             <option value="">Unassigned</option>
                                             {workspaceMembers.map(member => (
                                               <option key={member.user_id} value={member.user_id}>
-                                                {member.email ?? member.user_id.slice(0, 8)}
+                                                {assigneeMemberLabel(member)}
                                               </option>
                                             ))}
                                           </select>

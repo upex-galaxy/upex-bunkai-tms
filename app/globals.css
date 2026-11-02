@@ -357,4 +357,23 @@
     background: var(--blocked-bg);
     border-color: rgba(232, 168, 56, 0.25);
   }
+
+  /* BK-1557 — horizontal scroll edge for wide tables inside a card. When the
+     content runs past an edge, a soft lighter fade marks that side, so a
+     clipped column reads as "scroll for more" (macOS hides scrollbars). The
+     two `local` layers cover the fades once the scroll reaches that end.
+     Surface and stroke values only, from the frozen tokens. */
+  .scroll-edge-x {
+    overflow-x: auto;
+    background:
+      linear-gradient(to right, var(--bg-2) 40%, transparent) left center / 32px 100% no-repeat
+        local,
+      linear-gradient(to left, var(--bg-2) 40%, transparent) right center / 32px 100% no-repeat
+        local,
+      linear-gradient(to right, var(--stroke-3), transparent) left center / 14px 100% no-repeat
+        scroll,
+      linear-gradient(to left, var(--stroke-3), transparent) right center / 14px 100% no-repeat
+        scroll;
+    background-color: var(--bg-2);
+  }
 }
