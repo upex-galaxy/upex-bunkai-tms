@@ -42,6 +42,8 @@ export interface ExplorerTestSourceRow {
   id: string
   title: string
   created_at: string
+  // BK-666 — the Test's tags, for the Project Tests list rows.
+  tags: string[]
   // One entry per chained ATC: its Project (null when RLS hides the ATC).
   test_steps: { atcs: { project_id: string } | null }[]
 }
@@ -153,7 +155,7 @@ export async function fetchExplorerTests(
   const rows = dedupeById(await fetchAllPages<ExplorerTestSourceRow>(async (offset, limit) => {
     const { data, error } = await db
       .from('tests')
-      .select('id, title, created_at, test_steps(atcs(project_id))')
+      .select('id, title, created_at, tags, test_steps(atcs(project_id))')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })

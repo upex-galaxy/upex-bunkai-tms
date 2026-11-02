@@ -34,6 +34,8 @@ export interface ExplorerTestItem {
   title: string
   created_at: string
   step_count: number
+  // BK-666 — read by the Project Tests list; the explorer row does not show them.
+  tags: string[]
 }
 
 // BK-148 — a project environment row for the explorer's Environments group. A
