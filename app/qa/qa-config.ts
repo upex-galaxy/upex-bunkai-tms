@@ -679,6 +679,7 @@ export const qaConfig: QaConfig = {
       { method: 'GET', path: '/api/v1/workspaces/{id}/invites', purpose: 'Invites del workspace. Exige scope workspace:admin, que un PAT headless nunca tiene → 403.' },
       { method: 'POST', path: '/api/v1/invites/accept', purpose: 'Acepta una invitación por token.' },
       { method: 'DELETE', path: '/api/v1/workspaces/{id}/membership', purpose: 'Abandona un workspace. COOKIE-ONLY (403 con Bearer).' },
+      { method: 'DELETE', path: '/api/v1/workspaces/{id}/members/{userId}', purpose: 'Quita a un compañero del workspace (BK-572): Owner o Admin, nunca a uno mismo (409, eso es Leave) ni un Admin a un Owner (403). En un solo acto revoca sus PATs de este workspace y sus invites pendientes, y desasigna sus Bugs. Exige scope workspace:admin.' },
       { method: 'POST', path: '/api/v1/me/active-workspace', purpose: 'Cambia el workspace activo. Es POST, no PUT. COOKIE-ONLY: un PAT no tiene workspace activo, pasá workspace_id en cada request.' },
       { method: 'GET', path: '/api/v1/search', purpose: 'Búsqueda global del workspace. Exige scope atc:read.' },
       { method: 'GET', path: '/api/v1/', purpose: 'Banner de discovery → { version, openapi, docs, status }. También responde OPTIONS (preflight CORS).' },
