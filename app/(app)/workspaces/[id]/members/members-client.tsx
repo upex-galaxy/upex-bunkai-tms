@@ -256,7 +256,11 @@ export function MembersClient({ workspaceId, workspaceName, currentUserId, calle
           setRemovals(n => n + 1);
           router.refresh();
         }}
-        onRefused={() => router.refresh()}
+        onRefused={() => {
+          // The refused row may vanish on refresh (404): keep focus on the list.
+          setRemovals(n => n + 1);
+          router.refresh();
+        }}
       />
     </div>
   );

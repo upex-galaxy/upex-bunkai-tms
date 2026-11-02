@@ -61,7 +61,7 @@ export async function assertRemovalAllowed(
     throw new ApiError('forbidden', REMOVAL_NOT_ADMIN_MESSAGE, { details: { reason: 'not_a_member' } });
   }
 
-  if (params.targetId === params.callerId) {
+  if (params.targetId.toLowerCase() === params.callerId.toLowerCase()) {
     selfRefusal(params.workspaceId);
   }
 

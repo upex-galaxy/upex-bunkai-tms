@@ -274,13 +274,17 @@ begin
     end if;
   end if;
 
-  -- 8. Writes, one transaction.
+  -- 8. Writes, one transaction. The Bugs are locked FOR UPDATE: a concurrent
+  --    reassignment that commits first is re-checked against the WHERE
+  --    (READ COMMITTED re-evaluation) and drops out, so a Bug that just moved
+  --    to someone else is never unassigned by this removal.
   for v_bug_id in
     select b.id
       from public.bugs b
      where b.workspace_id = p_workspace_id
        and b.assignee_user_id = p_user_id
      order by b.id
+     for update
   loop
     perform public.bunkai_assign_bug(v_bug_id, null);
     v_unassigned := v_unassigned + 1;

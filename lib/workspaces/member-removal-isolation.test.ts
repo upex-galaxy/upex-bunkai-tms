@@ -457,10 +457,17 @@ describeOrSkip('BK-572 — remove a teammate (RPC + RLS ladder, real database)',
     const seed = await seedWorkspace('failpoint-acl', { owner: 'owner' });
     const armed = await clients.owner.from('bunkai_test_failpoints').insert({ name: 'member_remove.before_event', workspace_id: seed.workspaceId });
     expect(armed.error).not.toBeNull();
+    const read = await clients.owner.from('bunkai_test_failpoints').select('name');
+    expect(read.data ?? []).toEqual([]);
     const { count } = await service().from('bunkai_test_failpoints').select('name', { count: 'exact', head: true }).eq('workspace_id', seed.workspaceId);
     expect(count).toBe(0);
   }, 60_000);
 
+  // LIMITATION: two HTTP calls are not guaranteed to overlap inside Postgres.
+  // When they do not, the second caller is already gone and fails at step 1
+  // with the same P0002, so these two tests prove the OUTCOME (one winner, one
+  // Owner left) but cannot, on their own, prove the FOR UPDATE lock. The lock
+  // and the post-lock re-validation are checked by review of 0114 step 4.
   it('two Admins removing each other at once: exactly one wins, the loser gets 404 (E2)', async () => {
     expect.hasAssertions();
     const seed = await seedWorkspace('race-admins', { owner: 'owner', admin: 'admin', admin2: 'admin' });
