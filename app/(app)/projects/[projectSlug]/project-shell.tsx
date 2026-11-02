@@ -87,35 +87,36 @@ function ShellChrome({ children }: { children: ReactNode }) {
     if (pathname !== projectIndexHref) { router.push(projectIndexHref); }
   };
 
+  const viewSwitch = (
+    <div
+      className="inline-flex items-center gap-0.5 rounded-2 border border-stroke-1 bg-surface-1 p-0.5"
+      role="tablist"
+      aria-label="Project view"
+    >
+      {VIEWS.map(v => (
+        <button
+          key={v.key}
+          type="button"
+          role="tab"
+          aria-selected={view === v.key}
+          data-testid={`view-toggle-${v.key}`}
+          onClick={() => selectView(v.key)}
+          className={cn(
+            'inline-flex items-center gap-1.5 whitespace-nowrap rounded-1 px-2.5 py-1 text-xs font-medium transition-colors',
+            view === v.key ? 'bg-surface-3 text-fg-0' : 'text-fg-3 hover:text-fg-1',
+          )}
+        >
+          <v.icon size={12} />
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
       <Topbar
         left={<Breadcrumb items={[workspaceName, projectName, sectionLabel]} />}
-        center={(
-          <div
-            className="inline-flex items-center gap-0.5 rounded-2 border border-stroke-1 bg-surface-1 p-0.5"
-            role="tablist"
-            aria-label="Project view"
-          >
-            {VIEWS.map(v => (
-              <button
-                key={v.key}
-                type="button"
-                role="tab"
-                aria-selected={view === v.key}
-                data-testid={`view-toggle-${v.key}`}
-                onClick={() => selectView(v.key)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-1 px-2.5 py-1 text-xs font-medium transition-colors',
-                  view === v.key ? 'bg-surface-3 text-fg-0' : 'text-fg-3 hover:text-fg-1',
-                )}
-              >
-                <v.icon size={12} />
-                {v.label}
-              </button>
-            ))}
-          </div>
-        )}
         right={(
           <>
             <AtcSearchFilter projectId={projectId} projectSlug={projectSlug} />
@@ -152,7 +153,9 @@ function ShellChrome({ children }: { children: ReactNode }) {
           </>
         )}
       />
-      <ProjectSubNav projectSlug={projectSlug} />
+      {/* BK-1557 — the view switch rides at the right end of the sub-nav row
+          (one header row instead of two stacked toolbars, D53). */}
+      <ProjectSubNav projectSlug={projectSlug} trailing={viewSwitch} />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         {explorerVisible && (
           // BK-398 — ProjectExplorer reads `?module=` via `useSearchParams()`
