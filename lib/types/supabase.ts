@@ -1808,6 +1808,124 @@ export interface Database {
           },
         ]
       }
+      workspace_billing_profiles: {
+        Row: {
+          address_line1: string
+          address_line2: string | null
+          billing_email: string
+          city: string
+          company_name: string
+          country: string
+          created_at: string
+          postal_code: string
+          region: string | null
+          updated_at: string
+          updated_by_user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          address_line1: string
+          address_line2?: string | null
+          billing_email: string
+          city: string
+          company_name: string
+          country: string
+          created_at?: string
+          postal_code: string
+          region?: string | null
+          updated_at?: string
+          updated_by_user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          address_line1?: string
+          address_line2?: string | null
+          billing_email?: string
+          city?: string
+          company_name?: string
+          country?: string
+          created_at?: string
+          postal_code?: string
+          region?: string | null
+          updated_at?: string
+          updated_by_user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'workspace_billing_profiles_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: true
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      workspace_billing_state: {
+        Row: {
+          created_at: string
+          failed_invoice_id: string | null
+          last_payment_failed_at: string | null
+          payment_method_brand: string | null
+          payment_method_exp_month: number | null
+          payment_method_exp_year: number | null
+          payment_method_last4: string | null
+          payment_method_updated_at: string | null
+          payment_state: string
+          recovered_at: string | null
+          retry_attempts: number
+          retry_started_at: string | null
+          stripe_customer_id: string
+          stripe_subscription_id: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          failed_invoice_id?: string | null
+          last_payment_failed_at?: string | null
+          payment_method_brand?: string | null
+          payment_method_exp_month?: number | null
+          payment_method_exp_year?: number | null
+          payment_method_last4?: string | null
+          payment_method_updated_at?: string | null
+          payment_state?: string
+          recovered_at?: string | null
+          retry_attempts?: number
+          retry_started_at?: string | null
+          stripe_customer_id: string
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          failed_invoice_id?: string | null
+          last_payment_failed_at?: string | null
+          payment_method_brand?: string | null
+          payment_method_exp_month?: number | null
+          payment_method_exp_year?: number | null
+          payment_method_last4?: string | null
+          payment_method_updated_at?: string | null
+          payment_state?: string
+          recovered_at?: string | null
+          retry_attempts?: number
+          retry_started_at?: string | null
+          stripe_customer_id?: string
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'workspace_billing_state_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: true
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       workspace_deletions: {
         Row: {
           id: string
@@ -1892,6 +2010,32 @@ export interface Database {
             foreignKeyName: 'workspace_exports_workspace_id_fkey'
             columns: ['workspace_id']
             isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      workspace_grace_periods: {
+        Row: {
+          ends_at: string
+          started_at: string
+          workspace_id: string
+        }
+        Insert: {
+          ends_at: string
+          started_at: string
+          workspace_id: string
+        }
+        Update: {
+          ends_at?: string
+          started_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'workspace_grace_periods_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: true
             referencedRelation: 'workspaces'
             referencedColumns: ['id']
           },
@@ -2069,6 +2213,31 @@ export interface Database {
           p_stripe_event_id: string
           p_stripe_event_type: string
           p_stripe_subscription_id: string
+        }
+        Returns: Json
+      }
+      bunkai_apply_billing_invoice_event: {
+        Args: {
+          p_billing_reason: string
+          p_event_created: string
+          p_event_type: string
+          p_stripe_customer_id: string
+          p_stripe_event_id: string
+          p_stripe_invoice_id: string
+        }
+        Returns: Json
+      }
+      bunkai_apply_billing_payment_method: {
+        Args: {
+          p_brand: string
+          p_event_created: string
+          p_event_type: string
+          p_exp_month: number
+          p_exp_year: number
+          p_last4: string
+          p_replaced: boolean
+          p_stripe_customer_id: string
+          p_stripe_event_id: string
         }
         Returns: Json
       }
@@ -2253,6 +2422,10 @@ export interface Database {
           p_title?: string
         }
         Returns: Json
+      }
+      bunkai_effective_plan: {
+        Args: { p_grace_ends_at: string, p_now?: string, p_plan: string }
+        Returns: string
       }
       bunkai_expire_pending_run_step_attachments: {
         Args: { p_limit?: number }
