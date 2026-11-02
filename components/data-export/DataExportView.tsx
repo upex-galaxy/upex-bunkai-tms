@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -199,13 +200,8 @@ export function DataExportView({ workspaceId }: DataExportViewProps) {
 
 function RequestButton({ onClick, busy, label }: { onClick: () => void, busy: boolean, label: string }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={busy}
-      className="flex h-8 items-center gap-2 rounded-2 border border-stroke-2 bg-surface-3 px-3 text-sm font-medium text-fg-1 hover:bg-surface-4 disabled:opacity-50"
-    >
+    <Button type="button" onClick={onClick} disabled={busy}>
       {busy ? 'Requesting…' : label}
-    </button>
+    </Button>
   );
 }

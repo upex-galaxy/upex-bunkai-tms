@@ -2,6 +2,7 @@
 
 import type { NotificationRpcRow } from '@app/api/v1/workspaces/[id]/notifications/response';
 import { NotificationRow } from '@components/notifications/NotificationRow';
+import { Button } from '@components/ui/button';
 import { groupNotificationsByDay } from '@lib/notifications/group-by-day';
 import {
   formatUnreadSummary,
@@ -86,15 +87,15 @@ export function NotificationsPanel({
         {state === 'error' && (
           <div data-testid="notifications_error" className="flex flex-col items-start gap-3 p-4">
             <p className="m-0 text-sm text-fg-2">{error}</p>
-            <button
+            <Button
               type="button"
+              size="sm"
               data-testid="notifications_retry"
               onClick={onRetry}
-              className="inline-flex items-center gap-1.5 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-1.5 text-xs font-medium text-fg-1 hover:bg-surface-3"
             >
               <RefreshCw size={12} />
               Retry
-            </button>
+            </Button>
           </div>
         )}
 

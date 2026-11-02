@@ -2,6 +2,7 @@
 
 import type { Atc, AtcStatus, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import type { LucideIcon } from 'lucide-react';
+import { Button } from '@components/ui/button';
 import { cn, shortSlug } from '@lib/utils';
 import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Copy, FilePlus, Files, FileText, FlaskConical, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -168,15 +169,15 @@ export function Sidebar({
                 <p className="text-sm text-fg-3">No modules yet</p>
                 {canCreate && onNewModule
                   ? (
-                      <button
+                      <Button
                         type="button"
                         data-testid="module-empty-cta"
                         onClick={onNewModule}
-                        className="mt-1 inline-flex items-center gap-1.5 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-1.5 text-sm text-fg-1 hover:border-stroke-3 hover:bg-surface-3"
+                        className="mt-1"
                       >
                         <Plus size={13} />
                         Create your first module
-                      </button>
+                      </Button>
                     )
                   : (
                       <p className="text-xs text-fg-4">Ask a workspace member to add one.</p>
