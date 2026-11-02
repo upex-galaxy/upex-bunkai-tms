@@ -590,7 +590,7 @@ Mockup: none — see §5 D56. Impl: BK-572 (`feature/BK-572-remove-teammate`).
 - **Outcomes.** Success: close, toast "email was removed from Workspace.", refresh, focus the `Active members (N)` heading (`tabIndex={-1}`). 403 / 404 / 409: close, toast the server message, refresh (the row may have changed since the page loaded). 5xx or network: the dialog stays open, buttons re-enabled, toast "Could not remove email. Nothing was changed. Try again." `sole_owner` is a backstop, not a designed state (D40(a) reasoning).
 - **Entry point.** On Settings > Workspaces (`WorkspacesList.tsx`), the existing `N members` cell becomes a link to `/workspaces/{id}/members` on Owner and Admin rows; same text, same `font-mono text-xs text-fg-3`, underline on hover. Member and Viewer rows keep plain text.
 
-### 4.23 Project Tests list (BK-666) — ❌ (0%, spec-only, no mockup)
+### 4.23 Project Tests list (BK-666) — ✅ built by BK-666 (spec-only, no mockup)
 Mockup: none — see §5 D57. Impl: BK-666 (`feature/BK-666-tests-list`).
 
 **Ratified DEPARTURE (D57, §5).** No mockup draws a Project's Tests as a list: `project.jsx`'s `TableView` is ATC-only by design (and stays so, AC-10), `atc-library-global.html` (§4.9) is a workspace ATC index and `plan-detail.html` (§4.11) labels ATC rows as Tests. Per Rule #14 the screen is assembled from the LIVE surfaces beside it: the ATC table's header strip, sticky mono header row and tag chips (`AtcTable.tsx`), the ATC Library's named error with Retry and skeleton rows (`AtcLibraryView.tsx`), the explorer's Test glyph and chain count, and the toolbar tag filter (`test-tag-filter.tsx`, BK-33) as the only filter control. No new token, radius, font or spacing; the row reorder on sort is not animated (a frequent action).
