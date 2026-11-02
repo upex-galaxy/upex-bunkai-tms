@@ -39,13 +39,18 @@ interface PageProps {
 // coverage panel (the `<CoverageSection>` block below); BK-47 owns a
 // separate recovery-cycle/time-to-green section. This file got here first,
 // so it OWNS the page shell: BK-47 should add its own `<Suspense>`-wrapped
-// section as a SIBLING inside the `<div className="flex flex-col gap-6">`
+// section as a SIBLING inside the `metrics-page` scroll
 // wrapper below, not restructure this file's existing Coverage section.
 export default async function ProjectCoveragePage({ params }: PageProps) {
   const { projectSlug } = await params;
 
+  // BK-1557 — the page wrapper is the ONE scroll container. Both sections
+  // were each built as a full-page `flex-1 overflow-hidden` column; stacked
+  // in a non-scrolling parent they shared its height and clipped their cards
+  // (the coverage table was cut off under the next section). `flex-none` on
+  // each section lets it take its content height, and the wrapper scrolls.
   return (
-    <div className="flex flex-col gap-6">
+    <div data-testid="metrics-page" className="flex min-h-0 flex-1 flex-col overflow-y-auto [&>*]:flex-none">
       <Suspense fallback={<ProjectCoverageSkeleton />}>
         <ProjectCoverageSection projectSlug={projectSlug} />
       </Suspense>
