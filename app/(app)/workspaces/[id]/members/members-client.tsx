@@ -2,6 +2,7 @@
 
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
+import { Select } from '@components/ui/select';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -111,20 +112,18 @@ export function MembersClient({ workspaceId, members, invites }: Props) {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="teammate@company.com"
-              className="h-10 text-md"
             />
           </label>
           <label>
             <span className="mb-1.5 block text-xs font-medium text-fg-2">Role</span>
-            <select
+            <Select
               value={role}
               onChange={e => setRole(e.target.value as typeof role)}
-              className="h-10 rounded-2 border border-stroke-2 bg-surface-0 px-3 text-md text-fg-0"
             >
               <option value="viewer">viewer</option>
               <option value="member">member</option>
               <option value="admin">admin</option>
-            </select>
+            </Select>
           </label>
           <Button
             type="button"

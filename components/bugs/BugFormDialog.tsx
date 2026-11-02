@@ -2,6 +2,7 @@
 
 import type { BugSeverity } from '@lib/bugs/constants';
 import { Button } from '@components/ui/button';
+import { Select } from '@components/ui/select';
 import {
   BUG_EVIDENCE_MAX,
   BUG_SEVERITY_LABEL,
@@ -254,7 +255,7 @@ export function BugFormDialog({
           : (
               // Standalone — no run to derive a module from, so the filer
               // picks one explicitly. Sent as `module_id` in the request body.
-              <select
+              <Select
                 id="bug-module-input"
                 data-testid="bug-module-input"
                 value={moduleId}
@@ -263,13 +264,13 @@ export function BugFormDialog({
                   if (error) { setError(null); }
                 }}
                 disabled={submitting}
-                className="w-full rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-2 text-sm text-fg-1 focus:border-accent focus:outline-none"
+                className="w-full"
               >
                 <option value="">Select a module…</option>
                 {context.modules.map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
-              </select>
+              </Select>
             )}
 
         <label htmlFor="bug-description-input" className="mb-1.5 mt-3 block text-xs text-fg-2">

@@ -5,6 +5,7 @@ import type { WorkspaceOption } from '@lib/tokens/view-state';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { Label } from '@components/ui/label';
+import { Select } from '@components/ui/select';
 import { ALLOWED_PAT_SCOPES } from '@lib/api/pat';
 import { useModalDismiss } from '@lib/hooks/use-modal-dismiss';
 import { copySecret } from '@lib/tokens/copy-to-clipboard';
@@ -276,12 +277,11 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
 
                 <div className="mb-3 flex flex-col gap-1">
                   <Label htmlFor="issue-token-workspace">Workspace — optional</Label>
-                  <select
+                  <Select
                     id="issue-token-workspace"
                     value={workspaceId}
                     onChange={e => setWorkspaceId(e.target.value)}
                     disabled={submitting}
-                    className="h-8 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
                   >
                     <option value="">All workspaces</option>
                     {workspaces.map(ws => (
@@ -291,17 +291,16 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
                         {ws.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="mb-4 flex flex-col gap-1">
                   <Label htmlFor="issue-token-expiry">Expiry — optional</Label>
-                  <select
+                  <Select
                     id="issue-token-expiry"
                     value={expiryChoice}
                     onChange={e => setExpiryChoice(e.target.value)}
                     disabled={submitting}
-                    className="h-8 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
                   >
                     {EXPIRY_CHOICES.map(days => (
                       <option key={days} value={days}>
@@ -311,7 +310,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
                       </option>
                     ))}
                     <option value="never">No expiry</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="flex items-center gap-2">

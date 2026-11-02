@@ -14,6 +14,7 @@ import type { ReactNode } from 'react';
 import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
+import { Select } from '@components/ui/select';
 import { mergeStateIntoParams, stateFromParams } from '@lib/saved-views/state';
 import {
   acNoteLabel,
@@ -191,16 +192,16 @@ const FilterBar = forwardRef<HTMLDivElement, {
           <label htmlFor="traceability-filter-module" className="text-2xs font-medium uppercase tracking-[0.06em] text-fg-3">
             Module
           </label>
-          <select
+          <Select
             id="traceability-filter-module"
             data-testid="traceability-filter-module"
             value={state.moduleId ?? ''}
             onChange={e => onModuleChange(e.target.value)}
-            className="flex h-8 w-[192px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 text-sm text-fg-1 transition-colors duration-token ease-token hover:border-stroke-3 focus-visible:border-accent focus-visible:bg-surface-3 focus-visible:outline-none"
+            className="flex w-[192px]"
           >
             <option value="">All modules</option>
             {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-1">

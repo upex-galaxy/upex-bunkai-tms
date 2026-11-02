@@ -12,6 +12,7 @@ import { BugsHeatmapView } from '@components/bugs/BugsHeatmapView';
 import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
+import { Select } from '@components/ui/select';
 import {
   BUG_SEVERITY_LABEL,
   BUG_SEVERITY_VALUES,
@@ -633,17 +634,17 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
               >
                 <label className="flex flex-col gap-1.5">
                   <span className="text-2xs font-semibold uppercase tracking-[0.04em] text-fg-2">Module</span>
-                  <select
+                  <Select
                     data-testid="bugs-list-module-filter"
                     value={moduleId ?? ''}
                     onChange={e => onModuleChange(e.target.value)}
-                    className="h-8 min-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                    className="min-w-[220px]"
                   >
                     <option value="">All modules</option>
                     {modules.map(m => (
                       <option key={m.id} value={m.id}>{m.path}</option>
                     ))}
-                  </select>
+                  </Select>
                   <span className="text-2xs text-fg-3">Includes all nested sub-modules</span>
                 </label>
 
@@ -899,7 +900,7 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                                   {canManageBugs
                                     ? (
                                         <div className="flex flex-col items-start gap-1">
-                                          <select
+                                          <Select
                                             aria-label="Assignee"
                                             data-testid="bugs-list-assignee-select"
                                             value={item.assignee_user_id ?? ''}
@@ -907,7 +908,8 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                                             onChange={(e) => {
                                               void handleAssign(item.id, e.target.value === '' ? null : e.target.value);
                                             }}
-                                            className="h-7 min-w-[160px] max-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2 text-xs text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                                            size="sm"
+                                            className="min-w-[160px] max-w-[220px]"
                                           >
                                             <option value="">Unassigned</option>
                                             {workspaceMembers.map((member, index) => (
@@ -915,7 +917,7 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                                                 {memberLabels[index]}
                                               </option>
                                             ))}
-                                          </select>
+                                          </Select>
                                           {assignErrorById[item.id] && (
                                             <p data-testid="bugs-list-assignee-error" className="max-w-[200px] whitespace-normal text-2xs text-signal-fail">
                                               {assignErrorById[item.id]}
