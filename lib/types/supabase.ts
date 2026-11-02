@@ -2283,6 +2283,7 @@ export interface Database {
         Returns: string
       }
       bunkai_bug_json: { Args: { p_bug_id: string }, Returns: Json }
+      bunkai_caller_workspace_rank: { Args: { ws_id: string }, Returns: number }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
       bunkai_chat_delete_message: {
         Args: { p_message_id: string }
@@ -2612,6 +2613,10 @@ export interface Database {
         Args: { p_test_id: string, p_test_plan_id: string }
         Returns: Json
       }
+      bunkai_remove_workspace_member: {
+        Args: { p_user_id: string, p_workspace_id: string }
+        Returns: Json
+      }
       bunkai_rename_environment: {
         Args: {
           p_actor_user_id: string
@@ -2823,6 +2828,7 @@ export interface Database {
         Returns: Json
       }
       bunkai_workspace_is_live: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_workspace_role_rank: { Args: { p_role: string }, Returns: number }
     }
     Enums: {
       [_ in never]: never
