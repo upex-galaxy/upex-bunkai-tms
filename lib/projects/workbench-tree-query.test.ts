@@ -194,7 +194,7 @@ describe('BK-1233 — the sibling tree reads are paged too', () => {
       rowFields: i => ({ test_steps: chains[i].map(projectId => ({ atcs: projectId ? { project_id: projectId } : null })) }),
     });
     expect((await fetchExplorerTests(db, 'workspace-1', 'project-1')).map(t => t.id)).toEqual(['0']);
-    expect(ops(calls[0], 'select')).toEqual([['select', 'id, title, created_at, test_steps(atcs(project_id))']]);
+    expect(ops(calls[0], 'select')).toEqual([['select', 'id, title, created_at, tags, test_steps(atcs(project_id))']]);
   });
 
   it('fetchTreeStories sends module ids in batches and pages each batch', async () => {

@@ -135,6 +135,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     title: t.title,
     created_at: t.created_at,
     step_count: t.test_steps.length,
+    tags: t.tags ?? [],
   }));
 
   const environments: ExplorerEnvironmentItem[] = (environmentsData ?? []).map(e => ({

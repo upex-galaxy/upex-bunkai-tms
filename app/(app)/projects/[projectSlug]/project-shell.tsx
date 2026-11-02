@@ -4,14 +4,13 @@ import type { ReactNode } from 'react';
 import type { WorkbenchData, WorkbenchView } from './workbench-context';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
-import { buttonVariants } from '@components/ui/button';
 import { cn } from '@lib/utils';
-import { GitBranch, ListTree, Network, Play, Plus, Table2, X } from 'lucide-react';
-import Link from 'next/link';
+import { GitBranch, ListTree, Network, Play, Table2, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 import { AtcSearchFilter } from './atc-search-filter';
 import { ExportAtcsButton } from './export-atcs-button';
+import { ProjectCreateLinks } from './project-create-links';
 import { ProjectExplorer } from './project-explorer';
 import { ProjectSubNav, resolveProjectSectionLabel } from './project-sub-nav';
 import { TestTagFilter } from './test-tag-filter';
@@ -67,8 +66,9 @@ function ShellChrome({ children }: { children: ReactNode }) {
 
   // The last breadcrumb crumb tracks the sub-nav's active entry (BK-265) so the
   // shell can no longer claim "All ATCs" while the user is on Metrics. Off the
-  // four section routes (an open ATC / Test / run) it stays "All ATCs", exactly
-  // as it read before this ticket.
+  // section routes (an open ATC) it stays "All ATCs", exactly as it read before
+  // this ticket; an open Test reads "Tests" since BK-666 nested it under the
+  // Tests entry, as an open run reads "Test Runs".
   const sectionLabel = resolveProjectSectionLabel(pathname, projectSlug) ?? 'All ATCs';
 
   const projectIndexHref = `/projects/${projectSlug}`;
@@ -132,24 +132,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
               />
             )}
             {showExportAtcs && <ExportAtcsButton projectId={projectId} />}
-            <Link
-              href={`/projects/${projectSlug}/atcs/new`}
-              className={buttonVariants({ size: 'sm' })}
-              data-testid="project-new-atc"
-            >
-              <Plus size={11} />
-              {' '}
-              New ATC
-            </Link>
-            <Link
-              href={`/projects/${projectSlug}/tests/new`}
-              className={buttonVariants({ variant: 'primary', size: 'sm' })}
-              data-testid="project-new-test"
-            >
-              <Plus size={11} />
-              {' '}
-              New Test
-            </Link>
+            <ProjectCreateLinks projectSlug={projectSlug} canCreate={canCreate} />
           </>
         )}
       />

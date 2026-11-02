@@ -2,7 +2,7 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import { cn } from '@lib/utils';
-import { BarChart3, Bug, ClipboardList, Flag, GitBranch, Library, Play, Settings } from 'lucide-react';
+import { BarChart3, Bug, ClipboardList, Flag, GitBranch, Library, ListOrdered, Play, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -37,13 +37,21 @@ import { usePathname } from 'next/navigation';
 // page, so it survives navigation across the project's detail routes — the
 // same BK-147 / ADR-0003 layout contract the explorer relies on.
 //
+// BK-666 adds Tests, right after All ATCs: the Project Tests list
+// (`/projects/{slug}/tests`), the list route D18 recorded as missing ("ATCs and
+// Tests have no list route of their own"). It takes the nested rule, so a
+// Test's own detail (`/tests/{testId}`), its run history and New Test keep
+// "Tests" current, the way a run report keeps "Test Runs" current. Its icon is
+// ListOrdered (a Test is an ordered chain of ATCs): the explorer's Test glyph,
+// GitBranch, is already Traceability's in this row.
+//
 // The global sidebar's ATC Library entry went live with its workspace-wide
 // index (BK-439, D31); its Test Runs, Bug Reports and Metrics entries now open
 // these same project-scoped routes for the current (or first) project
 // (BK-1557, D52), since no workspace-wide aggregate exists. These entries are
 // project-scoped, and every one of them points at a
 // route that is actually built — no entry is invented for a route that only
-// has `[id]` / `new` segments (ATCs and Tests are browsed from the workbench).
+// has `[id]` / `new` segments (ATCs are browsed from the workbench).
 
 interface SubNavEntry {
   id: string
@@ -55,6 +63,7 @@ interface SubNavEntry {
 
 const ENTRIES: SubNavEntry[] = [
   { id: 'atcs', label: 'All ATCs', icon: Library, segment: null },
+  { id: 'tests', label: 'Tests', icon: ListOrdered, segment: 'tests' },
   { id: 'runs', label: 'Test Runs', icon: Play, segment: 'runs' },
   { id: 'bugs', label: 'Bug Reports', icon: Bug, segment: 'bugs' },
   { id: 'metrics', label: 'Metrics', icon: BarChart3, segment: 'metrics' },
