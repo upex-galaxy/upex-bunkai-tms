@@ -644,6 +644,11 @@
     "posture": "required:workspace:admin"
   },
   {
+    "file": "app/api/v1/workspaces/[id]/members/[userId]/route.ts",
+    "method": "DELETE",
+    "posture": "required:workspace:admin"
+  },
+  {
     "file": "app/api/v1/workspaces/[id]/membership/route.ts",
     "method": "DELETE",
     "posture": "cookie-only",

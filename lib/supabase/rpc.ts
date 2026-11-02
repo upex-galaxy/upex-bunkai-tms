@@ -34,6 +34,23 @@ export async function leaveWorkspace(supabase: Client, args: LeaveWorkspaceArgs)
   });
 }
 
+// BK-572 — remove a teammate from a workspace (ADR-0022). The SECURITY
+// DEFINER RPC (migration 0114) binds the actor to auth.uid(), applies the
+// role ladder, and in one transaction unassigns the target's Bugs, revokes
+// their workspace-scoped PATs and pending invites, deletes the membership row
+// and writes `member.removed`. Call it with the caller's OWN client.
+export interface RemoveWorkspaceMemberArgs {
+  workspaceId: string
+  userId: string
+}
+
+export async function removeWorkspaceMember(supabase: Client, args: RemoveWorkspaceMemberArgs) {
+  return supabase.rpc('bunkai_remove_workspace_member', {
+    p_workspace_id: args.workspaceId,
+    p_user_id: args.userId,
+  });
+}
+
 // BK-512 — Delete a workspace I own (ADR-0015: soft-delete, 30-day grace).
 // The SECURITY DEFINER RPC (migration 0084) validates the caller is the
 // active owner, stamps `deleted_at`, revokes the workspace's PATs and

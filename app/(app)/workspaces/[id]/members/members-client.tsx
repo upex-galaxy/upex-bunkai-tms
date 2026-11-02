@@ -3,8 +3,10 @@
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { Select } from '@components/ui/select';
+import { RemoveMemberModal } from '@components/workspaces/RemoveMemberModal';
+import { canRemoveMember } from '@lib/workspaces/member-ladder';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 interface Member {
@@ -12,6 +14,9 @@ interface Member {
   role: string
   status: string
   joined_at: string
+  // BK-572 — resolved server-side from bunkai_chat_roster; null when the
+  // roster did not return it (never shown as a raw id on its own).
+  email: string | null
 }
 
 interface Invite {
@@ -27,6 +32,9 @@ interface Invite {
 
 interface Props {
   workspaceId: string
+  workspaceName: string
+  currentUserId: string
+  callerRole: string | null
   members: Member[]
   invites: Invite[]
 }
@@ -35,8 +43,21 @@ interface ApiErrorBody {
   error?: { code?: string, message?: string }
 }
 
-export function MembersClient({ workspaceId, members, invites }: Props) {
+export function MembersClient({ workspaceId, workspaceName, currentUserId, callerRole, members, invites }: Props) {
   const router = useRouter();
+  const [removeTarget, setRemoveTarget] = useState<{ userId: string, email: string, role: string } | null>(null);
+  const membersHeadingRef = useRef<HTMLHeadingElement>(null);
+  const [removals, setRemovals] = useState(0);
+
+  // After a removal the row that opened the dialog is gone, so focus lands on
+  // the list heading instead of the page body (AC-20). A parent effect runs
+  // after the dialog's own return-to-trigger effect in the same commit, so
+  // this one wins.
+  useEffect(() => {
+    if (removals > 0) {
+      membersHeadingRef.current?.focus();
+    }
+  }, [removals]);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'viewer' | 'member' | 'admin'>('member');
   const [submitting, setSubmitting] = useState(false);
@@ -140,23 +161,51 @@ export function MembersClient({ workspaceId, members, invites }: Props) {
       </section>
 
       <section className="rounded-3 border border-stroke-2 bg-surface-1 p-5">
-        <h2 className="m-0 mb-3 text-sm font-semibold uppercase tracking-widest text-fg-3">
+        <h2
+          ref={membersHeadingRef}
+          tabIndex={-1}
+          data-testid="members-heading"
+          className="m-0 mb-3 text-sm font-semibold uppercase tracking-widest text-fg-3 outline-none"
+        >
           Active members (
           {members.length}
           )
         </h2>
         <ul className="m-0 divide-y divide-stroke-2 p-0">
-          {members.map(m => (
-            <li key={m.user_id} className="flex items-center justify-between py-2 text-sm">
-              <code className="text-fg-2">{m.user_id}</code>
-              <span className="text-fg-3">
-                {m.role}
-                {' '}
-                ·
-                {m.status}
-              </span>
-            </li>
-          ))}
+          {members.map((m) => {
+            const isSelf = m.user_id === currentUserId;
+            const label = m.email ?? 'Unknown member';
+            const removable = m.email !== null && canRemoveMember({ callerId: currentUserId, callerRole, target: m });
+            return (
+              <li key={m.user_id} data-testid={`member-row-${m.user_id}`} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <div className="truncate text-fg-1">
+                    {label}
+                    {isSelf && <span className="text-fg-3"> (you)</span>}
+                  </div>
+                  <div className="text-xs text-fg-4">
+                    {m.role}
+                    {' '}
+                    ·
+                    {' '}
+                    {m.status}
+                  </div>
+                </div>
+                {removable && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-testid={`member-remove-${m.user_id}`}
+                    aria-label={`Remove ${label}`}
+                    onClick={() => setRemoveTarget({ userId: m.user_id, email: label, role: m.role })}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </li>
+            );
+          })}
           {members.length === 0 && <li className="py-2 text-sm text-fg-4">No members yet.</li>}
         </ul>
       </section>
@@ -197,6 +246,22 @@ export function MembersClient({ workspaceId, members, invites }: Props) {
           {invites.length === 0 && <li className="py-2 text-sm text-fg-4">No invites yet.</li>}
         </ul>
       </section>
+
+      <RemoveMemberModal
+        workspaceId={workspaceId}
+        workspaceName={workspaceName}
+        member={removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        onRemoved={() => {
+          setRemovals(n => n + 1);
+          router.refresh();
+        }}
+        onRefused={() => {
+          // The refused row may vanish on refresh (404): keep focus on the list.
+          setRemovals(n => n + 1);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

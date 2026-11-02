@@ -1,9 +1,10 @@
+import { chatRoster } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { MembersClient } from './members-client';
 
 // Server boundary: confirms session, fetches initial member + invite lists.
-// Mutations (invite/resend/revoke) round-trip through /api/v1 from the client
+// Mutations (invite/resend/revoke, BK-572 remove) round-trip through /api/v1 from the client
 // component, which then refreshes the route to pick up the new server data.
 export default async function MembersPage(
   { params }: { params: Promise<{ id: string }> },
@@ -33,6 +34,15 @@ export default async function MembersPage(
     redirect('/projects');
   }
 
+  // BK-572 — the rows that render stay the RLS read above (a Member sees only
+  // their own row). Emails come from the membership-asserting
+  // `bunkai_chat_roster` (0104), used only as a user_id -> email map through
+  // the caller's own client: no new function, no service-role read.
+  const { data: roster } = await chatRoster(supabase, { workspaceId });
+  const emailById = new Map((roster ?? []).map(r => [r.user_id, r.email]));
+  const memberRows = (members ?? []).map(m => ({ ...m, email: emailById.get(m.user_id) ?? null }));
+  const callerRole = (members ?? []).find(m => m.user_id === user.id && m.status === 'active')?.role ?? null;
+
   const enrichedInvites = (invites ?? []).map(row => ({
     ...row,
     status: derivedStatus(row),
@@ -52,7 +62,10 @@ export default async function MembersPage(
       </header>
       <MembersClient
         workspaceId={workspaceId}
-        members={members ?? []}
+        workspaceName={workspace.name}
+        currentUserId={user.id}
+        callerRole={callerRole}
+        members={memberRows}
         invites={enrichedInvites}
       />
     </div>

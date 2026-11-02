@@ -403,6 +403,48 @@ describe('fetchActivityPage (API design steps 4-6)', () => {
     expect(page.items[0].action_label).toBe('assigned this defect to sara.iglesias@example.com');
   });
 
+  it('BK-572: folds a member.removed row\'s removed_user_id into the same batch and labels the item with that email', async () => {
+    const calls: RpcCall[] = [];
+    const row = {
+      id: ROW_1,
+      entity_type: 'workspace_member',
+      entity_id: USER_B,
+      action: 'member.removed',
+      actor_user_id: USER_A,
+      created_at: '2026-11-02T11:52:00+00:00',
+      payload: { removed_user_id: USER_B, removed_role: 'member' },
+    };
+    const db = fakeRpcDb({
+      list: { data: { items: [row], next_cursor: null }, error: null },
+      resolve: { data: [{ user_id: USER_A, email: 'ana.owner@example.com' }, { user_id: USER_B, email: 'leo@example.com' }], error: null },
+    }, calls);
+
+    const page = await fetchActivityPage(db, { workspaceId: WS, limit: 30, cursorCreatedAt: null, cursorId: null });
+
+    const resolveCalls = calls.filter(c => c.fn === 'bunkai_resolve_activity_actors');
+    expect(resolveCalls).toHaveLength(1);
+    expect((resolveCalls[0].args as { p_user_ids: string[] }).p_user_ids).toEqual([USER_A, USER_B]);
+    expect(page.items[0].actor.email).toBe('ana.owner@example.com');
+    expect(page.items[0].action_label).toBe('removed a teammate');
+    expect(page.items[0].item).toEqual({ label: 'leo@example.com', entity_id: USER_B });
+    expect(page.items[0].payload).toEqual({ removed_user_id: USER_B, removed_role: 'member' });
+  });
+
+  it('BK-572: an unresolved removed teammate falls back to "a former member", never a raw id', async () => {
+    const db = fakeRpcDb({
+      list: {
+        data: {
+          items: [{ id: ROW_1, entity_type: 'workspace_member', entity_id: USER_B, action: 'member.removed', actor_user_id: USER_A, created_at: '2026-11-02T11:52:00+00:00', payload: { removed_user_id: USER_B, removed_role: 'viewer' } }],
+          next_cursor: null,
+        },
+        error: null,
+      },
+      resolve: { data: [{ user_id: USER_A, email: 'ana.owner@example.com' }], error: null },
+    });
+    const page = await fetchActivityPage(db, { workspaceId: WS, limit: 30, cursorCreatedAt: null, cursorId: null });
+    expect(page.items[0].item.label).toBe('a former member');
+  });
+
   it('skips the actor-resolver RPC entirely when every row has a null actor', async () => {
     const calls: RpcCall[] = [];
     const db = fakeRpcDb({

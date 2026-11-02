@@ -308,6 +308,9 @@
           },
           {
             "$ref": "#/components/schemas/ActivityItemBugStatusChanged"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemMemberRemoved"
           }
         ],
         "discriminator": {
@@ -325,7 +328,8 @@
             "bug.assigned": "#/components/schemas/ActivityItemBugAssigned",
             "bug.reassigned": "#/components/schemas/ActivityItemBugReassigned",
             "bug.unassigned": "#/components/schemas/ActivityItemBugUnassigned",
-            "bug.status_changed": "#/components/schemas/ActivityItemBugStatusChanged"
+            "bug.status_changed": "#/components/schemas/ActivityItemBugStatusChanged",
+            "member.removed": "#/components/schemas/ActivityItemMemberRemoved"
           }
         }
       },
@@ -1113,6 +1117,65 @@
           }
         },
         "required": ["previous_status", "status", "assignee_user_id"]
+      },
+      "ActivityItemMemberRemoved": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["workspace_member"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["member.removed"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadMemberRemoved"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadMemberRemoved": {
+        "type": "object",
+        "properties": {
+          "removed_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "removed_role": {
+            "type": ["string", "null"],
+            "enum": ["viewer", "member", "admin", "owner", null]
+          }
+        },
+        "required": ["removed_user_id", "removed_role"]
       },
       "SendDigestResponse": {
         "type": "object",
@@ -6547,6 +6610,38 @@
           }
         },
         "required": ["invites"]
+      },
+      "WorkspaceMemberRemoveResponse": {
+        "type": "object",
+        "properties": {
+          "removed_user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "removed_role": {
+            "type": "string",
+            "enum": ["viewer", "member", "admin", "owner"]
+          },
+          "revoked_token_count": {
+            "type": "integer",
+            "description": "Personal Access Tokens scoped to this workspace that were revoked. Tokens not scoped to a workspace are never touched."
+          },
+          "unassigned_bug_count": {
+            "type": "integer",
+            "description": "Bugs that were assigned to the removed teammate and are now unassigned (each one records a bug.unassigned activity event)."
+          },
+          "revoked_invite_count": {
+            "type": "integer",
+            "description": "Pending invites addressed to the removed teammate's email that were revoked."
+          }
+        },
+        "required": [
+          "removed_user_id",
+          "removed_role",
+          "revoked_token_count",
+          "unassigned_bug_count",
+          "revoked_invite_count"
+        ]
       },
       "WorkspaceLeaveResponse": {
         "type": "object",
@@ -18151,6 +18246,104 @@
           },
           "403": {
             "description": "Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); or the PAT is bound to a DIFFERENT workspace than `{id}`. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/members/{userId}": {
+      "delete": {
+        "tags": ["Members"],
+        "summary": "Remove a teammate from a workspace",
+        "description": "An Owner or Admin ends a teammate's membership in one all-or-nothing act: the membership row is deleted, the teammate's Personal Access Tokens scoped to this workspace are revoked, pending invites addressed to their email are revoked, every Bug assigned to them becomes unassigned, and a `member.removed` activity event is written. Authorship is preserved. The ladder: a caller may remove a target whose role does not outrank theirs (viewer < member < admin < owner), never themselves (use `DELETE /api/v1/workspaces/{id}/membership` to leave). Refusals are checked in this order: workspace visibility (404), caller role (403 `not_a_member`), self (409 `cannot_remove_self`), target membership (404, the same body as the first 404), ladder (403 `cannot_remove_owner`). Re-inviting is the only reversal.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The teammate to remove."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Removed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMemberRemoveResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A path id is not a UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Any of: the caller is a Member or Viewer (`details.reason = not_a_member`); an Admin targets an Owner (`details.reason = cannot_remove_owner`); the Bearer PAT lacks the `workspace:admin` capability, is not bound to any workspace, or is bound to a DIFFERENT workspace than `{id}` (ADR-0006, identical whether `{id}` exists or not).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The workspace does not exist, is scheduled for deletion or is not visible to the caller, or the target is not an active member. Indistinguishable by design.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Either `details.reason = cannot_remove_self` (with `details.leave_endpoint`), or `details.reason = sole_owner` (a backstop: the workspace would be left with no Owner).",
             "content": {
               "application/json": {
                 "schema": {

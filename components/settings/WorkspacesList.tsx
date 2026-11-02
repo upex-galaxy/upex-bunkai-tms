@@ -108,11 +108,28 @@ export function WorkspacesList({ workspaces, error = false, enableLeaveAction = 
                     </>
                   )}
                 </span>
-                <span className="font-mono text-xs text-fg-3">
-                  {ws.memberCount}
-                  {' '}
-                  {ws.memberCount === 1 ? 'member' : 'members'}
-                </span>
+                {/* BK-572 (D56): the count opens the members screen for the
+                    roles that can manage it; same text, same tokens. */}
+                {ws.role === 'owner' || ws.role === 'admin'
+                  ? (
+                      <Link
+                        href={`/workspaces/${ws.id}/members`}
+                        data-testid={`workspace-members-${ws.slug}`}
+                        aria-label={`${ws.memberCount} ${ws.memberCount === 1 ? 'member' : 'members'} in ${ws.name}: manage members`}
+                        className="font-mono text-xs text-fg-3 hover:text-fg-1 hover:underline"
+                      >
+                        {ws.memberCount}
+                        {' '}
+                        {ws.memberCount === 1 ? 'member' : 'members'}
+                      </Link>
+                    )
+                  : (
+                      <span className="font-mono text-xs text-fg-3">
+                        {ws.memberCount}
+                        {' '}
+                        {ws.memberCount === 1 ? 'member' : 'members'}
+                      </span>
+                    )}
                 {enableLeaveAction && (
                   <span className="flex flex-col items-end gap-1 text-right">
                     {workspaces.length > 1 && (

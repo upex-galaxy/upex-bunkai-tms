@@ -111,6 +111,12 @@ const ActivityItemSchema = z
       status: z.enum(['open', 'in_progress', 'resolved', 'closed']).nullable(),
       assignee_user_id: z.string().uuid().nullable(),
     }),
+    // BK-572 — projection of migration 0114. `item.label` is the removed
+    // teammate's email ("a former member" when it does not resolve).
+    activityItemVariant('MemberRemoved', 'member.removed', 'workspace_member', {
+      removed_user_id: z.string().uuid().nullable(),
+      removed_role: z.enum(['viewer', 'member', 'admin', 'owner']).nullable(),
+    }),
   ])
   .openapi('ActivityItem');
 
