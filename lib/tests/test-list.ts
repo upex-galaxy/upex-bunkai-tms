@@ -123,6 +123,23 @@ export function parseTestListSort(params: { get: (key: string) => string | null 
   return { column: column as TestListSortColumn, direction };
 }
 
+// The address after a sort change: `sort` / `dir` set, or dropped when the
+// order is back to the default; every other parameter is kept. Returns the
+// search string with its leading `?`, or '' when nothing is left.
+export function testListSortSearch(currentSearch: string, next: TestListSort): string {
+  const params = new URLSearchParams(currentSearch);
+  if (isDefaultTestListSort(next)) {
+    params.delete('sort');
+    params.delete('dir');
+  }
+  else {
+    params.set('sort', next.column);
+    params.set('dir', next.direction);
+  }
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
 export function isDefaultTestListSort(sort: TestListSort): boolean {
   return sort.column === DEFAULT_TEST_LIST_SORT.column && sort.direction === DEFAULT_TEST_LIST_SORT.direction;
 }

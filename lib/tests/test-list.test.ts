@@ -12,6 +12,7 @@ import {
   resolveTestListViewState,
   sortTestList,
   testListNoMatchDescription,
+  testListSortSearch,
 } from './test-list';
 
 // BK-666 — the Project Tests list's rules. The view only draws what these
@@ -158,6 +159,21 @@ describe('parseTestListSort', () => {
   it('knows the default', () => {
     expect(isDefaultTestListSort(DEFAULT_TEST_LIST_SORT)).toBe(true);
     expect(isDefaultTestListSort({ column: 'created', direction: 'asc' })).toBe(false);
+  });
+});
+
+describe('testListSortSearch', () => {
+  it('writes a non-default sort into the address', () => {
+    expect(testListSortSearch('', { column: 'chain', direction: 'asc' })).toBe('?sort=chain&dir=asc');
+  });
+
+  it('drops sort and dir when the order is back to the default', () => {
+    expect(testListSortSearch('sort=created&dir=asc', DEFAULT_TEST_LIST_SORT)).toBe('');
+  });
+
+  it('keeps every other parameter', () => {
+    expect(testListSortSearch('module=m1&sort=name&dir=asc', { column: 'name', direction: 'desc' })).toBe('?module=m1&sort=name&dir=desc');
+    expect(testListSortSearch('module=m1&sort=name&dir=asc', DEFAULT_TEST_LIST_SORT)).toBe('?module=m1');
   });
 });
 

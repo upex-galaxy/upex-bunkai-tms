@@ -245,7 +245,7 @@ export function TestsListView({
                         stays readable without sideways scrolling. */}
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 pl-5 sm:hidden">
                       {test.tags.length > 0 && <TagChips tags={test.tags} />}
-                      <span className="font-mono text-2xs text-fg-4">{formatTestCreatedDate(test.created_at)}</span>
+                      <span className="font-mono text-2xs text-fg-3">{formatTestCreatedDate(test.created_at)}</span>
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 align-top font-mono text-xs text-fg-2 sm:align-middle">

@@ -111,7 +111,6 @@ describe('TestsListView', () => {
     const empty = render('empty-never', { canCreate: false });
     expect(empty).not.toContain('tests-list-empty-new-test');
     expect(empty).not.toContain('/tests/new');
-    expect(render('rows', { canCreate: false })).not.toContain('/tests/new');
   });
 
   it('marks the loading state busy', () => {

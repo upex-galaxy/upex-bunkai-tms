@@ -4,13 +4,13 @@ import type { TestListSortColumn } from '@lib/tests/test-list';
 import { TestsListSkeleton, TestsListView } from '@components/tests/TestsListView';
 import {
   filterTestsByTag,
-  isDefaultTestListSort,
   nextTestListSort,
   parseTestListSort,
   resolveTestListViewState,
   sortTestList,
+  testListSortSearch,
 } from '@lib/tests/test-list';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
 import { useWorkbench } from '../../workbench-context';
 
@@ -23,7 +23,6 @@ import { useWorkbench } from '../../workbench-context';
 // `tests/new`.
 
 function TestsListScreen() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const {
@@ -53,25 +52,20 @@ function TestsListScreen() {
 
   // The sort rides in the address so Back from a Test restores it (AC-06); the
   // tag filter survives on its own because the workbench provider stays mounted.
+  // Written with `history.replaceState`, which Next feeds into
+  // `useSearchParams` without a server round trip (the workbench address mirror
+  // does the same), so a quick second click on a header reverses at once.
   const onSort = (column: TestListSortColumn) => {
-    const next = nextTestListSort(sort, column);
-    const params = new URLSearchParams(searchParams.toString());
-    if (isDefaultTestListSort(next)) {
-      params.delete('sort');
-      params.delete('dir');
-    }
-    else {
-      params.set('sort', next.column);
-      params.set('dir', next.direction);
-    }
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    const search = testListSortSearch(searchParams.toString(), nextTestListSort(sort, column));
+    window.history.replaceState(null, '', `${pathname}${search}`);
   };
 
-  // Same effect as the toolbar control's own clear button.
+  // Same effect as the toolbar control's own clear button. The Clear button
+  // unmounts with the no-match block, so focus moves to the tag box it cleared.
   const onClearTag = () => {
     setTagInput('');
     setTestTagFilter(null, null);
+    document.querySelector<HTMLInputElement>('[data-testid="test-tag-filter"]')?.focus();
   };
 
   return (
