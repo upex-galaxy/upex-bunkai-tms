@@ -28,18 +28,21 @@ export function SettingsNav({ role }: { role: MemberRole | null }) {
     <nav
       aria-label="Settings sections"
       data-testid="settings-nav"
-      className="flex w-[216px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-stroke-1 bg-surface-1 p-2"
+      // BK-1557 — below `md` the nav is one horizontally scrolling row above
+      // the page (section headings and the coming-soon entries hide), so the
+      // settings content gets the full phone width (D53).
+      className="flex w-full shrink-0 flex-row items-center gap-0.5 overflow-x-auto border-b border-stroke-1 bg-surface-1 p-2 md:w-[216px] md:flex-col md:items-stretch md:overflow-y-auto md:border-b-0 md:border-r"
     >
       <Link
         href="/projects"
         data-testid="settings-back-to-app"
-        className="mb-1 flex h-7 items-center gap-2 rounded-2 px-2 text-[12.5px] text-fg-2 hover:bg-surface-3 hover:text-fg-0"
+        className="flex h-7 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-2 px-2 text-[12.5px] text-fg-2 hover:bg-surface-3 hover:text-fg-0 md:mb-1"
       >
         <ArrowLeft size={14} />
         Back to app
       </Link>
 
-      <div className="px-2 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-fg-3">
+      <div className="hidden px-2 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-fg-3 md:block">
         Available
       </div>
       {availableItems.map((item) => {
@@ -51,7 +54,7 @@ export function SettingsNav({ role }: { role: MemberRole | null }) {
             aria-current={active ? 'page' : undefined}
             data-testid={`settings-nav-${item.id}`}
             className={cn(
-              'flex h-7 items-center gap-2 rounded-2 px-2 text-[12.5px] font-medium text-fg-2 hover:bg-surface-3 hover:text-fg-0',
+              'flex h-7 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-2 px-2 text-[12.5px] font-medium text-fg-2 hover:bg-surface-3 hover:text-fg-0',
               active && 'bg-surface-3 text-fg-0',
             )}
           >
@@ -60,7 +63,7 @@ export function SettingsNav({ role }: { role: MemberRole | null }) {
         );
       })}
 
-      <div className="px-2 pb-1 pt-4 text-2xs font-semibold uppercase tracking-widest text-fg-3">
+      <div className="hidden px-2 pb-1 pt-4 text-2xs font-semibold uppercase tracking-widest text-fg-3 md:block">
         Coming soon
       </div>
       {SETTINGS_NAV_COMING_SOON.map(item => (
@@ -69,7 +72,7 @@ export function SettingsNav({ role }: { role: MemberRole | null }) {
           aria-disabled="true"
           title="Coming soon"
           data-testid={`settings-nav-${item.id}`}
-          className="flex h-7 cursor-not-allowed items-center gap-2 rounded-2 px-2 text-[12.5px] font-medium text-fg-4"
+          className="hidden h-7 cursor-not-allowed items-center gap-2 rounded-2 px-2 text-[12.5px] font-medium text-fg-4 md:flex"
         >
           <span className="flex-1">{item.label}</span>
           <span className="rounded-1 border border-stroke-2 px-1.5 py-px font-mono text-2xs uppercase tracking-wide text-fg-4">
