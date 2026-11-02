@@ -48,6 +48,18 @@ export function AppShell({ sidebar, dock, children }: AppShellProps) {
     setNavOpen(false);
   }
 
+  // Crossing into `md` (rotation, resize) turns the drawer back into the
+  // static column, so the open state must reset: otherwise the content would
+  // stay `inert` with no backdrop or menu button left to explain it.
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const onChange = (e: MediaQueryListEvent) => {
+      if (e.matches) { setNavOpen(false); }
+    };
+    desktop.addEventListener('change', onChange);
+    return () => desktop.removeEventListener('change', onChange);
+  }, []);
+
   useEffect(() => {
     if (!navOpen) { return; }
     // Move focus into the drawer once it is visible, so keyboard and screen
