@@ -638,7 +638,6 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                     data-testid="bugs-list-module-filter"
                     value={moduleId ?? ''}
                     onChange={e => onModuleChange(e.target.value)}
-                    size="sm"
                     className="min-w-[220px]"
                   >
                     <option value="">All modules</option>

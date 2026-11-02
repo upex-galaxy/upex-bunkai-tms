@@ -397,7 +397,6 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
                 data-testid="report-filter-module"
                 value={filters.moduleId ?? ''}
                 onChange={e => setModuleId(e.target.value)}
-                size="sm"
                 className="flex w-[172px]"
               >
                 <option value="">All modules</option>

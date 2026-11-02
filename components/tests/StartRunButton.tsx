@@ -109,6 +109,7 @@ export function StartRunButton({ testId, projectSlug, environments }: StartRunBu
   return (
     <div className="inline-flex items-center gap-1.5">
       <Select
+        size="sm"
         data-testid="start-run-env"
         value={envId}
         onChange={e => setEnvId(e.target.value)}

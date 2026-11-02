@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@components/ui/button';
+import { Button, buttonVariants } from '@components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -134,14 +134,10 @@ export function DataExportView({ workspaceId }: DataExportViewProps) {
           {state === 'error' && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-signal-fail">Could not load the export status.</p>
-              <button
-                type="button"
-                onClick={() => void load()}
-                className="flex h-8 items-center gap-2 rounded-2 border border-stroke-2 bg-surface-3 px-3 text-sm font-medium text-fg-1 hover:bg-surface-4"
-              >
+              <Button type="button" onClick={() => void load()}>
                 <RefreshCw size={14} />
                 Retry
-              </button>
+              </Button>
             </div>
           )}
 
@@ -172,7 +168,7 @@ export function DataExportView({ workspaceId }: DataExportViewProps) {
               </p>
               <a
                 href={`/api/v1/workspaces/${workspaceId}/data-export/download`}
-                className="flex h-8 items-center gap-2 rounded-2 border border-stroke-2 bg-surface-3 px-3 text-sm font-medium text-fg-1 hover:bg-surface-4"
+                className={buttonVariants()}
               >
                 Download archive
               </a>

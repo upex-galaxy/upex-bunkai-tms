@@ -112,7 +112,6 @@ export function MembersClient({ workspaceId, members, invites }: Props) {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="teammate@company.com"
-              className="h-10 text-md"
             />
           </label>
           <label>

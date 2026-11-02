@@ -197,7 +197,6 @@ const FilterBar = forwardRef<HTMLDivElement, {
             data-testid="traceability-filter-module"
             value={state.moduleId ?? ''}
             onChange={e => onModuleChange(e.target.value)}
-            size="sm"
             className="flex w-[192px]"
           >
             <option value="">All modules</option>

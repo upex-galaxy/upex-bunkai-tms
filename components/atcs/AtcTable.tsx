@@ -192,7 +192,6 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
               data-testid="atc-list-technique-filter"
               value={atcFilters.technique ?? ''}
               onChange={e => setAtcFilters({ technique: toFacetValue<AtcTechnique>(e.target.value) })}
-              size="sm"
               className="min-w-[220px]"
             >
               <option value="">All techniques</option>
@@ -211,7 +210,6 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
               data-testid="atc-list-priority-filter"
               value={atcFilters.priority ?? ''}
               onChange={e => setAtcFilters({ priority: toFacetValue<AtcPriority>(e.target.value) })}
-              size="sm"
               className="min-w-[160px]"
             >
               <option value="">All priorities</option>

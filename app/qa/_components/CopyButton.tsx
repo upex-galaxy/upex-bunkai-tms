@@ -22,7 +22,7 @@ export function CopyButton({ code }: { code: string }) {
       size="icon"
       onClick={copy}
       aria-label="Copy code"
-      className="h-7 w-7 shrink-0 text-fg-2 hover:text-fg-0"
+      className="shrink-0 text-fg-2 hover:text-fg-0"
       data-testid="qa-copy-code-button"
     >
       {copied
