@@ -37,9 +37,11 @@ import { usePathname } from 'next/navigation';
 // page, so it survives navigation across the project's detail routes — the
 // same BK-147 / ADR-0003 layout contract the explorer relies on.
 //
-// The four global sidebar items (ATC Library, Test Runs, Bug Reports, Metrics)
-// deliberately stay `soon`: those are workspace-wide aggregates that do not
-// exist. These entries are project-scoped, and every one of them points at a
+// The global sidebar's ATC Library entry went live with its workspace-wide
+// index (BK-439, D31); its Test Runs, Bug Reports and Metrics entries now open
+// these same project-scoped routes for the current (or first) project
+// (BK-1557, D52), since no workspace-wide aggregate exists. These entries are
+// project-scoped, and every one of them points at a
 // route that is actually built — no entry is invented for a route that only
 // has `[id]` / `new` segments (ATCs and Tests are browsed from the workbench).
 
