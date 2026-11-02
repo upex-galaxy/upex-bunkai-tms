@@ -67,8 +67,9 @@ function ShellChrome({ children }: { children: ReactNode }) {
 
   // The last breadcrumb crumb tracks the sub-nav's active entry (BK-265) so the
   // shell can no longer claim "All ATCs" while the user is on Metrics. Off the
-  // four section routes (an open ATC / Test / run) it stays "All ATCs", exactly
-  // as it read before this ticket.
+  // section routes (an open ATC) it stays "All ATCs", exactly as it read before
+  // this ticket; an open Test reads "Tests" since BK-666 nested it under the
+  // Tests entry, as an open run reads "Test Runs".
   const sectionLabel = resolveProjectSectionLabel(pathname, projectSlug) ?? 'All ATCs';
 
   const projectIndexHref = `/projects/${projectSlug}`;
