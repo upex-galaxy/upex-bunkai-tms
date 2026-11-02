@@ -20,7 +20,7 @@ import {
 } from '@lib/bugs/constants';
 import { bugsFiltersDiffer, bugsFiltersFromSearchParams, bugsFiltersFromState, bugsStateFromFilters, EMPTY_BUGS_FILTERS } from '@lib/bugs/filter-params';
 import {
-  assigneeMemberLabel,
+  assigneeMemberLabels,
   BUG_LIST_EMPTY_DESCRIPTION,
   BUG_LIST_EMPTY_TITLE,
   formatBugListRow,
@@ -29,7 +29,7 @@ import { mergeStateIntoParams } from '@lib/saved-views/state';
 import { cn } from '@lib/utils';
 import { ArrowDown, ArrowRight, Bug, Grid3x3, Inbox, List as ListIcon, ListX, RefreshCw, X } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // BK-41 Slice 3 — the List view of `bug-reports-index.html` on the existing
@@ -272,6 +272,8 @@ function resolveBugsListViewState(params: { error: boolean, rowCount: number, fi
 type BugsScreenView = 'list' | 'heatmap';
 
 export function BugsListView({ projectId, projectSlug, modules, canCreateBug, workspaceMembers, initialPage, initialFilters = EMPTY_BUGS_FILTERS, initialError = null }: BugsListViewProps) {
+  // BK-1557 — readable, unique picker labels (never a raw user id).
+  const memberLabels = useMemo(() => assigneeMemberLabels(workspaceMembers), [workspaceMembers]);
   // BK-264 — assign/status-transition are gated by the SAME member+
   // (not-viewer) permission `canCreateBug` already represents (both mutations
   // require the identical write-role RPCs a viewer always fails), so no
@@ -908,9 +910,9 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                                             className="h-7 min-w-[160px] max-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2 text-xs text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
                                           >
                                             <option value="">Unassigned</option>
-                                            {workspaceMembers.map(member => (
+                                            {workspaceMembers.map((member, index) => (
                                               <option key={member.user_id} value={member.user_id}>
-                                                {assigneeMemberLabel(member)}
+                                                {memberLabels[index]}
                                               </option>
                                             ))}
                                           </select>

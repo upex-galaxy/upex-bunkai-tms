@@ -8,6 +8,8 @@
 // route).
 
 import type { BugSeverity, BugStatus } from '@lib/bugs/constants';
+import type { MemberRole } from '@lib/types';
+import { roleLabel } from '@lib/account/role-label';
 import { BUG_SEVERITY_LABEL } from '@lib/bugs/constants';
 
 export type BugListViewState = 'empty' | 'rows';
@@ -120,11 +122,12 @@ export function formatBugListRow(bug: BugListRowInput): BugListRow {
   };
 }
 
-// BK-1557 — the assignee picker's label for a workspace member. The email is
-// resolved per member (`bunkai_resolve_activity_actors`) and can come back
-// null; the picker then showed the first 8 characters of the user id, a raw
-// identifier nobody can recognise. The fallback is a readable role label
-// instead, never an id.
+// BK-1557 — the assignee picker's labels for the workspace members. The
+// email is resolved per member (`bunkai_resolve_activity_actors`) and can come
+// back null; the picker then showed the first 8 characters of the user id, a
+// raw identifier nobody can recognise. The fallback is a readable role label,
+// never an id, and repeated labels get an ordinal so two members never read
+// the same (picking the wrong one would assign the bug to the wrong person).
 export interface AssigneeMemberLabelInput {
   email: string | null
   role: string
@@ -134,5 +137,18 @@ export function assigneeMemberLabel(member: AssigneeMemberLabelInput): string {
   const email = member.email?.trim();
   if (email) { return email; }
   const role = member.role.trim();
-  return role ? `Teammate (${role.charAt(0).toUpperCase()}${role.slice(1)})` : 'Teammate';
+  return role ? `Teammate (${roleLabel(role as MemberRole)})` : 'Teammate';
+}
+
+export function assigneeMemberLabels(members: AssigneeMemberLabelInput[]): string[] {
+  const base = members.map(assigneeMemberLabel);
+  const total = new Map<string, number>();
+  for (const label of base) { total.set(label, (total.get(label) ?? 0) + 1); }
+  const seen = new Map<string, number>();
+  return base.map((label) => {
+    if ((total.get(label) ?? 0) < 2) { return label; }
+    const n = (seen.get(label) ?? 0) + 1;
+    seen.set(label, n);
+    return `${label} ${n}`;
+  });
 }

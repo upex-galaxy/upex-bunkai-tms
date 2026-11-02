@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useChat } from '@components/chat/ChatProvider';
 import { cn } from '@lib/utils';
 import { Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
@@ -30,6 +31,7 @@ interface AppShellProps {
 
 export function AppShell({ sidebar, dock, children }: AppShellProps) {
   const pathname = usePathname();
+  const chat = useChat();
   const [navOpen, setNavOpen] = useState(false);
   const [lastPathname, setLastPathname] = useState(pathname);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -39,6 +41,10 @@ export function AppShell({ sidebar, dock, children }: AppShellProps) {
   // adjusted during render rather than in an effect).
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
+    setNavOpen(false);
+  }
+  // Opening team chat from the drawer hands the screen to the chat overlay.
+  if (chat.open && navOpen) {
     setNavOpen(false);
   }
 
@@ -76,6 +82,11 @@ export function AppShell({ sidebar, dock, children }: AppShellProps) {
         ref={drawerRef}
         data-testid="app-nav"
         data-open={navOpen}
+        // Any link followed from the drawer closes it, including one to the
+        // current route (no pathname change) or a search-param-only link.
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('a[href]')) { setNavOpen(false); }
+        }}
         className={cn(
           'fixed inset-y-0 z-40 w-[224px] transition-[left,visibility] duration-token ease-token motion-reduce:transition-none',
           'md:static md:visible md:z-auto md:w-auto md:shadow-none md:transition-none',
@@ -84,7 +95,8 @@ export function AppShell({ sidebar, dock, children }: AppShellProps) {
       >
         {sidebar}
       </div>
-      <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+      {/* `inert` while the drawer is open keeps Tab inside the navigation. */}
+      <div className="flex min-h-0 min-w-0 flex-col overflow-hidden" inert={navOpen || undefined}>
         <div
           data-testid="mobile-menu-bar"
           className="flex h-10 flex-shrink-0 items-center gap-2 border-b border-stroke-1 bg-surface-1 px-2 md:hidden"
@@ -101,7 +113,7 @@ export function AppShell({ sidebar, dock, children }: AppShellProps) {
           >
             <Menu size={16} />
           </button>
-          <span className="inline-flex size-5 items-center justify-center rounded-1 bg-accent font-jp text-sm font-bold leading-none text-white">
+          <span className="inline-flex size-6 items-center justify-center rounded-1 bg-accent font-jp text-base font-bold leading-none tracking-tight text-white">
             分
           </span>
           <span className="text-base font-bold tracking-tight text-fg-0">Bunkai</span>

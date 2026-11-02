@@ -209,21 +209,24 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
   // not handled here (BK-86 — migrate only the account menu).
   useEffect(() => {
     if (!wsOpen) { return; }
+    // BK-1557 — capture phase + preventDefault, so one Escape closes only
+    // this overlay and not the mobile nav drawer around it (AppShell skips a
+    // prevented Escape).
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setWsOpen(false); }
+      if (e.key === 'Escape') { e.preventDefault(); setWsOpen(false); }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [wsOpen]);
 
   // BK-209 — same Escape-to-close idiom, for the notifications panel.
   useEffect(() => {
     if (!notifOpen) { return; }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setNotifOpen(false); }
+      if (e.key === 'Escape') { e.preventDefault(); setNotifOpen(false); }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [notifOpen]);
 
   // Reconcile the local badge count with a fresh server read (mount, or any
@@ -281,7 +284,11 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
     }
     const rect = bellButtonRef.current?.getBoundingClientRect();
     if (rect) {
-      setNotifPanelPosition({ top: rect.bottom + 8, left: rect.left });
+      // BK-1557 — keep the 380px panel on screen: at phone width the bell
+      // sits inside the nav drawer (or off-canvas when the inbox opens from
+      // `?openNotifications=1`), so its left edge is clamped to an 8px gutter.
+      const maxLeft = Math.max(8, window.innerWidth - 380 - 8);
+      setNotifPanelPosition({ top: rect.bottom + 8, left: Math.min(Math.max(8, rect.left), maxLeft) });
     }
     setNotifOpen(true);
     if (!notifLoadedRef.current) {
@@ -552,7 +559,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
                 <div className="fixed inset-0 z-40" aria-hidden onClick={() => setNotifOpen(false)} />
                 <div
                   id="notifications-panel"
-                  className="fixed z-50"
+                  className="fixed z-50 max-w-[calc(100vw-16px)] [&>*]:max-w-full"
                   style={{ top: notifPanelPosition.top, left: notifPanelPosition.left }}
                 >
                   <NotificationsPanel

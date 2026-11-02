@@ -1,4 +1,4 @@
-import { assigneeMemberLabel, formatBugListRow, resolveBugListViewState } from '@lib/bugs/list-view';
+import { assigneeMemberLabel, assigneeMemberLabels, formatBugListRow, resolveBugListViewState } from '@lib/bugs/list-view';
 import { describe, expect, test } from 'bun:test';
 
 describe('resolveBugListViewState', () => {
@@ -94,5 +94,16 @@ describe('assigneeMemberLabel', () => {
 
   test('stays readable with neither email nor role', () => {
     expect(assigneeMemberLabel({ email: null, role: '' })).toBe('Teammate');
+  });
+});
+
+describe('assigneeMemberLabels', () => {
+  test('numbers repeated labels so two members never read the same', () => {
+    expect(assigneeMemberLabels([
+      { email: null, role: 'member' },
+      { email: 'ana@example.com', role: 'member' },
+      { email: null, role: 'member' },
+      { email: null, role: 'owner' },
+    ])).toEqual(['Teammate (Member) 1', 'ana@example.com', 'Teammate (Member) 2', 'Teammate (Owner)']);
   });
 });

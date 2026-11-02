@@ -24,7 +24,7 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-surface-0 px-6">
+    <div className="flex min-h-0 flex-1 justify-center overflow-y-auto bg-surface-0 px-6 [align-items:safe_center]">
       <OnboardingForm userEmail={user.email ?? ''} />
     </div>
   );
