@@ -11,6 +11,41 @@ const WorkspaceBillingOverviewSchema = z
     plan: z
       .enum(['community', 'cloud', 'enterprise'])
       .describe('The workspace\'s `workspaces.plan` literal. Look up the tier ladder (display name, seat/project/retention limits, price) for this key in `lib/billing/plan-tiers.ts` — this endpoint does not repeat it.'),
+    stored_plan: z
+      .enum(['community', 'cloud', 'enterprise'])
+      .describe('BK-231 — `workspaces.plan` as stored. `plan` above is the EFFECTIVE plan: a Cloud workspace whose grace window has ended reads as `community` from the exact expiry instant, while `stored_plan` stays `cloud` and nothing is deleted.'),
+    grace_ends_at: z
+      .string()
+      .datetime()
+      .nullable()
+      .describe('BK-231 — end of the 14-day grace window of an unpaid renewal (UTC), or `null`. Paid limits hold strictly before it; Free limits apply from that instant.'),
+    billing: z
+      .object({
+        can_edit: z.boolean().describe('`true` for the workspace owner; admins read only.'),
+        profile: z.object({
+          company_name: z.string(),
+          billing_email: z.string(),
+          address_line1: z.string(),
+          address_line2: z.string().nullable(),
+          city: z.string(),
+          region: z.string().nullable(),
+          postal_code: z.string(),
+          country: z.string(),
+          updated_at: z.string().datetime(),
+        }).nullable().describe('`null` until the owner saves the details once.'),
+        payment_method: z.object({
+          brand: z.string(),
+          last4: z.string().describe('The last four digits only; the full number is never stored or returned.'),
+          exp_month: z.number().int(),
+          exp_year: z.number().int(),
+        }).nullable(),
+        payment_state: z.enum(['paid', 'payment_failed', 'retry_pending', 'recovered']),
+        subscription_state: z.enum(['active_paid', 'grace_period', 'free_after_grace']),
+        grace: z.object({ started_at: z.string().datetime(), ends_at: z.string().datetime() }).nullable(),
+        retry_available: z.boolean().describe('`true` only once a replacement payment method was confirmed after the failure.'),
+      })
+      .nullable()
+      .describe('BK-231 — the maintenance surfaces. `null` for a workspace that does not pay through the payment processor (Community, Enterprise).'),
     purchased_seats: z
       .number()
       .int()

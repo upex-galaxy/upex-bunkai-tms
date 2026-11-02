@@ -529,6 +529,31 @@
     "posture": "required:workspace:admin"
   },
   {
+    "file": "app/api/v1/workspaces/[id]/billing/details/route.ts",
+    "method": "PATCH",
+    "posture": "required:workspace:admin"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/billing/invoices/[invoiceId]/pdf/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/billing/invoices/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/billing/payment-method/route.ts",
+    "method": "POST",
+    "posture": "required:workspace:admin"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/billing/retry/route.ts",
+    "method": "POST",
+    "posture": "required:workspace:admin"
+  },
+  {
     "file": "app/api/v1/workspaces/[id]/billing/route.ts",
     "method": "GET",
     "posture": "required:atc:read"
