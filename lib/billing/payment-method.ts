@@ -101,6 +101,27 @@ export async function applySetupSessionCompleted(
     return { status: 'ignored' };
   }
 
+  // The customer must belong to a workspace BEFORE anything is changed on Stripe:
+  // a setup session of some other customer on the same account is not ours.
+  const { data: state, error } = await admin
+    .from('workspace_billing_state')
+    .select('stripe_subscription_id, payment_method_updated_at')
+    .eq('stripe_customer_id', customerId)
+    .maybeSingle();
+  if (error) {
+    throw internalDbError('workspace_billing_state lookup failed', error);
+  }
+  if (!state) {
+    return { status: 'unknown_customer' };
+  }
+
+  // Out-of-order delivery: when a newer replacement is already recorded, this older
+  // one must not become the default for the next renewal.
+  const eventCreated = new Date(event.created * 1000);
+  if (state.payment_method_updated_at && eventCreated.getTime() < new Date(state.payment_method_updated_at).getTime()) {
+    return { status: 'stale' };
+  }
+
   const setupIntent = await stripe.setupIntents.retrieve(setupIntentId, { expand: ['payment_method'] });
   const method = typeof setupIntent.payment_method === 'object' ? setupIntent.payment_method : null;
   const summary = summarizeCard(method);
@@ -110,22 +131,20 @@ export async function applySetupSessionCompleted(
 
   await stripe.customers.update(customerId, { invoice_settings: { default_payment_method: method.id } });
 
-  const { data: state, error } = await admin
-    .from('workspace_billing_state')
-    .select('stripe_subscription_id')
-    .eq('stripe_customer_id', customerId)
-    .maybeSingle();
-  if (error) {
-    throw internalDbError('workspace_billing_state lookup failed', error);
-  }
-  if (state?.stripe_subscription_id) {
-    await stripe.subscriptions.update(state.stripe_subscription_id, { default_payment_method: method.id });
+  if (state.stripe_subscription_id) {
+    // A cancelled subscription cannot take a new default (Stripe refuses the update);
+    // the customer default above is what any later subscription will use, and the
+    // owner still needs the new card recorded.
+    const subscription = await stripe.subscriptions.retrieve(state.stripe_subscription_id);
+    if (subscription.status !== 'canceled') {
+      await stripe.subscriptions.update(state.stripe_subscription_id, { default_payment_method: method.id });
+    }
   }
 
   const { data, error: rpcError } = await admin.rpc('bunkai_apply_billing_payment_method', {
     p_stripe_event_id: event.id,
     p_event_type: event.type,
-    p_event_created: new Date(event.created * 1000).toISOString(),
+    p_event_created: eventCreated.toISOString(),
     p_stripe_customer_id: customerId,
     p_brand: summary.brand,
     p_last4: summary.last4,
@@ -142,7 +161,23 @@ export async function applySetupSessionCompleted(
 // Fills brand / last four for a subscription that was created before the state
 // table existed. Best-effort and silent: the Billing screen simply shows "not
 // available" until it succeeds, and a Stripe outage must never break the page.
+// One attempt per customer per window, per server instance: a customer whose
+// default method is not a card has nothing to record, and must not cost two
+// Stripe calls on every page view.
+const REFRESH_THROTTLE_MS = 5 * 60 * 1000;
+const lastRefreshAttempt = new Map<string, number>();
+
+// Test hook: the throttle is process state.
+export function resetPaymentMethodRefreshThrottle(): void {
+  lastRefreshAttempt.clear();
+}
+
 export async function refreshPaymentMethodSummary(customerId: string, subscriptionId: string | null): Promise<void> {
+  const last = lastRefreshAttempt.get(customerId);
+  if (last !== undefined && Date.now() - last < REFRESH_THROTTLE_MS) {
+    return;
+  }
+  lastRefreshAttempt.set(customerId, Date.now());
   try {
     const stripe = getStripeClient();
     const customer = await stripe.customers.retrieve(customerId, { expand: ['invoice_settings.default_payment_method'] });

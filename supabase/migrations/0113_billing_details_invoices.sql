@@ -3,7 +3,7 @@
 --
 -- ADDITIVE AND IDEMPOTENT: three new tables, one pure function, two webhook-only
 -- RPCs, and `create or replace` of three BK-230 / BK-229 objects whose bodies stay
--- byte-identical except for the marked BK-231 lines. Nothing is dropped or renamed.
+-- logically identical (comments aside) except for the marked BK-231 lines. Nothing is dropped or renamed.
 --
 --   * workspace_billing_profiles  — the company name, billing email and address the
 --                                   owner keeps up to date. Stripe holds the copy
@@ -106,6 +106,9 @@ create table if not exists public.workspace_billing_state (
   payment_state                text not null default 'paid'
                                  check (payment_state in ('paid', 'payment_failed', 'retry_pending', 'recovered')),
   failed_invoice_id            text null,
+  -- The newest invoice a paid event was seen for. A failure delivered AFTER its
+  -- own invoice's paid event (out of order) must never open a grace window.
+  last_paid_invoice_id         text null,
   last_payment_failed_at       timestamptz null,
   recovered_at                 timestamptz null,
   retry_attempts               int  not null default 0 check (retry_attempts >= 0),
@@ -232,8 +235,12 @@ begin
       return jsonb_build_object('status', 'ignored');
     end if;
 
-    -- Out-of-order guard: a failure created at or before a recovery already recorded
-    -- is a late delivery of history, not a new failure.
+    -- Out-of-order guards: a failure for an invoice whose paid event was already
+    -- seen, or created at or before a recovery already recorded, is a late
+    -- delivery of history, not a new failure.
+    if v_state.last_paid_invoice_id is not distinct from p_stripe_invoice_id then
+      return jsonb_build_object('status', 'stale');
+    end if;
     if v_state.recovered_at is not null and p_event_created <= v_state.recovered_at then
       return jsonb_build_object('status', 'stale');
     end if;
@@ -270,13 +277,18 @@ begin
     insert into public.activity_log (workspace_id, actor_user_id, entity_type, entity_id, action, payload)
     values (
       v_state.workspace_id, null, 'workspace', v_state.workspace_id, 'workspace.payment_failed',
-      jsonb_build_object('stripe_invoice_id', p_stripe_invoice_id, 'grace_ends_at', v_ends_at)
+      jsonb_build_object('grace_ends_at', v_ends_at)
     );
 
     return jsonb_build_object('status', 'grace_started', 'workspace_id', v_state.workspace_id, 'grace_ends_at', v_ends_at);
   end if;
 
   if p_event_type = 'invoice.paid' then
+    -- Remember the paid invoice whatever happens next (see the stale guard above).
+    update public.workspace_billing_state
+      set last_paid_invoice_id = p_stripe_invoice_id, updated_at = now()
+      where workspace_id = v_state.workspace_id;
+
     -- Recovery is confirmed only by the provider's own paid event for the invoice
     -- that put the workspace in grace.
     if v_state.payment_state in ('payment_failed', 'retry_pending')
@@ -291,11 +303,9 @@ begin
 
       delete from public.workspace_grace_periods where workspace_id = v_state.workspace_id;
 
+      -- activity_log is readable by every member: no invoice or card detail here.
       insert into public.activity_log (workspace_id, actor_user_id, entity_type, entity_id, action, payload)
-      values (
-        v_state.workspace_id, null, 'workspace', v_state.workspace_id, 'workspace.payment_recovered',
-        jsonb_build_object('stripe_invoice_id', p_stripe_invoice_id)
-      );
+      values (v_state.workspace_id, null, 'workspace', v_state.workspace_id, 'workspace.payment_recovered', '{}'::jsonb);
 
       return jsonb_build_object('status', 'recovered', 'workspace_id', v_state.workspace_id);
     end if;
@@ -360,24 +370,34 @@ begin
     end if;
   end if;
 
-  update public.workspace_billing_state
-    set payment_method_brand = p_brand,
-        payment_method_last4 = p_last4,
-        payment_method_exp_month = p_exp_month,
-        payment_method_exp_year = p_exp_year,
-        payment_method_updated_at = case
-          when p_replaced then greatest(coalesce(payment_method_updated_at, p_event_created), p_event_created)
-          else payment_method_updated_at
-        end,
-        updated_at = now()
-    where workspace_id = v_state.workspace_id;
-
   if p_replaced then
+    -- A replacement older than the one already recorded (events delivered out of
+    -- order) must not put the older card back on screen.
+    if v_state.payment_method_updated_at is not null and p_event_created < v_state.payment_method_updated_at then
+      return jsonb_build_object('status', 'stale');
+    end if;
+
+    update public.workspace_billing_state
+      set payment_method_brand = p_brand,
+          payment_method_last4 = p_last4,
+          payment_method_exp_month = p_exp_month,
+          payment_method_exp_year = p_exp_year,
+          payment_method_updated_at = p_event_created,
+          updated_at = now()
+      where workspace_id = v_state.workspace_id;
+
+    -- activity_log is readable by every member: no card detail in the payload.
     insert into public.activity_log (workspace_id, actor_user_id, entity_type, entity_id, action, payload)
-    values (
-      v_state.workspace_id, null, 'workspace', v_state.workspace_id, 'workspace.payment_method_updated',
-      jsonb_build_object('brand', p_brand, 'last4', p_last4)
-    );
+    values (v_state.workspace_id, null, 'workspace', v_state.workspace_id, 'workspace.payment_method_updated', '{}'::jsonb);
+  else
+    -- The summary refresh only FILLS a gap; it never overwrites a recorded method.
+    update public.workspace_billing_state
+      set payment_method_brand = coalesce(payment_method_brand, p_brand),
+          payment_method_last4 = coalesce(payment_method_last4, p_last4),
+          payment_method_exp_month = coalesce(payment_method_exp_month, p_exp_month),
+          payment_method_exp_year = coalesce(payment_method_exp_year, p_exp_year),
+          updated_at = now()
+      where workspace_id = v_state.workspace_id;
   end if;
 
   return jsonb_build_object('status', 'applied', 'workspace_id', v_state.workspace_id);
@@ -394,7 +414,7 @@ comment on function public.bunkai_apply_billing_payment_method(text, text, times
 -- 7. BK-230 checkout RPC — also creates the billing state row
 -- =============================================================================
 
--- Body identical to 0077's final definition except the block marked BK-231, which
+-- Body logically identical to 0077's final definition (comments aside) except the block marked BK-231, which
 -- upserts workspace_billing_state in the same transaction as the plan flip.
 create or replace function public.bunkai_apply_billing_checkout_webhook_event(
   p_stripe_event_id            text,
@@ -481,6 +501,16 @@ begin
       on conflict (workspace_id) do update
         set stripe_customer_id = excluded.stripe_customer_id,
             stripe_subscription_id = coalesce(excluded.stripe_subscription_id, public.workspace_billing_state.stripe_subscription_id),
+            -- A different customer starts from a clean slate: it must not inherit the
+            -- previous customer's card summary or failed-renewal state.
+            payment_method_brand = case when public.workspace_billing_state.stripe_customer_id is distinct from excluded.stripe_customer_id then null else public.workspace_billing_state.payment_method_brand end,
+            payment_method_last4 = case when public.workspace_billing_state.stripe_customer_id is distinct from excluded.stripe_customer_id then null else public.workspace_billing_state.payment_method_last4 end,
+            payment_method_exp_month = case when public.workspace_billing_state.stripe_customer_id is distinct from excluded.stripe_customer_id then null else public.workspace_billing_state.payment_method_exp_month end,
+            payment_method_exp_year = case when public.workspace_billing_state.stripe_customer_id is distinct from excluded.stripe_customer_id then null else public.workspace_billing_state.payment_method_exp_year end,
+            payment_method_updated_at = case when public.workspace_billing_state.stripe_customer_id is distinct from excluded.stripe_customer_id then null else public.workspace_billing_state.payment_method_updated_at end,
+            payment_state = case when public.workspace_billing_state.stripe_customer_id is distinct from excluded.stripe_customer_id then 'paid' else public.workspace_billing_state.payment_state end,
+            failed_invoice_id = case when public.workspace_billing_state.stripe_customer_id is distinct from excluded.stripe_customer_id then null else public.workspace_billing_state.failed_invoice_id end,
+            last_paid_invoice_id = case when public.workspace_billing_state.stripe_customer_id is distinct from excluded.stripe_customer_id then null else public.workspace_billing_state.last_paid_invoice_id end,
             updated_at = now();
     end if;
 
@@ -518,7 +548,7 @@ grant  execute on function public.bunkai_apply_billing_checkout_webhook_event(te
 -- 8. BK-229 overview RPC — effective plan + grace deadline
 -- =============================================================================
 
--- Body identical to 0077's final definition except the lines marked BK-231: `plan`
+-- Body logically identical to 0077's final definition except the lines marked BK-231: `plan`
 -- is now the EFFECTIVE plan (a Cloud workspace past its grace end reads as
 -- community), and the payload also carries `stored_plan`, `grace_ends_at` and
 -- `payment_overdue` (checkout refuses a second subscription while a renewal is unpaid).
@@ -600,7 +630,7 @@ grant  execute on function public.bunkai_workspace_billing_overview(uuid) to aut
 -- 9. Project-limit trigger — evaluate the EFFECTIVE plan
 -- =============================================================================
 
--- Body identical to 0077's definition except the lines marked BK-231. SECURITY
+-- Body logically identical to 0077's definition except the lines marked BK-231. SECURITY
 -- INVOKER is unchanged: the caller already reads their own workspace row, and
 -- workspace_grace_periods is member-readable by design.
 create or replace function public.bunkai_enforce_project_limit()

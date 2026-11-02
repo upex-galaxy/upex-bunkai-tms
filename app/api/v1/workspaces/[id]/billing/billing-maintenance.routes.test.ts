@@ -319,6 +319,15 @@ describe('GET billing/invoices/{invoiceId}/pdf', () => {
     expect((await response.json() as ErrorBody).error.code).toBe('invoice_pdf_unavailable');
   });
 
+  test('a malformed escape in the id is the same uniform 404, never a 500', async () => {
+    asPrincipal(principal());
+    const get = spyOn(invoicesService, 'getInvoicePdf');
+    spies.push(get as never);
+    const response = await invoicePdf.GET(request('/invoices/%E0%A4%A/pdf'));
+    expect(response.status).toBe(404);
+    expect(get).not.toHaveBeenCalled();
+  });
+
   test('a foreign or unknown invoice is a 404', async () => {
     asPrincipal(principal());
     spies.push(spyOn(invoicesService, 'getInvoicePdf').mockRejectedValue(new ApiError('not_found', 'Invoice not found.')) as never);

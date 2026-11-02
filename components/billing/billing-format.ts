@@ -55,3 +55,12 @@ export async function readApiError(response: Response): Promise<ApiErrorInfo> {
     return { code: null, message: null };
   }
 }
+
+// Date AND time in UTC, for the one deadline where the hour matters: the grace
+// window ends at the exact instant of the first failed renewal plus 14 days.
+export function formatUtcDateTime(value: string | null | undefined): string | null {
+  if (!value) { return null; }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) { return null; }
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+}

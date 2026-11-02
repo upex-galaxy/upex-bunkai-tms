@@ -1,5 +1,6 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ApiError } from '@lib/api/error-envelope';
 import { assertBillingOwner, noActiveSubscription } from '@lib/billing/billing-state';
 import { internalDbError, toProcessorError } from '@lib/billing/errors';
 import { getStripeClient } from '@lib/billing/stripe';
@@ -110,6 +111,14 @@ export async function saveBillingDetails(args: SaveBillingDetailsArgs): Promise<
     });
   }
   catch (raw) {
+    // Stripe refusing the ADDRESS itself (a country code that is well formed but
+    // not a real one) is a validation problem the owner can fix, not an outage.
+    if (typeof raw === 'object' && raw !== null && (raw as { type?: unknown }).type === 'StripeInvalidRequestError') {
+      console.error('stripe customer update rejected the details', { workspaceId, error: raw instanceof Error ? raw.message : String(raw) });
+      throw new ApiError('validation_failed', 'The billing address was not accepted. Check the country and the other address fields.', {
+        details: { reason: 'billing_address_rejected' },
+      });
+    }
     throw toProcessorError(raw, 'stripe customer update failed', { workspaceId });
   }
 

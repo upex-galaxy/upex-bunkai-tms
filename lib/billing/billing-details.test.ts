@@ -169,6 +169,13 @@ describe('saveBillingDetails', () => {
     expect(admin.calls.some(call => call.op === 'upsert')).toBe(false);
   });
 
+  test('a country Stripe does not accept is a 422 the owner can fix, not an outage (Scenario 1.2)', async () => {
+    const { caller, admin } = setup({ stripeThrows: Object.assign(new Error('Invalid country'), { type: 'StripeInvalidRequestError' }) });
+    const failure = await rejection(saveBillingDetails({ db: caller.client, workspaceId: WORKSPACE_ID, userId: USER_ID, input: input() }));
+    expect(failure).toMatchObject({ code: 'validation_failed', status: 422, details: { reason: 'billing_address_rejected' } });
+    expect(admin.calls.some(call => call.op === 'upsert')).toBe(false);
+  });
+
   test('answers 503 payment_processor_unavailable when Stripe is not configured and writes nothing', async () => {
     const { caller, admin } = setup({ unavailable: true });
     expect(await rejection(saveBillingDetails({ db: caller.client, workspaceId: WORKSPACE_ID, userId: USER_ID, input: input() }))).toMatchObject({ code: 'payment_processor_unavailable', status: 503 });

@@ -6030,6 +6030,11 @@
                 },
                 "required": ["brand", "last4", "exp_month", "exp_year"]
               },
+              "payment_method_updated_at": {
+                "type": ["string", "null"],
+                "format": "date-time",
+                "description": "When the owner last confirmed a replacement payment method."
+              },
               "payment_state": {
                 "type": "string",
                 "enum": ["paid", "payment_failed", "retry_pending", "recovered"]
@@ -6061,6 +6066,7 @@
               "can_edit",
               "profile",
               "payment_method",
+              "payment_method_updated_at",
               "payment_state",
               "subscription_state",
               "grace",
@@ -16723,7 +16729,7 @@
             }
           },
           "409": {
-            "description": "No paid subscription (`no_active_subscription`), or the retry is not available (`retry_not_available`, `details.reason`: `no_failed_renewal` | `payment_method_not_replaced` | `retry_in_progress`).",
+            "description": "No paid subscription (`no_active_subscription`), or the retry is not available (`retry_not_available`, `details.reason`: `no_failed_renewal` | `payment_method_not_replaced` | `retry_in_progress` | `invoice_not_payable`).",
             "content": {
               "application/json": {
                 "schema": {

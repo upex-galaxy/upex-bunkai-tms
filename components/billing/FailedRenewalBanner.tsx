@@ -1,6 +1,6 @@
 'use client';
 
-import { formatUtcDate, readApiError } from '@components/billing/billing-format';
+import { formatUtcDateTime, readApiError } from '@components/billing/billing-format';
 import { Button } from '@components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
@@ -34,7 +34,7 @@ export function FailedRenewalBanner({
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const date = formatUtcDate(graceEndsAt);
+  const date = formatUtcDateTime(graceEndsAt);
   const body = subscriptionState === 'grace_period'
     ? (date
         ? `Your workspace keeps its paid limits until ${date} UTC.`

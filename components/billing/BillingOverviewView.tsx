@@ -46,6 +46,8 @@ const UPGRADE_POLL_TIMEOUT_MS = 30_000;
 // the new card may land a moment later.
 const PAYMENT_METHOD_POLL_INTERVAL_MS = 2_000;
 const PAYMENT_METHOD_POLL_TIMEOUT_MS = 30_000;
+// A replacement counts as "just recorded" when it was confirmed this recently.
+const PAYMENT_METHOD_RECENT_MS = 10 * 60 * 1000;
 
 interface BillingOverviewViewProps {
   workspaceId: string | null
@@ -185,8 +187,9 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
   }, [justUpgraded, workspaceId]);
 
   // BK-231 - back from the hosted payment-method page. `updated`: poll until the
-  // recorded card differs from the one shown when the owner left (the webhook
-  // is async), bounded; `canceled`: nothing changed, say so. Either way the
+  // backend shows a replacement confirmed in the last few minutes (the webhook is
+  // async, and the return is a full navigation, so there is no "card before" to
+  // compare with), bounded; `canceled`: nothing changed, say so. Either way the
   // param is stripped so a refresh never repeats this.
   useEffect(() => {
     if (!paymentMethodReturn || !workspaceId) {
@@ -198,14 +201,13 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
     }
     let cancelled = false;
     const deadline = Date.now() + PAYMENT_METHOD_POLL_TIMEOUT_MS;
-    const baseline = overviewRef.current?.billing?.payment_method;
 
     const poll = async () => {
       const data = await load({ silent: true });
       if (cancelled) { return; }
-      const current = data?.billing?.payment_method;
-      const changed = Boolean(current) && (current?.last4 !== baseline?.last4 || current?.exp_month !== baseline?.exp_month || current?.exp_year !== baseline?.exp_year || current?.brand !== baseline?.brand);
-      if (changed || Date.now() >= deadline) {
+      const confirmedAt = data?.billing?.payment_method_updated_at;
+      const recorded = Boolean(confirmedAt) && Date.now() - new Date(confirmedAt as string).getTime() < PAYMENT_METHOD_RECENT_MS;
+      if (recorded || Date.now() >= deadline) {
         setInvoiceRefresh(value => value + 1);
         router.replace('/settings/billing');
         return;
@@ -272,7 +274,12 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
   const tier = PLAN_TIERS[overview.plan];
   // BK-230 (Conductor review PR #208, item 5) — a Cloud workspace's REAL seat
   // cap is what it purchased at checkout, not the tier's flat ceiling.
-  const seatLimit = effectiveSeatLimit(tier, overview.purchased_seats);
+  // BK-231 - past the grace window the effective plan is Community while the
+  // workspace still owns a subscription: purchased seats do not apply to the
+  // Community label, and a new checkout would be refused (an unpaid renewal is
+  // fixed from the payment method and the retry, not from the upgrade flow).
+  const pastGrace = overview.stored_plan !== undefined && overview.stored_plan !== overview.plan;
+  const seatLimit = effectiveSeatLimit(tier, pastGrace ? null : overview.purchased_seats);
   const seatState = meterState(overview.active_seats, seatLimit);
   const projectState = meterState(overview.project_count, tier.projectLimit);
   const retentionState = tier.retentionDays === null
@@ -335,7 +342,7 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
               <div className="text-[12.5px] text-fg-2" data-testid="billing-renewal-note">{tier.renewalNote}</div>
             )}
           </div>
-          {!tier.isPaid && (
+          {!tier.isPaid && !pastGrace && (
             // BK-230 — D34(d): this was the BK-229 inert "soon" affordance;
             // it becomes a live link now that the upgrade flow ships. Owner
             // gating happens on /settings/billing/upgrade itself, not here —

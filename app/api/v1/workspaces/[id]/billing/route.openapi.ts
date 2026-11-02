@@ -39,6 +39,7 @@ const WorkspaceBillingOverviewSchema = z
           exp_month: z.number().int(),
           exp_year: z.number().int(),
         }).nullable(),
+        payment_method_updated_at: z.string().datetime().nullable().describe('When the owner last confirmed a replacement payment method.'),
         payment_state: z.enum(['paid', 'payment_failed', 'retry_pending', 'recovered']),
         subscription_state: z.enum(['active_paid', 'grace_period', 'free_after_grace']),
         grace: z.object({ started_at: z.string().datetime(), ends_at: z.string().datetime() }).nullable(),

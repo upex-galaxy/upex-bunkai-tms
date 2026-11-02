@@ -45,6 +45,7 @@ function billingBlock(overrides: Record<string, unknown> = {}) {
     can_edit: true,
     profile: PROFILE,
     payment_method: { brand: 'visa', last4: '4242', exp_month: 4, exp_year: 2028 },
+    payment_method_updated_at: null,
     payment_state: 'paid',
     subscription_state: 'active_paid',
     grace: null,
@@ -171,6 +172,28 @@ describe('BillingOverviewView - maintenance sections (BK-231)', () => {
   test('no banner for a recovered workspace even if a grace payload lingers', async () => {
     const { container } = await mountWith(overview({ billing: billingBlock({ payment_state: 'recovered', grace: null }) }));
     expect(has(container, 'failed-renewal-banner')).toBe(false);
+  });
+
+  test('coming back from a replacement the backend has already recorded stops polling at once and strips the param (Scenario 4.4)', async () => {
+    searchParams = new URLSearchParams('payment_method=updated');
+    const recent = new Date(Date.now() - 60 * 1000).toISOString();
+    const { calls } = await mountWith(overview({
+      billing: billingBlock({ payment_state: 'payment_failed', subscription_state: 'grace_period', grace: GRACE, retry_available: true, payment_method_updated_at: recent }),
+    }));
+    expect(replaced).toContain('/settings/billing');
+    // One load for the mount plus the poll's first tick; no endless polling.
+    expect(calls.filter(call => call.url.endsWith('/billing')).length).toBeLessThanOrEqual(3);
+  });
+
+  test('past the grace window there is no upgrade link and the purchased seats do not leak into the Community label', async () => {
+    const { container } = await mountWith(overview({
+      plan: 'community',
+      stored_plan: 'cloud',
+      purchased_seats: 12,
+      billing: billingBlock({ payment_state: 'payment_failed', subscription_state: 'free_after_grace', grace: GRACE }),
+    }));
+    expect(has(container, 'billing-upgrade-entry')).toBe(false);
+    expect(container.querySelector('[data-testid="billing-seats-meter"]')?.textContent).toContain('3 of 5');
   });
 
   test('coming back from a cancelled replacement says the current method is unchanged and strips the param', async () => {

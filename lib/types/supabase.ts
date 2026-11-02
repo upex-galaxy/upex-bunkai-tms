@@ -1865,6 +1865,7 @@ export interface Database {
         Row: {
           created_at: string
           failed_invoice_id: string | null
+          last_paid_invoice_id: string | null
           last_payment_failed_at: string | null
           payment_method_brand: string | null
           payment_method_exp_month: number | null
@@ -1883,6 +1884,7 @@ export interface Database {
         Insert: {
           created_at?: string
           failed_invoice_id?: string | null
+          last_paid_invoice_id?: string | null
           last_payment_failed_at?: string | null
           payment_method_brand?: string | null
           payment_method_exp_month?: number | null
@@ -1901,6 +1903,7 @@ export interface Database {
         Update: {
           created_at?: string
           failed_invoice_id?: string | null
+          last_paid_invoice_id?: string | null
           last_payment_failed_at?: string | null
           payment_method_brand?: string | null
           payment_method_exp_month?: number | null

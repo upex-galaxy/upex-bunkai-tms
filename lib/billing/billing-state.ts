@@ -16,7 +16,9 @@ export interface GraceWindow {
 
 // A retry claim older than this is treated as abandoned (the request crashed
 // or timed out without releasing it), so a stuck workspace is never locked out.
-export const RETRY_CLAIM_STALE_MS = 2 * 60 * 1000;
+// Longer than the payment client's own request timeout plus its retries, so a
+// slow-but-alive charge is never reclaimed underneath itself.
+export const RETRY_CLAIM_STALE_MS = 5 * 60 * 1000;
 
 // 2026-11-01 ruling: paid limits hold strictly BEFORE the grace end and the
 // workspace is Free from that exact instant. Mirrors SQL bunkai_effective_plan.

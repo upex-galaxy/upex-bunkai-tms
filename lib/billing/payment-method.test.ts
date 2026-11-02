@@ -10,7 +10,7 @@ void mock.module('server-only', () => ({}));
 
 const stripeModule = await import('@lib/billing/stripe');
 const adminModule = await import('@lib/supabase/admin');
-const { applySetupSessionCompleted, beginPaymentMethodUpdate, refreshPaymentMethodSummary, summarizeCard } = await import('./payment-method');
+const { applySetupSessionCompleted, beginPaymentMethodUpdate, refreshPaymentMethodSummary, resetPaymentMethodRefreshThrottle, summarizeCard } = await import('./payment-method');
 
 const CARD = { id: 'pm_new_8814', card: { brand: 'visa', last4: '8814', exp_month: 9, exp_year: 2029 } };
 
@@ -42,7 +42,8 @@ beforeEach(() => {
   customersUpdate = mock(async () => ({}));
   customersRetrieve = mock(async () => ({ id: CUSTOMER_ID, invoice_settings: { default_payment_method: { id: 'pm_old', card: { brand: 'visa', last4: '4242', exp_month: 4, exp_year: 2028 } } } }));
   subscriptionsUpdate = mock(async () => ({}));
-  subscriptionsRetrieve = mock(async () => ({ default_payment_method: null }));
+  subscriptionsRetrieve = mock(async () => ({ status: 'active', default_payment_method: null }));
+  resetPaymentMethodRefreshThrottle();
   spies = [];
 });
 afterEach(() => { spies.forEach(spy => spy.mockRestore()); });
@@ -134,6 +135,33 @@ describe('applySetupSessionCompleted', () => {
     expect(admin.rpcCalls).toHaveLength(0);
   });
 
+  test('changes nothing on Stripe for a customer that belongs to no workspace', async () => {
+    const { admin } = setup(null);
+    expect((await applySetupSessionCompleted(event, session)).status).toBe('unknown_customer');
+    expect(setupIntentsRetrieve).not.toHaveBeenCalled();
+    expect(customersUpdate).not.toHaveBeenCalled();
+    expect(subscriptionsUpdate).not.toHaveBeenCalled();
+    expect(admin.rpcCalls).toHaveLength(0);
+  });
+
+  test('skips a replacement older than the one already recorded, before touching Stripe (out of order)', async () => {
+    const newer = new Date((1_772_000_000 + 600) * 1000).toISOString();
+    const { admin } = setup(stateRow({ payment_method_updated_at: newer }));
+    expect((await applySetupSessionCompleted(event, session)).status).toBe('stale');
+    expect(customersUpdate).not.toHaveBeenCalled();
+    expect(subscriptionsUpdate).not.toHaveBeenCalled();
+    expect(admin.rpcCalls).toHaveLength(0);
+  });
+
+  test('a cancelled subscription cannot take a new default: the customer default is set and the card is still recorded', async () => {
+    subscriptionsRetrieve.mockResolvedValue({ status: 'canceled' });
+    const { admin } = setup();
+    expect((await applySetupSessionCompleted(event, session)).status).toBe('applied');
+    expect(customersUpdate).toHaveBeenCalledTimes(1);
+    expect(subscriptionsUpdate).not.toHaveBeenCalled();
+    expect(admin.rpcCalls.some(call => call.fn === 'bunkai_apply_billing_payment_method')).toBe(true);
+  });
+
   test('lets a Stripe failure propagate so the webhook answers 5xx and Stripe redelivers', async () => {
     customersUpdate.mockRejectedValue(new Error('rate limited'));
     const { admin } = setup();
@@ -148,6 +176,13 @@ describe('refreshPaymentMethodSummary', () => {
     await refreshPaymentMethodSummary(CUSTOMER_ID, 'sub_test_0001');
     const rpc = admin.rpcCalls.find(call => call.fn === 'bunkai_apply_billing_payment_method')!;
     expect(rpc.args).toMatchObject({ p_last4: '4242', p_replaced: false, p_stripe_event_id: null });
+  });
+
+  test('asks Stripe at most once per window for the same customer', async () => {
+    setup();
+    await refreshPaymentMethodSummary(CUSTOMER_ID, 'sub_test_0001');
+    await refreshPaymentMethodSummary(CUSTOMER_ID, 'sub_test_0001');
+    expect(customersRetrieve).toHaveBeenCalledTimes(1);
   });
 
   test('swallows a Stripe outage: the Billing screen must never break because of it', async () => {

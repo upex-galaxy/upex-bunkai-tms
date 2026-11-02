@@ -72,27 +72,27 @@ afterEach(() => {
 });
 
 describe('FailedRenewalBanner copy and roles', () => {
-  test('grace period: persistent status banner with the UTC grace-end date', () => {
+  test('grace period: persistent status banner with the UTC grace-end date and hour (the window ends at the exact instant)', () => {
     const container = mount();
     const banner = testId(container, 'failed-renewal-banner');
     expect(banner?.getAttribute('role')).toBe('status');
     expect(banner?.textContent).toContain('Renewal charge failed');
     expect(testId(container, 'failed-renewal-body')?.textContent)
-      .toBe('Your workspace keeps its paid limits until Aug 11, 2026 UTC.');
+      .toBe('Your workspace keeps its paid limits until Aug 11, 2026 at 23:30 UTC.');
   });
 
   test('free after grace: names the end date, Community limits and that nothing was deleted', () => {
     const container = mount({ subscriptionState: 'free_after_grace' });
     expect(testId(container, 'failed-renewal-banner')?.getAttribute('role')).toBe('status');
     expect(testId(container, 'failed-renewal-body')?.textContent).toBe(
-      'Your grace period ended on Aug 11, 2026 UTC. This workspace is on Community limits and nothing was deleted. Replace the payment method and retry the charge to restore your plan.',
+      'Your grace period ended on Aug 11, 2026 at 23:30 UTC. This workspace is on Community limits and nothing was deleted. Replace the payment method and retry the charge to restore your plan.',
     );
   });
 
   test('the date is rendered in UTC, not shifted by the viewer\'s timezone', () => {
     // 23:59 UTC on the 11th is already the 12th in UTC+2: the label must stay the 11th.
     const container = mount({ graceEndsAt: '2026-08-11T23:59:59.000Z' });
-    expect(testId(container, 'failed-renewal-body')?.textContent).toContain('Aug 11, 2026 UTC');
+    expect(testId(container, 'failed-renewal-body')?.textContent).toContain('Aug 11, 2026 at 23:59 UTC');
   });
 
   test('an unparseable date never prints "Invalid Date"', () => {
@@ -115,7 +115,7 @@ describe('FailedRenewalBanner role gating', () => {
     expect(container.querySelectorAll('button')).toHaveLength(0);
     expect(testId(container, 'failed-renewal-replace')).toBeNull();
     expect(testId(container, 'failed-renewal-retry')).toBeNull();
-    expect(testId(container, 'failed-renewal-body')?.textContent).toContain('until Aug 11, 2026 UTC');
+    expect(testId(container, 'failed-renewal-body')?.textContent).toContain('until Aug 11, 2026 at 23:30 UTC');
     expect(testId(container, 'failed-renewal-owner-only')?.textContent).toBe('Only the workspace owner can fix this.');
   });
 

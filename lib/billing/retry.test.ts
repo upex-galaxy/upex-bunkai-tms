@@ -22,6 +22,7 @@ const RETRYABLE = {
 };
 
 let invoicesPay: Mock<(id: string, params: unknown, options: { idempotencyKey: string }) => Promise<unknown>>;
+let invoicesRetrieve: Mock<(id: string) => Promise<unknown>>;
 let spies: Array<{ mockRestore: () => void }>;
 
 function setup(opts: { isOwner?: boolean, state?: Record<string, unknown> | null, grace?: unknown, claimWon?: boolean } = {}) {
@@ -39,7 +40,7 @@ function setup(opts: { isOwner?: boolean, state?: Record<string, unknown> | null
   });
   spies = [
     spyOn(adminModule, 'createAdminClient').mockReturnValue(admin.client as never),
-    spyOn(stripeModule, 'getStripeClient').mockReturnValue({ invoices: { pay: invoicesPay } } as never),
+    spyOn(stripeModule, 'getStripeClient').mockReturnValue({ invoices: { pay: invoicesPay, retrieve: invoicesRetrieve } } as never),
   ];
   const caller = fakeSupabase(() => undefined, ownerRpc(opts.isOwner ?? true));
   return { admin, caller };
@@ -51,6 +52,7 @@ const released = (admin: ReturnType<typeof fakeSupabase>) => admin.calls.some(ca
 
 beforeEach(() => {
   invoicesPay = mock(async () => ({ id: 'in_failed0001', status: 'paid' }));
+  invoicesRetrieve = mock(async () => ({ id: 'in_failed0001', status: 'open' }));
   spies = [];
 });
 afterEach(() => { spies.forEach(spy => spy.mockRestore()); });
@@ -135,8 +137,37 @@ describe('retryFailedRenewal', () => {
     expect(invoicesPay).not.toHaveBeenCalled();
   });
 
+  test('an invoice Stripe already shows as paid is recorded as the recovery without charging again', async () => {
+    invoicesRetrieve.mockResolvedValue({ id: 'in_failed0001', status: 'paid' });
+    const { admin, caller } = setup();
+
+    expect(await retryFailedRenewal({ db: caller.client, workspaceId: WORKSPACE_ID })).toEqual({ status: 'recovered' });
+    expect(invoicesPay).not.toHaveBeenCalled();
+    expect(admin.rpcCalls.find(call => call.fn === 'bunkai_apply_billing_invoice_event')?.args).toMatchObject({ p_event_type: 'invoice.paid', p_stripe_invoice_id: 'in_failed0001' });
+  });
+
+  test.each(['void', 'uncollectible'])('a %s invoice cannot be collected: refused, released and never charged', async (status) => {
+    invoicesRetrieve.mockResolvedValue({ id: 'in_failed0001', status });
+    const { admin, caller } = setup();
+
+    const failure = await rejection(retryFailedRenewal({ db: caller.client, workspaceId: WORKSPACE_ID }));
+
+    expect(failure).toMatchObject({ code: 'retry_not_available', status: 409, details: { reason: 'invoice_not_payable' } });
+    expect(invoicesPay).not.toHaveBeenCalled();
+    expect(released(admin)).toBe(true);
+  });
+
+  test('an unconfigured processor releases the claim too', async () => {
+    const { ApiError } = await import('@lib/api/error-envelope');
+    const { admin, caller } = setup();
+    // Installed after setup() so it replaces the working Stripe double.
+    spies.push(spyOn(stripeModule, 'getStripeClient').mockImplementation(() => { throw new ApiError('payment_processor_unavailable', 'x'); }));
+    expect(await rejection(retryFailedRenewal({ db: caller.client, workspaceId: WORKSPACE_ID }))).toMatchObject({ code: 'payment_processor_unavailable' });
+    expect(released(admin)).toBe(true);
+  });
+
   test('reclaims a retry claim that went stale', async () => {
-    const stale = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const stale = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { caller } = setup({ state: { payment_state: 'retry_pending', retry_started_at: stale, retry_attempts: 1 } });
     expect(await retryFailedRenewal({ db: caller.client, workspaceId: WORKSPACE_ID })).toEqual({ status: 'recovered' });
     expect(invoicesPay.mock.calls[0][2].idempotencyKey).toBe(`${WORKSPACE_ID}:retry:in_failed0001:2`);

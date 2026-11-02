@@ -11,6 +11,9 @@ type Client = SupabaseClient<Database>;
 export const INVOICE_PAGE_DEFAULT = 12;
 export const INVOICE_PAGE_MAX = 24;
 
+// Upper bound of Stripe reads for one history page (see listWorkspaceInvoices).
+const MAX_STRIPE_READS_PER_PAGE = 5;
+
 const PDF_FETCH_TIMEOUT_MS = 10_000;
 const INVOICE_ID_PATTERN = /^in_\w{4,64}$/;
 
@@ -97,13 +100,31 @@ export async function listWorkspaceInvoices(args: ListInvoicesArgs): Promise<Inv
   const { state } = await requireBillingReader(db, workspaceId);
   const stripe = getStripeClient();
 
-  let page: Stripe.ApiList<Stripe.Invoice>;
+  // Eligibility is applied after Stripe's own paging, so a page made only of drafts
+  // and voids would look like "no invoices" while older ones exist. Keep reading
+  // (bounded) until the page is full or Stripe has no more.
+  const collected: Stripe.Invoice[] = [];
+  let cursor = startingAfter;
+  let hasMore = false;
   try {
-    page = await stripe.invoices.list({
-      customer: state.stripe_customer_id,
-      limit,
-      ...(startingAfter ? { starting_after: startingAfter } : {}),
-    });
+    for (let reads = 0; reads < MAX_STRIPE_READS_PER_PAGE; reads += 1) {
+      const page: Stripe.ApiList<Stripe.Invoice> = await stripe.invoices.list({
+        customer: state.stripe_customer_id,
+        limit,
+        ...(cursor ? { starting_after: cursor } : {}),
+      });
+      hasMore = page.has_more;
+      const last = page.data.at(-1);
+      for (const invoice of page.data) {
+        if (isEligible(invoice)) {
+          collected.push(invoice);
+        }
+      }
+      cursor = last?.id;
+      if (collected.length >= limit || !page.has_more || !cursor) {
+        break;
+      }
+    }
   }
   catch (raw) {
     if (isStripeMissingResource(raw) && startingAfter) {
@@ -112,12 +133,15 @@ export async function listWorkspaceInvoices(args: ListInvoicesArgs): Promise<Inv
     throw toProcessorError(raw, 'stripe invoices list failed', { workspaceId });
   }
 
-  const eligible = page.data.filter(isEligible);
-  const last = page.data.at(-1);
+  // More than a page may have been collected on the last read: return exactly
+  // `limit` and point the cursor at the last invoice RETURNED, so nothing is skipped.
+  const returned = collected.slice(0, limit);
+  const truncated = collected.length > limit;
+  const nextCursor = truncated || hasMore ? (returned.at(-1)?.id ?? cursor ?? null) : null;
   return {
-    data: eligible.map(invoice => toInvoiceListItem(invoice, state.failed_invoice_id)),
-    has_more: page.has_more,
-    next_cursor: page.has_more && last?.id ? last.id : null,
+    data: returned.map(invoice => toInvoiceListItem(invoice, state.failed_invoice_id)),
+    has_more: truncated || hasMore,
+    next_cursor: nextCursor,
   };
 }
 

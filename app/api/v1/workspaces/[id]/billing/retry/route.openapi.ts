@@ -19,7 +19,7 @@ registry.registerPath({
     401: errorResponse('Not signed in.'),
     402: errorResponse('The payment was declined or needs a further action from the card issuer (`payment_declined`, `details.reason`: `card_declined` | `requires_action`). Nothing changed; the retry stays available.'),
     403: errorResponse('Missing `workspace:admin`, wrong workspace, or not the OWNER (`details.reason: not_workspace_owner`).'),
-    409: errorResponse('No paid subscription (`no_active_subscription`), or the retry is not available (`retry_not_available`, `details.reason`: `no_failed_renewal` | `payment_method_not_replaced` | `retry_in_progress`).'),
+    409: errorResponse('No paid subscription (`no_active_subscription`), or the retry is not available (`retry_not_available`, `details.reason`: `no_failed_renewal` | `payment_method_not_replaced` | `retry_in_progress` | `invoice_not_payable`).'),
     502: errorResponse('The payment could not be confirmed (`upstream_error`). The state is unchanged; try again or wait for the webhook.'),
     503: errorResponse('The payment processor is not configured (`payment_processor_unavailable`).'),
   },

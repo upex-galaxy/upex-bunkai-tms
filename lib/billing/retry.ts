@@ -90,15 +90,31 @@ export async function retryFailedRenewal(args: RetryFailedRenewalArgs): Promise<
 
   let paid: boolean;
   try {
-    const invoice = await getStripeClient().invoices.pay(
-      invoiceId,
-      {},
-      { idempotencyKey: `${workspaceId}:retry:${invoiceId}:${attempt}` },
-    );
-    paid = invoice.status === 'paid';
+    // Look at the invoice before charging it. One already paid (a late or missed
+    // webhook, or a payment made outside this screen) is recorded as the recovery
+    // it is, and one that can no longer be collected is refused: charging it again
+    // would only fail and leave the owner stuck behind a warning that cannot clear.
+    const current = await getStripeClient().invoices.retrieve(invoiceId);
+    if (current.status === 'void' || current.status === 'uncollectible') {
+      throw retryNotAvailable('invoice_not_payable', 'The failed invoice can no longer be collected. Contact support to restore the plan.');
+    }
+    if (current.status === 'paid') {
+      paid = true;
+    }
+    else {
+      const invoice = await getStripeClient().invoices.pay(
+        invoiceId,
+        {},
+        { idempotencyKey: `${workspaceId}:retry:${invoiceId}:${attempt}` },
+      );
+      paid = invoice.status === 'paid';
+    }
   }
   catch (raw) {
     await release();
+    if (raw instanceof ApiError) {
+      throw raw;
+    }
     if (isStripeCardError(raw)) {
       throw new ApiError('payment_declined', 'The payment was declined. Check the payment method and try again.', {
         details: { reason: 'card_declined' },

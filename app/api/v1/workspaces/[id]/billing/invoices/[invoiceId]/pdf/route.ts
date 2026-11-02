@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, withApiHandler } from '@lib/api/handler';
 import { getInvoicePdf } from '@lib/billing/invoices';
 import { workspaceIdFromRequest } from '@lib/billing/route-helpers';
@@ -15,7 +16,14 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   // .../invoices/{invoiceId}/pdf: the id is the segment before the trailing "pdf".
   const segments = new URL(request.url).pathname.split('/');
-  const invoiceId = decodeURIComponent(segments.at(-2) ?? '');
+  let invoiceId: string;
+  try {
+    invoiceId = decodeURIComponent(segments.at(-2) ?? '');
+  }
+  catch {
+    // A malformed escape is just an id that matches no invoice: the same 404.
+    throw new ApiError('not_found', 'Invoice not found.');
+  }
 
   const pdf = await getInvoicePdf({ db, workspaceId, invoiceId });
   return new Response(pdf.bytes, {

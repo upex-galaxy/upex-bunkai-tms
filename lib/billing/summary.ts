@@ -17,6 +17,9 @@ export interface BillingBlock {
   can_edit: boolean
   profile: PublicBillingProfile | null
   payment_method: PaymentMethodSummary | null
+  // When the owner last confirmed a replacement (ISO), so the screen can tell that
+  // the webhook has landed after the return from the hosted page.
+  payment_method_updated_at: string | null
   payment_state: PaymentState
   subscription_state: SubscriptionState
   grace: { started_at: string, ends_at: string } | null
@@ -58,6 +61,7 @@ export async function loadBillingBlock(db: Client, workspaceId: string, now: Dat
     can_edit: ownerCheck.data === true,
     profile: await loadBillingProfile(db, workspaceId),
     payment_method: paymentMethodOf(bundle),
+    payment_method_updated_at: bundle.state.payment_method_updated_at,
     payment_state: bundle.state.payment_state as PaymentState,
     subscription_state: deriveSubscriptionState(bundle.grace, now),
     grace: bundle.grace,

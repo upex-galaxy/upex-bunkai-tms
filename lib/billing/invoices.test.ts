@@ -103,6 +103,28 @@ describe('listWorkspaceInvoices', () => {
     expect(invoicesList.mock.calls[0][0]).toMatchObject({ limit: 24, starting_after: 'in_prev0001' });
   });
 
+  test('keeps reading past a page of drafts and voids so older invoices stay reachable', async () => {
+    invoicesList
+      .mockResolvedValueOnce({ data: [invoice({ id: 'in_draft0001', status: 'draft' }), invoice({ id: 'in_void00001', status: 'void' })], has_more: true })
+      .mockResolvedValueOnce({ data: [invoice({ id: 'in_old000001' })], has_more: false });
+
+    const result = await listWorkspaceInvoices({ db: callerWith(stateRow()).client, workspaceId: WORKSPACE_ID, limit: 2 });
+
+    expect(result.data.map(item => item.id)).toEqual(['in_old000001']);
+    expect(result.has_more).toBe(false);
+    expect(invoicesList.mock.calls[1][0]).toMatchObject({ starting_after: 'in_void00001' });
+  });
+
+  test('never returns more than a page and points the cursor at the last invoice returned', async () => {
+    invoicesList.mockResolvedValue({ data: [invoice({ id: 'in_a0000001' }), invoice({ id: 'in_b0000001' }), invoice({ id: 'in_c0000001' })], has_more: false });
+
+    const result = await listWorkspaceInvoices({ db: callerWith(stateRow()).client, workspaceId: WORKSPACE_ID, limit: 2 });
+
+    expect(result.data.map(item => item.id)).toEqual(['in_a0000001', 'in_b0000001']);
+    expect(result.has_more).toBe(true);
+    expect(result.next_cursor).toBe('in_b0000001');
+  });
+
   test('returns an empty history for a workspace with no invoice yet', async () => {
     const caller = callerWith(stateRow());
     expect(await listWorkspaceInvoices({ db: caller.client, workspaceId: WORKSPACE_ID, limit: 12 }))
