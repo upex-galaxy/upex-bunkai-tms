@@ -133,24 +133,31 @@ function ShellChrome({ children }: { children: ReactNode }) {
               />
             )}
             {showExportAtcs && <ExportAtcsButton projectId={projectId} />}
-            <Link
-              href={`/projects/${projectSlug}/atcs/new`}
-              className={buttonVariants({ size: 'sm' })}
-              data-testid="project-new-atc"
-            >
-              <Plus size={11} />
-              {' '}
-              New ATC
-            </Link>
-            <Link
-              href={`/projects/${projectSlug}/tests/new`}
-              className={buttonVariants({ variant: 'primary', size: 'sm' })}
-              data-testid="project-new-test"
-            >
-              <Plus size={11} />
-              {' '}
-              New Test
-            </Link>
+            {/* BK-666 (AC-08) — create affordances only for roles that can
+                create, as the explorer already gates its own; a viewer used
+                to see both and hit a refusal. The API stays the authority. */}
+            {canCreate && (
+              <>
+                <Link
+                  href={`/projects/${projectSlug}/atcs/new`}
+                  className={buttonVariants({ size: 'sm' })}
+                  data-testid="project-new-atc"
+                >
+                  <Plus size={11} />
+                  {' '}
+                  New ATC
+                </Link>
+                <Link
+                  href={`/projects/${projectSlug}/tests/new`}
+                  className={buttonVariants({ variant: 'primary', size: 'sm' })}
+                  data-testid="project-new-test"
+                >
+                  <Plus size={11} />
+                  {' '}
+                  New Test
+                </Link>
+              </>
+            )}
           </>
         )}
       />
