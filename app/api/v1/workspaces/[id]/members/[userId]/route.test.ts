@@ -4,7 +4,6 @@ import { ApiError } from '@lib/api/error-envelope';
 import { describe, expect, it } from 'bun:test';
 import {
   assertRemovalAllowed,
-  canRemoveRole,
   mapRemoveMemberError,
   REMOVAL_NOT_ADMIN_MESSAGE,
   REMOVAL_NOT_FOUND_MESSAGE,
@@ -71,23 +70,6 @@ function syncRefusal(fn: () => never): ApiError {
     throw err;
   }
 }
-
-describe('canRemoveRole — the ladder (BK-572)', () => {
-  it('an Owner removes every role, Owners included', () => {
-    expect(['viewer', 'member', 'admin', 'owner'].map(r => canRemoveRole('owner', r))).toEqual([true, true, true, true]);
-  });
-  it('an Admin removes Viewer, Member and Admin, never an Owner', () => {
-    expect(['viewer', 'member', 'admin', 'owner'].map(r => canRemoveRole('admin', r))).toEqual([true, true, true, false]);
-  });
-  it('a Member, a Viewer or no role removes nobody', () => {
-    for (const caller of ['member', 'viewer', null, 'stranger']) {
-      expect(['viewer', 'member', 'admin', 'owner'].some(r => canRemoveRole(caller, r))).toBe(false);
-    }
-  });
-  it('an unknown target role is never removable', () => {
-    expect(canRemoveRole('owner', 'stranger')).toBe(false);
-  });
-});
 
 describe('assertRemovalAllowed — early refusals, in the RPC order (BK-572 Q-D2)', () => {
   const params = { workspaceId: WS, callerId: CALLER, targetId: TARGET };

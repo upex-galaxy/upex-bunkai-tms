@@ -1,6 +1,7 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError } from '@lib/api/error-envelope';
+import { canRemoveRole, roleRank } from '@lib/workspaces/member-ladder';
 
 // BK-572 — dependency-free / DB-parametrized logic for
 // `DELETE /api/v1/workspaces/{id}/members/{userId}`, split out of `route.ts`
@@ -18,18 +19,6 @@ export const REMOVAL_NOT_ADMIN_MESSAGE = 'You must be an admin or owner of this 
 export const REMOVAL_SELF_MESSAGE = 'You can\'t remove yourself. To leave this workspace, use Leave in Settings > Workspaces.';
 export const REMOVAL_OWNER_MESSAGE = 'Only an Owner can remove an Owner.';
 export const REMOVAL_SOLE_OWNER_MESSAGE = 'A workspace must keep at least one Owner.';
-
-const ROLE_RANK: Record<string, number> = { viewer: 1, member: 2, admin: 3, owner: 4 };
-
-// The ladder, shared by the route and the members screen: a caller may remove
-// a target whose role does not outrank theirs. Unknown roles rank 0.
-export function roleRank(role: string | null | undefined): number {
-  return (role && ROLE_RANK[role]) || 0;
-}
-
-export function canRemoveRole(callerRole: string | null | undefined, targetRole: string | null | undefined): boolean {
-  return roleRank(callerRole) >= ROLE_RANK.admin && roleRank(targetRole) > 0 && roleRank(targetRole) <= roleRank(callerRole);
-}
 
 function notFound(): never {
   throw new ApiError('not_found', REMOVAL_NOT_FOUND_MESSAGE);
@@ -68,7 +57,7 @@ export async function assertRemovalAllowed(
   if (!caller) {
     notFound();
   }
-  if (roleRank(caller.role) < ROLE_RANK.admin) {
+  if (roleRank(caller.role) < roleRank('admin')) {
     throw new ApiError('forbidden', REMOVAL_NOT_ADMIN_MESSAGE, { details: { reason: 'not_a_member' } });
   }
 
