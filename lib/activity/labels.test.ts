@@ -37,6 +37,7 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
       'bug.status_changed': 'moved this defect to {status}',
       'export.requested': 'requested a workspace data export',
       'export.downloaded': 'downloaded the workspace data export',
+      'member.removed': 'removed a teammate',
     });
   });
 });

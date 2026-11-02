@@ -308,6 +308,9 @@
           },
           {
             "$ref": "#/components/schemas/ActivityItemBugStatusChanged"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemMemberRemoved"
           }
         ],
         "discriminator": {
@@ -325,7 +328,8 @@
             "bug.assigned": "#/components/schemas/ActivityItemBugAssigned",
             "bug.reassigned": "#/components/schemas/ActivityItemBugReassigned",
             "bug.unassigned": "#/components/schemas/ActivityItemBugUnassigned",
-            "bug.status_changed": "#/components/schemas/ActivityItemBugStatusChanged"
+            "bug.status_changed": "#/components/schemas/ActivityItemBugStatusChanged",
+            "member.removed": "#/components/schemas/ActivityItemMemberRemoved"
           }
         }
       },
@@ -1113,6 +1117,65 @@
           }
         },
         "required": ["previous_status", "status", "assignee_user_id"]
+      },
+      "ActivityItemMemberRemoved": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["workspace_member"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["member.removed"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadMemberRemoved"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadMemberRemoved": {
+        "type": "object",
+        "properties": {
+          "removed_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "removed_role": {
+            "type": ["string", "null"],
+            "enum": ["viewer", "member", "admin", "owner", null]
+          }
+        },
+        "required": ["removed_user_id", "removed_role"]
       },
       "SendDigestResponse": {
         "type": "object",

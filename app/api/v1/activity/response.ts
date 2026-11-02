@@ -172,6 +172,21 @@ function resolveAssigneeUserId(row: Pick<ActivityRpcRow, 'action' | 'payload'>):
   return nonEmptyString(row.payload.assignee_user_id);
 }
 
+// BK-572 — `member.removed` names WHO was removed in its item label. The id
+// resolves through the same ADR-0011 batch; migration 0114 lets an id resolve
+// when it is the target of a `member.removed` row in this workspace, even if
+// that teammate never acted here.
+function resolveRemovedMemberUserId(row: Pick<ActivityRpcRow, 'action' | 'payload'>): string | null {
+  if (row.action !== 'member.removed') {
+    return null;
+  }
+  return nonEmptyString(row.payload.removed_user_id);
+}
+
+// Neutral fallback when the removed teammate's email does not resolve (their
+// account was deleted): never a raw uuid, never blank.
+export const UNRESOLVED_REMOVED_MEMBER_LABEL = 'a former member';
+
 export interface BuildActivityItemParams {
   row: ActivityRpcRow
   actorEmail: string | null
@@ -179,6 +194,9 @@ export interface BuildActivityItemParams {
   // SAME ADR-0011 batch as `actorEmail` (see `fetchActivityPage` below) —
   // null for every action that has no assignee to show.
   assigneeEmail: string | null
+  // BK-572 — the removed teammate's email for `member.removed`, resolved in
+  // the same batch; omitted / null for every other action.
+  removedMemberEmail?: string | null
 }
 
 // Maps one RPC row + its already-resolved actor/assignee email (or null —
@@ -187,14 +205,17 @@ export interface BuildActivityItemParams {
 // UNCHANGED from the RPC row — this function does not re-derive or re-filter
 // it; the allowlist projection is owned entirely by migration 0045's SQL
 // (single source of truth, not duplicated in TypeScript).
-export function buildActivityItem({ row, actorEmail, assigneeEmail }: BuildActivityItemParams): ActivityItemResponse {
+export function buildActivityItem({ row, actorEmail, assigneeEmail, removedMemberEmail = null }: BuildActivityItemParams): ActivityItemResponse {
+  const label = row.action === 'member.removed'
+    ? (removedMemberEmail ?? UNRESOLVED_REMOVED_MEMBER_LABEL)
+    : deriveItemLabel(row);
   return {
     id: row.id,
     entity_type: row.entity_type,
     action: row.action,
     action_label: resolveActionLabel({ action: row.action, payload: row.payload, assigneeEmail }),
     actor: { user_id: row.actor_user_id, email: row.actor_user_id ? actorEmail : null },
-    item: { label: deriveItemLabel(row), entity_id: row.entity_id },
+    item: { label, entity_id: row.entity_id },
     payload: row.payload,
     created_at: row.created_at,
   };
@@ -245,7 +266,8 @@ export async function fetchActivityPage(
 
   const actorIds = rows.map(row => row.actor_user_id).filter((id): id is string => id !== null);
   const assigneeIds = rows.map(row => resolveAssigneeUserId(row)).filter((id): id is string => id !== null);
-  const userIds = [...new Set([...actorIds, ...assigneeIds])];
+  const removedIds = rows.map(row => resolveRemovedMemberUserId(row)).filter((id): id is string => id !== null);
+  const userIds = [...new Set([...actorIds, ...assigneeIds, ...removedIds])];
 
   const emailById = new Map<string, string | null>();
   if (userIds.length > 0) {
@@ -263,10 +285,12 @@ export async function fetchActivityPage(
 
   const items = rows.map((row) => {
     const assigneeUserId = resolveAssigneeUserId(row);
+    const removedUserId = resolveRemovedMemberUserId(row);
     return buildActivityItem({
       row,
       actorEmail: row.actor_user_id ? (emailById.get(row.actor_user_id) ?? null) : null,
       assigneeEmail: assigneeUserId ? (emailById.get(assigneeUserId) ?? null) : null,
+      removedMemberEmail: removedUserId ? (emailById.get(removedUserId) ?? null) : null,
     });
   });
 
