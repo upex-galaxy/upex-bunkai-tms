@@ -38,6 +38,7 @@ export interface UploadDeps extends FinishDeps {
 export interface UploadResult { status: number, body: unknown }
 
 const INIT_ENDPOINT = 'POST /api/v1/runs/{id}/steps/{stepId}/attachments';
+const COMMIT_STAGE_TIMEOUT_MS = 15_000;
 
 export async function startAttachmentUpload(
   deps: UploadDeps,
@@ -137,7 +138,11 @@ export async function finishAttachmentUpload(
     return commitAndRespond(deps, row.id, row.byte_size);
   }
 
-  const object = await readEvidenceObject(deps.admin, { path: row.storage_path, fetchImpl: deps.fetchImpl });
+  const object = await timedCommitStage(
+    'read_object',
+    readEvidenceObject(deps.admin, { path: row.storage_path, fetchImpl: deps.fetchImpl }),
+    args.attachmentId,
+  );
   if (object.status === 'missing') {
     throw new ApiError('conflict', 'The file has not been uploaded yet.', { details: { reason: 'upload_missing' } });
   }
@@ -160,11 +165,33 @@ export async function finishAttachmentUpload(
 }
 
 async function commitAndRespond(deps: FinishDeps, attachmentId: string, byteSize: number): Promise<UploadResult> {
-  const { data, error } = await commitRunStepAttachment(deps.db, { attachmentId, byteSize });
+  const { data, error } = await timedCommitStage(
+    'commit_rpc',
+    commitRunStepAttachment(deps.db, { attachmentId, byteSize }),
+    attachmentId,
+  );
   if (error) {
     mapAttachmentRpcError(error);
   }
   return { status: 200, body: data };
+}
+
+async function timedCommitStage<T>(stage: string, operation: Promise<T>, attachmentId: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      console.error('BK-593 attachment commit stage timed out', { attachmentId, stage, timeoutMs: COMMIT_STAGE_TIMEOUT_MS });
+      reject(new ApiError('storage_unavailable', 'The evidence upload could not be completed. Try again.', {
+        details: { reason: 'commit_timeout', stage },
+      }));
+    }, COMMIT_STAGE_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([operation, timeout]);
+  }
+  finally {
+    if (timer !== undefined) { clearTimeout(timer); }
+  }
 }
 
 export type { EvidenceStorageClient };

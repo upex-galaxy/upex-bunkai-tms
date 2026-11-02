@@ -56,7 +56,12 @@ describe('uploadStepEvidence', () => {
     expect(JSON.parse(f.calls[0].body as string)).toEqual({ filename: 'whatever.txt', content_type: 'image/png', byte_size: PNG.length });
     expect(f.calls[1].headers['content-type']).toBe('image/png');
     expect(f.calls[1].headers['x-upsert']).toBe('false');
-    expect(f.calls[1].body).toBe(body);
+    expect(f.calls[1].body).toBeInstanceOf(FormData);
+    expect((f.calls[1].body as FormData).get('cacheControl')).toBe('max-age=3600');
+    const uploaded = (f.calls[1].body as FormData).get('');
+    expect(uploaded).toBeInstanceOf(Blob);
+    expect((uploaded as Blob).type).toBe('image/png');
+    expect((uploaded as Blob).size).toBe(PNG.length);
   });
 
   it('uses a fresh Idempotency-Key per upload (the same image twice is a choice, not a retry)', async () => {

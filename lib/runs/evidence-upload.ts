@@ -77,7 +77,11 @@ export async function uploadStepEvidence(args: {
 
   let put: Response;
   try {
-    put = await doFetch(created.upload.url, { method: 'PUT', headers: created.upload.headers, body: args.file as unknown as BodyInit });
+    const body = new FormData();
+    body.append('cacheControl', 'max-age=3600');
+    const bytes = await args.file.slice(0, args.file.size).arrayBuffer();
+    body.append('', new Blob([bytes], { type: sniffed.type }));
+    put = await doFetch(created.upload.url, { method: 'PUT', headers: created.upload.headers, body });
   }
   catch {
     await discard(doFetch, attachmentUrl);
