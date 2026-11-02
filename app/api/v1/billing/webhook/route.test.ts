@@ -161,3 +161,104 @@ describeOrSkip('POST /api/v1/billing/webhook — post-verification dispatch (nee
     expect(body.type).toBe('customer.created');
   });
 });
+
+// ---------------------------------------------------------------------------
+// BK-231 — dispatch of the two new event families. No database and no Stripe
+// account: the handlers are spies on their module namespace (restored after
+// every test), so what is proven here is ROUTING only. The handlers themselves
+// are covered by lib/billing/webhook-events.test.ts and payment-method.test.ts,
+// and the SQL by lib/billing/billing-details-isolation.test.ts.
+// ---------------------------------------------------------------------------
+
+const webhookEvents = await import('@lib/billing/webhook-events');
+const paymentMethod = await import('@lib/billing/payment-method');
+const adminModule = await import('@lib/supabase/admin');
+const { spyOn } = await import('bun:test');
+
+function eventPayload(type: string, object: Record<string, unknown>): string {
+  return JSON.stringify({ id: `evt_test_${Math.random().toString(36).slice(2)}`, object: 'event', type, created: Math.floor(Date.now() / 1000), data: { object } });
+}
+
+describe('POST /api/v1/billing/webhook — invoice and setup-session dispatch (BK-231)', () => {
+  test('invoice.payment_failed goes to the invoice handler and answers 200 (Scenario 4.1)', async () => {
+    const handler = spyOn(webhookEvents, 'applyInvoiceEvent').mockResolvedValue({ status: 'grace_started', retryable: false });
+    try {
+      const response = await POST(await signedRequest(eventPayload('invoice.payment_failed', { id: 'in_1', customer: 'cus_1', billing_reason: 'subscription_cycle' }), TEST_WEBHOOK_SECRET));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ status: 'ok', result: { status: 'grace_started' } });
+      expect(handler).toHaveBeenCalledTimes(1);
+    }
+    finally {
+      handler.mockRestore();
+    }
+  });
+
+  test('an invoice for a customer not known yet answers 502 so Stripe redelivers', async () => {
+    const handler = spyOn(webhookEvents, 'applyInvoiceEvent').mockResolvedValue({ status: 'unknown_customer', retryable: true });
+    try {
+      const response = await POST(await signedRequest(eventPayload('invoice.paid', { id: 'in_1', customer: 'cus_1' }), TEST_WEBHOOK_SECRET));
+      expect(response.status).toBe(502);
+    }
+    finally {
+      handler.mockRestore();
+    }
+  });
+
+  test('a stale unknown customer is acknowledged with 200 and no further retries', async () => {
+    const handler = spyOn(webhookEvents, 'applyInvoiceEvent').mockResolvedValue({ status: 'unknown_customer', retryable: false });
+    try {
+      const response = await POST(await signedRequest(eventPayload('invoice.paid', { id: 'in_1', customer: 'cus_1' }), TEST_WEBHOOK_SECRET));
+      expect(response.status).toBe(200);
+    }
+    finally {
+      handler.mockRestore();
+    }
+  });
+
+  test('an invoice event the story does not use stays ignored', async () => {
+    const handler = spyOn(webhookEvents, 'applyInvoiceEvent');
+    try {
+      const response = await POST(await signedRequest(eventPayload('invoice.created', { id: 'in_1', customer: 'cus_1' }), TEST_WEBHOOK_SECRET));
+      expect(response.status).toBe(200);
+      expect((await response.json() as { status: string }).status).toBe('ignored');
+      expect(handler).not.toHaveBeenCalled();
+    }
+    finally {
+      handler.mockRestore();
+    }
+  });
+
+  test('a completed SETUP session is a payment-method replacement: it never reaches the checkout RPC', async () => {
+    const setup = spyOn(paymentMethod, 'applySetupSessionCompleted').mockResolvedValue({ status: 'applied' });
+    // The checkout path builds an admin client first; the setup path must not.
+    const admin = spyOn(adminModule, 'createAdminClient').mockImplementation(() => {
+      throw new Error('the setup path must not touch the checkout RPC');
+    });
+    try {
+      const response = await POST(await signedRequest(eventPayload('checkout.session.completed', { id: 'cs_setup_1', mode: 'setup', customer: 'cus_1', setup_intent: 'seti_1' }), TEST_WEBHOOK_SECRET));
+      expect(response.status).toBe(200);
+      expect(setup).toHaveBeenCalledTimes(1);
+      expect(admin).not.toHaveBeenCalled();
+    }
+    finally {
+      setup.mockRestore();
+      admin.mockRestore();
+    }
+  });
+
+  test('a SETUP session that expired is acknowledged and ignored, not retried', async () => {
+    const setup = spyOn(paymentMethod, 'applySetupSessionCompleted');
+    const admin = spyOn(adminModule, 'createAdminClient').mockImplementation(() => {
+      throw new Error('must not be reached');
+    });
+    try {
+      const response = await POST(await signedRequest(eventPayload('checkout.session.expired', { id: 'cs_setup_1', mode: 'setup', customer: 'cus_1' }), TEST_WEBHOOK_SECRET));
+      expect(response.status).toBe(200);
+      expect(setup).not.toHaveBeenCalled();
+    }
+    finally {
+      setup.mockRestore();
+      admin.mockRestore();
+    }
+  });
+});

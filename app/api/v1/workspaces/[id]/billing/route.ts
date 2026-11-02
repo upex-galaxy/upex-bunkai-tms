@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { loadBillingBlock } from '@lib/billing/summary';
 import { getWorkspaceBillingOverview } from '@lib/supabase/rpc';
 
 // GET /api/v1/workspaces/{id}/billing — the workspace's plan, seats, and
@@ -53,8 +54,16 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('internal_error', 'The billing overview did not match the expected shape.');
   }
 
+  // BK-231 — the maintenance surfaces (billing details, payment method, renewal
+  // state). `null` for a workspace that does not pay through Stripe. Read through
+  // the same caller client: RLS on the underlying tables is owner/admin only.
+  const billing = await loadBillingBlock(db, workspaceId);
+
   return jsonResponse({
     plan: data.plan,
+    stored_plan: data.stored_plan ?? data.plan,
+    grace_ends_at: data.grace_ends_at ?? null,
+    billing,
     purchased_seats: data.purchased_seats,
     active_seats: data.active_seats,
     project_count: data.project_count,
@@ -67,6 +76,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
 interface BillingOverviewShape {
   plan: string
+  // BK-231 (migration 0113) — `plan` is the EFFECTIVE plan (a Cloud workspace
+  // past its grace end reads as community); `stored_plan` is `workspaces.plan`.
+  stored_plan?: string
+  grace_ends_at?: string | null
   // BK-230 (Conductor review PR #208, item 5) — the Cloud workspace's real
   // purchased seat count, additive on `bunkai_workspace_billing_overview`
   // (migration 0077). `null` for Community/Enterprise or a Cloud workspace

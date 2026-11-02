@@ -79,6 +79,7 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0017](./ADR-0017-system-cron-principal-class.md) | System/cron principal class for scheduled internal jobs | Proposed | — | — |
 | [ADR-0018](./ADR-0018-run-step-identity-across-runs.md) | Run step identity across Runs: occurrence key plus exact wording, computed in one read-only function | Proposed | — | — |
 | [ADR-0019](./ADR-0019-run-evidence-file-storage.md) | File storage foundation: private Supabase Storage bucket, direct signed upload with a commit gate, authorized redirect for reads, outbox cleanup | Proposed | — | — |
+| [ADR-0021](./ADR-0021-effective-plan-and-billing-grace.md) | Effective plan: `workspaces.plan` is the stored plan, the limits that apply come from `bunkai_effective_plan` | Proposed | — | — |
 
 > ADR-0016 is taken by other in-flight work not yet present in this branch — confirmed by the Conductor 2026-08-28/30. BK-214 took the next free number, 0017.
 

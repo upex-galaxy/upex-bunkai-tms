@@ -2,7 +2,9 @@ import type { NextRequest } from 'next/server';
 import type Stripe from 'stripe';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { applySetupSessionCompleted } from '@lib/billing/payment-method';
 import { getStripeClient, getStripeWebhookSecret } from '@lib/billing/stripe';
+import { applyInvoiceEvent, INVOICE_EVENT_TYPES } from '@lib/billing/webhook-events';
 import { createAdminClient } from '@lib/supabase/admin';
 import { applyBillingCheckoutWebhookEvent } from '@lib/supabase/rpc';
 
@@ -30,6 +32,16 @@ import { applyBillingCheckoutWebhookEvent } from '@lib/supabase/rpc';
 // redeliver the SAME event id, and the RPC's dedupe write is deliberately
 // gated behind a successful row lookup, so that redelivery gets a REAL
 // second attempt rather than being swallowed as `duplicate`.
+
+// BK-231 — two more event families, dispatched BEFORE the checkout RPC above:
+//   * `invoice.payment_failed` / `invoice.paid` drive the failed-renewal grace
+//     window and the recovery (lib/billing/webhook-events.ts, migration 0113).
+//     An invoice for a customer we do not know yet answers 5xx only while the
+//     event is recent (the checkout row may not have committed), then 200.
+//   * a Checkout Session with `mode: 'setup'` is a payment-method replacement,
+//     NOT a purchase. It must never reach the BK-230 RPC: that RPC would answer
+//     `unknown_session`, the route would answer 5xx, and Stripe would redeliver
+//     the same event for days.
 
 const HANDLED_EVENT_TYPES = new Set([
   'checkout.session.completed',
@@ -65,11 +77,29 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('bad_request', `Webhook signature verification failed: ${message}`);
   }
 
+  if (INVOICE_EVENT_TYPES.has(event.type)) {
+    const outcome = await applyInvoiceEvent(event);
+    if (outcome.retryable) {
+      console.error('stripe invoice event for a customer not known yet', { eventId: event.id, type: event.type });
+      throw new ApiError('upstream_error', 'No matching billing customer found yet — retry.');
+    }
+    return jsonResponse({ status: 'ok', result: { status: outcome.status } }, { status: 200 });
+  }
+
   if (!HANDLED_EVENT_TYPES.has(event.type)) {
     return jsonResponse({ status: 'ignored', type: event.type }, { status: 200 });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
+
+  if (session.mode === 'setup') {
+    if (event.type !== 'checkout.session.completed') {
+      return jsonResponse({ status: 'ignored', type: event.type }, { status: 200 });
+    }
+    const outcome = await applySetupSessionCompleted(event, session);
+    return jsonResponse({ status: 'ok', result: outcome }, { status: 200 });
+  }
+
   const customerId = typeof session.customer === 'string' ? session.customer : (session.customer?.id ?? null);
   const subscriptionId = typeof session.subscription === 'string' ? session.subscription : (session.subscription?.id ?? null);
 

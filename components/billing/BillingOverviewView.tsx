@@ -1,6 +1,8 @@
 'use client';
 
+import type { BillingBlock } from '@lib/billing/summary';
 import type { WorkspacePlan } from '@lib/types';
+import type { BillingProfile } from './BillingDetailsCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { Meter, MeterWarningChip } from '@components/ui/meter';
 import { effectiveSeatLimit, formatPrice, meterFillPercent, meterLabel, meterState, PLAN_TIERS } from '@lib/billing/plan-tiers';
@@ -8,9 +10,19 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BillingDetailsCard } from './BillingDetailsCard';
+import { FailedRenewalBanner } from './FailedRenewalBanner';
+import { InvoiceHistoryCard } from './InvoiceHistoryCard';
+import { PaymentMethodCard } from './PaymentMethodCard';
 
 interface BillingOverview {
+  // BK-231 - `plan` is the EFFECTIVE plan (a Cloud workspace past its grace end
+  // reads as community); `stored_plan` is what the workspace bought.
   plan: WorkspacePlan
+  stored_plan?: WorkspacePlan
+  grace_ends_at?: string | null
+  // `null` for a workspace that does not pay through the payment processor.
+  billing?: BillingBlock | null
   purchased_seats: number | null
   active_seats: number
   project_count: number
@@ -29,6 +41,14 @@ const FETCH_TIMEOUT_MS = 10_000;
 const UPGRADE_POLL_INTERVAL_MS = 2_000;
 const UPGRADE_POLL_TIMEOUT_MS = 30_000;
 
+// BK-231 - same shape for the payment-method replacement: the hosted setup page
+// redirects back with `?payment_method=updated`, but the webhook that records
+// the new card may land a moment later.
+const PAYMENT_METHOD_POLL_INTERVAL_MS = 2_000;
+const PAYMENT_METHOD_POLL_TIMEOUT_MS = 30_000;
+// A replacement counts as "just recorded" when it was confirmed this recently.
+const PAYMENT_METHOD_RECENT_MS = 10 * 60 * 1000;
+
 interface BillingOverviewViewProps {
   workspaceId: string | null
 }
@@ -43,21 +63,32 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
   const [state, setState] = useState<ViewState>('loading');
   const [overview, setOverview] = useState<BillingOverview | null>(null);
   const inFlight = useRef<AbortController | null>(null);
+  const overviewRef = useRef<BillingOverview | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const justUpgraded = searchParams.get('upgraded') === '1';
   const [confirming, setConfirming] = useState(justUpgraded);
+  const paymentMethodReturn = searchParams.get('payment_method');
+  const [paymentMethodNotice, setPaymentMethodNotice] = useState<'updated' | 'canceled' | null>(
+    paymentMethodReturn === 'updated' || paymentMethodReturn === 'canceled' ? paymentMethodReturn : null,
+  );
+  const [replaceOpen, setReplaceOpen] = useState(false);
+  const [invoiceRefresh, setInvoiceRefresh] = useState(0);
 
   // Returns the fetched overview (or null on any non-success outcome) so the
   // polling effect below can inspect the plan WITHOUT a second render/read of
   // `overview` state (which would still hold the stale pre-fetch value in the
   // same tick `load()` resolves in).
-  const load = useCallback(async (): Promise<BillingOverview | null> => {
+  const load = useCallback(async (options: { silent?: boolean } = {}): Promise<BillingOverview | null> => {
     if (!workspaceId) {
       setState('error');
       return null;
     }
-    setState('loading');
+    // A silent reload (after a save, a retry or a poll tick) keeps the screen on
+    // screen instead of flashing the skeleton.
+    if (!options.silent) {
+      setState('loading');
+    }
     inFlight.current?.abort();
     const controller = new AbortController();
     inFlight.current = controller;
@@ -86,6 +117,7 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
       }
       const data = await response.json() as BillingOverview;
       if (inFlight.current !== controller) { return null; }
+      overviewRef.current = data;
       setOverview(data);
       setState('success');
       return data;
@@ -154,6 +186,40 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
     // re-fire via setTimeout, not via `load` identity changes.
   }, [justUpgraded, workspaceId]);
 
+  // BK-231 - back from the hosted payment-method page. `updated`: poll until the
+  // backend shows a replacement confirmed in the last few minutes (the webhook is
+  // async, and the return is a full navigation, so there is no "card before" to
+  // compare with), bounded; `canceled`: nothing changed, say so. Either way the
+  // param is stripped so a refresh never repeats this.
+  useEffect(() => {
+    if (!paymentMethodReturn || !workspaceId) {
+      return;
+    }
+    if (paymentMethodReturn !== 'updated') {
+      router.replace('/settings/billing');
+      return;
+    }
+    let cancelled = false;
+    const deadline = Date.now() + PAYMENT_METHOD_POLL_TIMEOUT_MS;
+
+    const poll = async () => {
+      const data = await load({ silent: true });
+      if (cancelled) { return; }
+      const confirmedAt = data?.billing?.payment_method_updated_at;
+      const recorded = Boolean(confirmedAt) && Date.now() - new Date(confirmedAt as string).getTime() < PAYMENT_METHOD_RECENT_MS;
+      if (recorded || Date.now() >= deadline) {
+        setInvoiceRefresh(value => value + 1);
+        router.replace('/settings/billing');
+        return;
+      }
+      setTimeout(() => { void poll(); }, PAYMENT_METHOD_POLL_INTERVAL_MS);
+    };
+
+    void poll();
+    return () => { cancelled = true; };
+    // Starts once per mount-with-the-param, like the upgrade poll above.
+  }, [paymentMethodReturn, workspaceId]);
+
   if (confirming) {
     return (
       <Card data-testid="billing-confirming-upgrade">
@@ -208,15 +274,61 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
   const tier = PLAN_TIERS[overview.plan];
   // BK-230 (Conductor review PR #208, item 5) — a Cloud workspace's REAL seat
   // cap is what it purchased at checkout, not the tier's flat ceiling.
-  const seatLimit = effectiveSeatLimit(tier, overview.purchased_seats);
+  // BK-231 - past the grace window the effective plan is Community while the
+  // workspace still owns a subscription: purchased seats do not apply to the
+  // Community label, and a new checkout would be refused (an unpaid renewal is
+  // fixed from the payment method and the retry, not from the upgrade flow).
+  const pastGrace = overview.stored_plan !== undefined && overview.stored_plan !== overview.plan;
+  const seatLimit = effectiveSeatLimit(tier, pastGrace ? null : overview.purchased_seats);
   const seatState = meterState(overview.active_seats, seatLimit);
   const projectState = meterState(overview.project_count, tier.projectLimit);
   const retentionState = tier.retentionDays === null
     ? 'normal'
     : meterState(overview.oldest_run_age_days ?? 0, tier.retentionDays);
 
+  const billing = overview.billing ?? null;
+  const unpaidRenewal = billing !== null
+    && (billing.payment_state === 'payment_failed' || billing.payment_state === 'retry_pending')
+    && billing.grace !== null;
+
   return (
     <div className="flex flex-col gap-6" data-testid="billing-overview">
+      {/* BK-231 - the failed-renewal banner stays at the very top until the charge succeeds. */}
+      {billing && unpaidRenewal && billing.grace && (
+        <FailedRenewalBanner
+          workspaceId={workspaceId as string}
+          graceEndsAt={billing.grace.ends_at}
+          subscriptionState={billing.subscription_state === 'free_after_grace' ? 'free_after_grace' : 'grace_period'}
+          canEdit={billing.can_edit}
+          retryAvailable={billing.retry_available}
+          onReplacePaymentMethod={() => setReplaceOpen(true)}
+          onRecovered={() => {
+            void load({ silent: true });
+            setInvoiceRefresh(value => value + 1);
+          }}
+        />
+      )}
+
+      {paymentMethodNotice && (
+        <Card data-testid={`billing-payment-method-${paymentMethodNotice}`}>
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <p className="text-sm text-fg-1" role="status">
+              {paymentMethodNotice === 'updated'
+                ? 'Payment method saved. It will be used for the next charge.'
+                : 'Payment method unchanged. Your current method is still active.'}
+            </p>
+            <button
+              type="button"
+              data-testid="billing-payment-method-notice-dismiss"
+              onClick={() => setPaymentMethodNotice(null)}
+              className="inline-flex h-8 items-center rounded-2 border border-stroke-2 bg-surface-3 px-3 text-sm font-medium text-fg-1 hover:bg-surface-4"
+            >
+              Dismiss
+            </button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Plan card */}
       <Card data-testid="billing-plan-card">
         <CardContent className="flex items-start justify-between gap-6 p-6">
@@ -230,7 +342,7 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
               <div className="text-[12.5px] text-fg-2" data-testid="billing-renewal-note">{tier.renewalNote}</div>
             )}
           </div>
-          {!tier.isPaid && (
+          {!tier.isPaid && !pastGrace && (
             // BK-230 — D34(d): this was the BK-229 inert "soon" affordance;
             // it becomes a live link now that the upgrade flow ships. Owner
             // gating happens on /settings/billing/upgrade itself, not here —
@@ -305,6 +417,31 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
           />
         </CardContent>
       </Card>
+
+      {/* BK-231 - the maintenance surfaces, only for a workspace that pays through the processor. */}
+      {billing && (
+        <>
+          <BillingDetailsCard
+            workspaceId={workspaceId as string}
+            profile={billing.profile as BillingProfile | null}
+            canEdit={billing.can_edit}
+            onSaved={(profile) => {
+              setOverview(current => (current && current.billing
+                ? { ...current, billing: { ...current.billing, profile } }
+                : current));
+            }}
+          />
+          <PaymentMethodCard
+            workspaceId={workspaceId as string}
+            paymentMethod={billing.payment_method}
+            canEdit={billing.can_edit}
+            failed={unpaidRenewal}
+            replaceOpen={replaceOpen}
+            onReplaceOpenChange={setReplaceOpen}
+          />
+          <InvoiceHistoryCard workspaceId={workspaceId as string} refreshKey={invoiceRefresh} />
+        </>
+      )}
     </div>
   );
 }

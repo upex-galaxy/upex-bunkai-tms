@@ -5769,6 +5769,178 @@
         },
         "required": ["seat_quantity"]
       },
+      "BillingDetails": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BillingDetailsBody"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "address_line2": {
+                "type": ["string", "null"]
+              },
+              "region": {
+                "type": ["string", "null"]
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": ["address_line2", "region", "updated_at"]
+          }
+        ],
+        "description": "The company billing profile. Every field is sent on each save (full replace). There is no tax id: VAT handling is out of scope."
+      },
+      "BillingDetailsBody": {
+        "type": "object",
+        "properties": {
+          "company_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "billing_email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "address_line1": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "address_line2": {
+            "type": ["string", "null"],
+            "maxLength": 120
+          },
+          "city": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "region": {
+            "type": ["string", "null"],
+            "maxLength": 80
+          },
+          "postal_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "country": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2,
+            "description": "ISO 3166-1 alpha-2, normalised to upper case."
+          }
+        },
+        "required": [
+          "company_name",
+          "billing_email",
+          "address_line1",
+          "city",
+          "postal_code",
+          "country"
+        ],
+        "description": "The company billing profile. Every field is sent on each save (full replace). There is no tax id: VAT handling is out of scope."
+      },
+      "BillingInvoiceList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BillingInvoice"
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "description": "Pass as `starting_after` to read the next page."
+          }
+        },
+        "required": ["data", "has_more", "next_cursor"]
+      },
+      "BillingInvoice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable invoice identifier (the payment processor's invoice id)."
+          },
+          "number": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["paid", "issued", "failed"]
+          },
+          "period_start": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Start of the billed period (from the subscription line)."
+          },
+          "period_end": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "description": "Invoice total in the minor unit of `currency`."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "seat_quantity": {
+            "type": ["integer", "null"]
+          },
+          "pdf_available": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "period_start",
+          "period_end",
+          "amount_cents",
+          "currency",
+          "seat_quantity",
+          "pdf_available",
+          "created_at"
+        ]
+      },
+      "BillingPaymentMethodSession": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Stripe-hosted page where the new card is entered. The card number, expiry and CVC never reach this app."
+          }
+        },
+        "required": ["url"]
+      },
+      "BillingRetryResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["recovered"],
+            "description": "Returned only after the payment processor confirmed the payment."
+          }
+        },
+        "required": ["status"]
+      },
       "WorkspaceBillingOverview": {
         "type": "object",
         "properties": {
@@ -5776,6 +5948,131 @@
             "type": "string",
             "enum": ["community", "cloud", "enterprise"],
             "description": "The workspace's `workspaces.plan` literal. Look up the tier ladder (display name, seat/project/retention limits, price) for this key in `lib/billing/plan-tiers.ts` — this endpoint does not repeat it."
+          },
+          "stored_plan": {
+            "type": "string",
+            "enum": ["community", "cloud", "enterprise"],
+            "description": "BK-231 — `workspaces.plan` as stored. `plan` above is the EFFECTIVE plan: a Cloud workspace whose grace window has ended reads as `community` from the exact expiry instant, while `stored_plan` stays `cloud` and nothing is deleted."
+          },
+          "grace_ends_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "BK-231 — end of the 14-day grace window of an unpaid renewal (UTC), or `null`. Paid limits hold strictly before it; Free limits apply from that instant."
+          },
+          "billing": {
+            "type": ["object", "null"],
+            "properties": {
+              "can_edit": {
+                "type": "boolean",
+                "description": "`true` for the workspace owner; admins read only."
+              },
+              "profile": {
+                "type": ["object", "null"],
+                "properties": {
+                  "company_name": {
+                    "type": "string"
+                  },
+                  "billing_email": {
+                    "type": "string"
+                  },
+                  "address_line1": {
+                    "type": "string"
+                  },
+                  "address_line2": {
+                    "type": ["string", "null"]
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "region": {
+                    "type": ["string", "null"]
+                  },
+                  "postal_code": {
+                    "type": "string"
+                  },
+                  "country": {
+                    "type": "string"
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "company_name",
+                  "billing_email",
+                  "address_line1",
+                  "address_line2",
+                  "city",
+                  "region",
+                  "postal_code",
+                  "country",
+                  "updated_at"
+                ],
+                "description": "`null` until the owner saves the details once."
+              },
+              "payment_method": {
+                "type": ["object", "null"],
+                "properties": {
+                  "brand": {
+                    "type": "string"
+                  },
+                  "last4": {
+                    "type": "string",
+                    "description": "The last four digits only; the full number is never stored or returned."
+                  },
+                  "exp_month": {
+                    "type": "integer"
+                  },
+                  "exp_year": {
+                    "type": "integer"
+                  }
+                },
+                "required": ["brand", "last4", "exp_month", "exp_year"]
+              },
+              "payment_method_updated_at": {
+                "type": ["string", "null"],
+                "format": "date-time",
+                "description": "When the owner last confirmed a replacement payment method."
+              },
+              "payment_state": {
+                "type": "string",
+                "enum": ["paid", "payment_failed", "retry_pending", "recovered"]
+              },
+              "subscription_state": {
+                "type": "string",
+                "enum": ["active_paid", "grace_period", "free_after_grace"]
+              },
+              "grace": {
+                "type": ["object", "null"],
+                "properties": {
+                  "started_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "ends_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": ["started_at", "ends_at"]
+              },
+              "retry_available": {
+                "type": "boolean",
+                "description": "`true` only once a replacement payment method was confirmed after the failure."
+              }
+            },
+            "required": [
+              "can_edit",
+              "profile",
+              "payment_method",
+              "payment_method_updated_at",
+              "payment_state",
+              "subscription_state",
+              "grace",
+              "retry_available"
+            ],
+            "description": "BK-231 — the maintenance surfaces. `null` for a workspace that does not pay through the payment processor (Community, Enterprise)."
           },
           "purchased_seats": {
             "type": ["integer", "null"],
@@ -5796,6 +6093,9 @@
         },
         "required": [
           "plan",
+          "stored_plan",
+          "grace_ends_at",
+          "billing",
           "purchased_seats",
           "active_seats",
           "project_count",
@@ -15871,6 +16171,585 @@
           },
           "503": {
             "description": "The payment processor is unavailable in this environment (`payment_processor_unavailable`). Generic client message; which configuration is missing is logged server-side only. Returned before any checkout session row is created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/billing/details": {
+      "patch": {
+        "tags": ["Billing"],
+        "summary": "Update the workspace's company billing details",
+        "description": "Owner-only (`bunkai_is_workspace_owner`); the owner gate runs before the body is read. The details are pushed to the Stripe Customer first, which is what makes LATER invoices carry them: Stripe stops updating an invoice's customer name, email and address once it is finalized, so issued invoices are never changed. The stored profile is written only after Stripe accepted the update. A rejected body changes nothing.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingDetailsBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The saved details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id or a body that is not JSON (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The PAT lacks `workspace:admin` or is bound to another workspace, or the caller is not the workspace OWNER (`details.reason: not_workspace_owner`; the same answer for a workspace that does not exist).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The workspace has no paid subscription (`no_active_subscription`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field is missing, malformed or beyond its limit (`validation_failed`). Nothing was changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment processor rejected the update (`upstream_error`). The stored profile is unchanged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The payment processor is not configured in this environment (`payment_processor_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/billing/invoices/{invoiceId}/pdf": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "Download one invoice as a PDF",
+        "description": "Owner and admin. The invoice must belong to the workspace's customer: an invoice of another workspace and one that does not exist answer the same 404, so the endpoint never reveals which invoices exist. The file is proxied by this route (never a redirect to the provider URL) and is served only when the provider returned a real PDF. When it did not, the answer is a recoverable 409 `invoice_pdf_unavailable` and no file is downloaded; the invoice itself is unchanged.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "invoiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The invoice PDF.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `atc:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Uniform `not_found`: no billing access, unknown invoice, or an invoice of another workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The PDF is not available right now (`invoice_pdf_unavailable`, `details.retryable: true`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment processor failed (`upstream_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The payment processor is not configured (`payment_processor_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/billing/invoices": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "List the workspace's issued invoices",
+        "description": "Owner and admin. Newest first. Drafts and voided invoices are not listed. The workspace -> customer mapping is read through the caller's RLS client; a member, a Community workspace and another workspace all answer the same 404. Invoices are read live from the payment processor (no local copy).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 24,
+              "default": 12
+            }
+          },
+          {
+            "name": "starting_after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "An invoice id from a previous `next_cursor`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of invoices (an empty `data` array for a workspace with no invoice yet).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingInvoiceList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id, `limit` or `starting_after`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `atc:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Uniform `not_found` for any caller who may not read this workspace's billing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment processor failed (`upstream_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The payment processor is not configured (`payment_processor_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/billing/payment-method": {
+      "post": {
+        "tags": ["Billing"],
+        "summary": "Start replacing the workspace's payment method",
+        "description": "Owner-only. Returns the URL of a Stripe Checkout page in `setup` mode (card only). The webhook records the outcome and makes the new method the default for the customer and the subscription, so the next renewal and a retry use it. Cancelling or a decline on the hosted page changes nothing: the active method stays active. `Idempotency-Key` is required.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8-128 chars, [a-zA-Z0-9_-]. A replay with the same key returns the stored response; the same key with a different payload returns 409 `conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The hosted setup URL (fresh or replayed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingPaymentMethodSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id or Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `workspace:admin`, wrong workspace, or not the OWNER (`details.reason: not_workspace_owner`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No paid subscription (`no_active_subscription`), or an Idempotency-Key reused with a different payload (`conflict`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment processor failed (`upstream_error`); use a NEW Idempotency-Key to retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The payment processor is not configured (`payment_processor_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/billing/retry": {
+      "post": {
+        "tags": ["Billing"],
+        "summary": "Retry a failed renewal",
+        "description": "Owner-only. Available only while a renewal is failed AND a replacement payment method was confirmed after the failure. Pays the failed invoice with the customer's default method. Success is reported only from the provider's `paid` answer; a decline, a required action or a timeout leaves the failed state, the grace end date and the retry path exactly as they were, and the workspace is never marked paid. If a timed-out charge actually went through, the `invoice.paid` webhook reconciles it. A double submit is stopped by an atomic claim (`retry_in_progress`) and by `Idempotency-Key`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8-128 chars, [a-zA-Z0-9_-]. A replay with the same key returns the stored response; the same key with a different payload returns 409 `conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The renewal was paid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRetryResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id or Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "The payment was declined or needs a further action from the card issuer (`payment_declined`, `details.reason`: `card_declined` | `requires_action`). Nothing changed; the retry stays available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `workspace:admin`, wrong workspace, or not the OWNER (`details.reason: not_workspace_owner`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No paid subscription (`no_active_subscription`), or the retry is not available (`retry_not_available`, `details.reason`: `no_failed_renewal` | `payment_method_not_replaced` | `retry_in_progress` | `invoice_not_payable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment could not be confirmed (`upstream_error`). The state is unchanged; try again or wait for the webhook.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The payment processor is not configured (`payment_processor_unavailable`).",
             "content": {
               "application/json": {
                 "schema": {
