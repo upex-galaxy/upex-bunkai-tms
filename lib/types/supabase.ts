@@ -527,6 +527,32 @@ export interface Database {
           },
         ]
       }
+      bunkai_test_failpoints: {
+        Row: {
+          created_at: string
+          name: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          name: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          name?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'bunkai_test_failpoints_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       chat_channels: {
         Row: {
           created_at: string

@@ -145,7 +145,6 @@ async function seedToken(persona: Persona, workspaceId: string | null, name: str
     workspace_id: workspaceId,
     name: `${PREFIX} ${name}`,
     token_prefix: Math.random().toString(36).slice(2, 10),
-    hash: `${PREFIX}-${crypto.randomUUID()}`,
     scopes: ['atc:read'],
   }).select('id').single(), `token ${name}`);
   return row.id;
@@ -156,7 +155,6 @@ async function seedInvite(workspaceId: string, email: string, invitedBy: Persona
     workspace_id: workspaceId,
     email,
     role: 'member',
-    token_hash: `${PREFIX}-${crypto.randomUUID()}`,
     invited_by_user_id: users[invitedBy].id,
   }).select('id').single(), `invite ${email}`);
   return row.id;
