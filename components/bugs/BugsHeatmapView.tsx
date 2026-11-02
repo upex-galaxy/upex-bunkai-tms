@@ -236,7 +236,7 @@ function HeatmapCell({ item, window }: { item: DefectHeatmapReportItem, window: 
         </span>
         <span
           data-testid={`bugs-heatmap-tag-${item.module_id}`}
-          className={cn('ml-auto shrink-0 rounded-full border px-1.5 py-px text-2xs font-semibold uppercase tracking-[0.04em]', classes.tagBorder, classes.tagBg, classes.tagText)}
+          className={cn('ml-auto shrink-0 rounded-1 border px-1.5 py-px text-2xs font-semibold uppercase tracking-[0.04em]', classes.tagBorder, classes.tagBg, classes.tagText)}
         >
           {HEAT_LABEL[item.heat]}
         </span>

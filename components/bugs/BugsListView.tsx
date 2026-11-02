@@ -241,7 +241,7 @@ function CountChip({ tone, label, count, testId }: { tone: string, label: ReactN
     <span
       data-testid={testId}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-sm font-medium tracking-[0.02em]',
+        'inline-flex items-center gap-1.5 rounded-1 border px-2 py-0.5 text-sm font-medium tracking-[0.02em]',
         toneClasses.border,
         toneClasses.bg,
         toneClasses.text,

@@ -253,7 +253,7 @@ const FilterBar = forwardRef<HTMLDivElement, {
               <span
                 key={chip.key}
                 data-testid={`traceability-filter-chip-${chip.key}`}
-                className="inline-flex items-center rounded-full border border-stroke-2 bg-surface-2 px-2 py-0.5 font-mono text-2xs text-fg-1"
+                className="inline-flex items-center rounded-1 border border-stroke-2 bg-surface-2 px-2 py-0.5 font-mono text-2xs text-fg-1"
               >
                 {chip.label}
               </span>
@@ -790,7 +790,7 @@ function PlaceholderPill({ text }: { text: string }) {
   return (
     <span
       data-testid="chain-placeholder-pill"
-      className="inline-flex items-center gap-1 rounded-full border border-dashed border-stroke-2 px-2 py-0.5 text-2xs text-fg-3"
+      className="inline-flex items-center gap-1 rounded-1 border border-dashed border-stroke-2 px-2 py-0.5 text-2xs text-fg-3"
     >
       <Clock size={11} />
       {text}
