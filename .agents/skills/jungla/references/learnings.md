@@ -51,3 +51,14 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - Measure the full suite on the current `origin/staging` before telling a worker it is red; a brief must not carry the stale "red since #301" claim (it was green by the time BK-206 merged).
 - `orca worktree rm` returns before git drops the worktree; `git worktree prune` after a few seconds, then `git branch -d`. A merged branch may need a second prune pass.
 - Defects stay `Open` after their fix merges (confirmed again: BK-1122, BK-1169, BK-620, BK-1168, BK-1449, BK-1548, BK-1555). The retest flow moves them, not the Jungla.
+
+## 2026-11-02 · Monday run (autonomy order, first design workers)
+
+- Owner order (terminal, 2026-11-02): the Jungla runs Bunkai as if it were its own; the channel is for very important things and reports with decisions; unblock everything that is not truly blocked. Mockup gates are cleared by the worker itself as a scored spec-only departure (D39/D40/D56 precedent), not held. Models: haiku subagents for exploration, sonnet for implementation, opus for architecture and design.
+- Worker heartbeats ("alive" plus a phase) arrive in the run mailbox every ~10 minutes and show as "You have N orchestration messages". They are not events: `orca orchestration check --run <run> --ack <delivery_id>` and move on. `worker_done` is the only message that closes work.
+- `worker-release --dispatch <id>` takes no `--run`; it refuses while the dispatch is not settled. A worker that finished without sending `worker_done` (BK-666, idle at a shell prompt, heartbeats stopped, `stale_status`) is closed with `worker-stop` after you verify the PR, the ancestry and Jira yourself.
+- A silent worker is not a stuck worker: before assuming it died, check `gh pr list --state merged` and the Jira status.
+- A design worker can split its own scope into a second tech story (BK-1557 then BK-1558) and the watcher then fires a GANK for it. Do not dispatch a second worker; the same worker takes it.
+- "Run history retention 90 of 30 days" on Billing is by design (oldest run age against the plan window), not a defect.
+- A haiku explorer can audit the live UI read-only with playwright-cli as the QA identity (report in `runs/<date>-design-audit/audit.md`); it costs a fraction of a worker and gives the design workers a ranked list.
+- A `[ISSUE_TRACKER_TOOL]` create call that built a heredoc, a temp dir and an `rm -rf` in one Bash call was denied by the permission layer once; write the description with the Write tool and make the tracker call plainly.
