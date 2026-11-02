@@ -69,6 +69,13 @@
     box-sizing: border-box;
   }
 
+  /* BK-1558 — dark is the canonical theme (DESIGN.md §2): native controls
+     (date pickers, select popups, scrollbars) render in their dark variant
+     instead of the browser's light chrome. */
+  html {
+    color-scheme: dark;
+  }
+
   html,
   body {
     background: var(--bg-0);
@@ -375,5 +382,16 @@
       linear-gradient(to left, var(--stroke-3), transparent) right center / 14px 100% no-repeat
         scroll;
     background-color: var(--bg-2);
+  }
+
+  /* BK-1558 — the mockup `.select` chevron for the native Select atom
+     (components/ui/select.tsx). The stroke is --fg-2 (#9aa1ab), inlined
+     because a data URI cannot read a CSS variable. */
+  .select-chevron {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa1ab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 8px center;
+    background-repeat: no-repeat;
+    background-size: 12px 12px;
   }
 }
