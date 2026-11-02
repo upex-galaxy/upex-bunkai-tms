@@ -9,7 +9,10 @@ import * as React from 'react';
 // (`.context/designs/bunkai-test-management-tool/bk-208-notifications/
 // settings-notifications.html`) via existing frozen §2 tokens
 // (`signal-pass`, `surface-5`, `stroke-2`/`stroke-strong`, `fg-2`/`fg-4`) --
-// no new colors picked.
+// no new colors picked. One departure (BK-1557, master-design-plan §5 D54):
+// that mockup draws the track and thumb with a `--radius-pill` that is not a
+// frozen token, so they use the token radii instead (track `rounded-2`,
+// thumb `rounded-1`); DESIGN.md caps radii at 10px.
 //
 // A plain `<button role="switch">` (not `<input type="checkbox">`) mirrors
 // the mockup's own markup and keeps keyboard/AT semantics identical to what
@@ -32,7 +35,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         disabled={disabled}
         onClick={() => onCheckedChange(!checked)}
         className={cn(
-          'relative inline-block h-4 w-[30px] shrink-0 rounded-full border transition-colors duration-token ease-token',
+          'relative inline-block h-4 w-[30px] shrink-0 rounded-2 border transition-colors duration-token ease-token',
           'focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-accent',
           checked
             ? 'border-transparent bg-signal-pass'
@@ -45,7 +48,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         <span
           aria-hidden="true"
           className={cn(
-            'absolute left-0.5 top-0.5 size-2.5 rounded-full bg-fg-2 transition-transform duration-token ease-token',
+            'absolute left-0.5 top-0.5 size-2.5 rounded-1 bg-fg-2 transition-transform duration-token ease-token',
             checked && 'translate-x-3.5 bg-surface-0',
             disabled && 'bg-fg-4',
           )}

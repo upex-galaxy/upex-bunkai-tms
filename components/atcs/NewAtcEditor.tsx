@@ -328,9 +328,11 @@ export function NewAtcEditor({
       </div>
 
       {/* main grid: compose / anchoring */}
-      <div className="grid flex-1 grid-cols-[1fr_360px] overflow-hidden">
+      {/* BK-1557 — below `lg` the live preview stacks under the compose column
+          and the whole body scrolls; the 360px side pane needs desktop width. */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_360px] lg:overflow-hidden">
         {/* compose column */}
-        <div className="flex flex-col overflow-auto border-r border-stroke-1">
+        <div className="flex flex-col border-b border-stroke-1 lg:overflow-auto lg:border-b-0 lg:border-r">
           <div className="flex flex-col gap-4 p-6">
             <header>
               <label className="block">

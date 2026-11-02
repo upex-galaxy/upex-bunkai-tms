@@ -20,6 +20,7 @@ import {
 } from '@lib/bugs/constants';
 import { bugsFiltersDiffer, bugsFiltersFromSearchParams, bugsFiltersFromState, bugsStateFromFilters, EMPTY_BUGS_FILTERS } from '@lib/bugs/filter-params';
 import {
+  assigneeMemberLabels,
   BUG_LIST_EMPTY_DESCRIPTION,
   BUG_LIST_EMPTY_TITLE,
   formatBugListRow,
@@ -28,7 +29,7 @@ import { mergeStateIntoParams } from '@lib/saved-views/state';
 import { cn } from '@lib/utils';
 import { ArrowDown, ArrowRight, Bug, Grid3x3, Inbox, List as ListIcon, ListX, RefreshCw, X } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // BK-41 Slice 3 — the List view of `bug-reports-index.html` on the existing
@@ -240,7 +241,7 @@ function CountChip({ tone, label, count, testId }: { tone: string, label: ReactN
     <span
       data-testid={testId}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-sm font-medium tracking-[0.02em]',
+        'inline-flex items-center gap-1.5 rounded-1 border px-2 py-0.5 text-sm font-medium tracking-[0.02em]',
         toneClasses.border,
         toneClasses.bg,
         toneClasses.text,
@@ -271,6 +272,8 @@ function resolveBugsListViewState(params: { error: boolean, rowCount: number, fi
 type BugsScreenView = 'list' | 'heatmap';
 
 export function BugsListView({ projectId, projectSlug, modules, canCreateBug, workspaceMembers, initialPage, initialFilters = EMPTY_BUGS_FILTERS, initialError = null }: BugsListViewProps) {
+  // BK-1557 — readable, unique picker labels (never a raw user id).
+  const memberLabels = useMemo(() => assigneeMemberLabels(workspaceMembers), [workspaceMembers]);
   // BK-264 — assign/status-transition are gated by the SAME member+
   // (not-viewer) permission `canCreateBug` already represents (both mutations
   // require the identical write-role RPCs a viewer always fails), so no
@@ -793,7 +796,9 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
 
                 {state === 'rows' && (
                   <>
-                    <div className="overflow-x-auto">
+                    {/* BK-1557 — scroll edge: a fade marks the side with
+                        more columns (Run sits past the card at narrow widths). */}
+                    <div data-testid="bugs-list-scroll" className="scroll-edge-x">
                       <table className="w-full border-collapse">
                         <thead>
                           <tr>
@@ -902,12 +907,12 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                                             onChange={(e) => {
                                               void handleAssign(item.id, e.target.value === '' ? null : e.target.value);
                                             }}
-                                            className="h-7 min-w-[160px] rounded-2 border border-stroke-2 bg-surface-2 px-2 font-mono text-xs text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                                            className="h-7 min-w-[160px] max-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2 text-xs text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
                                           >
                                             <option value="">Unassigned</option>
-                                            {workspaceMembers.map(member => (
+                                            {workspaceMembers.map((member, index) => (
                                               <option key={member.user_id} value={member.user_id}>
-                                                {member.email ?? member.user_id.slice(0, 8)}
+                                                {memberLabels[index]}
                                               </option>
                                             ))}
                                           </select>

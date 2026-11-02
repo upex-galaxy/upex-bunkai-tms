@@ -1,6 +1,6 @@
 'use client';
 
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { cn } from '@lib/utils';
 import { BarChart3, Bug, ClipboardList, Flag, GitBranch, Library, Play, Settings } from 'lucide-react';
 import Link from 'next/link';
@@ -37,9 +37,11 @@ import { usePathname } from 'next/navigation';
 // page, so it survives navigation across the project's detail routes — the
 // same BK-147 / ADR-0003 layout contract the explorer relies on.
 //
-// The four global sidebar items (ATC Library, Test Runs, Bug Reports, Metrics)
-// deliberately stay `soon`: those are workspace-wide aggregates that do not
-// exist. These entries are project-scoped, and every one of them points at a
+// The global sidebar's ATC Library entry went live with its workspace-wide
+// index (BK-439, D31); its Test Runs, Bug Reports and Metrics entries now open
+// these same project-scoped routes for the current (or first) project
+// (BK-1557, D52), since no workspace-wide aggregate exists. These entries are
+// project-scoped, and every one of them points at a
 // route that is actually built — no entry is invented for a route that only
 // has `[id]` / `new` segments (ATCs and Tests are browsed from the workbench).
 
@@ -87,35 +89,42 @@ export function resolveProjectSectionLabel(pathname: string, projectSlug: string
   return entry?.label ?? null;
 }
 
-export function ProjectSubNav({ projectSlug }: { projectSlug: string }) {
+// BK-1557 — `trailing` renders at the right end of the same row (the shell
+// passes the Tree / Table / Mind map switch), so the project header is one
+// toolbar plus this row instead of two stacked toolbars. The row scrolls
+// sideways when it does not fit; labels never wrap.
+export function ProjectSubNav({ projectSlug, trailing }: { projectSlug: string, trailing?: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <nav
-      aria-label="Project sections"
-      data-testid="project-subnav"
-      className="flex h-8 flex-shrink-0 items-center gap-0.5 border-b border-stroke-1 bg-surface-1 px-3"
-    >
-      {ENTRIES.map((entry) => {
-        const href = entryHref(projectSlug, entry.segment);
-        const active = isEntryActive(pathname, href, entry.segment);
-        const Icon = entry.icon;
-        return (
-          <Link
-            key={entry.id}
-            href={href}
-            aria-current={active ? 'page' : undefined}
-            data-testid={`project-subnav-${entry.id}`}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-1 px-2.5 py-1 text-xs font-medium transition-colors duration-token ease-token',
-              active ? 'bg-surface-3 text-fg-0' : 'text-fg-3 hover:bg-surface-2 hover:text-fg-1',
-            )}
-          >
-            <Icon size={12} className={active ? 'text-accent' : undefined} />
-            {entry.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="flex h-9 flex-shrink-0 items-center gap-2 overflow-x-auto border-b border-stroke-1 bg-surface-1 px-3 [scrollbar-width:none]">
+      <nav
+        aria-label="Project sections"
+        data-testid="project-subnav"
+        className="flex flex-shrink-0 items-center gap-0.5"
+      >
+        {ENTRIES.map((entry) => {
+          const href = entryHref(projectSlug, entry.segment);
+          const active = isEntryActive(pathname, href, entry.segment);
+          const Icon = entry.icon;
+          return (
+            <Link
+              key={entry.id}
+              href={href}
+              aria-current={active ? 'page' : undefined}
+              data-testid={`project-subnav-${entry.id}`}
+              className={cn(
+                'inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-1 px-2.5 py-1 text-xs font-medium transition-colors duration-token ease-token',
+                active ? 'bg-surface-3 text-fg-0' : 'text-fg-3 hover:bg-surface-2 hover:text-fg-1',
+              )}
+            >
+              <Icon size={12} className={active ? 'text-accent' : undefined} />
+              {entry.label}
+            </Link>
+          );
+        })}
+      </nav>
+      {trailing && <div className="ml-auto flex flex-shrink-0 items-center">{trailing}</div>}
+    </div>
   );
 }

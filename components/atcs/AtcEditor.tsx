@@ -12,7 +12,7 @@ import { canAddTag, TAG_CAP_MESSAGE, tagCapReached, TITLE_MESSAGE, titleValid } 
 import { duplicateAtc } from '@lib/atcs/duplicate-client';
 import { ATC_UNSPECIFIED_LABEL } from '@lib/atcs/list-filters';
 import { ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
-import { cn } from '@lib/utils';
+import { cn, shortSlug } from '@lib/utils';
 import { ChevronLeft, Files, Save } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -191,15 +191,19 @@ export function AtcEditor({
     })();
   };
 
+  // BK-1557 — the header identity is the short ATC code (`atc-20409822`),
+  // the same code the explorer tab and the ATC tables show; the raw UUID
+  // wrapped across two lines. The full id stays in the tooltip.
+  const atcCode = shortSlug(atc.slug);
   const breadcrumbItems = useMemo(
-    () => [...modulePath.split('/'), atc.id],
-    [modulePath, atc.id],
+    () => [...modulePath.split('/'), atcCode],
+    [modulePath, atcCode],
   );
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-surface-0">
       {/* topbar */}
-      <div className="flex h-10 flex-shrink-0 items-center justify-between border-b border-stroke-1 bg-surface-1 px-3">
+      <div className="flex h-10 flex-shrink-0 items-center justify-between gap-3 border-b border-stroke-1 bg-surface-1 px-3">
         <div className="flex min-w-0 items-center gap-2">
           <Link
             href={`/projects/${projectSlug}`}
@@ -207,21 +211,28 @@ export function AtcEditor({
           >
             <ChevronLeft size={13} />
           </Link>
-          <span className="font-mono text-xs text-fg-3">{atc.id}</span>
-          <span className="dot" data-status={atc.status} />
-          <span className="text-sm text-fg-2">
+          <span
+            data-testid="atc-editor-code"
+            title={`${atc.slug} · ${atc.id}`}
+            className="flex-shrink-0 whitespace-nowrap font-mono text-xs font-semibold text-fg-0"
+          >
+            {atcCode}
+          </span>
+          <span className="dot flex-shrink-0" data-status={atc.status} />
+          <span className="min-w-0 truncate whitespace-nowrap text-sm text-fg-2" title={module ? `editing in ${module.name}` : undefined}>
             {module ? `editing in ${module.name}` : 'editing'}
           </span>
-          <span className="ml-2 text-xs text-fg-3">
+          <span className="ml-2 hidden min-w-0 truncate whitespace-nowrap text-xs text-fg-3 lg:inline" title={breadcrumbItems.join(' / ')}>
             ·
             {' '}
             {breadcrumbItems.join(' / ')}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-shrink-0 items-center gap-1.5">
           <Button
             size="sm"
             variant="ghost"
+            className="hidden sm:inline-flex"
             onClick={() => router.push(`/projects/${projectSlug}`)}
           >
             Cancel
@@ -267,9 +278,11 @@ export function AtcEditor({
       </div>
 
       {/* main grid: compose / anchoring */}
-      <div className="grid flex-1 grid-cols-[1fr_360px] overflow-hidden">
+      {/* BK-1557 — below `lg` the live preview stacks under the compose column
+          and the whole body scrolls; the 360px side pane needs desktop width. */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_360px] lg:overflow-hidden">
         {/* compose column */}
-        <div className="flex flex-col overflow-auto border-r border-stroke-1">
+        <div className="flex flex-col border-b border-stroke-1 lg:overflow-auto lg:border-b-0 lg:border-r">
           <div className="flex flex-col gap-4 p-6">
             <header>
               <label className="block">

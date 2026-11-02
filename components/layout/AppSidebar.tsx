@@ -1,6 +1,7 @@
 'use client';
 
 import type { NotificationRpcRow } from '@app/api/v1/workspaces/[id]/notifications/response';
+import type { ProjectSection } from '@lib/navigation/shell-nav';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import type { MemberRole } from '@lib/types';
 import type { ComponentType } from 'react';
@@ -11,6 +12,7 @@ import { OpenInboxFromQuery } from '@components/notifications/OpenInboxFromQuery
 import { useAuth } from '@components/providers/auth-context';
 import { emailInitials } from '@lib/account/initials';
 import { NO_WORKSPACE_LABEL, roleLabel } from '@lib/account/role-label';
+import { activeProjectSection, isProjectsNavActive, projectSectionHref, resolveNavProjectSlug } from '@lib/navigation/shell-nav';
 import { resolveNotificationHref } from '@lib/notifications/entity-routes';
 import { buildNotificationsChannelConfig } from '@lib/notifications/realtime-notifications-channel';
 import { formatUnreadBadgeCount, shouldResetNotificationsOnWorkspaceChange } from '@lib/notifications/view';
@@ -51,6 +53,8 @@ import { toast } from 'sonner';
 //
 // Per the Master Design Plan (§3): nav targets without a route yet render
 // disabled with a "soon" tag; badges show real counts only where data exists.
+// Test Runs, Bug Reports and Metrics open the current (or first) project's
+// surface (BK-1557, §5 D52).
 
 interface ShellWorkspace {
   id: string
@@ -86,6 +90,9 @@ interface NavItem {
   label: string
   href: string | null
   badge?: number
+  // BK-1557 — set on the project-scoped entries (Test Runs, Bug Reports,
+  // Metrics); their href points into a project, see lib/navigation/shell-nav.ts.
+  section?: ProjectSection
 }
 
 function initials(name: string): string {
@@ -169,6 +176,10 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
 
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0] ?? null;
 
+  const navProjectSlug = resolveNavProjectSlug(pathname, projects);
+  const navProjectName = projects.find(p => p.slug === navProjectSlug)?.name ?? null;
+  const currentSection = activeProjectSection(pathname);
+
   const nav: NavItem[] = [
     // BK-255 — Home is live: it hosts the welcome banner now, and the rest of
     // the dashboard (BK-256..BK-260) composes into the same route.
@@ -176,35 +187,46 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
     { id: 'activity', icon: Activity, label: 'Activity', href: '/activity' },
     { id: 'projects', icon: Folder, label: 'Projects', href: '/projects', badge: projects.length },
     { id: 'library', icon: Library, label: 'ATC Library', href: '/atcs', badge: atcCount ?? undefined },
-    { id: 'runs', icon: Play, label: 'Test Runs', href: null },
-    { id: 'bugs', icon: Bug, label: 'Bug Reports', href: null },
-    { id: 'metrics', icon: BarChart3, label: 'Metrics', href: null },
+    // BK-1557 — the three project-scoped surfaces have no workspace-wide
+    // route, so these entries open the current project's (else the first
+    // project's) screen, and stay disabled only when there is no project
+    // at all (master-design-plan §5 D52, superseding D18/D31 for these three).
+    { id: 'runs', icon: Play, label: 'Test Runs', href: projectSectionHref(navProjectSlug, 'runs'), section: 'runs' },
+    { id: 'bugs', icon: Bug, label: 'Bug Reports', href: projectSectionHref(navProjectSlug, 'bugs'), section: 'bugs' },
+    { id: 'metrics', icon: BarChart3, label: 'Metrics', href: projectSectionHref(navProjectSlug, 'metrics'), section: 'metrics' },
     { id: 'settings', icon: Settings, label: 'Settings', href: '/settings' },
   ];
 
-  const isActive = (href: string | null) =>
-    href !== null && (pathname === href || pathname.startsWith(`${href}/`));
+  const isActive = (item: NavItem) => {
+    if (item.href === null) { return false; }
+    if (item.section) { return currentSection === item.section; }
+    if (item.id === 'projects') { return isProjectsNavActive(pathname); }
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  };
 
   // Escape closes the workspace switcher. The account menu is a Radix
   // DropdownMenu and owns its own Escape / focus-return, so it is intentionally
   // not handled here (BK-86 — migrate only the account menu).
   useEffect(() => {
     if (!wsOpen) { return; }
+    // BK-1557 — capture phase + preventDefault, so one Escape closes only
+    // this overlay and not the mobile nav drawer around it (AppShell skips a
+    // prevented Escape).
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setWsOpen(false); }
+      if (e.key === 'Escape') { e.preventDefault(); setWsOpen(false); }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [wsOpen]);
 
   // BK-209 — same Escape-to-close idiom, for the notifications panel.
   useEffect(() => {
     if (!notifOpen) { return; }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setNotifOpen(false); }
+      if (e.key === 'Escape') { e.preventDefault(); setNotifOpen(false); }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [notifOpen]);
 
   // Reconcile the local badge count with a fresh server read (mount, or any
@@ -262,7 +284,11 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
     }
     const rect = bellButtonRef.current?.getBoundingClientRect();
     if (rect) {
-      setNotifPanelPosition({ top: rect.bottom + 8, left: rect.left });
+      // BK-1557 — keep the 380px panel on screen: at phone width the bell
+      // sits inside the nav drawer (or off-canvas when the inbox opens from
+      // `?openNotifications=1`), so its left edge is clamped to an 8px gutter.
+      const maxLeft = Math.max(8, window.innerWidth - 380 - 8);
+      setNotifPanelPosition({ top: rect.bottom + 8, left: Math.min(Math.max(8, rect.left), maxLeft) });
     }
     setNotifOpen(true);
     if (!notifLoadedRef.current) {
@@ -462,7 +488,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
   const hasWorkspaceRole = userRole != null;
 
   return (
-    <aside className="flex h-screen flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
+    <aside className="flex h-dvh flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
       <Suspense fallback={null}>
         <OpenInboxFromQuery onOpen={() => { if (!notifOpen) { toggleNotifications(); } }} />
       </Suspense>
@@ -533,7 +559,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
                 <div className="fixed inset-0 z-40" aria-hidden onClick={() => setNotifOpen(false)} />
                 <div
                   id="notifications-panel"
-                  className="fixed z-50"
+                  className="fixed z-50 max-w-[calc(100vw-16px)] [&>*]:max-w-full"
                   style={{ top: notifPanelPosition.top, left: notifPanelPosition.left }}
                 >
                   <NotificationsPanel
@@ -633,7 +659,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
       <nav className="flex flex-col gap-px px-1.5">
         {nav.map((item) => {
           const Icon = item.icon;
-          const active = isActive(item.href);
+          const active = isActive(item);
           const soon = item.href === null;
           const content = (
             <>
@@ -662,7 +688,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
               <span
                 key={item.id}
                 aria-disabled
-                title="Coming soon"
+                title={item.section ? 'Create a project first' : 'Coming soon'}
                 className={cn(base, 'cursor-not-allowed text-fg-4')}
               >
                 {content}
@@ -673,6 +699,9 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
             <Link
               key={item.id}
               href={item.href as string}
+              aria-current={active ? 'page' : undefined}
+              title={item.section && navProjectName ? `${item.label} in ${navProjectName}` : undefined}
+              data-testid={`app-nav-${item.id}`}
               className={cn(
                 base,
                 active ? 'bg-surface-3 text-fg-0' : 'text-fg-2 hover:bg-surface-2',

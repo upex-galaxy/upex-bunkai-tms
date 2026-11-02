@@ -1,6 +1,7 @@
 'use client';
 
 import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
+import type { CSSProperties } from 'react';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { Button } from '@components/ui/button';
@@ -274,10 +275,13 @@ export function ProjectExplorer({
 
   return (
     <>
+      {/* BK-1557 — below `md` the explorer stacks above the content at full
+          width (capped height, scrolls inside); the drag-resized width only
+          applies from `md` up, where the panel sits beside the content. */}
       <div
         data-testid="explorer-panel"
-        className="relative flex flex-shrink-0 flex-col overflow-hidden bg-surface-1"
-        style={{ width: collapsed ? 0 : width }}
+        className="relative flex max-h-[40%] w-full flex-shrink-0 flex-col overflow-hidden border-b border-stroke-1 bg-surface-1 md:max-h-none md:w-[var(--explorer-w)] md:border-b-0"
+        style={{ '--explorer-w': `${collapsed ? 0 : width}px` } as CSSProperties}
       >
         {!collapsed && (
           <>
@@ -509,7 +513,7 @@ export function ProjectExplorer({
       </div>
       {/* Jira-style divider: drag the hit-area to resize, click the pill to
           collapse/expand the explorer panel. */}
-      <div className="group/divider relative w-px flex-shrink-0 bg-stroke-1">
+      <div className="group/divider relative hidden w-px flex-shrink-0 bg-stroke-1 md:block">
         {!collapsed && (
           <div
             onMouseDown={startResize}

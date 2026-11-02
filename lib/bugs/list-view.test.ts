@@ -1,4 +1,4 @@
-import { formatBugListRow, resolveBugListViewState } from '@lib/bugs/list-view';
+import { assigneeMemberLabel, assigneeMemberLabels, formatBugListRow, resolveBugListViewState } from '@lib/bugs/list-view';
 import { describe, expect, test } from 'bun:test';
 
 describe('resolveBugListViewState', () => {
@@ -78,5 +78,32 @@ describe('formatBugListRow', () => {
     expect(bug('in_progress')).toMatchObject({ statusLabel: 'In progress', statusToken: 'running' });
     expect(bug('resolved')).toMatchObject({ statusLabel: 'Resolved', statusToken: 'pass' });
     expect(bug('closed')).toMatchObject({ statusLabel: 'Closed', statusToken: 'skipped' });
+  });
+});
+
+// BK-1557 — the assignee picker never renders a raw user id.
+describe('assigneeMemberLabel', () => {
+  test('uses the member email when it resolved', () => {
+    expect(assigneeMemberLabel({ email: 'ana@example.com', role: 'admin' })).toBe('ana@example.com');
+  });
+
+  test('falls back to a role label, not an id, when the email is missing', () => {
+    expect(assigneeMemberLabel({ email: null, role: 'owner' })).toBe('Teammate (Owner)');
+    expect(assigneeMemberLabel({ email: '  ', role: 'member' })).toBe('Teammate (Member)');
+  });
+
+  test('stays readable with neither email nor role', () => {
+    expect(assigneeMemberLabel({ email: null, role: '' })).toBe('Teammate');
+  });
+});
+
+describe('assigneeMemberLabels', () => {
+  test('numbers repeated labels so two members never read the same', () => {
+    expect(assigneeMemberLabels([
+      { email: null, role: 'member' },
+      { email: 'ana@example.com', role: 'member' },
+      { email: null, role: 'member' },
+      { email: null, role: 'owner' },
+    ])).toEqual(['Teammate (Member) 1', 'ana@example.com', 'Teammate (Member) 2', 'Teammate (Owner)']);
   });
 });

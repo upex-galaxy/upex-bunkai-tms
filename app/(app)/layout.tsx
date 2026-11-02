@@ -2,6 +2,7 @@ import type { MemberRole } from '@lib/types';
 import type { ReactNode } from 'react';
 import { ChatDock } from '@components/chat/ChatDock';
 import { ChatProvider } from '@components/chat/ChatProvider';
+import { AppShell } from '@components/layout/AppShell';
 import { AppSidebar } from '@components/layout/AppSidebar';
 import { WorkspaceDeletedNotice } from '@components/layout/WorkspaceDeletedNotice';
 import { AuthProvider } from '@components/providers/auth-context';
@@ -83,23 +84,26 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <Suspense fallback={null}>
           <WorkspaceDeletedNotice activeWorkspaceName={activeWorkspaceName} />
         </Suspense>
-        <div className="grid h-screen min-h-0 grid-cols-[224px_1fr_auto] overflow-hidden bg-surface-0">
-          <AppSidebar
-            workspaces={shell.workspaces}
-            activeWorkspaceId={shell.activeWorkspaceId}
-            projects={shell.projects}
-            userEmail={shell.userEmail}
-            userRole={shell.userRole}
-            initialUnreadCount={shell.unreadCount}
-            atcCount={shell.atcCount}
-          />
-          <div className="flex min-h-0 flex-col overflow-hidden">
-            {children}
-          </div>
-          {shell.activeWorkspaceId && shell.userId && (
-            <ChatDock workspaceId={shell.activeWorkspaceId} userId={shell.userId} role={shell.userRole} />
+        {/* BK-1557 — AppShell owns the responsive frame: a grid from `md`
+            up, an off-canvas sidebar drawer below it (D53). */}
+        <AppShell
+          sidebar={(
+            <AppSidebar
+              workspaces={shell.workspaces}
+              activeWorkspaceId={shell.activeWorkspaceId}
+              projects={shell.projects}
+              userEmail={shell.userEmail}
+              userRole={shell.userRole}
+              initialUnreadCount={shell.unreadCount}
+              atcCount={shell.atcCount}
+            />
           )}
-        </div>
+          dock={shell.activeWorkspaceId && shell.userId
+            ? <ChatDock workspaceId={shell.activeWorkspaceId} userId={shell.userId} role={shell.userRole} />
+            : null}
+        >
+          {children}
+        </AppShell>
       </ChatProvider>
     </AuthProvider>
   );
