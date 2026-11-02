@@ -34,11 +34,11 @@ Every user story that touches UI MUST:
 |------|----------|-------|
 | Design tokens (color/type/radii/shadow) | ~95% | ✅ Byte-exact — strong base |
 | Atom CSS classes (`.btn/.input/.seg/.card/.bar`…) | ~30% | ⚠️ Only 4 of ~13 ported |
-| App Shell (global sidebar + nav) | ~75% | ⚠️ `AppSidebar` shipped (logo 分-box, workspace switcher, nav scaffold, pinned projects, user block); missing destinations gated as "soon"; polish + persistent-project-explorer pending (BK-147) |
+| App Shell (global sidebar + nav) | ~85% | ⚠️ `AppSidebar` shipped (logo 分-box, workspace switcher, full nav, pinned projects, user block). BK-1557: below `md` the same sidebar is an off-canvas drawer behind a mobile menu bar (D53), and Test Runs / Bug Reports / Metrics are live links into the current project (D52). Persistent-project-explorer polish pending (BK-147) |
 | Login | ~70% marketing / auth divergent | 🔶 |
 | Projects (Tree/Table/Mindmap + detail) | ~70% | 🔶 Tree/Table/Mind map switcher + Tree detail pane + open-ATC tabs done (BK-98); remaining: run surfaces, mindmap coverage/bug modes, inline filter (data-gated/P2) |
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
-| ATC Library (global promotion) | build 0% | ❌ Still project-scoped in impl (`projects/[slug]/atcs/*`) · ✅ mockup ready 2026-07-30 (§4.9) |
+| ATC Library (global promotion) | index built · fidelity un-audited | ✅ Built — workspace-wide index at `app/(app)/atcs/page.tsx` + `components/atcs/AtcLibraryView.tsx` with a live sidebar entry and count badge (BK-439, D31). Corrected 2026-11-02 after the live design audit found this row still read `build 0%` · ✅ mockup ready 2026-07-30 (§4.9) |
 | Home / Dashboard | ~90% | ✅ Built — epic BK-254 complete (banner + 5 widgets, BK-255..BK-260). Not built by ratified departure, not debt: the KPI deltas (unsourceable), the four-up grid, the sprint eyebrow and the header actions (§4.2, §5 D20/D21/D22/D23/D24) |
 | Test Runner | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/runs/[runId]/page.tsx` + `components/runs/RunnerView.tsx` (BK-34/35/36/39, all QA Approved or later). Mockup-fidelity pass against `run.jsx` not yet run (§4.5) |
 | Bug Reports (+ Defect Heatmap) | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/bugs/page.tsx` + `BugsListView` / `BugsHeatmapView` (BK-40/41/42/264). Shipped **project-scoped**, which is what `bug-reports-index.html` actually draws too (route `/projects/[projectSlug]/bugs`, no Project column) — an earlier revision of this row claimed the mockup was workspace-wide; it is not, and BK-555 is the story that needs that missing global index. Defect detail shipped since (BK-337 — `bugs/[bugId]/page.tsx`, with the §5 D32 departure ratified). Still open: Jira sync (BK-371/372/373) · mockups ready 2026-07-30 (§4.6) |
@@ -48,7 +48,7 @@ Every user story that touches UI MUST:
 | Test Plans & Milestones (post-MVP, 3-screen set) | Milestones built · Test Plans partial | ⚠️ Split — **Milestones shipped** (`projects/[projectSlug]/milestones/` + `/[milestoneId]`, BK-205, migration 0064); **Test Plans now partially built** — BK-202 *create a test plan* shipped 2026-08-20 (merge `5fddd4c`, migration `0073_test_plans`, so the plan entity DOES exist in the schema) and BK-203 *add/remove tests* is in flight; BK-204/206/207 remain unbuilt · mockups ready 2026-07-30 (§4.11) |
 | Automation & CI Ingestion (post-MVP, 1 screen + 3 extension crops) | build 0% | ❌ Not built — all 4 in-scope stories Backlog · ✅ mockups ready 2026-07-30 (§4.12) |
 | Notifications Center (post-MVP, 3-screen set) | inbox + preferences built · digest 0% | ⚠️ Partial — **and a route grep alone will miss it**: the inbox shipped as a **shell bell + `NotificationsPanel` overlay** mounted inside `components/layout/AppSidebar.tsx`, with **no dedicated route** (BK-209, the ratified D17 placement). Preferences ship at `settings/notifications` (BK-213); event producers ship (BK-211/212, migrations 0053/0056/0062/0066). Only the email digest (BK-214) is unbuilt · mockups ready 2026-07-30 (§4.13) |
-| Team Chat (post-MVP, 4-screen set) | build 0% | ❌ Not built — cluster root BK-215 is `Estimation` with zero commits and zero branches; BK-219 sits in `Ready For Dev` blocked behind it (corrected 2026-08-28 — the row previously read "all stories Backlog") · ✅ mockups ready 2026-07-30 (§4.14) |
+| Team Chat (post-MVP, 4-screen set) | channel, edit/delete and entity links built · fidelity un-audited | ⚠️ Partial — workspace channel shipped as a docked side panel opened from the sidebar (`components/chat/ChatDock.tsx` + `ChatPanel.tsx`, BK-215, migration `0104`), with edit/delete of own messages (BK-219, migration `0105`) and rich entity links (BK-218). Corrected 2026-11-02 after the live design audit found this row still read `build 0%` · ✅ mockups ready 2026-07-30 (§4.14) |
 | Billing & Plans (post-MVP, 5-screen set) | overview, checkout and details/invoices built · downgrade/cancel and limit warnings unbuilt | ⚠️ Partial — **BK-229 billing overview shipped** 2026-08-16 (merge `18662df`, migration `0072_workspace_billing_overview`), BK-230 *self-serve upgrade to a paid plan* is built (migration `0077`, ADR-0014) and **BK-231 billing details, payment method, invoices and failed-renewal recovery** is built (migration `0113`, ADR-0021, D51); the downgrade/cancel and plan-limit-warning screens are unbuilt · ✅ mockups ready 2026-07-30 (§4.15) |
 | Activity (BK-49, standalone, spec-only — no mockup) | built | ✅ Built — `app/(app)/activity/page.tsx` + `components/activity/ActivityView.tsx` (BK-49, merged 2026-07-31 via PR #83; migrations 0045/0047/0055) · 🔒 DESIGN.md §2 tokens only, no mockup (D15, §5) |
 
@@ -100,13 +100,14 @@ The mockup renders a persistent global shell on every screen (`Shell` = Sidebar 
 | Element | Canonical spec | Current | Verdict |
 |---------|----------------|---------|---------|
 | Persistent global sidebar (`<aside>` full-height) | rendered on every non-login screen | `AppSidebar` mounted in `app/(app)/layout.tsx` (224px grid) | ✅ shipped |
-| Logo | `分` (single kanji) in vermillion box + "Bunkai" | `Wordmark` = `分解` text, no box, not in shell | 🔶 |
-| New (+) button | ghost icon in sidebar header | none | ❌ |
-| Workspace switcher | `UG` gradient avatar + "upex-galaxy" + chevron, in sidebar | topbar dropdown, no UG avatar, mixes project name | ⚠️ relocate+restyle |
-| Search ⌘K | full-width sidebar button "Search or jump to…" + ⌘K | `CommandPalette` stub, not mounted | ⚠️ wire + place |
-| Main nav | Home / Projects `5` / ATC Library `623` / Test Runs `3` / Bug Reports `33` / Metrics / Settings (icon + badge) | none | ❌ build |
-| Pinned projects sub-nav | label + `+`, project rows (mono code + name + status dot) | none | ❌ |
-| Bottom user block | MT gradient avatar + "Mariko Tanaka" + "QA Architect · v0.4.2" + More | `UserMenu` topbar: initial + email, no name/role/version | ⚠️ |
+| Logo | `分` (single kanji) in vermillion box + "Bunkai" | `分` vermillion box + "Bunkai" in the `AppSidebar` header | ✅ |
+| New (+) button | ghost icon in sidebar header | ghost `+` in the sidebar header, links to `/projects/new` | ✅ |
+| Workspace switcher | `UG` gradient avatar + "upex-galaxy" + chevron, in sidebar | in the sidebar: gradient initials box + workspace name + chevron | ✅ |
+| Search ⌘K | full-width sidebar button "Search or jump to…" + ⌘K | sidebar button opens the mounted `CommandPalette` (BK-398, D33) | ✅ |
+| Main nav | Home / Projects `5` / ATC Library `623` / Test Runs `3` / Bug Reports `33` / Metrics / Settings (icon + badge) | all entries live; Projects and ATC Library carry count badges; Test Runs / Bug Reports / Metrics open the current (or first) project's surface with no badge (D52) | ⚠️ badges for the three project surfaces not built |
+| Pinned projects sub-nav | label + `+`, project rows (mono code + name + status dot) | label + project rows (mono code derived from slug + name), no status dot | ⚠️ |
+| Bottom user block | MT gradient avatar + "Mariko Tanaka" + "QA Architect · v0.4.2" + More | in the sidebar: initials box + email + role + More menu (BK-86); no display name or version | ⚠️ |
+| Phone width (below `md`, no mockup) | not drawn; the mockup is desktop-only | sidebar is an off-canvas drawer opened from a 40px mobile menu bar; content takes the full width (BK-1557, D53) | ✅ |
 | Topbar | 40px, `bg-1`, bottom border, left/center/right slots | `h-10 bg-surface-1 border-b` | ✅ keep |
 | ScreenSwitcher floating "Screens" btn | prototype-only jumper | none | ✅ correctly omitted (prototype device) |
 
@@ -698,6 +699,7 @@ Design cannot reach 100% fidelity on those screens until the models exist. Seque
 | | BK-10 Rename/delete module | **Projects** explorer (context menu) | `project.jsx` |
 | | BK-11 Move module | **Projects** explorer | `project.jsx` |
 | | BK-147 App Shell — ATCs/Tests as tabs + persistent explorer | **Shell** (§3, D5) · **Projects** workbench (§4.3, D6) | `app.jsx` §3, `project.jsx` §4.3 |
+| | BK-1557 UI polish slice 1: responsive shell and consistent atoms (tech story from the 2026-11-02 live design audit) | **Shell** (§3: phone-width drawer D53, live Test Runs / Bug Reports / Metrics D52) · **Projects** shell header (§4.3: view switch in the sub-nav row, nowrap tabs, breadcrumb) · **Metrics** (§4.7: single scroll column) · **ATC Editor** header (§4.4: short `atc-` code) · **Bug Reports** table (§4.6: scroll edge, assignee label) · Settings > Notifications toggles and Team Chat mention chips (token radii) | `app.jsx` §3, `project.jsx` §4.3; phone width has no mockup (D53) |
 | | BK-148 Project Environments — list/add/rename/remove | **Projects** explorer rail — Environments group (D11, live-first; no Settings mockup) | `project-explorer.tsx` |
 | | BK-266 Projects index + dedicated create route | **Projects index** (`/projects`, spec-only — D19, no mockup) · **Create project** (`/projects/new`, form relocated unchanged) | §5 D19 · `app/(app)/activity/page.tsx` + `components/activity/ActivityView.tsx` (structural precedent only) |
 | | BK-398 Command Palette — search and jump across the workspace | **Shell** — command-palette overlay (§3 "Search ⌘K" row; no screen of its own, spec-only — D33) | §3 · §5 D33 · `app.jsx` sidebar search control (affordance only, no palette mockup) |
