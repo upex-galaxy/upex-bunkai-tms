@@ -5,6 +5,7 @@ import type { Atc, AtcLayer, AtcPriority, AtcTechnique } from '@lib/types';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { Button, buttonVariants } from '@components/ui/button';
+import { Select } from '@components/ui/select';
 import {
   ATC_FILTER_UNSPECIFIED,
   ATC_UNSPECIFIED_LABEL,
@@ -187,11 +188,12 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
         >
           <label className="flex flex-col gap-1.5">
             <span className="text-2xs font-semibold uppercase tracking-[0.04em] text-fg-2">Technique</span>
-            <select
+            <Select
               data-testid="atc-list-technique-filter"
               value={atcFilters.technique ?? ''}
               onChange={e => setAtcFilters({ technique: toFacetValue<AtcTechnique>(e.target.value) })}
-              className="h-8 min-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+              size="sm"
+              className="min-w-[220px]"
             >
               <option value="">All techniques</option>
               {ATC_TECHNIQUES.map(t => (
@@ -200,23 +202,24 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
               {/* Last, per the PO's Q5 ordering ruling. Matches `technique IS
                   NULL` client-side — never a query parameter. */}
               <option value={ATC_FILTER_UNSPECIFIED}>{ATC_UNSPECIFIED_LABEL}</option>
-            </select>
+            </Select>
           </label>
 
           <label className="flex flex-col gap-1.5">
             <span className="text-2xs font-semibold uppercase tracking-[0.04em] text-fg-2">Priority</span>
-            <select
+            <Select
               data-testid="atc-list-priority-filter"
               value={atcFilters.priority ?? ''}
               onChange={e => setAtcFilters({ priority: toFacetValue<AtcPriority>(e.target.value) })}
-              className="h-8 min-w-[160px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+              size="sm"
+              className="min-w-[160px]"
             >
               <option value="">All priorities</option>
               {ATC_PRIORITIES.map(pr => (
                 <option key={pr} value={pr}>{pr}</option>
               ))}
               <option value={ATC_FILTER_UNSPECIFIED}>{ATC_UNSPECIFIED_LABEL}</option>
-            </select>
+            </Select>
           </label>
 
           <div className="flex flex-col gap-1.5">

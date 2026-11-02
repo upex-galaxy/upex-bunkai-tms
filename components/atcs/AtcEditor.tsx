@@ -7,6 +7,7 @@ import { AtcPreview } from '@components/atcs/AtcPreview';
 import { AuthoringFormatHint } from '@components/atcs/AuthoringFormatHint';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
+import { Select } from '@components/ui/select';
 import { assertionsToYaml, stepsToMarkdown } from '@lib/atc-parse';
 import { canAddTag, TAG_CAP_MESSAGE, tagCapReached, TITLE_MESSAGE, titleValid } from '@lib/atcs/builder-guards';
 import { duplicateAtc } from '@lib/atcs/duplicate-client';
@@ -323,11 +324,11 @@ export function AtcEditor({
                 <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
                   Technique
                 </span>
-                <select
+                <Select
                   data-testid="atc-technique-select"
                   value={technique ?? ''}
                   onChange={e => setTechnique((e.target.value || null) as AtcTechnique | null)}
-                  className="h-8 min-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                  className="min-w-[220px]"
                 >
                   {/* First option === the unset display AND the clear-to-unset
                       affordance (PO ruling Q2 + Q6). `value=""` maps to NULL. */}
@@ -335,23 +336,22 @@ export function AtcEditor({
                   {ATC_TECHNIQUES.map(t => (
                     <option key={t} value={t}>{t}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
                   Priority
                 </span>
-                <select
+                <Select
                   data-testid="atc-priority-select"
                   value={priority ?? ''}
                   onChange={e => setPriority((e.target.value || null) as AtcPriority | null)}
-                  className="h-8 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
                 >
                   <option value="">{ATC_UNSPECIFIED_LABEL}</option>
                   {ATC_PRIORITIES.map(p => (
                     <option key={p} value={p}>{p}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">

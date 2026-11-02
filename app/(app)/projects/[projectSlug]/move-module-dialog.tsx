@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@components/ui/button';
+import { Select } from '@components/ui/select';
 import { computeDepth, isDescendantPath, MAX_MODULE_DEPTH, movedSubtreeMaxDepth } from '@lib/modules/path';
 import { moduleBreadcrumb } from '@lib/tree';
 import { ArrowRight } from 'lucide-react';
@@ -139,7 +140,7 @@ export function MoveModuleDialog({ source, modules, onMoved, onCancel }: MoveMod
         <span className="mb-1.5 block text-xs font-medium text-fg-2">
           Destination
         </span>
-        <select
+        <Select
           data-testid="move-module-target"
           value={targetId}
           disabled={noDestinations}
@@ -147,7 +148,7 @@ export function MoveModuleDialog({ source, modules, onMoved, onCancel }: MoveMod
             setTargetId(e.target.value);
             if (error) { setError(null); }
           }}
-          className="flex h-9 w-full rounded-2 border border-stroke-2 bg-surface-2 px-2.5 text-sm text-fg-1 transition-colors duration-token ease-token hover:border-stroke-3 focus-visible:border-accent focus-visible:bg-surface-3 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full"
         >
           <option value="" disabled>
             {noDestinations ? 'No valid destinations' : 'Choose a destination…'}
@@ -156,7 +157,7 @@ export function MoveModuleDialog({ source, modules, onMoved, onCancel }: MoveMod
           {options.map(o => (
             <option key={o.id} value={o.id}>{o.label}</option>
           ))}
-        </select>
+        </Select>
       </label>
 
       {error && (

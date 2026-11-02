@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@components/ui/button';
+import { Select } from '@components/ui/select';
 import { Play } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -107,12 +108,11 @@ export function StartRunButton({ testId, projectSlug, environments }: StartRunBu
 
   return (
     <div className="inline-flex items-center gap-1.5">
-      <select
+      <Select
         data-testid="start-run-env"
         value={envId}
         onChange={e => setEnvId(e.target.value)}
         disabled={submitting}
-        className="h-8 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
       >
         <option value="">Environment…</option>
         {environments.map(env => (
@@ -120,7 +120,7 @@ export function StartRunButton({ testId, projectSlug, environments }: StartRunBu
             {env.name}
           </option>
         ))}
-      </select>
+      </Select>
       <Button
         variant="primary"
         size="sm"

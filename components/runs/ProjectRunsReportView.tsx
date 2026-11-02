@@ -7,6 +7,7 @@ import { RunModeBadge } from '@components/runs/RunModeBadge';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { Input } from '@components/ui/input';
+import { Select } from '@components/ui/select';
 // Constants come from the zod-free module, NOT `report-validation`: that file
 // evaluates `z.object(...)` at its top level, so importing two literals from
 // it would drag Zod and the whole query-schema graph into this client bundle
@@ -391,18 +392,19 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
               <label htmlFor="report-filter-module" className="text-2xs font-medium uppercase tracking-[0.06em] text-fg-3">
                 Module
               </label>
-              <select
+              <Select
                 id="report-filter-module"
                 data-testid="report-filter-module"
                 value={filters.moduleId ?? ''}
                 onChange={e => setModuleId(e.target.value)}
-                className="flex h-8 w-[172px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 text-sm text-fg-1 transition-colors duration-token ease-token hover:border-stroke-3 focus-visible:border-accent focus-visible:bg-surface-3 focus-visible:outline-none"
+                size="sm"
+                className="flex w-[172px]"
               >
                 <option value="">All modules</option>
                 {modules.map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="flex flex-col gap-1">
