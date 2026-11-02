@@ -676,3 +676,36 @@ describe('beginBillingCheckout — payment processor failures (BK-827)', () => {
     expect((JSON.parse(raw) as { error: { code: string } }).error.code).toBe('internal_error');
   });
 });
+
+// ---------------------------------------------------------------------------
+// BK-231 — a workspace with an unpaid renewal reads as `community` once its
+// grace window ended, but it still owns a subscription: a second checkout
+// would start a second one. The way back is the payment method and the retry.
+// ---------------------------------------------------------------------------
+
+describe('beginBillingCheckout — unpaid renewal (BK-231)', () => {
+  test('refuses a new checkout while a renewal is unpaid, before any Stripe or table access', async () => {
+    const db = {
+      rpc: async (fn: string) => {
+        if (fn === 'bunkai_is_workspace_owner') {
+          return { data: true, error: null };
+        }
+        if (fn === 'bunkai_workspace_billing_overview') {
+          return { data: { plan: 'community', active_seats: 1, payment_overdue: true }, error: null };
+        }
+        throw new Error(`unexpected rpc call: ${fn}`);
+      },
+      from: () => { throw new Error('no table access expected'); },
+    } as unknown as SupabaseClient<Database>;
+
+    let failure: unknown;
+    try {
+      await beginBillingCheckout({ db, workspaceId: '11111111-1111-4111-8111-111111111111', userId: 'u', seatQuantity: 2, idempotencyKey: 'k' });
+    }
+    catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toMatchObject({ code: 'plan_not_upgradable', status: 422, details: { reason: 'payment_overdue' } });
+  });
+});

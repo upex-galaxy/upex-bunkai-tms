@@ -56,6 +56,8 @@ export function validateSeatQuantity(seatQuantity: number, bounds: SeatQuantityB
 interface WorkspaceBillingOverviewShape {
   plan: string
   active_seats: number
+  // BK-231 — true while a renewal is unpaid (grace window open or past).
+  payment_overdue?: boolean
 }
 
 function isWorkspaceBillingOverviewShape(value: unknown): value is WorkspaceBillingOverviewShape {
@@ -118,6 +120,16 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
   if (overviewData.plan !== 'community') {
     throw new ApiError('plan_not_upgradable', 'This workspace is already on Cloud or Enterprise.', {
       details: { reason: 'not_on_community_plan', current_plan: overviewData.plan },
+    });
+  }
+
+  // BK-231 — a workspace with an unpaid renewal still has a subscription. Its
+  // effective plan may read `community` once the grace window ended, but a second
+  // checkout would start a second subscription: the way back is the payment
+  // method and the retry on the Billing screen.
+  if (overviewData.payment_overdue === true) {
+    throw new ApiError('plan_not_upgradable', 'This workspace has an unpaid renewal. Update the payment method and retry the charge instead.', {
+      details: { reason: 'payment_overdue', current_plan: overviewData.plan },
     });
   }
 

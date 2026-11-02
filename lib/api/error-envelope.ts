@@ -56,6 +56,13 @@ export const API_ERROR_CODES = {
   PROJECT_LIMIT_REACHED: 'project_limit_reached',
   PAYMENT_PROCESSOR_UNAVAILABLE: 'payment_processor_unavailable',
 
+  // Billing domain (BK-231) — billing details, payment method, invoices, renewal
+  // retry. Distinct codes so API consumers can branch without parsing messages.
+  NO_ACTIVE_SUBSCRIPTION: 'no_active_subscription',
+  RETRY_NOT_AVAILABLE: 'retry_not_available',
+  PAYMENT_DECLINED: 'payment_declined',
+  INVOICE_PDF_UNAVAILABLE: 'invoice_pdf_unavailable',
+
   // Test Plans domain (BK-203) — a Test added to a Plan must belong to the
   // Plan's own project (derived via its chained ATCs). Distinct from
   // validation_failed so API consumers can branch on it, same shape as
@@ -102,6 +109,10 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   checkout_in_progress: 409,
   project_limit_reached: 422,
   payment_processor_unavailable: 503,
+  no_active_subscription: 409,
+  retry_not_available: 409,
+  payment_declined: 402,
+  invoice_pdf_unavailable: 409,
   test_outside_plan_project: 422,
   file_too_large: 413,
   unsupported_media_type: 415,
