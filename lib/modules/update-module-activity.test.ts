@@ -230,6 +230,20 @@ describeOrSkip('BK-1168 / BK-1590 — module events are logged only on a real ch
     expect(await moduleEvents(moduleId)).toEqual([]);
   });
 
+  it('a different description is ignored, and nothing is logged, when p_update_description is false', async () => {
+    const moduleId = await createModule('Imports', 'imports');
+    const { error } = await member!.rpc('bunkai_update_module', {
+      p_module_id: moduleId,
+      p_description: 'other',
+      p_update_description: false,
+    });
+    expect(error).toBeNull();
+
+    expect(await moduleEvents(moduleId)).toEqual([]);
+    const { data: row } = await service().from('modules').select('description').eq('id', moduleId).single();
+    expect(row?.description).toBe('before');
+  });
+
   it('clearing a populated description logs module.description_updated and stores NULL', async () => {
     const moduleId = await createModule('Archive', 'archive');
     const { error } = await member!.rpc('bunkai_update_module', {

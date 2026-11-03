@@ -22,7 +22,9 @@
 -- client may send ''), so the comparison runs on coalesce(value, ''): the
 -- same text is a silent no-op, and a missing and an empty Description are the
 -- same state. The unchanged case skips the UPDATE as well, so no write
--- reaches the row.
+-- reaches the row. The stored row is read FOR UPDATE: the comparison decides
+-- whether a write happens, so a concurrent save must not change the value
+-- between the read and the decision (a stale read would drop a revert).
 --
 -- Everything else is unchanged from 0110: same signature, same DEFINER
 -- posture, same auth.uid() actor and bunkai_can_write_workspace gate, same
@@ -57,7 +59,8 @@ begin
   select project_id, path, name, description
     into v_project_id, v_old_path, v_old_name, v_old_description
     from public.modules
-    where id = p_module_id and archived_at is null;
+    where id = p_module_id and archived_at is null
+    for update;
   if v_project_id is null then
     raise exception 'module_not_found' using errcode = 'P0002';
   end if;
