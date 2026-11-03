@@ -133,6 +133,52 @@ describe('readEvidenceObject', () => {
     expect(await rejection(readEvidenceObject(client, { path: 'p', fetchImpl: (async () => new Response('', { status: 503 })) as unknown as typeof fetch }))).toMatchObject({ code: 'storage_unavailable' });
   });
 
+  // BK-1450 - inside a Next.js route handler `fetch` is Next's dedupe wrapper: it tees every GET
+  // sent without a signal and keeps the second branch. Cancelling one branch of a tee settles
+  // only once BOTH are cancelled, so awaiting the cancel after a 64 KiB head of a larger object
+  // hung the commit route until the platform answered 504. This fake reproduces that wrapper.
+  it('does not hang when the response body is one branch of a tee whose other branch is held (Next.js fetch)', async () => {
+    const { client } = fakeStorage();
+    const big = new Uint8Array(EVIDENCE_SNIFF_BYTES * 4).fill(9);
+    const held: ReadableStream<Uint8Array>[] = [];
+    const fetchImpl = (async () => {
+      const [mine, kept] = streamOf(big).tee();
+      held.push(kept);
+      return new Response(mine, { status: 206 });
+    }) as unknown as typeof fetch;
+
+    const result = await readEvidenceObject(client, { path: 'p', fetchImpl });
+    expect(result.status).toBe('found');
+    if (result.status === 'found') { expect(result.head.length).toBe(EVIDENCE_SNIFF_BYTES); }
+    expect(held).toHaveLength(1);
+  }, 2000);
+
+  it('sends the ranged read with an abort signal and no-store, so it is bounded and Next.js does not tee it', async () => {
+    const { client } = fakeStorage();
+    let seen: RequestInit | undefined;
+    const fetchImpl = (async (_url: string, init?: RequestInit) => {
+      seen = init;
+      return new Response(streamOf(Uint8Array.from([1, 2, 3])), { status: 206 });
+    }) as unknown as typeof fetch;
+
+    await readEvidenceObject(client, { path: 'p', fetchImpl });
+    expect(seen?.signal).toBeInstanceOf(AbortSignal);
+    expect(seen?.cache).toBe('no-store');
+  });
+
+  it('answers 503 when the ranged read fails part-way through the body (a timeout aborts the stream)', async () => {
+    const { client } = fakeStorage();
+    let sent = false;
+    const failing = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (!sent) { sent = true; controller.enqueue(new Uint8Array(1000)); return; }
+        controller.error(new DOMException('The operation timed out.', 'TimeoutError'));
+      },
+    });
+    const fetchImpl = (async () => new Response(failing, { status: 206 })) as unknown as typeof fetch;
+    expect(await rejection(readEvidenceObject(client, { path: 'p', fetchImpl }))).toMatchObject({ code: 'storage_unavailable' });
+  });
+
   it('treats a metadata answer without a numeric size as unavailable', async () => {
     const { client } = fakeStorage({ info: async () => ({ data: { contentType: 'image/png' }, error: null }) });
     expect(await rejection(readEvidenceObject(client, { path: 'p', fetchImpl: (async () => new Response('')) as unknown as typeof fetch }))).toMatchObject({ code: 'storage_unavailable' });

@@ -15,6 +15,10 @@ export type EvidenceStorageClient = Pick<SupabaseClient, 'storage'>;
 // Supabase signed upload URLs live 2 hours and cannot be shortened.
 const UPLOAD_URL_LIFETIME_MS = 2 * 60 * 60 * 1000;
 
+// BK-1450 - a 64 KiB ranged read normally takes well under a second; this bounds a stuck one
+// far below the function limit, so the caller gets a retryable 503 instead of a 504.
+const HEAD_READ_TIMEOUT_MS = 10_000;
+
 function unavailable(what: string): ApiError {
   return new ApiError('storage_unavailable', 'File storage is temporarily unavailable. Please try again.', {
     details: { reason: 'storage_unavailable', operation: what },
@@ -84,9 +88,17 @@ export async function readEvidenceObject(
     throw unavailable('sign_read');
   }
   const doFetch = args.fetchImpl ?? fetch;
+  // BK-1450 - the signal bounds the whole read (headers and body) well under the function limit,
+  // and a request that carries a signal is not teed by Next.js's dedupe fetch. `no-store` keeps
+  // Next's data cache out of it too.
+  const signal = AbortSignal.timeout(HEAD_READ_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await doFetch(signed.data.signedUrl, { headers: { Range: `bytes=0-${EVIDENCE_SNIFF_BYTES - 1}` } });
+    response = await doFetch(signed.data.signedUrl, {
+      headers: { Range: `bytes=0-${EVIDENCE_SNIFF_BYTES - 1}` },
+      signal,
+      cache: 'no-store',
+    });
   }
   catch {
     throw unavailable('read_head');
@@ -94,7 +106,14 @@ export async function readEvidenceObject(
   if (!response.ok || !response.body) {
     throw unavailable('read_head');
   }
-  return { status: 'found', size, head: await readHead(response.body) };
+  let head: Uint8Array;
+  try {
+    head = await readHead(response.body);
+  }
+  catch {
+    throw unavailable('read_head');
+  }
+  return { status: 'found', size, head };
 }
 
 async function readHead(body: ReadableStream<Uint8Array>): Promise<Uint8Array> {
@@ -111,7 +130,10 @@ async function readHead(body: ReadableStream<Uint8Array>): Promise<Uint8Array> {
     }
   }
   finally {
-    await reader.cancel().catch(() => undefined);
+    // BK-1450 - never await this. When the body is one branch of a tee (Next.js's fetch tees
+    // GETs), a cancel settles only once every branch is cancelled, so awaiting it after a head
+    // of a larger object hung the commit route until the platform answered 504.
+    reader.cancel().catch(() => undefined);
   }
   return out.slice(0, filled);
 }
