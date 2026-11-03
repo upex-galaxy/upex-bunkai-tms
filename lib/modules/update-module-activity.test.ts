@@ -13,8 +13,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 // for its role gate and its activity actor, so a service-role call cannot
 // exercise it. The RPC args mirror what PATCH /api/v1/modules/{id} sends.
 //
+// BK-1590 — the same RPC (migration 0115) logs `module.description_updated`
+// only when the Description really changes. The form re-sends the unchanged
+// Description with every save, so a rename-only edit used to log a false
+// description event next to `module.renamed`. A NULL and an empty string both
+// mean "no Description" (the form sends NULL, a PAT client may send '').
+//
 // Fixture (service role, prefixed, torn down by the workspace cascade): one
 // workspace with the QA identity as a member, one project, one root module.
+// The teardown asserts that no workspace carrying the prefix survives.
 // Env-gated: skips when the env is absent; a failed precondition THROWS.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -26,7 +33,7 @@ const qaPassword = process.env.QA_E2E_USER_PASSWORD;
 const hasFullEnv = Boolean(url && serviceKey && anonKey && qaEmail && qaPassword);
 const describeOrSkip = hasFullEnv ? describe : describe.skip;
 
-const PREFIX = `bk1168-module-rename-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const PREFIX = `bk1168-1590-module-events-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 function service() {
   return createClient<Database>(url!, serviceKey!, { auth: { persistSession: false } });
@@ -36,10 +43,10 @@ let member: SupabaseClient<Database> | null = null;
 let workspaceId: string | null = null;
 let projectId: string | null = null;
 
-async function createModule(name: string, path: string): Promise<string> {
+async function createModule(name: string, path: string, description: string | null = 'before'): Promise<string> {
   const { data, error } = await service()
     .from('modules')
-    .insert({ project_id: projectId!, path, name, description: 'before' })
+    .insert({ project_id: projectId!, path, name, description })
     .select('id')
     .single();
   if (error) { throw error; }
@@ -57,7 +64,7 @@ async function moduleEvents(moduleId: string) {
   return data;
 }
 
-describeOrSkip('BK-1168 — module.renamed is logged only on a real rename', () => {
+describeOrSkip('BK-1168 / BK-1590 — module events are logged only on a real change', () => {
   beforeAll(async () => {
     const client = createClient<Database>(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: signIn, error: signInError } = await client.auth.signInWithPassword({
@@ -98,6 +105,14 @@ describeOrSkip('BK-1168 — module.renamed is logged only on a real rename', () 
       await service().from('workspaces').delete().eq('id', workspaceId);
     }
     await member?.auth.signOut();
+
+    // Teardown proof: the cascade left nothing carrying this run's prefix.
+    const { count, error } = await service()
+      .from('workspaces')
+      .select('id', { count: 'exact', head: true })
+      .like('slug', `${PREFIX}%`);
+    if (error) { throw error; }
+    expect(count).toBe(0);
   });
 
   it('a description-only save (same name re-sent) logs description_updated and no rename', async () => {
@@ -161,5 +176,115 @@ describeOrSkip('BK-1168 — module.renamed is logged only on a real rename', () 
 
     const events = await moduleEvents(moduleId);
     expect(events.map(e => e.action).sort()).toEqual(['module.description_updated', 'module.renamed']);
+  });
+
+  // BK-1590 — the Rename module form re-sends the stored Description with the
+  // new name; that must record the rename and nothing else.
+  it('a rename that re-sends the unchanged description logs only module.renamed', async () => {
+    const moduleId = await createModule('Reports', 'reports');
+    const { error } = await member!.rpc('bunkai_update_module', {
+      p_module_id: moduleId,
+      p_name: 'Analytics',
+      p_new_slug: 'analytics',
+      p_description: 'before',
+      p_update_description: true,
+    });
+    expect(error).toBeNull();
+
+    const events = await moduleEvents(moduleId);
+    expect(events).toEqual([
+      { action: 'module.renamed', payload: { name: 'Analytics', old_path: 'reports', new_path: 'analytics' } },
+    ]);
+
+    const { data: row } = await service().from('modules').select('name, path, description').eq('id', moduleId).single();
+    expect(row).toEqual({ name: 'Analytics', path: 'analytics', description: 'before' });
+  });
+
+  it('a description-only save without a name logs one module.description_updated', async () => {
+    const moduleId = await createModule('Settings', 'settings');
+    const { error } = await member!.rpc('bunkai_update_module', {
+      p_module_id: moduleId,
+      p_description: 'after',
+      p_update_description: true,
+    });
+    expect(error).toBeNull();
+
+    const events = await moduleEvents(moduleId);
+    expect(events).toEqual([{ action: 'module.description_updated', payload: {} }]);
+
+    const { data: row } = await service().from('modules').select('description').eq('id', moduleId).single();
+    expect(row?.description).toBe('after');
+  });
+
+  it('re-saving the same name and the same description logs nothing', async () => {
+    const moduleId = await createModule('Inbox', 'inbox');
+    const { error } = await member!.rpc('bunkai_update_module', {
+      p_module_id: moduleId,
+      p_name: 'Inbox',
+      p_new_slug: 'inbox',
+      p_description: 'before',
+      p_update_description: true,
+    });
+    expect(error).toBeNull();
+
+    expect(await moduleEvents(moduleId)).toEqual([]);
+  });
+
+  it('a different description is ignored, and nothing is logged, when p_update_description is false', async () => {
+    const moduleId = await createModule('Imports', 'imports');
+    const { error } = await member!.rpc('bunkai_update_module', {
+      p_module_id: moduleId,
+      p_description: 'other',
+      p_update_description: false,
+    });
+    expect(error).toBeNull();
+
+    expect(await moduleEvents(moduleId)).toEqual([]);
+    const { data: row } = await service().from('modules').select('description').eq('id', moduleId).single();
+    expect(row?.description).toBe('before');
+  });
+
+  it('clearing a populated description logs module.description_updated and stores NULL', async () => {
+    const moduleId = await createModule('Archive', 'archive');
+    const { error } = await member!.rpc('bunkai_update_module', {
+      p_module_id: moduleId,
+      p_update_description: true,
+    });
+    expect(error).toBeNull();
+
+    const events = await moduleEvents(moduleId);
+    expect(events).toEqual([{ action: 'module.description_updated', payload: {} }]);
+
+    const { data: row } = await service().from('modules').select('description').eq('id', moduleId).single();
+    expect(row?.description).toBeNull();
+  });
+
+  it('a rename that re-sends an empty description over a NULL one logs only module.renamed', async () => {
+    const moduleId = await createModule('Drafts', 'drafts', null);
+    const { error } = await member!.rpc('bunkai_update_module', {
+      p_module_id: moduleId,
+      p_name: 'Notes',
+      p_new_slug: 'notes',
+      p_description: '',
+      p_update_description: true,
+    });
+    expect(error).toBeNull();
+
+    const events = await moduleEvents(moduleId);
+    expect(events.map(e => e.action)).toEqual(['module.renamed']);
+  });
+
+  it('a rename that re-sends NULL over a stored empty description logs only module.renamed', async () => {
+    const moduleId = await createModule('Labels', 'labels', '');
+    const { error } = await member!.rpc('bunkai_update_module', {
+      p_module_id: moduleId,
+      p_name: 'Tags',
+      p_new_slug: 'tags',
+      p_update_description: true,
+    });
+    expect(error).toBeNull();
+
+    const events = await moduleEvents(moduleId);
+    expect(events.map(e => e.action)).toEqual(['module.renamed']);
   });
 });

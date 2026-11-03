@@ -59,9 +59,13 @@ All module events share: `entity_type` = `module`, `entity_id` = the module id, 
 
 `payload`: `{ "name": "<new name>", "old_path": "a/b", "new_path": "a/c" }`
 
+Emitted only when the name or the rebuilt path really changes (BK-1168, migration `0110`): the Rename module form re-sends the stored name on every save, and a same-name save logs nothing here. A case-only rename is a real change.
+
 ### `module.description_updated`
 
 `payload`: `{}` (deliberately empty — no content leak into the audit trail).
+
+Emitted only when the Description really changes (BK-1590, migration `0115`): the form re-sends the stored Description on every save, and an unchanged one writes nothing and logs nothing. A NULL and an empty string are the same "no Description".
 
 ### `module.moved`
 
