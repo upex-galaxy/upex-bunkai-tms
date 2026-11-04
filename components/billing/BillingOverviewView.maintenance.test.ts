@@ -22,7 +22,7 @@ void mock.module('next/navigation', () => ({
 const { act, createElement } = await import('react');
 const { createRoot } = await import('react-dom/client');
 void mock.module('next/link', () => ({
-  default: (props: { href: string, children?: unknown }) => createElement('a', { href: props.href }, props.children as never),
+  default: ({ children, ...rest }: { href: string, children?: unknown }) => createElement('a', rest, children as never),
 }));
 const { BillingOverviewView } = await import('@components/billing/BillingOverviewView');
 
