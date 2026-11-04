@@ -62,5 +62,10 @@ export function formatUtcDateTime(value: string | null | undefined): string | nu
   if (!value) { return null; }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) { return null; }
-  return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+  // Two formatters joined by hand: the single-formatter date+time pattern puts
+  // " at " (Bun on macOS) or ", " (Node, other ICU builds) between the parts,
+  // so the label would depend on the runtime. `h23` keeps midnight as 00.
+  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' }).format(date);
+  const time = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date);
+  return `${day} at ${time}`;
 }
