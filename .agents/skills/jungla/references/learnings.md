@@ -62,3 +62,14 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - "Run history retention 90 of 30 days" on Billing is by design (oldest run age against the plan window), not a defect.
 - A haiku explorer can audit the live UI read-only with playwright-cli as the QA identity (report in `runs/<date>-design-audit/audit.md`); it costs a fraction of a worker and gives the design workers a ranked list.
 - A `[ISSUE_TRACKER_TOOL]` create call that built a heredoc, a temp dir and an `rm -rf` in one Bash call was denied by the permission layer once; write the description with the Write tool and make the tracker call plainly.
+
+## 2026-11-03 · Tuesday run (student fork PR, restarts)
+
+- A student's fork PR (cross-repo, CONFLICTING) cannot be pushed to. BK-1450 / PR #300: the worker re-derived the fix in its own worktree from `origin/staging`, kept only what held up (it dropped the `Promise.race` that turned a 504 into a 503 for every large image), opened ONE PR "Supersedes #300", credited her by origin without an `@`, and closed #300 with a comment. Read the fork's diff before deciding what to keep.
+- Root cause worth remembering (BK-1450): inside a Next.js route handler `fetch` is the dedupe fetch, which tees every GET without a signal, and an awaited `reader.cancel()` on one branch never settles. A ranged Storage read needs `AbortSignal.timeout(...)` and no awaited cancel.
+- `bun install` in a fresh worktree printed `ENOENT ... cache/package/version dir for package strip-ansi` once; a second `bun install` reported "no changes" and `node_modules` was complete. Re-run it before assuming the worktree is broken.
+- Vercel's first build of a PR commit can fail on a transient `next/font` Google fetch; redeploying the same commit went green. Not a code defect.
+- The watchdog relaunched the session at 11:10 (watcher.alive 591 s stale, `working` older than its beat). Phase 0 handled it: guard, state kept, watcher re-armed. The keepalive (`sleep 21600`) ends after 6 h, so relaunch it around 17:00.
+- Every HEARTBEAT arrives as `exited with code 10` and a worker's `worker_done` as an "orchestration message" in the session: confirmed again that a worker finishing does not fire the watcher. Check `orca orchestration check --run <run>` at every wake-up. (Third confirmation with the 2026-11-01 entries: promote into `routine.md` Phase 2.)
+- A `[ISSUE_TRACKER_TOOL]` create call works as a plain call with the description read from a file written by the Write tool (BK-1589); the compound call that was denied on 2026-11-02 is the thing to avoid.
+- A migration worker can apply its own migration after the review is adjudicated when the brief delegates it; I still re-read `pg_proc.prosrc` and compared md5 with the worker's file hash. The comparison text may be lowercase: search case-insensitively.
