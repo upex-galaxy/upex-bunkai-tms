@@ -49,6 +49,7 @@ function atc(overrides: Partial<TraceabilityAtc> = {}): TraceabilityAtc {
     slug: 'mod/atc-1',
     title: 'An ATC',
     layer: 'UI',
+    archived_at: null,
     module: { id: 'mod-1', name: 'Module One' },
     test: null,
     latest_run: null,

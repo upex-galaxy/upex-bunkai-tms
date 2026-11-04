@@ -208,8 +208,11 @@ function renderAtcRow(atc: TraceabilityAtc): string {
   const defectCell = defectPlaceholder
     ?? atc.defects.map(d => `${escapeHtml(d.title)} (${escapeHtml(d.status)})`).join(', ');
 
+  // BK-571 — an ATC archived on its own stays in the chain as evidence, marked.
+  const archivedChip = atc.archived_at === null ? '' : ' <span class="snap-chip">Archived</span>';
+
   return `      <tr>
-        <td><span class="snap-mono">${escapeHtml(atc.slug)}</span> <span class="snap-chip">${escapeHtml(atc.layer)}</span><br>${escapeHtml(atc.title)}</td>
+        <td><span class="snap-mono">${escapeHtml(atc.slug)}</span> <span class="snap-chip">${escapeHtml(atc.layer)}</span>${archivedChip}<br>${escapeHtml(atc.title)}</td>
         <td>${testCell}</td>
         <td>${runCell}</td>
         <td>${defectCell}</td>

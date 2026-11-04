@@ -6,8 +6,10 @@ import type {
   Module,
   UserStory,
 } from '@lib/types';
+import { ArchivedAtcDetail } from '@components/atcs/ArchivedAtcDetail';
 import { AtcEditor } from '@components/atcs/AtcEditor';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { archivedAtcSource, resolveArchiveActors } from '@lib/atcs/library';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -47,24 +49,66 @@ export default async function AtcEditorPage({ params }: PageProps) {
 
   if (!project) { notFound(); }
 
-  // A soft-deleted (archived) ATC must 404 on its deep-link, matching its
-  // absence from the listings (BK-10 soft-delete cascade).
+  // BK-571 — an archived ATC is no longer a 404: it opens read-only, so the
+  // archived view can link to it and a Test chain step can lead somewhere. The
+  // ATC's parents are read with it, because what "archived" means depends on
+  // them: a live ATC under an archived Module or User Story has always been a
+  // 404 and still is.
   const { data: atc } = await supabase
     .from('atcs')
     .select('*')
     .eq('id', atcId)
     .eq('project_id', project.id)
-    .is('archived_at', null)
     .maybeSingle();
 
   if (!atc) { notFound(); }
 
-  const [{ data: stepsData }, { data: assertionsData }, { data: boundData }, { data: moduleData }] = await Promise.all([
+  const [{ data: stepsData }, { data: assertionsData }, { data: boundData }, { data: moduleData }, { data: ownStoryData }] = await Promise.all([
     supabase.from('atc_steps').select('*').eq('atc_id', atc.id).order('position', { ascending: true }),
     supabase.from('atc_assertions').select('*').eq('atc_id', atc.id).order('position', { ascending: true }),
     supabase.from('atc_acceptance_criteria').select('acceptance_criterion_id').eq('atc_id', atc.id),
     supabase.from('modules').select('*').eq('id', atc.module_id).maybeSingle(),
+    supabase.from('user_stories').select('*').eq('id', atc.user_story_id).maybeSingle(),
   ]);
+
+  if (atc.archived_at === null && (moduleData?.archived_at != null || ownStoryData?.archived_at != null)) {
+    notFound();
+  }
+
+  if (atc.archived_at !== null) {
+    const boundIds = (boundData ?? []).map(b => b.acceptance_criterion_id);
+    const { data: boundAcs } = boundIds.length > 0
+      ? await supabase.from('acceptance_criteria').select('*').in('id', boundIds).order('position', { ascending: true })
+      : { data: [] };
+    const source = archivedAtcSource({
+      atcArchivedAt: atc.archived_at,
+      moduleArchivedAt: moduleData?.archived_at ?? null,
+      storyArchivedAt: ownStoryData?.archived_at ?? null,
+    });
+    const actors = await resolveArchiveActors(supabase, activeWorkspaceId, [atc.archived_by]);
+    const archivedByLabel = (atc.archived_by === null ? null : actors.get(atc.archived_by)) ?? 'Unknown';
+    const parentName = source === 'module'
+      ? (moduleData?.name ?? null)
+      : source === 'user_story'
+        ? (ownStoryData?.external_id ?? ownStoryData?.title ?? null)
+        : null;
+
+    return (
+      <ArchivedAtcDetail
+        atc={atc as Atc}
+        module={(moduleData ?? null) as Module | null}
+        modulePath={moduleData?.path ?? '—'}
+        story={(ownStoryData ?? null) as UserStory | null}
+        acs={(boundAcs ?? []) as AcceptanceCriterion[]}
+        steps={(stepsData ?? []) as AtcStep[]}
+        assertions={(assertionsData ?? []) as AtcAssertion[]}
+        projectSlug={project.slug}
+        source={source}
+        parentName={parentName}
+        archivedByLabel={archivedByLabel}
+      />
+    );
+  }
 
   // For the anchoring picker we need every story in the project + their ACs —
   // archived (soft-deleted) modules/stories/criteria are excluded so an ATC can

@@ -35,6 +35,8 @@ export interface ChainedAtc {
   title: string
   layer: 'UI' | 'API' | 'Unit'
   status: string
+  // BK-571 — set when the chain step points at an archived ATC. The step stays.
+  archived_at: string | null
   steps: ChainedStep[]
   assertions: ChainedAssertion[]
 }
