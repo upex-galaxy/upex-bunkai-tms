@@ -1,7 +1,7 @@
 'use client';
 
 import type { ArchivedAtcSource } from '@lib/atcs/library';
-import type { AcceptanceCriterion, Atc, AtcAssertion, AtcStep, Module, UserStory } from '@lib/types';
+import type { AcceptanceCriterion, Atc, AtcAssertion, AtcStep, AtcUsageReport, Module, UserStory } from '@lib/types';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { AtcPreview } from '@components/atcs/AtcPreview';
 import { Button } from '@components/ui/button';
@@ -38,6 +38,7 @@ interface ArchivedAtcDetailProps {
   // Module name or User Story label the cascade came from; null for an own archive.
   parentName: string | null
   archivedByLabel: string
+  usage: AtcUsageReport
 }
 
 export function ArchivedAtcDetail({
@@ -52,6 +53,7 @@ export function ArchivedAtcDetail({
   source,
   parentName,
   archivedByLabel,
+  usage,
 }: ArchivedAtcDetailProps) {
   const router = useRouter();
   const { canCreate } = useWorkbench();
@@ -170,6 +172,7 @@ export function ArchivedAtcDetail({
             stepsMd={stepsMd}
             assertionsYaml={assertionsYaml}
             tags={atc.tags}
+            archivedUsage={usage}
           />
         </div>
       </div>

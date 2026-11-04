@@ -30,6 +30,10 @@ interface AtcPreviewProps {
   assertionsYaml: string
   tags: string[]
   draft?: boolean
+  // BK-571 — an archived ATC: the Used by report arrives from the server (the
+  // usage endpoint is a reuse read and answers 404 for it), and nothing here is
+  // being edited, so the footer drops its live-edit line.
+  archivedUsage?: AtcUsageReport
 }
 
 export function AtcPreview({
@@ -46,10 +50,12 @@ export function AtcPreview({
   assertionsYaml,
   tags,
   draft = false,
+  archivedUsage,
 }: AtcPreviewProps) {
   const steps = useMemo(() => parseStepsMarkdown(stepsMd), [stepsMd]);
   const assertions = useMemo(() => parseAssertionsYaml(assertionsYaml), [assertionsYaml]);
-  const usage = useAtcUsage(id);
+  const fetchedUsage = useAtcUsage(archivedUsage ? null : id);
+  const usage = archivedUsage ?? fetchedUsage;
 
   return (
     <aside className="flex h-full flex-col overflow-hidden bg-surface-1">
@@ -211,10 +217,12 @@ export function AtcPreview({
       {/* footer */}
       <div className="flex flex-shrink-0 items-center justify-between border-t border-stroke-1 bg-surface-0 px-3 py-2 text-2xs">
         <span className="font-mono text-fg-4">schema · atc.v1</span>
-        <span className="inline-flex items-center gap-1 text-fg-3">
-          <Sparkles size={10} className="text-accent" />
-          Updated live as you edit
-        </span>
+        {!archivedUsage && (
+          <span className="inline-flex items-center gap-1 text-fg-3">
+            <Sparkles size={10} className="text-accent" />
+            Updated live as you edit
+          </span>
+        )}
       </div>
     </aside>
   );

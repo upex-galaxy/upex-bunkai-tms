@@ -10,6 +10,7 @@ import { ArchivedAtcDetail } from '@components/atcs/ArchivedAtcDetail';
 import { AtcEditor } from '@components/atcs/AtcEditor';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { archivedAtcSource, resolveArchiveActors } from '@lib/atcs/library';
+import { buildAtcUsageReport } from '@lib/atcs/usage';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -80,6 +81,10 @@ export default async function AtcEditorPage({ params }: PageProps) {
     const { data: boundAcs } = boundIds.length > 0
       ? await supabase.from('acceptance_criteria').select('*').in('id', boundIds).order('position', { ascending: true })
       : { data: [] };
+    const { data: chainRows } = await supabase
+      .from('test_steps')
+      .select('position, tests(id, title)')
+      .eq('atc_id', atc.id);
     const source = archivedAtcSource({
       atcArchivedAt: atc.archived_at,
       moduleArchivedAt: moduleData?.archived_at ?? null,
@@ -106,6 +111,7 @@ export default async function AtcEditorPage({ params }: PageProps) {
         source={source}
         parentName={parentName}
         archivedByLabel={archivedByLabel}
+        usage={buildAtcUsageReport((chainRows ?? []) as unknown as { position: number, tests: { id: string, title: string } | null }[])}
       />
     );
   }
