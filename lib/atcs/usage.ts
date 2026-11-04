@@ -1,3 +1,5 @@
+import type { AtcUsageReport } from '@lib/types';
+
 // BK-22 — "used in N tests" presentation helpers. Pure, framework-agnostic;
 // unit-tested in `usage.test.ts`.
 
@@ -20,4 +22,24 @@ export function formatPositions(positions: number[]): string {
     return '';
   }
   return positions.map(p => `#${p}`).join(', ');
+}
+
+// BK-571 — the "Used by" report for an archived ATC, from its raw chain rows. The
+// usage RPC is a reuse read and answers not found for an archived ATC, but an
+// archived ATC is fully readable and its Tests keep it in their chains. Same
+// shape and order as the RPC: one entry per Test, by title, positions ascending.
+export function buildAtcUsageReport(
+  steps: { position: number, tests: { id: string, title: string } | null }[],
+): AtcUsageReport {
+  const byTest = new Map<string, { test_id: string, title: string, positions: number[] }>();
+  for (const step of steps) {
+    if (!step.tests) { continue; }
+    const entry = byTest.get(step.tests.id) ?? { test_id: step.tests.id, title: step.tests.title, positions: [] };
+    entry.positions.push(step.position);
+    byTest.set(step.tests.id, entry);
+  }
+  const used_in = [...byTest.values()]
+    .map(entry => ({ ...entry, positions: [...entry.positions].sort((a, b) => a - b) }))
+    .sort((a, b) => a.title.localeCompare(b.title) || a.test_id.localeCompare(b.test_id));
+  return { count: used_in.length, used_in };
 }

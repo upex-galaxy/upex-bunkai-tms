@@ -32,6 +32,9 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   'atc.created',
   // BK-268 — ATC edits (in-app editor + API share bunkai_update_atc).
   'atc.updated',
+  // BK-571 — one entry per real archive and per real restore, none for a no-op.
+  'atc.archived',
+  'atc.restored',
   'test.created',
   'run.finished',
   'run.aborted',

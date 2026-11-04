@@ -17,6 +17,14 @@ function caught(run: () => never): ApiError {
 }
 
 describe('mapAtcRpcError', () => {
+  test('45025 archived ATC → 409 conflict naming the restore-first rule (BK-571)', () => {
+    const err = caught(() => mapAtcRpcError({ code: '45025', message: 'atc_archived' }));
+    expect(err.code).toBe('conflict');
+    expect(err.status).toBe(409);
+    expect(err.message).toContain('Restore it');
+    expect(err.details).toEqual({ reason: 'atc_archived' });
+  });
+
   test('45022 version skew → 409 conflict with parsed current_version', () => {
     const err = caught(() => mapAtcRpcError({ code: '45022', message: 'version_conflict:4' }));
     expect(err.code).toBe('conflict');

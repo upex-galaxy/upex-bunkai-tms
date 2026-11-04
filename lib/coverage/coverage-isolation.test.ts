@@ -13,8 +13,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //   * BK-1081 (migration 0090): an ATC whose latest run is 'skipped' or
 //     'blocked' is NOT executed (-> 'not_run'); 'failed' still is
 //   * a module whose every AC is 'executed' -> 'fully_covered'
-//   * an ATC that is archived does not count as coverage at all (treated as
-//     if the link did not exist)
+//   * an ATC archived on its own stays evidence (BK-571 AC-07): the AC is never
+//     'uncovered' because of it, and it counts for the result it already recorded
 //   * a module with zero User Stories/ACs -> 'no_acs', not an error
 // Plus this run's standing security contract for any SECURITY DEFINER RPC
 // taking an explicit actor id: project-scope isolation (a sibling Project's
@@ -503,12 +503,13 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     expect(mod.status).toBe('uncovered');
   });
 
-  it('an archived ATC does not count as coverage — the AC reads uncovered', async () => {
+  it('an ATC archived on its own stays evidence: its recorded run still covers the AC (BK-571 AC-07)', async () => {
     if (!fixture) { return warn(); }
     const page = await reportCoverage(fixture.projectAId, fixture.actorUserId);
     const mod = findModule(page, fixture.moduleIds.archivedAtc);
-    expect(mod.status).toBe('uncovered');
-    expect(mod.ac_uncovered).toBe(1);
+    expect(mod.status).toBe('fully_covered');
+    expect(mod.ac_uncovered).toBe(0);
+    expect(mod.ac_executed).toBe(1);
   });
 
   // BK-1081 — regression proof for migration 0090 (applied after review per

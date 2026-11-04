@@ -526,7 +526,10 @@ describeOrSkip('BK-45 — bunkai_report_story_traceability isolation + chain ass
     }
   });
 
-  it('an archived ATC (own archived_at) is absent from the chain', async () => {
+  // An ATC archived on its own stays in the chain as evidence (BK-571 AC-07, proved
+  // in lib/atcs/archive-restore-isolation.test.ts); this one disappears because the
+  // only criterion it is bound to is archived.
+  it('an ATC bound only to an archived criterion is absent with that criterion', async () => {
     if (!fixture) { return warn(); }
     const page = await reportTraceability(fixture.storyId, fixture.actorUserId);
     const allAtcIds = page.criteria.flatMap(c => c.atcs.map(a => a.id));

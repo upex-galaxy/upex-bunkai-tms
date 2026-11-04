@@ -391,9 +391,17 @@ paths:
         '422': { description: Validation failed (steps_position_invalid, ac_outside_user_story, title/limits), content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
     delete:
       tags: [ATCs]
-      summary: Soft-delete an ATC
+      summary: Archive an ATC (soft delete, idempotent)
       responses:
         '204': { description: Archived }
+
+  /atcs/{atc_id}/restore:
+    post:
+      tags: [ATCs]
+      summary: Restore an archived ATC (idempotent)
+      parameters: [{ $ref: '#/components/parameters/ATCIdPath' }]
+      responses:
+        '200': { description: 'Restored, or already in that state. `changed` says which; `held_by_parent` names an archived Module or User Story that keeps the ATC out of circulation.' }
 
   /atcs/{atc_id}/duplicate:
     post:

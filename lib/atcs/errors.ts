@@ -83,6 +83,13 @@ export function mapAtcRpcError(error: { code?: string, message: string }): never
       throw new ApiError('slug_collision', 'An ATC with this slug already exists in the project. Retry to generate a new one.', {
         details: { reason: 'slug_collision' },
       });
+    case '45025':
+      // BK-571 — AC-08. An archived ATC is frozen until it is restored; raised by
+      // bunkai_update_atc and bunkai_duplicate_atc after their write gate, so only
+      // someone who could edit the ATC ever sees it.
+      throw new ApiError('conflict', 'This ATC is archived. Restore it, or its archived Module or User Story, before changing it.', {
+        details: { reason: 'atc_archived' },
+      });
     case '45024':
       // BK-144 — RPC-layer backstop (migration 0053). The route's zod schema
       // (AtcWriteBodySchema.tags.max(MAX_ATC_TAGS)) already rejects this before

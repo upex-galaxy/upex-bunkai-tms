@@ -34,7 +34,7 @@ registry.registerPath({
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Source ATC not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'Slug collision (`slug_collision`). Retry.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'Slug collision (`slug_collision`, retry), or the source ATC is archived and must be restored first (`atc_archived`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (`title_too_long` when the computed `(copy)` title exceeds 200 chars, or title/limits).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

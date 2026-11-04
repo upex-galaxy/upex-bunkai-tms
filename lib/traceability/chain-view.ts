@@ -55,6 +55,8 @@ export interface TraceabilityAtc {
   slug: string
   title: string
   layer: 'UI' | 'API' | 'Unit'
+  // BK-571 — set when the ATC was archived on its own. It stays in the chain as evidence.
+  archived_at: string | null
   module: TraceabilityModule
   test: TraceabilityTest | null
   latest_run: TraceabilityLatestRun | null

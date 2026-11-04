@@ -745,6 +745,9 @@ function AtcRow({ atc, visible }: { atc: TraceabilityAtc, visible: boolean }) {
         <div className="flex items-center gap-1.5">
           <span className="font-mono text-xs text-fg-3">{atc.slug}</span>
           <span className="status-chip" data-status="skipped">{atc.layer}</span>
+          {atc.archived_at !== null && (
+            <span className="status-chip" data-status="skipped" data-testid="traceability-atc-archived">Archived</span>
+          )}
         </div>
         <div className="truncate text-fg-1">{atc.title}</div>
       </div>

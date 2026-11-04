@@ -42,6 +42,9 @@ export function AtcSearchFilter({ projectId, projectSlug }: AtcSearchFilterProps
   const typedValue = useRef<string | null>(null);
   const [results, setResults] = useState<AtcSearchResult[]>([]);
   const [open, setOpen] = useState(false);
+  // BK-571 — refocusing re-runs the query: an ATC archived or restored since the
+  // last lookup must not be offered from the cached results.
+  const [focusCount, setFocusCount] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Debounce the query; an empty (trimmed) value clears results and fires no
@@ -81,7 +84,7 @@ export function AtcSearchFilter({ projectId, projectSlug }: AtcSearchFilterProps
       clearTimeout(timer);
       controller.abort();
     };
-  }, [value, projectId]);
+  }, [value, projectId, focusCount]);
 
   // Close the dropdown when clicking outside the filter.
   useEffect(() => {
@@ -107,7 +110,10 @@ export function AtcSearchFilter({ projectId, projectSlug }: AtcSearchFilterProps
           typedValue.current = e.target.value;
           setValue(e.target.value);
         }}
-        onFocus={() => { if (results.length > 0) { setOpen(true); } }}
+        onFocus={() => {
+          if (results.length > 0) { setOpen(true); }
+          setFocusCount(count => count + 1);
+        }}
         placeholder="Filter ATCs…"
         aria-label="Filter ATCs by name, ID, or tag"
         data-testid="atc-search-filter"

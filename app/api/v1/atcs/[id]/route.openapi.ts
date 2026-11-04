@@ -73,7 +73,7 @@ registry.registerPath({
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'ATC not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'Version conflict (code `conflict`, `details.reason: version_conflict`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'Version conflict (code `conflict`, `details.reason: version_conflict`), or the ATC is archived and must be restored first (`details.reason: atc_archived`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (`steps_position_invalid`, `ac_outside_user_story`, title/limits, unrecognized `technique` / `priority` — `validation_failed` with `details.reason` `technique_invalid` / `priority_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
@@ -104,5 +104,24 @@ registry.registerPath({
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Token lacks the `atc:read` scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'ATC not found (or archived, or not visible to the caller).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+  },
+});
+
+// BK-571 — the published "Soft-delete an ATC" operation. The restore half lives
+// at /api/v1/atcs/{id}/restore.
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/atcs/{id}',
+  tags: ['ATCs'],
+  summary: 'Archive an ATC',
+  description: 'Bearer `atc:write` (or cookie session). Archives one ATC: it leaves every surface that offers ATCs for reuse (lists, search, command palette, the Test chain picker), freezes until restored, and stays evidence in past Runs, Traceability and Defects. No Test chain is edited and nothing is destroyed. Idempotent: archiving an archived ATC is the same 204, with the first actor and timestamp kept and no new event. Emits one `atc.archived` event per real change.',
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [IdParam],
+  responses: {
+    204: { description: 'Archived.' },
+    400: { description: 'Malformed id.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing `atc:write` scope, or not a writer of the owning workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'ATC not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

@@ -42,6 +42,9 @@ export function ChainedAtcCard({ atc, projectSlug }: ChainedAtcCardProps) {
           <span className="layer-chip" data-layer={atc.layer.toLowerCase()}>
             {atc.layer}
           </span>
+          {atc.archived_at !== null && (
+            <span className="status-chip shrink-0" data-status="skipped" data-testid="chained-atc-archived">Archived</span>
+          )}
           <span className="min-w-0 flex-1 truncate text-sm text-fg-1 group-hover:text-fg-0 group-hover:underline">
             {atc.title}
           </span>

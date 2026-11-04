@@ -289,6 +289,12 @@
             "$ref": "#/components/schemas/ActivityItemAtcUpdated"
           },
           {
+            "$ref": "#/components/schemas/ActivityItemAtcArchived"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemAtcRestored"
+          },
+          {
             "$ref": "#/components/schemas/ActivityItemTestCreated"
           },
           {
@@ -322,6 +328,8 @@
             "module.archived": "#/components/schemas/ActivityItemModuleArchived",
             "atc.created": "#/components/schemas/ActivityItemAtcCreated",
             "atc.updated": "#/components/schemas/ActivityItemAtcUpdated",
+            "atc.archived": "#/components/schemas/ActivityItemAtcArchived",
+            "atc.restored": "#/components/schemas/ActivityItemAtcRestored",
             "test.created": "#/components/schemas/ActivityItemTestCreated",
             "run.finished": "#/components/schemas/ActivityItemRunFinished",
             "run.aborted": "#/components/schemas/ActivityItemRunAborted",
@@ -711,6 +719,114 @@
           }
         },
         "required": ["title", "affected_test_count", "affected_tests"]
+      },
+      "ActivityItemAtcArchived": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["atc"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["atc.archived"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadAtcArchived"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadAtcArchived": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["title"]
+      },
+      "ActivityItemAtcRestored": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["atc"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["atc.restored"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadAtcRestored"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadAtcRestored": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["title"]
       },
       "ActivityItemTestCreated": {
         "type": "object",
@@ -1491,6 +1607,37 @@
             "description": "Optional title for the copy. Omit to default to `<source> (copy)`. 3-200 characters after trimming leading/trailing whitespace (BK-622)."
           }
         }
+      },
+      "RestoredAtc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Null once back in circulation. Under an archived parent this is the parent's timestamp."
+          },
+          "archived_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "held_by_parent": {
+            "type": ["string", "null"],
+            "enum": ["module", "user_story", null],
+            "description": "The archived parent that keeps this ATC out of circulation, if any. The ATC returns when that parent is restored."
+          },
+          "changed": {
+            "type": "boolean",
+            "description": "False when the call changed nothing: the ATC was live, or its only archive is its parent's."
+          }
+        },
+        "required": ["id", "title", "archived_at", "archived_by", "held_by_parent", "changed"]
       },
       "AtcUpdateBody": {
         "type": "object",
@@ -3993,6 +4140,11 @@
             "type": "string",
             "enum": ["UI", "API", "Unit"]
           },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Set when this ATC was archived on its own (BK-571). It stays in the chain as evidence."
+          },
           "module": {
             "$ref": "#/components/schemas/TraceabilityModule"
           },
@@ -4010,7 +4162,17 @@
             "description": "Every defect whose provenance resolves to this ATC, not only the latest run's (\"None linked\" when empty)."
           }
         },
-        "required": ["id", "slug", "title", "layer", "module", "test", "latest_run", "defects"]
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "layer",
+          "archived_at",
+          "module",
+          "test",
+          "latest_run",
+          "defects"
+        ]
       },
       "TraceabilityModule": {
         "type": "object",
@@ -5247,6 +5409,11 @@
             "type": "string",
             "enum": ["UI", "API", "Unit"]
           },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Set when this chain step points at an archived ATC (BK-571). The step stays in the chain."
+          },
           "status": {
             "type": "string"
           },
@@ -5270,6 +5437,7 @@
           "slug",
           "title",
           "layer",
+          "archived_at",
           "status",
           "steps",
           "assertions"
@@ -7950,7 +8118,7 @@
             }
           },
           "409": {
-            "description": "Slug collision (`slug_collision`). Retry.",
+            "description": "Slug collision (`slug_collision`, retry), or the source ATC is archived and must be restored first (`atc_archived`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -7961,6 +8129,91 @@
           },
           "422": {
             "description": "Validation failed (`title_too_long` when the computed `(copy)` title exceeds 200 chars, or title/limits).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/atcs/{id}/restore": {
+      "post": {
+        "tags": ["ATCs"],
+        "summary": "Restore an archived ATC",
+        "description": "Bearer `atc:write` (or cookie session). Clears the ATC's own archived state and emits one `atc.restored` event per real change. Idempotent: restoring a live ATC, or one whose only archive is its parent's, is a 200 with `changed: false` and no event. An ATC under an archived Module or User Story stays out of circulation with that parent and comes back when the parent is restored; a restore never restores a parent.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The ATC to restore."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored, or already in that state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "atc": {
+                      "$ref": "#/components/schemas/RestoredAtc"
+                    }
+                  },
+                  "required": ["atc"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or not a writer of the owning workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ATC not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8081,7 +8334,7 @@
             }
           },
           "409": {
-            "description": "Version conflict (code `conflict`, `details.reason: version_conflict`).",
+            "description": "Version conflict (code `conflict`, `details.reason: version_conflict`), or the ATC is archived and must be restored first (`details.reason: atc_archived`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -8291,6 +8544,75 @@
           },
           "404": {
             "description": "ATC not found (or archived, or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["ATCs"],
+        "summary": "Archive an ATC",
+        "description": "Bearer `atc:write` (or cookie session). Archives one ATC: it leaves every surface that offers ATCs for reuse (lists, search, command palette, the Test chain picker), freezes until restored, and stays evidence in past Runs, Traceability and Defects. No Test chain is edited and nothing is destroyed. Idempotent: archiving an archived ATC is the same 204, with the first actor and timestamp kept and no new event. Emits one `atc.archived` event per real change.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Archived."
+          },
+          "400": {
+            "description": "Malformed id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `atc:write` scope, or not a writer of the owning workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ATC not found.",
             "content": {
               "application/json": {
                 "schema": {

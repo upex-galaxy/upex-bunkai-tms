@@ -4,7 +4,7 @@ import type { Atc, AtcStatus, ModuleTreeNode, UserStoryWithChildren } from '@lib
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@components/ui/button';
 import { cn, shortSlug } from '@lib/utils';
-import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Copy, FilePlus, Files, FileText, FlaskConical, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Archive, ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Copy, FilePlus, Files, FileText, FlaskConical, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -75,6 +75,9 @@ interface SidebarProps {
   // Duplicates an ATC from its context menu (BK-23). One click → deep-copy with
   // the default `(copy)` title → navigate to the new ATC editor.
   onDuplicateAtc?: (atc: Atc) => void
+  // Archives an ATC from its context menu (BK-571), next to Duplicate. The
+  // caller owns the confirmation dialog.
+  onArchiveAtc?: (atc: Atc) => void
 }
 
 export function Sidebar({
@@ -96,6 +99,7 @@ export function Sidebar({
   onSelect,
   onOpenAtc,
   onDuplicateAtc,
+  onArchiveAtc,
 }: SidebarProps) {
   const router = useRouter();
   const [filter, setFilter] = useState<ExplorerFilter>('all');
@@ -225,6 +229,7 @@ export function Sidebar({
           onDeleteUserStory={onDeleteUserStory}
           onManageCriteria={onManageCriteria}
           onDuplicateAtc={onDuplicateAtc}
+          onArchiveAtc={onArchiveAtc}
         />
       )}
     </aside>
@@ -732,6 +737,7 @@ interface ContextMenuProps {
   onDeleteUserStory?: (story: UserStoryWithChildren) => void
   onManageCriteria?: (story: UserStoryWithChildren) => void
   onDuplicateAtc?: (atc: Atc) => void
+  onArchiveAtc?: (atc: Atc) => void
 }
 
 function ExplorerContextMenu({
@@ -750,6 +756,7 @@ function ExplorerContextMenu({
   onDeleteUserStory,
   onManageCriteria,
   onDuplicateAtc,
+  onArchiveAtc,
 }: ContextMenuProps) {
   // Close on Escape, on scroll, and on resize — a positioned menu shouldn't
   // linger detached from the row it points at.
@@ -831,6 +838,11 @@ function ExplorerContextMenu({
       entries.push(
         'divider',
         { label: 'Duplicate', icon: Files, shortcut: '⌘D', onClick: () => onDuplicateAtc(atc) },
+      );
+    }
+    if (canCreate && onArchiveAtc) {
+      entries.push(
+        { label: 'Archive', icon: Archive, onClick: () => onArchiveAtc(atc) },
       );
     }
     entries.push(

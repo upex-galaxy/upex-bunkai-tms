@@ -17,6 +17,7 @@ function atc(overrides: Partial<TraceabilityAtc> = {}): TraceabilityAtc {
     slug: 'mod/atc-1',
     title: 'An ATC',
     layer: 'UI',
+    archived_at: null,
     // BK-48 — module became a required field (0069_story_traceability_module.sql).
     module: { id: 'mod-1', name: 'A Module' },
     test: null,
@@ -121,6 +122,15 @@ describe('buildSnapshotFilename', () => {
 });
 
 describe('renderTraceabilitySnapshotHtml', () => {
+  test('marks an ATC archived on its own, and only that one (BK-571)', () => {
+    const html = renderTraceabilitySnapshotHtml(
+      payload({ criteria: [criterion({ atcs: [atc({ id: 'live', title: 'Live one' }), atc({ id: 'gone', title: 'Gone one', archived_at: '2026-08-20T10:00:00+00:00' })] })] }),
+      { exportedAt: T0, identity: IDENTITY },
+    );
+    expect(html.match(/<span class="snap-chip">Archived<\/span>/g)).toHaveLength(1);
+    expect(html.indexOf('Archived</span>')).toBeGreaterThan(html.indexOf('Live one'));
+  });
+
   test('is a self-contained document: doctype, inline <style>, and zero external references (AC1.1)', () => {
     const html = renderTraceabilitySnapshotHtml(payload(), { exportedAt: T0, identity: IDENTITY });
     expect(html.startsWith('<!doctype html>')).toBe(true);

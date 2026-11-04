@@ -3,7 +3,9 @@
 import type { AtcLibraryRow } from '@lib/atcs/library';
 import { Button } from '@components/ui/button';
 import { resolveAtcLibraryViewState } from '@lib/atcs/library';
+import { cn } from '@lib/utils';
 import { AlertTriangle, ArrowUpRight, Library, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
@@ -20,7 +22,7 @@ interface AtcLibraryViewProps {
 
 export const ATC_LIBRARY_ERROR_COPY = 'Couldn\u2019t load ATCs.';
 
-function LayerChip({ layer }: { layer: string }) {
+export function LayerChip({ layer }: { layer: string }) {
   return (
     <span className="layer-chip" data-layer={layer.toLowerCase()}>
       {layer}
@@ -42,21 +44,7 @@ export function AtcLibraryView({ rows, error }: AtcLibraryViewProps) {
   if (pending) { return <AtcLibrarySkeleton />; }
 
   if (error !== null) {
-    return (
-      <div role="alert" data-testid="atc-library-error" className="m-6 flex items-start gap-3 rounded-3 border border-fail/40 bg-surface-1 p-4">
-        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-fail" aria-hidden />
-        <div className="flex flex-1 flex-col gap-2">
-          <p className="text-sm font-semibold text-fg-0">{ATC_LIBRARY_ERROR_COPY}</p>
-          <p className="font-mono text-xs text-fg-3">{error}</p>
-          <div>
-            <Button type="button" variant="default" size="sm" onClick={retry}>
-              <RefreshCw size={12} aria-hidden />
-              Retry
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return <AtcLibraryErrorBlock error={error} onRetry={retry} />;
   }
 
   if (resolveAtcLibraryViewState(rows.length) === 'empty') {
@@ -122,6 +110,58 @@ export function AtcLibraryView({ rows, error }: AtcLibraryViewProps) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// The named read failure with Retry. Shared with the archived view (BK-571).
+export function AtcLibraryErrorBlock({ error, onRetry }: { error: string, onRetry: () => void }) {
+  return (
+    <div role="alert" data-testid="atc-library-error" className="m-6 flex items-start gap-3 rounded-3 border border-fail/40 bg-surface-1 p-4">
+      <AlertTriangle size={16} className="mt-0.5 shrink-0 text-fail" aria-hidden />
+      <div className="flex flex-1 flex-col gap-2">
+        <p className="text-sm font-semibold text-fg-0">{ATC_LIBRARY_ERROR_COPY}</p>
+        <p className="font-mono text-xs text-fg-3">{error}</p>
+        <div>
+          <Button type="button" variant="default" size="sm" onClick={onRetry}>
+            <RefreshCw size={12} aria-hidden />
+            Retry
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// BK-571 — Active / Archived. Two links, not a client filter: each view is its
+// own server read, so the address says which one you are on. Built from the
+// toggle group the Traceability filter bar already uses.
+export function AtcLibraryViewToggle({ active }: { active: 'active' | 'archived' }) {
+  const items = [
+    { key: 'active', label: 'Active', href: '/atcs' },
+    { key: 'archived', label: 'Archived', href: '/atcs?view=archived' },
+  ] as const;
+  return (
+    <div
+      role="group"
+      aria-label="ATC Library view"
+      data-testid="atc-library-view-toggle"
+      className="inline-flex overflow-hidden rounded-2 border border-stroke-2 bg-surface-2"
+    >
+      {items.map(item => (
+        <Link
+          key={item.key}
+          href={item.href}
+          data-testid={`atc-library-view-${item.key}`}
+          aria-current={active === item.key ? 'page' : undefined}
+          className={cn(
+            'inline-flex h-6.5 items-center border-r border-stroke-1 px-2.5 text-xs font-medium tracking-[0.02em] transition-colors duration-token ease-token last:border-r-0',
+            active === item.key ? 'bg-surface-5 text-fg-0' : 'text-fg-2 hover:bg-surface-4 hover:text-fg-1',
+          )}
+        >
+          {item.label}
+        </Link>
+      ))}
     </div>
   );
 }

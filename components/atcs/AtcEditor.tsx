@@ -3,6 +3,7 @@
 import type { AcceptanceCriterion, Atc, AtcAssertion, AtcLayer, AtcPriority, AtcStep, AtcTechnique, Module, UserStory } from '@lib/types';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
+import { ArchiveAtcOverlay } from '@components/atcs/ArchiveAtcDialog';
 import { AtcPreview } from '@components/atcs/AtcPreview';
 import { AuthoringFormatHint } from '@components/atcs/AuthoringFormatHint';
 import { Button } from '@components/ui/button';
@@ -14,7 +15,7 @@ import { duplicateAtc } from '@lib/atcs/duplicate-client';
 import { ATC_UNSPECIFIED_LABEL } from '@lib/atcs/list-filters';
 import { ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
 import { cn, shortSlug } from '@lib/utils';
-import { ChevronLeft, Files, Save } from 'lucide-react';
+import { Archive, ChevronLeft, Files, Save } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -86,6 +87,7 @@ export function AtcEditor({
   const { canCreate } = useWorkbench();
   const [isPending, startTransition] = useTransition();
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [title, setTitle] = useState(atc.title);
   const [layer, setLayer] = useState<AtcLayer>(atc.layer);
   // BK-399 — seeded from the LOADED ATC so an existing classification survives
@@ -101,6 +103,19 @@ export function AtcEditor({
 
   const [stepsMd, setStepsMd] = useState(() => stepsToMarkdown(initialSteps));
   const [assertionsYaml, setAssertionsYaml] = useState(() => assertionsToYaml(initialAssertions));
+
+  // BK-571 — archiving leaves the editor, so the confirmation warns about edits
+  // that would go with it. Compared against what was loaded.
+  const hasUnsavedEdits = useMemo(() => (
+    title !== atc.title
+    || layer !== atc.layer
+    || technique !== atc.technique
+    || priority !== atc.priority
+    || tags.join('\u0000') !== atc.tags.join('\u0000')
+    || [...acIds].sort().join() !== [...initialAcIds].sort().join()
+    || stepsMd !== stepsToMarkdown(initialSteps)
+    || assertionsYaml !== assertionsToYaml(initialAssertions)
+  ), [title, layer, technique, priority, tags, acIds, stepsMd, assertionsYaml, atc, initialAcIds, initialSteps, initialAssertions]);
 
   const isAnchored = !!storyId && acIds.length >= 1;
   // BK-145 — reuse the BK-18/19 title bounds (3-200 chars) the create flow
@@ -245,9 +260,23 @@ export function AtcEditor({
               onClick={handleDuplicate}
               disabled={isDuplicating}
               title="Duplicate this ATC with its steps and assertions"
+              aria-label="Duplicate this ATC"
             >
               <Files size={11} />
-              {isDuplicating ? 'Duplicating…' : 'Duplicate'}
+              <span className="hidden sm:inline">{isDuplicating ? 'Duplicating…' : 'Duplicate'}</span>
+            </Button>
+          )}
+          {canCreate && (
+            <Button
+              size="sm"
+              variant="default"
+              data-testid="atc-editor-archive"
+              onClick={() => setArchiving(true)}
+              title="Archive this ATC. It stays restorable from the ATC Library."
+              aria-label="Archive this ATC"
+            >
+              <Archive size={11} />
+              <span className="hidden sm:inline">Archive</span>
             </Button>
           )}
           <Button
@@ -523,6 +552,18 @@ export function AtcEditor({
           tags={tags}
         />
       </div>
+      {archiving && (
+        <ArchiveAtcOverlay
+          atc={{ id: atc.id, title: atc.title }}
+          hasUnsavedEdits={hasUnsavedEdits}
+          onCancel={() => setArchiving(false)}
+          onArchived={() => {
+            setArchiving(false);
+            router.push(`/projects/${projectSlug}`);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
