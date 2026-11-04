@@ -55,7 +55,7 @@ stack:
     kit: shadcn # shadcn | other | none
     icons: lucide # lucide | other | none
   hosting: vercel # vercel | netlify | other | none
-  ci: none # github-actions | gitlab | other | none. No .github/workflows in this repo; Vercel builds on push
+  ci: github-actions # github-actions | gitlab | other | none. .github/workflows/tests.yml runs the full test suite; deploys stay with Vercel, which builds on push
   test_runner: bun # vitest | jest | bun | playwright | other | none
   conventions:
     import_alias: '@/' # tsconfig paths: @/*, @app/*, @components/*, @lib/*

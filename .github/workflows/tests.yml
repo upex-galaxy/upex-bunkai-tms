@@ -1,0 +1,77 @@
+# Full `bun test` suite on every pull request.
+#
+# Why here and not on a laptop: one runaway test (BK-571, a render loop inside a
+# sync act()) took a local `bun test` to 20 GB on a 16 GB Mac for 46 minutes.
+# CI has no human session to freeze, a hard job timeout, and cancels superseded
+# runs. Locally agents run ONE test file, through scripts/guard.sh.
+#
+# Vercel builds on push and husky runs types/lint/format/docs locally; this is
+# the only place the tests run in full.
+name: tests
+
+on:
+  pull_request:
+    branches: [staging, main]
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+# One run per PR (or per branch on push): a new push cancels the old run.
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # `prepare` runs husky and harness-env; CI needs neither hook install.
+  HUSKY: '0'
+  # Second line of defence under the job timeout: the guard kills the bun tree
+  # and names the limit. ubuntu-latest on a public repo has 16 GB of RAM.
+  GUARD_MAX_RSS_MB: '6144'
+  GUARD_TIMEOUT_S: '900'
+
+jobs:
+  unit:
+    name: bun test (full suite)
+    runs-on: ubuntu-latest
+    # The real backstop: the job dies at 20 minutes whatever the guard does.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Cache bun install cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      # The guard's only Linux proof: it must kill a sleeper on time (124) and
+      # pass an exit code through (3). Takes about 5 seconds.
+      - name: Guard self-test
+        run: |
+          set +e
+          GUARD_TIMEOUT_S=2 bash scripts/guard.sh sleep 30; rc=$?
+          [ "$rc" -eq 124 ] || { echo "guard timeout path returned $rc"; exit 1; }
+          bash scripts/guard.sh sh -c 'exit 3'; rc=$?
+          [ "$rc" -eq 3 ] || { echo "guard exit passthrough returned $rc"; exit 1; }
+
+      - name: Type check
+        run: bun run types:check
+
+      # DB-backed suites (about 78 files) skip themselves with a warning when
+      # the Supabase variables are absent, which is the case here on purpose:
+      # with secrets every PR would write to the single shared Supabase project
+      # (Bunkai rule MVP-ONE-DATABASE). Adding them is the owner's decision.
+      - name: bun test
+        run: bash scripts/guard.sh bun test --timeout=20000
