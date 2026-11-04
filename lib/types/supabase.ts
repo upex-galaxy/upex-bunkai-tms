@@ -265,6 +265,7 @@ export interface Database {
       atcs: {
         Row: {
           archived_at: string | null
+          archived_by: string | null
           created_at: string
           id: string
           layer: string
@@ -283,6 +284,7 @@ export interface Database {
         }
         Insert: {
           archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
           id?: string
           layer: string
@@ -301,6 +303,7 @@ export interface Database {
         }
         Update: {
           archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
           id?: string
           layer?: string
@@ -2274,6 +2277,10 @@ export interface Database {
         Args: { p_id: string }
         Returns: Json
       }
+      bunkai_archive_atc: {
+        Args: { p_actor_user_id: string, p_atc_id: string }
+        Returns: Json
+      }
       bunkai_archive_module_subtree: {
         Args: { p_module_id: string }
         Returns: Json
@@ -2716,6 +2723,10 @@ export interface Database {
       }
       bunkai_resolve_workspace_export_download: {
         Args: { p_workspace_id: string }
+        Returns: Json
+      }
+      bunkai_restore_atc: {
+        Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
       bunkai_restore_workspace_deletion: {

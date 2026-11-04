@@ -180,6 +180,25 @@ export async function getAtc(supabase: Client, args: { actorUserId: string, atcI
   });
 }
 
+// BK-571 — archive / restore one ATC. Idempotent: a repeat is a success with
+// `changed: false`, no write and no event. Execute is granted to service_role
+// only (migration 0116), so these run through the API routes' admin client. A
+// restore under an archived parent keeps `archived_at` set to the parent's
+// timestamp and reports `held_by_parent`.
+export async function archiveAtc(supabase: Client, args: { actorUserId: string, atcId: string }) {
+  return supabase.rpc('bunkai_archive_atc', {
+    p_actor_user_id: args.actorUserId,
+    p_atc_id: args.atcId,
+  });
+}
+
+export async function restoreAtc(supabase: Client, args: { actorUserId: string, atcId: string }) {
+  return supabase.rpc('bunkai_restore_atc', {
+    p_actor_user_id: args.actorUserId,
+    p_atc_id: args.atcId,
+  });
+}
+
 // BK-23 — deep-copy an ATC (header + ordered steps/assertions + AC bindings)
 // into a new ATC with a fresh slug and version = 1. `title` is optional; when
 // omitted the RPC defaults the copy's title to `<source> (copy)`. Same
