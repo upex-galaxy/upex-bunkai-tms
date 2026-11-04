@@ -54,6 +54,7 @@ const TraceabilityAtcSchema = z
     slug: z.string(),
     title: z.string(),
     layer: z.enum(['UI', 'API', 'Unit']),
+    archived_at: z.string().datetime({ offset: true }).nullable().describe('Set when this ATC was archived on its own (BK-571). It stays in the chain as evidence.'),
     module: TraceabilityModuleSchema.describe('The Module this ATC belongs to (BK-48 filter target). Always present — every ATC has a module_id.'),
     test: TraceabilityTestSchema.nullable().describe('Null when no Test chains this ATC yet ("No test written yet").'),
     latest_run: TraceabilityLatestRunSchema.nullable().describe('Null when a Test chains this ATC but it has never been run ("No run recorded yet").'),

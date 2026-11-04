@@ -77,6 +77,13 @@ const ActivityItemSchema = z
       affected_test_count: z.number().int().nullable(),
       affected_tests: z.array(z.object({ id: z.string().uuid(), title: z.string() })).nullable(),
     }),
+    // BK-571 — projection of migration 0116.
+    activityItemVariant('AtcArchived', 'atc.archived', 'atc', {
+      title: z.string().nullable(),
+    }),
+    activityItemVariant('AtcRestored', 'atc.restored', 'atc', {
+      title: z.string().nullable(),
+    }),
     activityItemVariant('TestCreated', 'test.created', 'test', {
       title: z.string().nullable(),
     }),

@@ -31,6 +31,7 @@ const ChainedAtcSchema = z
     slug: z.string(),
     title: z.string(),
     layer: z.enum(['UI', 'API', 'Unit']),
+    archived_at: z.string().datetime({ offset: true }).nullable().describe('Set when this chain step points at an archived ATC (BK-571). The step stays in the chain.'),
     status: z.string(),
     steps: z.array(ChainedStepSchema),
     assertions: z.array(ChainedAssertionSchema),

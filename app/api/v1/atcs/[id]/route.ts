@@ -7,7 +7,7 @@ import { readVersionPrecondition } from '@lib/atcs/optimistic-lock';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
 import { AtcUpdateBodySchema, stepPositionsError } from '@lib/atcs/validation';
 import { createAdminClient } from '@lib/supabase/admin';
-import { atcUsage, getAtc, updateAtc } from '@lib/supabase/rpc';
+import { archiveAtc, atcUsage, getAtc, updateAtc } from '@lib/supabase/rpc';
 
 // PATCH /api/v1/atcs/{id} — edit an ATC (BK-18 + BK-21). PUT-style full replace:
 // omitted children are cleared, not merged. An empty body is a 200 no-op (no
@@ -201,6 +201,24 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
     },
     { status: 200 },
   );
+}, { auth: 'required', requires: ['atc:write'] });
+
+// DELETE /api/v1/atcs/{id} — archive one ATC (BK-571, the published "Soft-delete
+// an ATC → 204 Archived" contract). Recoverable through POST .../restore; nothing
+// is destroyed and no Test chain is edited. Idempotent: archiving an archived ATC
+// is the same 204, with the first actor and timestamp kept and no new event.
+// Auth: Bearer `atc:write` (or cookie).
+export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
+  const atcId = extractAtcId(request);
+  if (!isUuid(atcId)) {
+    throw new ApiError('bad_request', 'ATC id must be a UUID.');
+  }
+  const { principal } = getAuth(ctx);
+  const { error } = await archiveAtc(createAdminClient(), { actorUserId: principal.userId, atcId });
+  if (error) {
+    mapAtcRpcError(error);
+  }
+  return new Response(null, { status: 204 });
 }, { auth: 'required', requires: ['atc:write'] });
 
 function extractAtcId(request: NextRequest): string {
