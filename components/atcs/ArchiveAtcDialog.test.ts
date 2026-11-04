@@ -12,8 +12,20 @@ afterAll(async () => { await GlobalRegistrator.unregister(); });
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const pushes: string[] = [];
+let refreshes = 0;
+// ONE router for the whole file, like Next's own `useRouter`, which is
+// referentially stable. A fresh object per render made every render a "new
+// router": the usage effect re-ran, `setUsage` rendered again, and the sync
+// `act()` in render() never drained (46 min, 20 GB, see BK-571).
+const router = {
+  push: (href: string) => { pushes.push(href); },
+  refresh: () => { refreshes += 1; },
+};
+// Flipped only by the regression test below, to prove the dialog itself no
+// longer depends on the router being stable.
+let freshRouterPerRender = false;
 void mock.module('next/navigation', () => ({
-  useRouter: () => ({ push: (href: string) => { pushes.push(href); }, refresh: () => {} }),
+  useRouter: () => (freshRouterPerRender ? { ...router } : router),
 }));
 const toasts: Array<{ message: string, actionLabel: string | null }> = [];
 void mock.module('sonner', () => ({
@@ -25,9 +37,13 @@ void mock.module('sonner', () => ({
   },
 }));
 
+void mock.module('@app/(app)/atcs/actions', () => ({
+  revalidateAfterArchiveChange: async () => {},
+}));
+
 const { act, createElement } = await import('react');
 const { createRoot } = await import('react-dom/client');
-const { ArchiveAtcDialog } = await import('@components/atcs/ArchiveAtcDialog');
+const { ArchiveAtcDialog, ArchiveAtcOverlay } = await import('@components/atcs/ArchiveAtcDialog');
 
 const ATC = { id: '11111111-1111-4111-8111-111111111111', title: 'Login with expired token' };
 
@@ -82,6 +98,8 @@ beforeEach(() => {
   calls = [];
   toasts.length = 0;
   pushes.length = 0;
+  refreshes = 0;
+  freshRouterPerRender = false;
   archivedCount = 0;
   cancelledCount = 0;
   handler = () => usageOf([]);
@@ -151,6 +169,23 @@ describe('archive confirmation: usage states', () => {
     expect((byId(container, 'archive-atc-confirm') as HTMLButtonElement).disabled).toBe(true);
   });
 
+  test('a usage 404: says the ATC is gone, offers no Retry, and Archive stays disabled', async () => {
+    handler = () => json({ error: { code: 'not_found', message: 'ATC not found.' } }, 404);
+    const container = await render();
+    expect(byId(container, 'archive-atc-usage-gone')?.textContent).toContain('no longer available');
+    expect(byId(container, 'archive-atc-usage-retry')).toBeNull();
+    expect((byId(container, 'archive-atc-confirm') as HTMLButtonElement).disabled).toBe(true);
+    expect(refreshes).toBe(1);
+  });
+
+  // Regression for the BK-571 runaway: if this ever loops again it hangs the
+  // process instead of failing, so run this file ONLY through scripts/guard.sh.
+  test('a router that is a new object every render does not re-read the usage', async () => {
+    freshRouterPerRender = true;
+    await render();
+    expect(calls.filter(c => c.url.endsWith('/usage'))).toHaveLength(1);
+  });
+
   test('a failed usage read: the named error with Retry, Archive disabled, and Retry recovers', async () => {
     handler = () => json({ error: { code: 'internal', message: 'boom' } }, 500);
     const container = await render();
@@ -209,5 +244,45 @@ describe('archive confirmation: the write', () => {
     click(byId(container, 'archive-atc-confirm'));
     await flush();
     expect(byId(container, 'archive-atc-error')!.textContent).toContain('You do not have permission to archive in this project.');
+  });
+
+  test('the overlay: focus moves in, Escape cancels, and nothing dismisses it while the archive is in flight', async () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    let cancels = 0;
+    let finishDelete: (response: Response) => void = () => {};
+    handler = async (_url, method) => (method === 'DELETE'
+      ? new Promise<Response>((resolve) => { finishDelete = resolve; })
+      : usageOf([]));
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(createElement(ArchiveAtcOverlay, { atc: ATC, onArchived: () => {}, onCancel: () => { cancels += 1; } }));
+    });
+    mounted.push({ container, root });
+    await flush();
+    expect(document.activeElement).toBe(byId(container, 'archive-atc-cancel'));
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    expect(cancels).toBe(1);
+
+    await act(async () => {
+      (byId(container, 'archive-atc-confirm') as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      (byId(container, 'archive-atc-modal') as HTMLElement).click();
+    });
+    expect(cancels).toBe(1);
+
+    await act(async () => {
+      finishDelete(new Response(null, { status: 204 }));
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    opener.remove();
   });
 });
