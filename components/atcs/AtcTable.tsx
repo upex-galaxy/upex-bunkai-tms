@@ -4,6 +4,7 @@ import type { AtcFacetValue } from '@lib/atcs/list-filters';
 import type { Atc, AtcLayer, AtcPriority, AtcTechnique } from '@lib/types';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
+import { ArchiveAtcOverlay } from '@components/atcs/ArchiveAtcDialog';
 import { Button, buttonVariants } from '@components/ui/button';
 import { Select } from '@components/ui/select';
 import {
@@ -21,8 +22,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { ArrowDown, ArrowUp, ArrowUpRight, Inbox, Plus, X } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ArrowUpRight, Inbox, Plus, X } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 interface AtcTableRow extends Atc {
@@ -65,7 +67,9 @@ function toFacetValue<T extends string>(raw: string): AtcFacetValue<T> {
 }
 
 export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
+  const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [archiveTarget, setArchiveTarget] = useState<{ id: string, title: string } | null>(null);
   const { atcFilters, setAtcFilters, resetAtcFilters, canCreate } = useWorkbench();
 
   // Client-side over the rows the workbench already loaded (master-design-plan
@@ -148,7 +152,29 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
         </div>
       ),
     },
-  ], [projectSlug]);
+    // BK-571 — one archive action per row, for the same roles that can write
+    // here. Absent (not disabled) for a read-only member, so the column is
+    // dropped altogether rather than left empty.
+    ...(canCreate
+      ? [{
+        id: 'actions',
+        header: () => <span className="sr-only">Actions</span>,
+        enableSorting: false,
+        cell: ({ row }: { row: { original: AtcTableRow } }) => (
+          <button
+            type="button"
+            data-testid="atc-row-archive"
+            aria-label={`Archive ${row.original.title}`}
+            title="Archive this ATC"
+            onClick={() => setArchiveTarget({ id: row.original.id, title: row.original.title })}
+            className="inline-flex size-6 items-center justify-center rounded-2 text-fg-3 hover:bg-surface-3 hover:text-fg-0"
+          >
+            <Archive size={12} aria-hidden />
+          </button>
+        ),
+      } satisfies ColumnDef<AtcTableRow>]
+      : []),
+  ], [projectSlug, canCreate]);
 
   const table = useReactTable({
     data: visibleAtcs,
@@ -249,19 +275,30 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
             </div>
           </div>
 
-          {filtersActive && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              data-testid="atc-list-reset-filters"
-              className="ml-auto"
-              onClick={resetAtcFilters}
+          <div className="ml-auto flex items-center gap-2">
+            {filtersActive && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                data-testid="atc-list-reset-filters"
+                onClick={resetAtcFilters}
+              >
+                <X size={12} />
+                Reset filters
+              </Button>
+            )}
+            {/* BK-571 — the archived view lives in the ATC Library, so this is a
+                link out, visible to every role (a viewer may read what was archived). */}
+            <Link
+              href="/atcs?view=archived"
+              data-testid="atc-list-archived-link"
+              className={buttonVariants({ variant: 'ghost', size: 'sm' })}
             >
-              <X size={12} />
-              Reset filters
-            </Button>
-          )}
+              <Archive size={12} aria-hidden />
+              Archived
+            </Link>
+          </div>
         </div>
       </div>
       <div className="flex-1 overflow-auto">
@@ -365,6 +402,16 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
           </tbody>
         </table>
       </div>
+      {archiveTarget && (
+        <ArchiveAtcOverlay
+          atc={archiveTarget}
+          onCancel={() => setArchiveTarget(null)}
+          onArchived={() => {
+            setArchiveTarget(null);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

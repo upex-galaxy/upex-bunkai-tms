@@ -2,6 +2,7 @@
 
 import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import type { CSSProperties } from 'react';
+import { ArchiveAtcOverlay } from '@components/atcs/ArchiveAtcDialog';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { Button } from '@components/ui/button';
@@ -150,6 +151,9 @@ export function ProjectExplorer({
   );
   const [target, setTarget] = useState<CreateTarget | null>(null);
   const [duplicatingAtcId, setDuplicatingAtcId] = useState<string | null>(null);
+  // BK-571 — the ATC the archive confirmation is open for. The overlay closes
+  // itself on Escape, so it is not in the explorer-wide Escape handler below.
+  const [archiveAtcTarget, setArchiveAtcTarget] = useState<Atc | null>(null);
   const [renameTarget, setRenameTarget] = useState<ModuleTreeNode | null>(null);
   const [moveTarget, setMoveTarget] = useState<ModuleTreeNode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ModuleTreeNode | null>(null);
@@ -330,6 +334,7 @@ export function ProjectExplorer({
                 onManageCriteria={setManageStory}
                 onSelect={setSelectedModuleId}
                 onDuplicateAtc={(atc) => { void handleDuplicateAtc(atc); }}
+                onArchiveAtc={setArchiveAtcTarget}
               />
             </div>
             {/* Tests group (BK-27): workspace-scoped chains of ATCs, flat list
@@ -659,6 +664,21 @@ export function ProjectExplorer({
             />
           </div>
         </div>
+      )}
+
+      {archiveAtcTarget && (
+        <ArchiveAtcOverlay
+          atc={{ id: archiveAtcTarget.id, title: archiveAtcTarget.title }}
+          onCancel={() => setArchiveAtcTarget(null)}
+          onArchived={() => {
+            const archivedId = archiveAtcTarget.id;
+            setArchiveAtcTarget(null);
+            // The ATC whose editor is open just left the project's lists: go
+            // back to the project, as the editor's own Archive does.
+            router.refresh();
+            if (selectedAtcId === archivedId) { router.push(`/projects/${projectSlug}`); }
+          }}
+        />
       )}
 
       {deleteStory && (
