@@ -31,9 +31,9 @@ interface AtcPreviewProps {
   tags: string[]
   draft?: boolean
   // BK-571 — an archived ATC: the Used by report arrives from the server (the
-  // usage endpoint is a reuse read and answers 404 for it), and nothing here is
-  // being edited, so the footer drops its live-edit line.
-  archivedUsage?: AtcUsageReport
+  // usage endpoint is a reuse read and answers 404 for it; null when that read
+  // failed), and nothing here is being edited, so the live-edit wording goes.
+  archived?: { usage: AtcUsageReport | null }
 }
 
 export function AtcPreview({
@@ -50,19 +50,19 @@ export function AtcPreview({
   assertionsYaml,
   tags,
   draft = false,
-  archivedUsage,
+  archived,
 }: AtcPreviewProps) {
   const steps = useMemo(() => parseStepsMarkdown(stepsMd), [stepsMd]);
   const assertions = useMemo(() => parseAssertionsYaml(assertionsYaml), [assertionsYaml]);
-  const fetchedUsage = useAtcUsage(archivedUsage ? null : id);
-  const usage = archivedUsage ?? fetchedUsage;
+  const fetchedUsage = useAtcUsage(archived ? null : id);
+  const usage = archived ? archived.usage : fetchedUsage;
 
   return (
     <aside className="flex h-full flex-col overflow-hidden bg-surface-1">
       {/* pane header */}
       <div className="flex h-9 flex-shrink-0 items-center justify-between border-b border-stroke-1 px-3">
         <span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-0">
-          Live preview
+          {archived ? 'Archived ATC' : 'Live preview'}
         </span>
         <span className="status-chip" data-status="running">read-only</span>
       </div>
@@ -217,7 +217,7 @@ export function AtcPreview({
       {/* footer */}
       <div className="flex flex-shrink-0 items-center justify-between border-t border-stroke-1 bg-surface-0 px-3 py-2 text-2xs">
         <span className="font-mono text-fg-4">schema · atc.v1</span>
-        {!archivedUsage && (
+        {!archived && (
           <span className="inline-flex items-center gap-1 text-fg-3">
             <Sparkles size={10} className="text-accent" />
             Updated live as you edit

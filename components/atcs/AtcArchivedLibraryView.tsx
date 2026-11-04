@@ -1,6 +1,7 @@
 'use client';
 
 import type { AtcArchivedRow } from '@lib/atcs/library';
+import { revalidateAfterArchiveChange } from '@app/(app)/atcs/actions';
 import { AtcLibraryErrorBlock, LayerChip } from '@components/atcs/AtcLibraryView';
 import { Button } from '@components/ui/button';
 import { formatActivityTime } from '@lib/activity/view';
@@ -25,13 +26,15 @@ interface AtcArchivedLibraryViewProps {
 }
 
 export const ATC_ARCHIVED_EMPTY_TITLE = 'Nothing has been archived';
-export const ATC_ARCHIVED_EMPTY_BODY = 'No ATC in this workspace has been archived. This is not an error.';
+export const ATC_ARCHIVED_EMPTY_BODY = 'No ATC in this workspace has been archived on its own.';
 
 export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLibraryViewProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [failures, setFailures] = useState<Record<string, string>>({});
+  // A restored row stays until the refresh lands; it must not offer Restore again.
+  const [restoredIds, setRestoredIds] = useState<ReadonlySet<string>>(new Set());
 
   const refresh = () => { startTransition(() => { router.refresh(); }); };
 
@@ -45,6 +48,9 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
       setFailures(prev => ({ ...prev, [row.id]: result.errorMessage }));
       return;
     }
+    setRestoredIds(prev => new Set(prev).add(row.id));
+    // The restore already happened: a failed revalidate must not read as a failure.
+    await revalidateAfterArchiveChange().catch(() => {});
     toast.success(restoreToastMessage(result.title ?? row.title, result.heldByParent));
     refresh();
   };
@@ -131,8 +137,8 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
                       type="button"
                       size="sm"
                       data-testid="atc-restore"
-                      aria-label={`Restore ${row.title}`}
-                      disabled={restoringId !== null}
+                      aria-label={`${restoring ? 'Restoring' : failure !== undefined ? 'Retry restoring' : 'Restore'} ${row.title}`}
+                      disabled={restoringId !== null || restoredIds.has(row.id)}
                       onClick={() => { void restore(row); }}
                     >
                       {failure !== undefined && !restoring ? <RefreshCw size={12} aria-hidden /> : <ArchiveRestore size={12} aria-hidden />}

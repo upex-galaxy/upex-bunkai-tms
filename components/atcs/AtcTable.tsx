@@ -167,7 +167,7 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
             aria-label={`Archive ${row.original.title}`}
             title="Archive this ATC"
             onClick={() => setArchiveTarget({ id: row.original.id, title: row.original.title })}
-            className="inline-flex size-6 items-center justify-center rounded-2 text-fg-3 hover:bg-surface-3 hover:text-fg-0"
+            className="inline-flex size-[24px] items-center justify-center rounded-2 text-fg-3 hover:bg-surface-3 hover:text-fg-0"
           >
             <Archive size={12} aria-hidden />
           </button>

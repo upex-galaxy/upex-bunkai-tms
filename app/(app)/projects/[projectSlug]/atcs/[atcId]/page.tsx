@@ -81,7 +81,7 @@ export default async function AtcEditorPage({ params }: PageProps) {
     const { data: boundAcs } = boundIds.length > 0
       ? await supabase.from('acceptance_criteria').select('*').in('id', boundIds).order('position', { ascending: true })
       : { data: [] };
-    const { data: chainRows } = await supabase
+    const { data: chainRows, error: chainError } = await supabase
       .from('test_steps')
       .select('position, tests(id, title)')
       .eq('atc_id', atc.id);
@@ -111,7 +111,7 @@ export default async function AtcEditorPage({ params }: PageProps) {
         source={source}
         parentName={parentName}
         archivedByLabel={archivedByLabel}
-        usage={buildAtcUsageReport((chainRows ?? []) as unknown as { position: number, tests: { id: string, title: string } | null }[])}
+        usage={chainError ? null : buildAtcUsageReport((chainRows ?? []) as unknown as { position: number, tests: { id: string, title: string } | null }[])}
       />
     );
   }

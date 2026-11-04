@@ -10,13 +10,20 @@ afterAll(async () => { await GlobalRegistrator.unregister(); });
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let refreshes = 0;
+// One stable router, like Next's: a fresh object per render loops any component
+// that lists the router in a hook's deps (see ArchiveAtcDialog.test.ts).
+const router = { push: () => {}, refresh: () => { refreshes += 1; } };
 void mock.module('next/navigation', () => ({
-  useRouter: () => ({ push: () => {}, refresh: () => { refreshes += 1; } }),
+  useRouter: () => router,
 }));
 const toasts: string[] = [];
 void mock.module('sonner', () => ({
   toast: { success: (message: string) => { toasts.push(message); }, error: () => {} },
 }));
+void mock.module('@app/(app)/atcs/actions', () => ({
+  revalidateAfterArchiveChange: async () => {},
+}));
+
 const { act, createElement } = await import('react');
 void mock.module('next/link', () => ({
   default: ({ children, href }: { children: never, href: string }) => createElement('a', { href }, children),
@@ -127,6 +134,7 @@ describe('BK-571 — the archived view', () => {
   test('an empty workspace reads as empty, not as an error', async () => {
     const container = await render({ canWrite: true, rows: [] });
     expect(byTestId(container, 'atc-archived-empty')?.textContent).toContain('Nothing has been archived');
+    expect(byTestId(container, 'atc-archived-empty')?.textContent).toContain('on its own');
     expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 });

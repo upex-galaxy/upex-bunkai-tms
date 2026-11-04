@@ -7,7 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 // so the story's ATCs stayed live and `GET /api/v1/atcs/{id}` (bunkai_get_atc)
 // kept serving them with 200, against the BK-595 decision ("archived, including
 // via an archived parent: 404"). Every ATC reader (by id, usage, search,
-// library, workbench, detail page, export) filters only `atcs.archived_at`, the
+// library, workbench, export) filters only `atcs.archived_at`, the
 // invariant module archiving already keeps. The route now archives through
 // `bunkai_archive_user_story` (migration 0111), which cascades like
 // `bunkai_archive_module_subtree`.

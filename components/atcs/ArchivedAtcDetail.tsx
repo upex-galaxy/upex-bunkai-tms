@@ -2,6 +2,7 @@
 
 import type { ArchivedAtcSource } from '@lib/atcs/library';
 import type { AcceptanceCriterion, Atc, AtcAssertion, AtcStep, AtcUsageReport, Module, UserStory } from '@lib/types';
+import { revalidateAfterArchiveChange } from '@app/(app)/atcs/actions';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { AtcPreview } from '@components/atcs/AtcPreview';
 import { Button } from '@components/ui/button';
@@ -38,7 +39,9 @@ interface ArchivedAtcDetailProps {
   // Module name or User Story label the cascade came from; null for an own archive.
   parentName: string | null
   archivedByLabel: string
-  usage: AtcUsageReport
+  // Null when the chain read failed: the page shows no Used by section rather
+  // than claiming zero Tests.
+  usage: AtcUsageReport | null
 }
 
 export function ArchivedAtcDetail({
@@ -72,11 +75,14 @@ export function ArchivedAtcDetail({
     setRestoring(true);
     setFailure(null);
     const result = await restoreAtc(atc.id);
-    setRestoring(false);
     if (!result.ok) {
+      setRestoring(false);
       setFailure(result.errorMessage);
       return;
     }
+    // Stays in its restoring state: the refresh replaces this page. The restore
+    // already happened, so a failed revalidate must not read as a failure.
+    await revalidateAfterArchiveChange().catch(() => {});
     toast.success(restoreToastMessage(result.title ?? atc.title, result.heldByParent));
     router.refresh();
   };
@@ -172,7 +178,7 @@ export function ArchivedAtcDetail({
             stepsMd={stepsMd}
             assertionsYaml={assertionsYaml}
             tags={atc.tags}
-            archivedUsage={usage}
+            archived={{ usage }}
           />
         </div>
       </div>

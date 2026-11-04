@@ -13,24 +13,26 @@ export interface AtcUsageTest {
 
 export type FetchAtcUsageResult
   = | { ok: true, count: number, tests: AtcUsageTest[] }
-    | { ok: false };
+    | { ok: false, gone: boolean };
 
 export type ArchiveAtcResult
   = | { ok: true }
     | { ok: false, forbidden: boolean, errorMessage: string };
 
 // The report the confirmation warns from. A failure is its own result: the
-// dialog must not archive without knowing real usage.
+// dialog must not archive without knowing real usage. `gone` is the usage read's
+// 404: a teammate already archived this ATC, or it no longer exists, so retrying
+// can never succeed.
 export async function fetchAtcUsage(atcId: string): Promise<FetchAtcUsageResult> {
   try {
     const response = await fetch(`/api/v1/atcs/${atcId}/usage`);
-    if (!response.ok) { return { ok: false }; }
+    if (!response.ok) { return { ok: false, gone: response.status === 404 }; }
     const body = (await response.json().catch(() => null)) as { count?: unknown, used_in?: unknown } | null;
-    if (!body || typeof body.count !== 'number' || !Array.isArray(body.used_in)) { return { ok: false }; }
+    if (!body || typeof body.count !== 'number' || !Array.isArray(body.used_in)) { return { ok: false, gone: false }; }
     return { ok: true, count: body.count, tests: body.used_in as AtcUsageTest[] };
   }
   catch {
-    return { ok: false };
+    return { ok: false, gone: false };
   }
 }
 

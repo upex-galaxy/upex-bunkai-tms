@@ -674,9 +674,10 @@ export function ProjectExplorer({
             const archivedId = archiveAtcTarget.id;
             setArchiveAtcTarget(null);
             // The ATC whose editor is open just left the project's lists: go
-            // back to the project, as the editor's own Archive does.
-            router.refresh();
+            // back to the project, as the editor's own Archive does. Push first:
+            // a navigation discards a refresh that is already pending.
             if (selectedAtcId === archivedId) { router.push(`/projects/${projectSlug}`); }
+            router.refresh();
           }}
         />
       )}
