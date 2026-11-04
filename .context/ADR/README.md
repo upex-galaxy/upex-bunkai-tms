@@ -81,6 +81,7 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0019](./ADR-0019-run-evidence-file-storage.md) | File storage foundation: private Supabase Storage bucket, direct signed upload with a commit gate, authorized redirect for reads, outbox cleanup | Proposed | — | — |
 | [ADR-0021](./ADR-0021-effective-plan-and-billing-grace.md) | Effective plan: `workspaces.plan` is the stored plan, the limits that apply come from `bunkai_effective_plan` | Proposed | — | — |
 | [ADR-0022](./ADR-0022-workspace-membership-ladder-and-removal.md) | Workspace membership authorization ladder: a caller removes or edits only a membership whose role does not outrank theirs, never their own, enforced in RLS and in `bunkai_remove_workspace_member` | Proposed | — | — |
+| [ADR-0023](./ADR-0023-atc-archive-own-versus-cascade.md) | ATC archive: an ATC is archived on its own when its `archived_at` differs from both parents' stamps; restore under an archived parent hands the ATC to that parent's cascade state, so readers keep filtering only `atcs.archived_at` | Proposed | — | — |
 
 > ADR-0016 is taken by other in-flight work not yet present in this branch — confirmed by the Conductor 2026-08-28/30. BK-214 took the next free number, 0017.
 
