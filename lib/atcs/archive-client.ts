@@ -51,3 +51,32 @@ export async function archiveAtc(atcId: string): Promise<ArchiveAtcResult> {
     return { ok: false, forbidden: false, errorMessage: 'Network error.' };
   }
 }
+
+export type HeldByParent = 'module' | 'user_story' | null;
+
+export type RestoreAtcResult
+  = | { ok: true, title: string | null, heldByParent: HeldByParent }
+    | { ok: false, errorMessage: string };
+
+// POST .../restore answers `{ atc: { title, held_by_parent, ... } }`. When the
+// ATC sits under an archived Module or User Story the server keeps it archived
+// with that parent and says so in `held_by_parent`.
+export async function restoreAtc(atcId: string): Promise<RestoreAtcResult> {
+  try {
+    const response = await fetch(`/api/v1/atcs/${atcId}/restore`, { method: 'POST' });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
+      return { ok: false, errorMessage: body.error?.message ?? 'The server did not say why.' };
+    }
+    const body = (await response.json().catch(() => ({}))) as { atc?: { title?: string, held_by_parent?: string | null } };
+    const held = body.atc?.held_by_parent;
+    return {
+      ok: true,
+      title: body.atc?.title ?? null,
+      heldByParent: held === 'module' || held === 'user_story' ? held : null,
+    };
+  }
+  catch {
+    return { ok: false, errorMessage: 'Network error.' };
+  }
+}
