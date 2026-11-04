@@ -26,7 +26,7 @@ void mock.module('@app/(app)/atcs/actions', () => ({
 
 const { act, createElement } = await import('react');
 void mock.module('next/link', () => ({
-  default: ({ children, href }: { children: never, href: string }) => createElement('a', { href }, children),
+  default: ({ children, href, ...rest }: { children: never, href: string }) => createElement('a', { href, ...rest }, children),
 }));
 
 const { createRoot } = await import('react-dom/client');

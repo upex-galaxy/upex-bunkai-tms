@@ -8,9 +8,15 @@ import { NextRequest } from 'next/server';
 // route handler, limiter and error envelope run. The SQL itself is covered by
 // `lib/auth/rate-limit.db.test.ts`.
 void mock.module('server-only', () => ({}));
+// `process.env` is shared by every file of a one-process `bun test` run, so the
+// placeholders below are restored in `afterAll`; leaving them behind made the
+// database suites that run later see a fake host and time out against it.
+const FAKE_ENV_KEYS = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'CRON_SECRET'] as const;
+const envBefore = FAKE_ENV_KEYS.map(key => [key, process.env[key]] as const);
 process.env.NEXT_PUBLIC_SUPABASE_URL ??= 'https://example.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??= 'anon';
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'service-role-test-key';
+process.env.CRON_SECRET ??= 'cron-secret-test';
 
 const hits = new Map<string, number[]>();
 let storeDown = false;
@@ -45,7 +51,13 @@ function consume(key: string, windows: Array<{ window_seconds: number, max: numb
 // the module being mocked, which would recurse).
 let fakeAdminActive = false;
 beforeAll(() => { fakeAdminActive = true; });
-afterAll(() => { fakeAdminActive = false; });
+afterAll(() => {
+  fakeAdminActive = false;
+  for (const [key, value] of envBefore) {
+    if (value === undefined) { delete process.env[key]; }
+    else { process.env[key] = value; }
+  }
+});
 
 function passthroughAdminClient(): unknown {
   return createClient(

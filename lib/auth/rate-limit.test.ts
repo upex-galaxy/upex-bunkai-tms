@@ -1,9 +1,21 @@
-import { describe, expect, it, mock } from 'bun:test';
+import { afterAll, describe, expect, it, mock } from 'bun:test';
 
 void mock.module('server-only', () => ({}));
+// `process.env` is shared by every file of a one-process `bun test` run, so the
+// placeholders below are restored in `afterAll`; leaving them behind made the
+// database suites that run later see a fake host and time out against it.
+const FAKE_ENV_KEYS = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'CRON_SECRET'] as const;
+const envBefore = FAKE_ENV_KEYS.map(key => [key, process.env[key]] as const);
 process.env.NEXT_PUBLIC_SUPABASE_URL ??= 'https://example.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??= 'anon';
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'service-role-test-key';
+process.env.CRON_SECRET ??= 'cron-secret-test';
+afterAll(() => {
+  for (const [key, value] of envBefore) {
+    if (value === undefined) { delete process.env[key]; }
+    else { process.env[key] = value; }
+  }
+});
 
 const { digestSource, rateLimitKey, sourceFromHeaders } = await import('./rate-limit');
 
