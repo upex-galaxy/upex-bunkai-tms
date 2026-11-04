@@ -36,6 +36,7 @@
     "db:qa-roles": "bun scripts/provision-qa-roles.ts",
     "release:check": "bun scripts/check-release-readiness.ts",
     "test": "bun test",
+    "test:guarded": "bash scripts/guard.sh bun test",
     "repo:check": "bun scripts/tooling-check.ts repo && bun run vars:check && bun run vars:env:check && bun run vars:schema:check && bun run skills:check && bun run skills:registry:check && bun run docs:check && bun run shared:check && bun run instructions:check && bun run openapi:check && bun run agents:compat:check && bun run agents:schema:check",
     "repo:fix": "bun run format:fix && bun run lint:fix && bun run types:check && bun run vars:check && bun run vars:env:check && bun run vars:schema && bun run skills:check && bun run skills:registry:check && bun run docs:check && bun run instructions:check && bun run openapi:check && bun run agents:compat:check",
     "clean": "rm -rf node_modules dist .next",

@@ -2,7 +2,7 @@
 id: project
 title: "Project instructions"
 load_when: "anything specific to this project: its own rules, conventions, exceptions and its reading of shared doctrine"
-triggers: ["\\bbunkai\\b", "next build", "bun run build", "\\bmockups?\\b", "master-design-plan", "apply_migration", "\\bstacked PRs?\\b", "\\bchained PRs?\\b", "\\bruleset\\b"]
+triggers: ["\\bbunkai\\b", "next build", "bun run build", "\\bbun test\\b", "bun run test", "\\bguard\\.sh\\b", "\\bmockups?\\b", "master-design-plan", "apply_migration", "\\bstacked PRs?\\b", "\\bchained PRs?\\b", "\\bruleset\\b"]
 paths: [".context/design/", ".context/designs/", "supabase/migrations/"]
 ---
 
@@ -39,6 +39,13 @@ NEVER invent UI on the fly and NEVER re-pick colors, radii, fonts or spacing: re
 
 <!-- binds-in-section: build requests route here through the `next build` / `bun run build` triggers; stack.scripts.build in .agents/project.yaml carries the same pointer -->
 NEVER run `next build`, `bun run build` or any production build locally. It writes `.next/`, the same directory a running `next dev` uses, and clobbers the dev server's chunks (CSS and JS 404, unstyled app). Local verification uses `bun run dev` only, and type safety uses `bun run types:check` (tsc, no build). Deploy builds run on Vercel. The single exception is an explicit, important justification AND user approval first: stop, state why a build (not dev) is required, ask, wait for yes.
+
+## Bunkai rule GUARDED-TESTS
+
+<!-- binds-in-section: test runs route here through the `bun test` / `bun run test` triggers; scripts/guard.sh carries the same pointer in its header -->
+NEVER run `bun test` or `bun run test` directly on a developer machine. Every local test run goes through the guard, which kills the whole process tree past a memory or time budget: `GUARD_MAX_RSS_MB=1536 GUARD_TIMEOUT_S=120 bash scripts/guard.sh bun test <file>`. Exit 137 means the memory limit fired and 124 the time limit; both are a defect to investigate, never a reason to raise the limit and retry. `bun test --timeout` is no substitute: it runs on the JS event loop, and a synchronous render loop never yields to it (BK-571: one test file took `bun` to 20 GB on a 16 GB Mac for 46 minutes).
+
+Run only the test file you touched, one file per run. The full suite runs in GitHub Actions (`.github/workflows/tests.yml`) on every pull request, never locally. A test double for a React hook result (`useRouter`, `useSearchParams`, a context value) is ONE object defined once per file, never a new object per call: the real hooks are referentially stable, and a fresh object re-runs every effect that lists it in its deps.
 
 ## Bunkai rule AI-LED-DECISIONS (configures decision-protocol §5.1)
 
