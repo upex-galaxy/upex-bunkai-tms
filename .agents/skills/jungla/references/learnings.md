@@ -86,3 +86,7 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 
 ## 2026-11-05 · Shift-left transition path differs from the cached workflow
 - From Shift-Left QA the live workflow offers only `refiened` and `back`; the cached `estimate` transition is absent and `acli` answers "No allowed transitions found". The `refiened` transition (via the Atlassian MCP) goes straight to Ready For Dev, skipping Estimation, so Story Points stay unset (acli cannot write custom fields). Run `bun run jira:sync-workflows` and check whether skipping Estimation is intended before the next G4.
+
+## 2026-11-05 · A merged PR does not always move the Jira story
+- BK-601 (PR #326, merge c88994e0) stayed `Ready For Dev` with no "Pull Request ... MERGED" automation comment at all, unlike BK-666 and BK-571. The brief had forbidden the worker to transition. After verifying ancestry and the live migration md5, the conductor walked `In Progress`, `In Review`, `Ready For QA` with `acli ... --status` (each read back). Next time: check Jira 5 minutes after `worker_done` and walk the path yourself if it did not move; the brief can allow it.
+- The claude.ai Supabase connector's `apply_migration` needs an interactive confirmation and expires unattended: workers apply migrations through the project's own `supabase` MCP.
