@@ -36,6 +36,6 @@ registry.registerPath({
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope, or a read-only member of the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Module not found, or out of reach.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'Refused, nothing written. `details.reason`: `ancestor_archived` (with `ancestor_id`, `ancestor_name`), `depth_exceeded`, `name_collision` (with `module_name`) or `story_key_collision` (with `external_id`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'Refused, nothing written. `details.reason`: `ancestor_archived` (with `ancestor_id`, `ancestor_name`), `depth_exceeded`, `name_collision` (with `module_name`), `story_key_collision` (with `external_id`) or `concurrent_change` (retry).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

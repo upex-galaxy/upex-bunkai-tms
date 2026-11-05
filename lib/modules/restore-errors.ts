@@ -11,6 +11,7 @@ export const RESTORE_REFUSALS = {
   DEPTH_EXCEEDED: 'depth_exceeded',
   NAME_COLLISION: 'name_collision',
   STORY_KEY_COLLISION: 'story_key_collision',
+  CONCURRENT_CHANGE: 'concurrent_change',
 } as const;
 
 export type RestoreRefusal = (typeof RESTORE_REFUSALS)[keyof typeof RESTORE_REFUSALS];
@@ -71,6 +72,9 @@ export function restoreErrorFrom(error: RpcError): ApiError {
     }
     case '45006':
       return storyKeyRefusal(text(detail.external_id));
+    case '40P01':
+      // A move or rename of an ancestor can cross a restore. Postgres rolled it back.
+      return refusal(RESTORE_REFUSALS.CONCURRENT_CHANGE, 'Another change to this tree got in the way. Nothing changed. Try again.');
     case '23505':
       // A key taken between the function's check and its write trips the index.
       if (error.message.includes('user_stories_project_external_id_uniq')) {

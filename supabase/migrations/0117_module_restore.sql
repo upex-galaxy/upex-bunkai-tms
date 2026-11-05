@@ -198,8 +198,11 @@ grant execute on function public.bunkai_archive_module_subtree(uuid) to authenti
 --
 -- CONCURRENCY. Ancestors FOR SHARE root first, then the target FOR UPDATE, then
 -- writes in the cascade's order. Ancestors come first so that restoring a parent and
--- its child at once cannot deadlock. ATCs are selected after the Modules are written,
--- so a bunkai_restore_atc holding those rows FOR SHARE has committed by then.
+-- its child at once cannot deadlock. Before the ATCs are selected, both parents of
+-- every ATC in reach are held FOR SHARE, Modules then Stories, the order
+-- bunkai_restore_atc uses: an archive of a parent outside the restored set either
+-- finishes first, and the ATC passes to that parent, or waits and sweeps the ATC up
+-- afterwards. A bunkai_restore_atc holding those rows has committed by then too.
 --
 -- AUTHORIZATION (ADR-0012, rpc-authorization.md section 4). SECURITY DEFINER because
 -- the write spans four tables and activity_log, which has no client INSERT policy.
@@ -376,6 +379,22 @@ begin
                else x.archive_batch_id is null and x.archived_at = v_archived_at
           end;
   get diagnostics c_acs = row_count;
+
+  perform 1 from public.modules m
+    where m.id in (
+      select x.module_id from public.atcs x
+       where x.module_id = any(v_module_ids) or x.user_story_id = any(v_story_ids)
+    )
+    order by m.id
+    for share;
+
+  perform 1 from public.user_stories s
+    where s.id in (
+      select x.user_story_id from public.atcs x
+       where x.module_id = any(v_module_ids) or x.user_story_id = any(v_story_ids)
+    )
+    order by s.id
+    for share;
 
   select coalesce(array_agg(x.id), '{}'::uuid[]) into v_atc_ids
     from public.atcs x

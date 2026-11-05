@@ -51,6 +51,12 @@ describe('restoreErrorFrom', () => {
     expect(other.status).toBe(500);
   });
 
+  it('names a crossed transaction as retryable, not a 500', () => {
+    const error = restoreErrorFrom({ code: '40P01', message: 'deadlock detected' });
+    expect(error.status).toBe(409);
+    expect(error.details).toEqual({ reason: 'concurrent_change' });
+  });
+
   it('maps the gate and the missing id', () => {
     const forbidden = restoreErrorFrom({ code: '42501', message: 'forbidden' });
     expect(forbidden.status).toBe(403);
