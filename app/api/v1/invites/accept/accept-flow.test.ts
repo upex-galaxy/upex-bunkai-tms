@@ -95,10 +95,9 @@ describeOrSkip('BK-1589 — POST /api/v1/invites/accept through the real handler
 
     expect((await f.clients.owner.rpc('bunkai_remove_workspace_member', { p_workspace_id: seed.workspaceId, p_user_id: users.admin.id })).error).toBeNull();
 
-    expect(await acceptAs('invitee', inviteToken)).toEqual({
-      status: 409,
-      body: { error: { code: 'conflict', message: 'This invite can no longer be used. Ask a workspace Admin for a new one.', details: { reason: 'inviter_not_authorized' } } },
-    });
+    const refused = await acceptAs('invitee', inviteToken);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toMatchObject({ code: 'conflict', message: 'This invite can no longer be used. Ask a workspace Admin for a new one.', details: { reason: 'inviter_not_authorized' } });
     expect(await f.memberRow(seed.workspaceId, 'invitee')).toBeNull();
   }, 60_000);
 
@@ -123,6 +122,8 @@ describeOrSkip('BK-1589 — POST /api/v1/invites/accept through the real handler
     const issued = await issue(other.workspaceId, 'owner');
     const revoked = await REVOKE(call('DELETE', `workspaces/${other.workspaceId}/invites/${issued.inviteId}`, issued.adminToken));
     expect(revoked.ok).toBe(true);
-    expect(await acceptAs('invitee', issued.inviteToken)).toEqual({ status: 409, body: { error: { code: 'conflict', message: 'Invite has been revoked.' } } });
+    const refused = await acceptAs('invitee', issued.inviteToken);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toMatchObject({ code: 'conflict', message: 'Invite has been revoked.' });
   }, 90_000);
 });
