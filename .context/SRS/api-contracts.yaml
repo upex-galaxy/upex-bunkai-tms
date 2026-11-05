@@ -277,6 +277,17 @@ paths:
       responses:
         '204': { description: Archived }
 
+  /modules/{module_id}/restore:
+    parameters: [{ $ref: '#/components/parameters/ModuleIdPath' }]
+    post:
+      tags: [Modules]
+      summary: Restore an archived module with what its archive took (idempotent)
+      responses:
+        '200': { description: 'Restored, or already active. `changed` says which, with the counts of `modules`, `user_stories`, `acceptance_criteria` and `atcs` that came back.' }
+        '403': { description: 'A read-only member, or a token without atc:write.', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '404': { description: 'Module not found, or out of reach.', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '409': { description: 'Refused, nothing written. `details.reason`: ancestor_archived, depth_exceeded, name_collision or story_key_collision.', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
   /user-stories:
     post:
       tags: [User Stories]
