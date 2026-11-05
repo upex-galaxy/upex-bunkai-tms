@@ -5,6 +5,7 @@ import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { ACTIVITY_PAGE_SIZE } from '@lib/activity/constants';
 import { extractRunVerdict, formatActivityTime, formatAffectedTests, resolveActivityViewState, resolveActorLabel } from '@lib/activity/view';
+import { formatModuleRestored } from '@lib/modules/restore-copy';
 import { Activity as ActivityIcon, ArrowDown, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -269,6 +270,7 @@ export function ActivityView({ initialPage, initialError = null }: ActivityViewP
 function ActivityRow({ item }: { item: ActivityItem }) {
   const verdict = extractRunVerdict(item.action, item.payload);
   const affectedTests = formatAffectedTests(item.action, item.payload);
+  const restoredCounts = formatModuleRestored(item.action, item.payload);
 
   return (
     <tr
@@ -291,6 +293,15 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       </td>
       <td className="max-w-[320px] truncate border-t border-stroke-1 px-3 py-1.5">
         <span className="text-sm text-fg-2">{item.item.label}</span>
+        {restoredCounts !== null && (
+          <span
+            data-testid={`activity-restored-${item.id}`}
+            className="block truncate text-xs text-fg-3"
+            title={restoredCounts}
+          >
+            {restoredCounts}
+          </span>
+        )}
         {affectedTests !== null && (
           <span
             data-testid={`activity-affected-${item.id}`}

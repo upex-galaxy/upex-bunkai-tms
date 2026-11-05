@@ -34,6 +34,20 @@ export function restoreModuleToast(result: RestoredModule): string {
     : `Restored "${result.name}" with ${joined(withIt)}.`;
 }
 
+// BK-601 (AC-07) — what the Activity Stream says came back with a restored Module.
+// Reads the projected payload defensively: a missing count is simply not mentioned.
+export function formatModuleRestored(action: string, payload: Record<string, unknown>): string | null {
+  if (action !== 'module.restored') { return null; }
+  const count = (key: string) => (typeof payload[key] === 'number' ? payload[key] : 0);
+  const withIt = [
+    counted(Math.max(count('modules') - 1, 0), 'sub-module', 'sub-modules'),
+    counted(count('user_stories'), 'user story', 'user stories'),
+    counted(count('acceptance_criteria'), 'acceptance criterion', 'acceptance criteria'),
+    counted(count('atcs'), 'ATC', 'ATCs'),
+  ].filter((part): part is string => part !== null);
+  return withIt.length === 0 ? 'Nothing else came back with it' : `Back with ${joined(withIt)}`;
+}
+
 // The line under an archived row: when, and who or what when that is known. A row
 // archived on its own shows the date only, because no actor was ever recorded.
 export function archiveLine(info: ArchiveInfo): string {

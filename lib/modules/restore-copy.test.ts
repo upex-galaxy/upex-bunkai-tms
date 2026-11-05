@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { archiveLine, restoreModuleToast } from './restore-copy';
+import { archiveLine, formatModuleRestored, restoreModuleToast } from './restore-copy';
 
 const BASE = { id: 'm', name: 'Checkout', changed: true, modules: 1, user_stories: 0, acceptance_criteria: 0, atcs: 0 };
 const AT = '2026-11-05T10:30:00.123456+00:00';
@@ -22,6 +22,19 @@ describe('restoreModuleToast', () => {
 
   it('does not claim a restore when nothing changed', () => {
     expect(restoreModuleToast({ ...BASE, changed: false, modules: 0 })).toBe('"Checkout" was already active.');
+  });
+});
+
+describe('formatModuleRestored', () => {
+  it('counts what came back, for module.restored only', () => {
+    expect(formatModuleRestored('module.restored', { modules: 3, user_stories: 5, acceptance_criteria: 14, atcs: 9 }))
+      .toBe('Back with 2 sub-modules, 5 user stories, 14 acceptance criteria and 9 ATCs');
+    expect(formatModuleRestored('module.restored', { modules: 1 })).toBe('Nothing else came back with it');
+    expect(formatModuleRestored('module.archived', { modules: 3 })).toBeNull();
+  });
+
+  it('survives a payload with no counts', () => {
+    expect(formatModuleRestored('module.restored', {})).toBe('Nothing else came back with it');
   });
 });
 
