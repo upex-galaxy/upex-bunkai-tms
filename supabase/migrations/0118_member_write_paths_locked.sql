@@ -147,3 +147,98 @@ begin
   return public.bunkai_bug_json(p_bug_id);
 end;
 $$;
+
+-- ============================================================================
+-- 3. bunkai_leave_workspace — the same lock as removal (G3)
+-- ============================================================================
+-- Leave adopts the 0114 lock: the caller's row plus the workspace's active owner
+-- rows, in user_id order, FOR UPDATE, and then the caller is re-validated under
+-- it. That serializes Leave against Remove on the same member (whoever waits
+-- finds the row gone and answers not found) and closes the co-owner race 0044
+-- documented as accepted debt: of two Owners leaving at once, the second now
+-- sees no other Owner and gets sole_owner. Declared in the BK-1589 ruling, so
+-- this is not an unplanned security change (ADR-0012).
+--
+-- Body copied forward from 0044. The guards and the writes are unchanged; a
+-- leaver's Bugs stay assigned, as they always have (BK-1589 AI Tech Lead
+-- decision). Not covered: two leaves of one user from two DIFFERENT workspaces
+-- can both pass last_membership (out of scope in G3).
+create or replace function public.bunkai_leave_workspace(p_workspace_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_role text;
+  v_total_active_memberships int;
+  v_other_active_owners int;
+begin
+  if v_user_id is null then
+    raise exception 'not_authenticated' using errcode = '42501';
+  end if;
+
+  -- Only a member gets to take locks in this workspace.
+  select role into v_role
+  from public.workspace_members
+  where workspace_id = p_workspace_id
+    and user_id = v_user_id
+    and status = 'active';
+
+  if v_role is null then
+    raise exception 'not_a_member' using errcode = 'P0002';
+  end if;
+
+  perform 1
+     from public.workspace_members wm
+    where wm.workspace_id = p_workspace_id
+      and (wm.user_id = v_user_id or (wm.role = 'owner' and wm.status = 'active'))
+    order by wm.user_id
+    for update;
+
+  -- Re-validate against what committed while waiting.
+  v_role := null;
+  select role into v_role
+  from public.workspace_members
+  where workspace_id = p_workspace_id
+    and user_id = v_user_id
+    and status = 'active';
+
+  if v_role is null then
+    raise exception 'not_a_member' using errcode = 'P0002';
+  end if;
+
+  select count(*) into v_total_active_memberships
+  from public.workspace_members
+  where user_id = v_user_id
+    and status = 'active';
+
+  if v_total_active_memberships <= 1 then
+    raise exception 'last_membership' using errcode = '45212';
+  end if;
+
+  if v_role = 'owner' then
+    select count(*) into v_other_active_owners
+    from public.workspace_members
+    where workspace_id = p_workspace_id
+      and user_id <> v_user_id
+      and status = 'active'
+      and role = 'owner';
+
+    if v_other_active_owners = 0 then
+      raise exception 'sole_owner' using errcode = '45213';
+    end if;
+  end if;
+
+  delete from public.workspace_members
+  where workspace_id = p_workspace_id
+    and user_id = v_user_id;
+
+  update public.access_tokens
+  set revoked_at = now()
+  where user_id = v_user_id
+    and workspace_id = p_workspace_id
+    and revoked_at is null;
+end;
+$$;
