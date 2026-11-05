@@ -599,7 +599,7 @@ describeOrSkip('BK-572 — remove a teammate (RPC + RLS ladder, real database)',
     const token = await seedToken('member', seed.workspaceId, 'rejoin-scoped');
     expect((await remove('owner', seed.workspaceId, users.member.id)).error).toBeNull();
 
-    // The accept route re-adds through the service role; mirror it.
+    // Only the row matters here (accept is proven in invite-accept-isolation).
     await service().from('workspace_members').insert({ workspace_id: seed.workspaceId, user_id: users.member.id, role: 'viewer', status: 'active' });
     const back = await memberRow(seed.workspaceId, 'member');
     expect(back?.role).toBe('viewer');

@@ -51,6 +51,23 @@ export async function removeWorkspaceMember(supabase: Client, args: RemoveWorksp
   });
 }
 
+// BK-1589 — redeem a workspace invite in one transaction (migration 0118). The
+// SECURITY DEFINER RPC locks the inviter's and invitee's member rows, re-checks
+// the invite, never demotes, and refuses an inviter who lost the authority. Its
+// EXECUTE is granted to service_role only: call it with the ADMIN client, and
+// only after the route's token hash and email gate.
+export interface AcceptWorkspaceInviteArgs {
+  inviteId: string
+  userId: string
+}
+
+export async function acceptWorkspaceInvite(admin: Client, args: AcceptWorkspaceInviteArgs) {
+  return admin.rpc('bunkai_accept_workspace_invite', {
+    p_invite_id: args.inviteId,
+    p_user_id: args.userId,
+  });
+}
+
 // BK-512 — Delete a workspace I own (ADR-0015: soft-delete, 30-day grace).
 // The SECURITY DEFINER RPC (migration 0084) validates the caller is the
 // active owner, stamps `deleted_at`, revokes the workspace's PATs and

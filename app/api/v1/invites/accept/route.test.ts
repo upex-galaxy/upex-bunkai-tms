@@ -10,6 +10,7 @@ import { describe, expect, it, mock } from 'bun:test';
 void mock.module('server-only', () => ({}));
 const { resolveRedeemableInvite } = await import('./route');
 const { ApiError, errorResponse } = await import('@lib/api/error-envelope');
+const { INVITER_NOT_AUTHORIZED_MESSAGE, mapAcceptInviteError, redeemInvite } = await import('./response');
 
 const INVITE_ID = '11111111-1111-4111-8111-111111111111';
 const WORKSPACE_ID = '22222222-2222-4222-8222-222222222222';
@@ -153,5 +154,67 @@ describe('resolveRedeemableInvite — AC-14 non-disclosure (BK-988)', () => {
     }, calls), 'hash');
     expect(result).toEqual({ id: INVITE_ID, workspace_id: WORKSPACE_ID, email: 'invitee@example.com', role: 'member' });
     expect(calls.filter(c => c.table === 'workspaces')).toEqual([{ table: 'workspaces', column: 'id', value: WORKSPACE_ID }]);
+  });
+});
+
+// BK-1589 — what the RPC's refusals look like on the wire. The refusals themselves
+// are proven against the real database in lib/workspaces/invite-accept-isolation.test.ts.
+describe('redeemInvite — the accept RPC behind the route (BK-1589)', () => {
+  function fakeAdmin(answer: { data?: unknown, error?: { code: string, message: string } }, calls: unknown[] = []): SupabaseClient<Database> {
+    return {
+      rpc: async (name: string, args: unknown) => {
+        calls.push({ name, args });
+        return { data: answer.data ?? null, error: answer.error ?? null };
+      },
+    } as unknown as SupabaseClient<Database>;
+  }
+
+  async function refusal(error: { code: string, message: string }) {
+    try {
+      await redeemInvite(fakeAdmin({ error }), { inviteId: INVITE_ID, userId: 'user' });
+    }
+    catch (err) {
+      expect(err).toBeInstanceOf(ApiError);
+      const res = errorResponse(err as InstanceType<typeof ApiError>);
+      return { status: res.status, body: await res.json() };
+    }
+    throw new Error('expected an ApiError but none was thrown');
+  }
+
+  it('sends the invite and the caller to the RPC and returns what it redeemed', async () => {
+    const calls: unknown[] = [];
+    const redeemed = await redeemInvite(fakeAdmin({ data: { workspace_id: WORKSPACE_ID, role: 'admin' } }, calls), { inviteId: INVITE_ID, userId: 'user' });
+    expect(redeemed).toEqual({ workspace_id: WORKSPACE_ID, role: 'admin' });
+    expect(calls).toEqual([{ name: 'bunkai_accept_workspace_invite', args: { p_invite_id: INVITE_ID, p_user_id: 'user' } }]);
+  });
+
+  it('an inviter who lost the authority is a 409 with the neutral message (AC-4.1, AC-4.2, AC-4.5)', async () => {
+    expect(await refusal({ code: '45222', message: 'inviter_not_authorized' })).toEqual({
+      status: 409,
+      body: { error: { code: 'conflict', message: INVITER_NOT_AUTHORIZED_MESSAGE, details: { reason: 'inviter_not_authorized' } } },
+    });
+    expect(INVITER_NOT_AUTHORIZED_MESSAGE).toBe('This invite can no longer be used. Ask a workspace Admin for a new one.');
+  });
+
+  it('a role that rose after the early check is the same refusal BK-62 gives (AC-4.6)', async () => {
+    const shape = await refusal({ code: '45223', message: 'already_member_equal_or_higher_role' });
+    expect(shape.status).toBe(409);
+    expect(shape.body.error.details).toEqual({ reason: 'already_member_equal_or_higher_role' });
+  });
+
+  it.each([
+    ['invite_revoked', 'Invite has been revoked.'],
+    ['invite_already_accepted', 'Invite has already been accepted.'],
+    ['invite_expired', 'Invite has expired.'],
+  ])('%s under the lock keeps the message the early check gives', async (message, expected) => {
+    expect(await refusal({ code: '45224', message })).toEqual({ status: 409, body: { error: { code: 'conflict', message: expected } } });
+  });
+
+  it('a workspace deleted mid-flight matches the never-existed shape exactly (BK-988)', async () => {
+    expect(await refusal({ code: 'P0002', message: 'invite_not_found' })).toEqual(await neverExisted());
+  });
+
+  it('anything else is an internal error, never a quiet success', () => {
+    expect(() => mapAcceptInviteError({ code: '42501', message: 'permission denied' })).toThrow(ApiError);
   });
 });

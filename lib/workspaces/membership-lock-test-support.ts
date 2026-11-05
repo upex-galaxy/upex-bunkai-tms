@@ -267,6 +267,10 @@ export function createMembershipFixture<P extends string>(tag: string, personas:
     return data.assignee_user_id as string | null;
   }
 
+  function trackWorkspace(id: string): void {
+    workspaceIds.push(id);
+  }
+
   async function tokenRevokedAt(tokenId: string): Promise<string | null> {
     const { data, error } = await service().from('access_tokens').select('revoked_at').eq('id', tokenId).single();
     if (error) {
@@ -275,7 +279,7 @@ export function createMembershipFixture<P extends string>(tag: string, personas:
     return data.revoked_at as string | null;
   }
 
-  return { prefix, users, clients, service, must, setup, teardown, seedWorkspace, seedBug, seedToken, memberRow, activity, bugAssignee, tokenRevokedAt };
+  return { prefix, users, clients, service, must, setup, teardown, seedWorkspace, seedBug, seedToken, memberRow, activity, bugAssignee, tokenRevokedAt, trackWorkspace };
 }
 
 // The chain a correct lock produces: one more waiter per call fired.

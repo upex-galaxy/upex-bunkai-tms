@@ -9,6 +9,10 @@
 -- What it does:
 --   1. G1: drops the INSERT, UPDATE and DELETE policies of workspace_members
 --      and revokes those table privileges from anon and authenticated.
+--   2. G2: bunkai_assign_bug locks the assignee's member row before the Bug.
+--   3. G3: bunkai_leave_workspace takes the same lock as removal (0114).
+--   4. G4: bunkai_accept_workspace_invite moves invite accept into one
+--      transaction that re-validates the inviter under lock and fails closed.
 
 -- ============================================================================
 -- 1. workspace_members — no write path through a user session (G1)
@@ -242,3 +246,171 @@ begin
     and revoked_at is null;
 end;
 $$;
+
+-- ============================================================================
+-- 4. bunkai_accept_workspace_invite — one transaction, inviter re-validated (G4)
+-- ============================================================================
+-- Before this, accept was a route making separate service-role calls, with no
+-- transaction to lock in, and it never looked at the inviter. A removed or
+-- demoted Admin could keep a pre-issued admin invite as a backdoor. The invite
+-- stays listed so an Admin can revoke it; it is simply not redeemable while its
+-- inviter lacks the authority. This tightens one line of the BK-572 PO-1 ruling.
+--
+-- AUTHORIZATION (ADR-0012). The route serves cookie and PAT callers through the
+-- admin client, so auth.uid() is null there and p_user_id cannot be deleted.
+-- EXECUTE goes to service_role ONLY: no user session may reach this past the
+-- route's token hash and email gate. The bind at step 0 still refuses a session
+-- that is not the user named. The only row returned is the invite's own.
+--
+-- LOCK ORDER (global, BK-1589): member rows in user_id order, then the workspace,
+-- then the invite row. Removal (0114) goes members, Bugs, invites. Workspace
+-- deletion (0084) goes workspace, invites, so the workspace comes first here or
+-- the two could deadlock. FOR SHARE on the workspace makes an accept wait for a
+-- deletion in flight and then see it.
+--
+-- Check order under the locks:
+--   1. invite or workspace gone, or workspace deleted -> P0002 invite_not_found
+--      (the route answers its never-existed 404, BK-988)
+--   2. invite revoked / accepted / expired            -> 45224, by message
+--   3. invitee already holds an equal or higher role  -> 45223 (BK-62; before the
+--      inviter check so AC-4.6 reads the same as the route's early refusal)
+--   4. inviter null, gone, not active, not admin or
+--      owner, or ranked below the invite's role       -> 45222 inviter_not_authorized
+--
+-- Error codes, re-verified on 2026-11-05 against migrations, app, lib and the one
+-- open PR: 45220/45221 are 0114's, 45222-45224 had no hit.
+create or replace function public.bunkai_accept_workspace_invite(
+  p_invite_id uuid,
+  p_user_id   uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_workspace_id    uuid;
+  v_inviter         uuid;
+  v_role            text;
+  v_accepted_at     timestamptz;
+  v_revoked_at      timestamptz;
+  v_expires_at      timestamptz;
+  v_deleted_at      timestamptz;
+  v_existing_role   text;
+  v_existing_status text;
+  v_inviter_role    text;
+begin
+  -- 0. Actor bind.
+  if auth.uid() is not null and auth.uid() <> p_user_id then
+    raise exception 'invite_not_found' using errcode = 'P0002';
+  end if;
+
+  -- Which rows to lock. Nothing here is trusted past the locks below.
+  select i.workspace_id, i.invited_by_user_id
+    into v_workspace_id, v_inviter
+    from public.workspace_invites i
+   where i.id = p_invite_id;
+  if v_workspace_id is null then
+    raise exception 'invite_not_found' using errcode = 'P0002';
+  end if;
+
+  perform 1
+     from public.workspace_members wm
+    where wm.workspace_id = v_workspace_id
+      and wm.user_id in (v_inviter, p_user_id)
+    order by wm.user_id
+    for update;
+
+  select w.deleted_at into v_deleted_at
+    from public.workspaces w
+   where w.id = v_workspace_id
+     for share;
+  if not found or v_deleted_at is not null then
+    raise exception 'invite_not_found' using errcode = 'P0002';
+  end if;
+
+  select i.role, i.accepted_at, i.revoked_at, i.expires_at
+    into v_role, v_accepted_at, v_revoked_at, v_expires_at
+    from public.workspace_invites i
+   where i.id = p_invite_id
+     for update;
+  if not found then
+    raise exception 'invite_not_found' using errcode = 'P0002';
+  end if;
+
+  -- 2. Pending, as committed now.
+  if v_revoked_at is not null then
+    raise exception 'invite_revoked' using errcode = '45224';
+  end if;
+  if v_accepted_at is not null then
+    raise exception 'invite_already_accepted' using errcode = '45224';
+  end if;
+  if v_expires_at < now() then
+    raise exception 'invite_expired' using errcode = '45224';
+  end if;
+
+  -- 3. An accept must never demote (BK-62).
+  select wm.role, wm.status into v_existing_role, v_existing_status
+    from public.workspace_members wm
+   where wm.workspace_id = v_workspace_id
+     and wm.user_id = p_user_id;
+  if v_existing_status = 'active'
+     and public.bunkai_workspace_role_rank(v_role) <= public.bunkai_workspace_role_rank(v_existing_role) then
+    raise exception 'already_member_equal_or_higher_role' using errcode = '45223';
+  end if;
+
+  -- 4. The inviter still holds the authority the invite was issued under. A null
+  --    inviter (account deleted, FK is on delete set null) fails closed.
+  select wm.role into v_inviter_role
+    from public.workspace_members wm
+   where wm.workspace_id = v_workspace_id
+     and wm.user_id = v_inviter
+     and wm.status = 'active';
+  if v_inviter_role is null
+     or v_inviter_role not in ('admin', 'owner')
+     or public.bunkai_workspace_role_rank(v_inviter_role) < public.bunkai_workspace_role_rank(v_role) then
+    raise exception 'inviter_not_authorized' using errcode = '45222';
+  end if;
+
+  -- 5. Writes. With no row to lock at step 3, two different invites can race to
+  --    insert this user; the conflict clause holds the never-demote rule there.
+  insert into public.workspace_members as wm (workspace_id, user_id, role, status)
+  values (v_workspace_id, p_user_id, v_role, 'active')
+  on conflict (workspace_id, user_id) do update
+    set role = excluded.role,
+        status = 'active'
+    where wm.status <> 'active'
+       or public.bunkai_workspace_role_rank(excluded.role) > public.bunkai_workspace_role_rank(wm.role);
+  if not found then
+    raise exception 'already_member_equal_or_higher_role' using errcode = '45223';
+  end if;
+
+  update public.workspace_invites
+     set accepted_at = now(),
+         accepted_by_user_id = p_user_id
+   where id = p_invite_id;
+
+  return jsonb_build_object('workspace_id', v_workspace_id, 'role', v_role);
+end;
+$$;
+
+revoke all on function public.bunkai_accept_workspace_invite(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.bunkai_accept_workspace_invite(uuid, uuid) to service_role;
+
+-- 0085 hands every new function to the QA roles; this one takes an identity
+-- parameter and writes, so neither QA role keeps it.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'qa_inspector_ro') then
+    revoke all on function public.bunkai_accept_workspace_invite(uuid, uuid) from qa_inspector_ro;
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'qa_inspector_rw') then
+    revoke all on function public.bunkai_accept_workspace_invite(uuid, uuid) from qa_inspector_rw;
+  end if;
+end;
+$$;
+
+-- Verification (run after apply):
+--   select policyname from pg_policies where tablename = 'workspace_members';            -- only the select policy
+--   select has_table_privilege('authenticated', 'public.workspace_members', 'DELETE');   -- false
+--   select has_function_privilege('authenticated', 'public.bunkai_accept_workspace_invite(uuid,uuid)', 'EXECUTE'); -- false
