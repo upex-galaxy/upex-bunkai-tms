@@ -29,6 +29,8 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   'module.description_updated',
   'module.moved',
   'module.archived',
+  // BK-601 — one entry per real restore, none for a no-op.
+  'module.restored',
   'atc.created',
   // BK-268 — ATC edits (in-app editor + API share bunkai_update_atc).
   'atc.updated',

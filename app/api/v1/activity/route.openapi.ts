@@ -62,6 +62,15 @@ const ActivityItemSchema = z
       new_path: z.string().nullable(),
     }),
     activityItemVariant('ModuleArchived', 'module.archived', 'module', {
+      name: z.string().nullable(),
+      modules: z.number().int().nullable(),
+      user_stories: z.number().int().nullable(),
+      acceptance_criteria: z.number().int().nullable(),
+      atcs: z.number().int().nullable(),
+    }),
+    // BK-601 — projection of migration 0117. `modules` counts the Module itself.
+    activityItemVariant('ModuleRestored', 'module.restored', 'module', {
+      name: z.string().nullable(),
       modules: z.number().int().nullable(),
       user_stories: z.number().int().nullable(),
       acceptance_criteria: z.number().int().nullable(),

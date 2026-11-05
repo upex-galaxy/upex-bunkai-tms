@@ -186,6 +186,12 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
     expect(deriveItemLabel({ action: 'module.description_updated', entity_type: 'module', payload: {} })).toBe('a module');
   });
 
+  it('module.archived and module.restored name the Module when the feed projected it', () => {
+    expect(deriveItemLabel({ action: 'module.archived', entity_type: 'module', payload: { name: 'Checkout' } })).toBe('Checkout');
+    expect(deriveItemLabel({ action: 'module.restored', entity_type: 'module', payload: { name: 'Checkout' } })).toBe('Checkout');
+    expect(deriveItemLabel({ action: 'module.restored', entity_type: 'module', payload: {} })).toBe('a module');
+  });
+
   it('module.archived falls back generic', () => {
     expect(deriveItemLabel({ action: 'module.archived', entity_type: 'module', payload: { modules: 2, atcs: 5 } })).toBe('a module');
   });
