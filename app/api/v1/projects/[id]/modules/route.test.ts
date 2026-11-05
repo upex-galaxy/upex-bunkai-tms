@@ -50,6 +50,7 @@ interface Seed {
   sweptStoryId: string
   sweptCriterionId: string
   ownStoryId: string
+  sweptAtcId: string
   writeToken: string
   viewerToken: string
   tokenIds: string[]
@@ -67,7 +68,7 @@ function get(path: string, token: string): NextRequest {
 }
 
 interface Row { id: string, archived_at: string | null, archive: { archived_at: string, archived_by: { user_id: string, email: string | null } | null, archived_with: string | null } | null }
-interface Listing { modules: Row[], user_stories: Row[], acceptance_criteria: Row[] }
+interface Listing { modules: Row[], user_stories: Row[], acceptance_criteria: Row[], archived_atcs: Row[] }
 
 async function listing(projectId: string, token: string, query = ''): Promise<Listing> {
   const response = await GET(get(`projects/${projectId}/modules${query}`, token));
@@ -111,6 +112,7 @@ describeOrSkip('BK-601: include_archived on the Module, User Story and Acceptanc
     const swept = must(await db.from('user_stories').insert({ module_id: archived.id, project_id: project.id, title: `${PREFIX} swept` }).select('id').single(), 'swept story');
     const criterion = must(await db.from('acceptance_criteria').insert({ user_story_id: swept.id, title: `${PREFIX} swept ac`, position: 1 }).select('id').single(), 'swept criterion');
     const own = must(await db.from('user_stories').insert({ module_id: live.id, project_id: project.id, title: `${PREFIX} own`, archived_at: stamp }).select('id').single(), 'own story');
+    const atc = must(await db.from('atcs').insert({ project_id: project.id, module_id: archived.id, user_story_id: swept.id, slug: `${PREFIX}-a`, title: `${PREFIX} atc`, layer: 'UI' }).select('id').single(), 'swept atc');
 
     const write = await mintPat({ admin: db, userId, workspaceId: ws.id as string, name: `${PREFIX}-write`, scopes: ['atc:read', 'atc:write'] });
     const viewer = await mintPat({ admin: db, userId, workspaceId: viewerWs.id as string, name: `${PREFIX}-viewer`, scopes: ['atc:read'] });
@@ -135,6 +137,7 @@ describeOrSkip('BK-601: include_archived on the Module, User Story and Acceptanc
       sweptStoryId: swept.id as string,
       sweptCriterionId: criterion.id as string,
       ownStoryId: own.id as string,
+      sweptAtcId: atc.id as string,
       writeToken: write.token,
       viewerToken: viewer.token,
       tokenIds: [write.id, viewer.id],
@@ -149,6 +152,7 @@ describeOrSkip('BK-601: include_archived on the Module, User Story and Acceptanc
       await db.from('access_token_secrets').delete().eq('token_id', id);
       await db.from('access_tokens').delete().eq('id', id);
     }
+    await db.from('atcs').delete().eq('id', s.sweptAtcId);
     await db.from('projects').delete().in('workspace_id', s.workspaceIds);
     await db.from('workspace_members').delete().in('workspace_id', s.workspaceIds);
     await db.from('workspaces').delete().in('id', s.workspaceIds);
@@ -165,6 +169,7 @@ describeOrSkip('BK-601: include_archived on the Module, User Story and Acceptanc
       expect(body.modules.map(m => m.id)).toEqual([s.liveId]);
       expect(body.user_stories).toEqual([]);
       expect(body.acceptance_criteria).toEqual([]);
+      expect(body.archived_atcs).toEqual([]);
     }
   });
 
@@ -183,6 +188,9 @@ describeOrSkip('BK-601: include_archived on the Module, User Story and Acceptanc
     expect(swept.archive).toEqual({ archived_at: swept.archived_at!, archived_by: actor, archived_with: 'Gone' });
     const criterion = body.acceptance_criteria.find(r => r.id === s.sweptCriterionId)!;
     expect(criterion.archive?.archived_with).toBe('Gone');
+
+    const swepAtc = body.archived_atcs.find(r => r.id === s.sweptAtcId)!;
+    expect(swepAtc.archive).toEqual({ archived_at: swepAtc.archived_at!, archived_by: actor, archived_with: 'Gone' });
 
     const own = body.user_stories.find(r => r.id === s.ownStoryId)!;
     expect(own.archive).toEqual({ archived_at: own.archived_at!, archived_by: null, archived_with: null });

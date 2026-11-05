@@ -57,7 +57,7 @@ export interface Module {
   description: string | null
   created_at: Timestamp
   archived_at: Timestamp | null
-  // BK-601 — which Module archive took this row down. Internal: never in an API body.
+  // BK-601 — which Module archive took this row down. Internal: the tree listing leaves it out.
   archive_batch_id?: Uuid | null
   archive?: ArchiveInfo | null
 }
@@ -75,7 +75,7 @@ export interface UserStory {
   status: UserStoryStatus
   created_at: Timestamp
   archived_at: Timestamp | null
-  // BK-601 — which Module archive took this row down. Internal: never in an API body.
+  // BK-601 — which Module archive took this row down. Internal: the tree listing leaves it out.
   archive_batch_id?: Uuid | null
   archive?: ArchiveInfo | null
 }
@@ -88,7 +88,7 @@ export interface AcceptanceCriterion {
   position: number
   created_at: Timestamp
   archived_at: Timestamp | null
-  // BK-601 — which Module archive took this row down. Internal: never in an API body.
+  // BK-601 — which Module archive took this row down. Internal: the tree listing leaves it out.
   archive_batch_id?: Uuid | null
   archive?: ArchiveInfo | null
 }
@@ -153,6 +153,8 @@ export interface Atc {
   created_at: Timestamp
   updated_at: Timestamp
   archived_at: Timestamp | null
+  // BK-601 — filled only by the opt-in tree listing.
+  archive?: ArchiveInfo | null
 }
 
 export interface AtcStep {

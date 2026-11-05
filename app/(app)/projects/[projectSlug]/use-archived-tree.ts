@@ -17,7 +17,7 @@ type ArchivedRead
     | { status: 'error', message: string };
 
 // `node.atcs` already holds every live ATC in the Module (the tree builder buckets
-// story-linked ATCs there too). Archived ATCs are not read: that view is BK-571's.
+// story-linked ATCs there too). The listing adds only the archived ones.
 function liveAtcs(nodes: ModuleTreeNode[], acc: Atc[] = []): Atc[] {
   for (const node of nodes) {
     acc.push(...node.atcs);
@@ -44,13 +44,14 @@ export function useArchivedTree(projectId: string, liveTree: ModuleTreeNode[], e
         setRead({ status: 'error', message: result.errorMessage });
         return;
       }
-      const { modules, user_stories: stories, acceptance_criteria: acceptanceCriteria } = result.listing;
+      const { modules, user_stories: stories, acceptance_criteria: acceptanceCriteria, archived_atcs: archivedAtcs } = result.listing;
       setRead({
         status: 'ready',
-        tree: buildModuleTree({ modules, stories, acceptanceCriteria, atcs: liveAtcs(liveTree) }),
+        tree: buildModuleTree({ modules, stories, acceptanceCriteria, atcs: [...liveAtcs(liveTree), ...archivedAtcs] }),
         anyArchived: modules.some(m => m.archived_at !== null)
           || stories.some(s => s.archived_at !== null)
-          || acceptanceCriteria.some(c => c.archived_at !== null),
+          || acceptanceCriteria.some(c => c.archived_at !== null)
+          || archivedAtcs.length > 0,
       });
     });
     return () => { cancelled = true; };

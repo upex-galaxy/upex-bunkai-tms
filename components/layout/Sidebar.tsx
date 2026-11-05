@@ -347,7 +347,7 @@ function ModuleNode({
   // flat here, so a story-linked ATC isn't drawn twice.
   const storyIds = new Set(node.user_stories.map(s => s.id));
   const visibleAtcs = node.atcs.filter(
-    atc => !storyIds.has(atc.user_story_id) && atcMatches(atc.status, filter),
+    atc => !storyIds.has(atc.user_story_id) && atcMatches(atc, filter),
   );
 
   return (
@@ -580,8 +580,8 @@ function StoryNode({
 }) {
   const [open, setOpen] = useState(false);
   const acs = story.acceptance_criteria;
-  const storyAtcs = story.atcs.filter(atc => atcMatches(atc.status, filter));
-  const storyRollup = rollupStatus(story.atcs.map(a => a.status));
+  const storyAtcs = story.atcs.filter(atc => atcMatches(atc, filter));
+  const storyRollup = rollupStatus(story.atcs.filter(isLiveAtc).map(a => a.status));
   const archived = story.archived_at !== null;
   const hasChildren = acs.length > 0 || story.atcs.length > 0;
   const newAtcHref = `/projects/${projectSlug}/atcs/new?story=${story.id}`;
@@ -757,37 +757,45 @@ function AtcLink({
   onContextMenu: OpenCtx
   onOpenAtc?: (atc: Atc) => void
 }) {
+  const archived = !isLiveAtc(atc);
   return (
-    <Link
-      href={`/projects/${projectSlug}/atcs/${atc.id}`}
-      onContextMenu={e => onContextMenu(e, { kind: 'atc', atc })}
-      onClick={(e) => {
+    <>
+      <Link
+        href={`/projects/${projectSlug}/atcs/${atc.id}`}
+        onContextMenu={e => onContextMenu(e, { kind: 'atc', atc })}
+        onClick={(e) => {
         // In the Tree workbench, a plain click opens the ATC in an in-pane tab
         // instead of navigating to the full editor. Modifier/middle clicks keep
         // the native link behaviour (open the editor in a new tab).
-        if (onOpenAtc && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
-          e.preventDefault();
-          onOpenAtc(atc);
-        }
-      }}
-      className={cn(
-        'flex h-6 items-center gap-1.5 text-sm transition-colors',
-        selected
-          ? 'border-l-2 border-accent bg-accent-soft text-fg-0'
-          : 'border-l-2 border-transparent text-fg-1 hover:bg-surface-2',
-      )}
-      style={{ paddingLeft: indent, paddingRight: 8 }}
-    >
-      <span className="dot shrink-0" data-status={atc.status} />
-      <span className="shrink-0 font-mono text-xs text-fg-3" title={atc.slug}>{shortSlug(atc.slug)}</span>
-      <span className="min-w-0 flex-1 truncate">{atc.title}</span>
-      <span
-        className="layer-chip shrink-0"
-        data-layer={atc.layer.toLowerCase()}
+          if (onOpenAtc && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+            e.preventDefault();
+            onOpenAtc(atc);
+          }
+        }}
+        className={cn(
+          'flex h-6 items-center gap-1.5 text-sm transition-colors',
+          selected
+            ? 'border-l-2 border-accent bg-accent-soft text-fg-0'
+            : 'border-l-2 border-transparent text-fg-1 hover:bg-surface-2',
+        )}
+        style={{ paddingLeft: indent, paddingRight: 8 }}
       >
-        {atc.layer}
-      </span>
-    </Link>
+        {!archived && <span className="dot shrink-0" data-status={atc.status} />}
+        <span className="shrink-0 font-mono text-xs text-fg-3" title={atc.slug}>{shortSlug(atc.slug)}</span>
+        <span className={cn('min-w-0 flex-1 truncate', archived && 'text-fg-3')}>{atc.title}</span>
+        {archived
+          ? <ArchivedBadge testId={`atc-archived-${atc.id}`} />
+          : (
+              <span
+                className="layer-chip shrink-0"
+                data-layer={atc.layer.toLowerCase()}
+              >
+                {atc.layer}
+              </span>
+            )}
+      </Link>
+      {archived && <ArchivedMeta info={atc.archive} indent={indent} testId={`atc-archive-info-${atc.id}`} />}
+    </>
   );
 }
 
@@ -944,13 +952,13 @@ function ExplorerContextMenu({
       { label: 'Open', icon: ArrowRight, shortcut: '⏎', onClick: () => router.push(href) },
       { label: 'Open in new tab', icon: ArrowUpRight, shortcut: '⌘⏎', onClick: () => window.open(href, '_blank', 'noopener') },
     ];
-    if (canCreate && onDuplicateAtc) {
+    if (canCreate && onDuplicateAtc && isLiveAtc(atc)) {
       entries.push(
         'divider',
         { label: 'Duplicate', icon: Files, shortcut: '⌘D', onClick: () => onDuplicateAtc(atc) },
       );
     }
-    if (canCreate && onArchiveAtc) {
+    if (canCreate && onArchiveAtc && isLiveAtc(atc)) {
       entries.push(
         { label: 'Archive', icon: Archive, onClick: () => onArchiveAtc(atc) },
       );
@@ -1027,12 +1035,18 @@ function ExplorerContextMenu({
   );
 }
 
-function atcMatches(status: AtcStatus, filter: ExplorerFilter): boolean {
-  return filter === 'all' || status === filter;
+// BK-601 — an archived ATC is on screen only under the opt-in, and only in the `all`
+// view: it has no run status to filter by, and no chip or roll-up ever counts it.
+function isLiveAtc(atc: Atc): boolean {
+  return atc.archived_at === null;
+}
+
+function atcMatches(atc: Atc, filter: ExplorerFilter): boolean {
+  return filter === 'all' || (isLiveAtc(atc) && atc.status === filter);
 }
 
 function countAtcs(node: ModuleTreeNode): number {
-  let n = node.atcs.length;
+  let n = node.atcs.filter(isLiveAtc).length;
   for (const c of node.children) { n += countAtcs(c); }
   return n;
 }
@@ -1053,7 +1067,7 @@ function rollupStatus(statuses: AtcStatus[]): AtcStatus | null {
 // node.atcs already holds every ATC in the module (the tree builder buckets
 // story-linked ATCs there too), so recursing children alone covers the subtree.
 function moduleStatuses(node: ModuleTreeNode): AtcStatus[] {
-  const acc = node.atcs.map(a => a.status);
+  const acc = node.atcs.filter(isLiveAtc).map(a => a.status);
   for (const c of node.children) { acc.push(...moduleStatuses(c)); }
   return acc;
 }
@@ -1061,7 +1075,7 @@ function moduleStatuses(node: ModuleTreeNode): AtcStatus[] {
 function countByStatus(tree: ModuleTreeNode[]): Record<ExplorerFilter, number> {
   const acc: Record<ExplorerFilter, number> = { all: 0, fail: 0, blocked: 0, unrun: 0 };
   const walk = (node: ModuleTreeNode) => {
-    for (const atc of node.atcs) {
+    for (const atc of node.atcs.filter(isLiveAtc)) {
       acc.all += 1;
       if (atc.status === 'fail') { acc.fail += 1; }
       else if (atc.status === 'blocked') { acc.blocked += 1; }

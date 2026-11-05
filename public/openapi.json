@@ -3927,6 +3927,49 @@
           "archive"
         ]
       },
+      "TreeArchivedAtc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_story_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string"
+          },
+          "archived_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archive": {
+            "$ref": "#/components/schemas/ArchiveInfo"
+          }
+        },
+        "required": [
+          "id",
+          "module_id",
+          "user_story_id",
+          "slug",
+          "title",
+          "layer",
+          "archived_at",
+          "archive"
+        ]
+      },
       "ModuleCreateResponse": {
         "type": "object",
         "properties": {
@@ -10933,7 +10976,7 @@
             }
           },
           "409": {
-            "description": "Refused, nothing written. `details.reason`: `ancestor_archived` (with `ancestor_id`, `ancestor_name`), `depth_exceeded`, `name_collision` (with `module_name`) or `story_key_collision` (with `external_id`).",
+            "description": "Refused, nothing written. `details.reason`: `ancestor_archived` (with `ancestor_id`, `ancestor_name`), `depth_exceeded`, `name_collision` (with `module_name`), `story_key_collision` (with `external_id`) or `concurrent_change` (retry).",
             "content": {
               "application/json": {
                 "schema": {
@@ -12278,7 +12321,7 @@
       "get": {
         "tags": ["Modules"],
         "summary": "List a project's module tree",
-        "description": "Bearer `atc:read` (or cookie session). Any workspace member, viewers included. Returns the Project's Modules, their User Stories and those Stories' Acceptance Criteria as flat lists. Live rows only by default; `?include_archived=true` adds archived rows, each carrying `archive`. ATCs are not listed here: the archived-ATC view is `/atcs?view=archived`.",
+        "description": "Bearer `atc:read` (or cookie session). Any workspace member, viewers included. Returns the Project's Modules, their User Stories and those Stories' Acceptance Criteria as flat lists. Live rows only by default; `?include_archived=true` adds archived rows, each carrying `archive`, and `archived_atcs` with the Project's archived ATCs, so that what a Module's archive took stays reachable. Live ATCs are not listed here.",
         "security": [
           {
             "cookieAuth": []
@@ -12333,9 +12376,16 @@
                       "items": {
                         "$ref": "#/components/schemas/TreeAcceptanceCriterion"
                       }
+                    },
+                    "archived_atcs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TreeArchivedAtc"
+                      },
+                      "description": "Empty without the opt-in."
                     }
                   },
-                  "required": ["modules", "user_stories", "acceptance_criteria"]
+                  "required": ["modules", "user_stories", "acceptance_criteria", "archived_atcs"]
                 }
               }
             }

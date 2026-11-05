@@ -87,13 +87,26 @@ const TreeCriterionSchema = z
   })
   .openapi('TreeAcceptanceCriterion');
 
+const TreeArchivedAtcSchema = z
+  .object({
+    id: z.string().uuid(),
+    module_id: z.string().uuid(),
+    user_story_id: z.string().uuid(),
+    slug: z.string(),
+    title: z.string(),
+    layer: z.string(),
+    archived_at: z.string().datetime({ offset: true }),
+    archive: ArchiveInfoSchema,
+  })
+  .openapi('TreeArchivedAtc');
+
 registry.registerPath({
   method: 'get',
   path: '/api/v1/projects/{id}/modules',
   tags: ['Modules'],
   summary: 'List a project\'s module tree',
   description:
-    'Bearer `atc:read` (or cookie session). Any workspace member, viewers included. Returns the Project\'s Modules, their User Stories and those Stories\' Acceptance Criteria as flat lists. Live rows only by default; `?include_archived=true` adds archived rows, each carrying `archive`. ATCs are not listed here: the archived-ATC view is `/atcs?view=archived`.',
+    'Bearer `atc:read` (or cookie session). Any workspace member, viewers included. Returns the Project\'s Modules, their User Stories and those Stories\' Acceptance Criteria as flat lists. Live rows only by default; `?include_archived=true` adds archived rows, each carrying `archive`, and `archived_atcs` with the Project\'s archived ATCs, so that what a Module\'s archive took stays reachable. Live ATCs are not listed here.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam, {
     name: 'include_archived',
@@ -109,6 +122,7 @@ registry.registerPath({
         modules: z.array(TreeModuleSchema),
         user_stories: z.array(TreeUserStorySchema),
         acceptance_criteria: z.array(TreeCriterionSchema),
+        archived_atcs: z.array(TreeArchivedAtcSchema).describe('Empty without the opt-in.'),
       }) } },
     },
     400: { description: 'Malformed project id.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },

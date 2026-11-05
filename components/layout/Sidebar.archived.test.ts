@@ -98,6 +98,8 @@ async function render(canCreate: boolean, tree: ModuleTreeNode[] = TREE, pressed
       onMoveModule: () => {},
       onDeleteModule: () => {},
       onNewUserStory: () => {},
+      onDuplicateAtc: () => {},
+      onArchiveAtc: () => {},
     }));
   });
   mounted.push({ container, root });
@@ -128,6 +130,63 @@ afterEach(async () => {
   mounted = [];
   toggles = 0;
   restores = [];
+});
+
+const LIVE_ATC = {
+  id: 'a-live',
+  project_id: 'p',
+  module_id: 'live',
+  user_story_id: 's-x',
+  slug: 'billing/atc-11111111',
+  title: 'Live ATC',
+  layer: 'UI',
+  version: 1,
+  status: 'fail',
+  tags: [],
+  technique: null,
+  priority: null,
+  created_at: AT,
+  updated_at: AT,
+  archived_at: null,
+} as const;
+
+function atcTree(): ModuleTreeNode[] {
+  const archivedAtc = {
+    ...LIVE_ATC,
+    id: 'a-gone',
+    slug: 'billing/atc-22222222',
+    title: 'Gone ATC',
+    archived_at: AT,
+    archive: { archived_at: AT, archived_by: INFO.archived_by, archived_with: 'Checkout' },
+    tags: [],
+  };
+  return [node('live', 'Billing', null, { atcs: [{ ...LIVE_ATC, tags: [] }, archivedAtc] })];
+}
+
+describe('Sidebar archived ATCs', () => {
+  test('are marked and reachable, and no chip or count includes them', async () => {
+    const container = await render(true, atcTree());
+
+    expect(byTestId(container, 'atc-archived-a-gone')?.textContent).toBe('Archived');
+    expect(byTestId(container, 'atc-archive-info-a-gone')?.textContent).toContain('with Checkout');
+    expect(container.querySelector('a[href="/projects/web/atcs/a-gone"]')).not.toBeNull();
+    expect(byTestId(container, 'explorer-filter-all')?.textContent).toBe('all1');
+    expect(byTestId(container, 'explorer-filter-fail')?.textContent).toBe('fail1');
+  });
+
+  test('leave the status filters and offer no edit in the menu', async () => {
+    const container = await render(true, atcTree());
+
+    await click(byTestId(container, 'explorer-filter-fail'));
+    expect(byTestId(container, 'atc-archived-a-gone')).toBeNull();
+    await click(byTestId(container, 'explorer-filter-all'));
+
+    const link = container.querySelector('a[href="/projects/web/atcs/a-gone"]') as HTMLElement;
+    await openContextMenu(link);
+    expect(byTestId(container, 'ctx-open')).not.toBeNull();
+    expect(byTestId(container, 'ctx-duplicate')).toBeNull();
+    expect(byTestId(container, 'ctx-archive')).toBeNull();
+  });
 });
 
 describe('Sidebar archived rows', () => {

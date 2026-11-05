@@ -113,6 +113,24 @@ export async function fetchTreeAtcs(db: Db, projectId: string): Promise<Atc[]> {
   }));
 }
 
+// BK-601 — the Project's archived ATCs, for the opt-in tree only: a Module's archive
+// takes its ATCs down and each must stay reachable. Nothing here touches the live read.
+export type ArchivedTreeAtc = Atc & { archived_by: string | null, archive_batch_id: string | null };
+
+export async function fetchTreeArchivedAtcs(db: Db, projectId: string): Promise<ArchivedTreeAtc[]> {
+  return dedupeById(await fetchAllPages<ArchivedTreeAtc>(async (offset, limit) => {
+    const { data, error } = await db
+      .from('atcs')
+      .select(`${TREE_ATC_COLUMNS}, archived_by, archive_batch_id`)
+      .eq('project_id', projectId)
+      .not('archived_at', 'is', null)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(offset, offset + limit - 1);
+    return { data: data as ArchivedTreeAtc[] | null, error };
+  }));
+}
+
 // Live stories of the given (live) modules. Batched by module, so every
 // module's stories come back from one batch, in creation order.
 export async function fetchTreeStories(db: Db, moduleIds: string[], options: TreeReadOptions = {}): Promise<UserStory[]> {

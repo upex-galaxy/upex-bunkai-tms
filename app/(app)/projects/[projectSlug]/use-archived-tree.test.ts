@@ -57,7 +57,7 @@ function listing(archived: boolean) {
       ? [{ id: 'm2', project_id: PROJECT, parent_module_id: null, path: 'm2', name: 'Gone', position: 1, description: null, created_at: '2026-01-01T00:00:00Z', archived_at: '2026-11-05T10:00:00Z', archive: { archived_at: '2026-11-05T10:00:00Z', archived_by: null, archived_with: null } }]
       : []),
   ];
-  return { modules, user_stories: [], acceptance_criteria: [] };
+  return { modules, user_stories: [], acceptance_criteria: [], archived_atcs: [] };
 }
 
 const realFetch = globalThis.fetch;

@@ -1,3 +1,4 @@
+import type { ArchivedTreeAtc } from '@lib/projects/workbench-tree-query';
 import type { AcceptanceCriterion, Module, UserStory } from '@lib/types';
 import { describe, expect, it } from 'bun:test';
 import { annotateArchive } from './archived-tree';
@@ -51,6 +52,55 @@ function criterion(id: string, storyId: string, archivedAt: string | null, batch
 
 const ANA = { user_id: 'u1', email: 'ana@example.com' };
 const actors = new Map([['top', ANA]]);
+
+function archivedAtc(id: string, moduleId: string, storyId: string, archivedAt: string, batch: string | null, by: string | null): ArchivedTreeAtc {
+  return {
+    id,
+    project_id: 'p',
+    module_id: moduleId,
+    user_story_id: storyId,
+    slug: `x/${id}`,
+    title: id,
+    layer: 'UI',
+    version: 1,
+    status: 'unrun',
+    tags: [],
+    technique: null,
+    priority: null,
+    created_at: EARLIER,
+    updated_at: EARLIER,
+    archived_at: archivedAt,
+    archived_by: by,
+    archive_batch_id: batch,
+  };
+}
+
+describe('annotateArchive for ATCs', () => {
+  const base = {
+    modules: [mod('top', null, AT, 'b1')],
+    stories: [story('s1', 'top', AT, 'b1')],
+    criteria: [],
+    actorByModule: actors,
+  };
+
+  it('a swept ATC and one held by its parent read as gone with the Module', () => {
+    const result = annotateArchive({
+      ...base,
+      atcs: [archivedAtc('swept', 'top', 's1', AT, 'b1', null), archivedAtc('held', 'top', 's1', AT, null, null)],
+    });
+    expect(result.atcs.get('swept')).toEqual({ archived_at: AT, archived_by: ANA, archived_with: 'Module top' });
+    expect(result.atcs.get('held')).toEqual({ archived_at: AT, archived_by: ANA, archived_with: 'Module top' });
+  });
+
+  it('an ATC archived on its own shows its own actor', () => {
+    const result = annotateArchive({
+      ...base,
+      atcs: [archivedAtc('own', 'top', 's1', EARLIER, null, 'u9')],
+      emailByUser: new Map([['u9', 'cy@example.com']]),
+    });
+    expect(result.atcs.get('own')).toEqual({ archived_at: EARLIER, archived_by: { user_id: 'u9', email: 'cy@example.com' }, archived_with: null });
+  });
+});
 
 describe('annotateArchive', () => {
   it('gives the top of an archive its actor, and everything swept up the same actor and its name', () => {
