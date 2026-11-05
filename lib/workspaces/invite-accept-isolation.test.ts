@@ -1,23 +1,23 @@
 import { SQL } from 'bun';
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { createMembershipFixture, expectEveryCallBlocked, hasLockEnv, overlapOnMemberRow, pgUrl } from './membership-lock-test-support';
+import { createMembershipFixture, expectEveryCallBlocked, hasLockEnv, overlapHolding, overlapOnMemberRow, pgUrl, withLocklessCopy } from './membership-lock-test-support';
 
 // BK-1589 G4/G5 — bunkai_accept_workspace_invite against the REAL database
 // (migration 0118): the inviter is re-validated under lock and fails closed
 // (AC-4), the BK-62 never-demote rule holds, and the grant keeps every user
 // session out. It is called through the service client, its only shipped caller.
 //
-// The lock proof has a mutation test beside it. A new function has no lock-less
-// live version to go red against, so that test recreates this one in pg_temp
-// with the lock clause deleted (session-local, gone with the connection, nothing
-// persists in the schema) and shows the same scenario no longer waits and lets
-// the member in.
+// Each lock proof has a mutation test beside it. A new function has no lock-less
+// live version to go red against, so those tests recreate it in pg_temp with one
+// lock clause deleted (session-local, gone with the connection, nothing persists
+// in the schema) and show the same scenario then lets the member in.
 //
 // FAIL-CLOSED GATE. Skipped, with a loud warning, only when there is no database
 // environment or the function is not deployed (42883 / PGRST202). Any other
 // probe answer fails the file.
 
 const RPC = 'bunkai_accept_workspace_invite';
+const ACCEPT = 'public.bunkai_accept_workspace_invite(uuid,uuid)';
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
 const PERSONAS = ['owner', 'admin', 'admin2', 'invitee', 'bootstrapper'] as const;
 type Persona = typeof PERSONAS[number];
@@ -132,44 +132,142 @@ describeOrSkip('BK-1589 — invite accept re-validates the inviter under lock (A
     expect((await inviteRow(invite)).accepted_at).toBeNull();
   }, 60_000);
 
-  it('with the lock clause deleted the same scenario does not wait and lets the member in (G5, AC-4.3)', async () => {
+  it('with the member lock clause deleted the same scenario does not wait and lets the member in (G5, AC-4.3)', async () => {
     expect.hasAssertions();
-    const seed = await f.seedWorkspace('mutant', { owner: 'owner', admin: 'admin' });
+    const seed = await f.seedWorkspace('mutant-member', { owner: 'owner', admin: 'admin' });
     const invite = await seedInvite(seed.workspaceId, { role: 'member', invitedBy: 'admin' });
 
-    const pool = new SQL(pgUrl!, { max: 1 });
-    try {
-      const session = await pool.reserve();
-      try {
-        const [{ def }] = await session`select pg_get_functiondef('public.bunkai_accept_workspace_invite(uuid,uuid)'::regprocedure) as def`;
-        const source = def as string;
-        const lockClause = /order by wm\.user_id\s+for update/gi;
-        // The deployed function holds the clause, exactly once: a static complement.
-        expect(source.match(lockClause)?.length).toBe(1);
-        const mutant = source
-          .replace(lockClause, 'order by wm.user_id')
-          .replace('public.bunkai_accept_workspace_invite(', 'pg_temp.accept_without_lock(');
-        expect(mutant).toContain('pg_temp.accept_without_lock(');
-        await session.unsafe(mutant);
+    const { blocked } = await withLocklessCopy(
+      { signature: ACCEPT, clause: /order by wm\.user_id\s+for update/, unlocked: 'order by wm.user_id', tempName: 'accept_without_member_lock' },
+      async session => overlapOnMemberRow(
+        { workspaceId: seed.workspaceId, userId: users.admin.id },
+        [async () => session.unsafe('select pg_temp.accept_without_member_lock($1::uuid, $2::uuid)', [invite, users.invitee.id])],
+        async () => {
+          // The row is still held, and the member is already in.
+          expect(await f.memberRow(seed.workspaceId, 'invitee')).not.toBeNull();
+        },
+      ),
+    );
+    // Red for the test above: nothing queued behind the held inviter row.
+    expect(blocked).toEqual([0]);
+  }, 60_000);
 
-        const { blocked } = await overlapOnMemberRow(
-          { workspaceId: seed.workspaceId, userId: users.admin.id },
-          [async () => session.unsafe('select pg_temp.accept_without_lock($1::uuid, $2::uuid)', [invite, users.invitee.id])],
-          async () => {
-            // The row is still held, and the member is already in.
-            expect(await f.memberRow(seed.workspaceId, 'invitee')).not.toBeNull();
-          },
-        );
-        // Red for the real test above: nothing queued behind the held inviter row.
-        expect(blocked).toEqual([0]);
-      }
-      finally {
-        session.release();
-      }
-    }
-    finally {
-      await pool.close();
-    }
+  it('a workspace being deleted: accept waits on it, then answers the never-existed refusal', async () => {
+    expect.hasAssertions();
+    const seed = await f.seedWorkspace('ws-lock', { owner: 'owner', admin: 'admin' });
+    const invite = await seedInvite(seed.workspaceId, { role: 'member', invitedBy: 'admin' });
+
+    const { blocked, results: [answer] } = await overlapHolding(
+      {
+        hold: async holder => holder`update public.workspaces set deleted_at = now() where id = ${seed.workspaceId}::uuid returning 1`,
+        release: 'commit',
+      },
+      [() => accept(invite)],
+    );
+
+    expectEveryCallBlocked(blocked);
+    expect(answer.error?.code).toBe('P0002');
+    expect(await f.memberRow(seed.workspaceId, 'invitee')).toBeNull();
+  }, 60_000);
+
+  it('with the workspace lock clause deleted the member joins a workspace being deleted (G5)', async () => {
+    expect.hasAssertions();
+    const seed = await f.seedWorkspace('ws-lock-mutant', { owner: 'owner', admin: 'admin' });
+    const invite = await seedInvite(seed.workspaceId, { role: 'member', invitedBy: 'admin' });
+
+    const { blocked } = await withLocklessCopy(
+      { signature: ACCEPT, clause: /where w\.id = v_workspace_id\s+for share/, unlocked: 'where w.id = v_workspace_id', tempName: 'accept_without_workspace_lock' },
+      async session => overlapHolding(
+        {
+          hold: async holder => holder`update public.workspaces set deleted_at = now() where id = ${seed.workspaceId}::uuid returning 1`,
+          release: 'commit',
+        },
+        [async () => session.unsafe('select pg_temp.accept_without_workspace_lock($1::uuid, $2::uuid)', [invite, users.invitee.id])],
+      ),
+    );
+    expect(blocked).toEqual([0]);
+    expect(await f.memberRow(seed.workspaceId, 'invitee')).not.toBeNull();
+  }, 60_000);
+
+  it('an invite being revoked: accept waits on its row, then is refused as revoked', async () => {
+    expect.hasAssertions();
+    const seed = await f.seedWorkspace('invite-lock', { owner: 'owner', admin: 'admin' });
+    const invite = await seedInvite(seed.workspaceId, { role: 'member', invitedBy: 'admin' });
+
+    const { blocked, results: [answer] } = await overlapHolding(
+      {
+        hold: async holder => holder`update public.workspace_invites set revoked_at = now() where id = ${invite}::uuid returning 1`,
+        release: 'commit',
+      },
+      [() => accept(invite)],
+    );
+
+    expectEveryCallBlocked(blocked);
+    expect(answer.error?.code).toBe('45224');
+    expect(answer.error?.message).toBe('invite_revoked');
+    expect(await f.memberRow(seed.workspaceId, 'invitee')).toBeNull();
+  }, 60_000);
+
+  it('with the invite lock clause deleted a revoked invite still lets the member in (G5)', async () => {
+    expect.hasAssertions();
+    const seed = await f.seedWorkspace('invite-lock-mutant', { owner: 'owner', admin: 'admin' });
+    const invite = await seedInvite(seed.workspaceId, { role: 'member', invitedBy: 'admin' });
+
+    await withLocklessCopy(
+      { signature: ACCEPT, clause: /where i\.id = p_invite_id\s+for update/, unlocked: 'where i.id = p_invite_id', tempName: 'accept_without_invite_lock' },
+      async session => overlapHolding(
+        {
+          hold: async holder => holder`update public.workspace_invites set revoked_at = now() where id = ${invite}::uuid returning 1`,
+          release: 'commit',
+        },
+        [async () => session.unsafe('select pg_temp.accept_without_invite_lock($1::uuid, $2::uuid)', [invite, users.invitee.id])],
+      ),
+    );
+    // Red for the test above. It still waits, on its own stamp, so the answer is
+    // what convicts it.
+    expect(await f.memberRow(seed.workspaceId, 'invitee')).not.toBeNull();
+  }, 60_000);
+
+  it('an invite resent during the wait is refused: the row locked is no longer its inviter\'s', async () => {
+    expect.hasAssertions();
+    const seed = await f.seedWorkspace('restamped', { owner: 'owner', admin: 'admin' });
+    const invite = await seedInvite(seed.workspaceId, { role: 'member', invitedBy: 'admin' });
+
+    const { blocked, results: [answer] } = await overlapOnMemberRow(
+      { workspaceId: seed.workspaceId, userId: users.admin.id },
+      [() => accept(invite)],
+      async () => {
+        await f.service().from('workspace_invites').update({ invited_by_user_id: users.owner.id }).eq('id', invite);
+      },
+    );
+
+    expectEveryCallBlocked(blocked);
+    expect(answer.error?.code).toBe('45222');
+    expect(await f.memberRow(seed.workspaceId, 'invitee')).toBeNull();
+    // The retry has the new inviter's row to lock.
+    expect((await accept(invite)).error).toBeNull();
+  }, 60_000);
+
+  it('a removed Admin cannot have forged the invite: issuer, addressee and role are out of a session\'s reach (G4)', async () => {
+    expect.hasAssertions();
+    const seed = await f.seedWorkspace('forge', { owner: 'owner', admin: 'admin' });
+    const own = await seedInvite(seed.workspaceId, { role: 'admin', invitedBy: 'admin' });
+    const ownersInvite = await seedInvite(seed.workspaceId, { role: 'viewer', invitedBy: 'owner' });
+    const invites = () => clients.admin.from('workspace_invites');
+
+    expect((await invites().update({ invited_by_user_id: users.owner.id }).eq('id', own)).error?.code).toBe('42501');
+    expect((await invites().update({ email: 'alt@example.test' }).eq('id', ownersInvite)).error?.code).toBe('42501');
+    expect((await invites().update({ role: 'admin' }).eq('id', ownersInvite)).error?.code).toBe('42501');
+    expect((await invites().update({ workspace_id: seed.workspaceId }).eq('id', ownersInvite)).error?.code).toBe('42501');
+    // A brand-new invite must name its real issuer.
+    const forged = await invites().insert({ workspace_id: seed.workspaceId, email: `${f.prefix}-forged@example.test`, role: 'admin', invited_by_user_id: users.owner.id });
+    expect(forged.error?.code).toBe('42501');
+
+    // So the removal really does end what that Admin issued.
+    expect((await remove('owner', seed.workspaceId, users.admin.id)).error).toBeNull();
+    expect((await accept(own)).error?.code).toBe('45222');
+    const { data } = await f.service().from('workspace_invites').select('invited_by_user_id, role').eq('id', ownersInvite).single();
+    expect(data).toEqual({ invited_by_user_id: users.owner.id, role: 'viewer' });
   }, 60_000);
 
   it('a soft-deleted workspace mid-flight answers the never-existed refusal and writes nothing', async () => {
@@ -355,9 +453,7 @@ describeOrSkip('BK-1589 — invite accept re-validates the inviter under lock (A
     const slug = `bk1589-boot-${Date.now()}`;
     const { data, error } = await clients.bootstrapper.rpc('bunkai_bootstrap_workspace', { p_name: `${f.prefix} bootstrap`, p_slug: slug });
     expect(error).toBeNull();
-    const row = f.must(await f.service().from('workspaces').select('id').eq('slug', slug).single(), 'bootstrapped workspace');
-    f.trackWorkspace(row.id);
-    expect(data).toBeTruthy();
-    expect(await f.memberRow(row.id, 'bootstrapper')).toEqual({ role: 'owner', status: 'active' });
+    f.trackWorkspace(data as string);
+    expect(await f.memberRow(data as string, 'bootstrapper')).toEqual({ role: 'owner', status: 'active' });
   }, 60_000);
 });

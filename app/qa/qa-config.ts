@@ -677,7 +677,7 @@ export const qaConfig: QaConfig = {
       { method: 'DELETE', path: '/api/v1/tokens/{id}', purpose: 'Revoca un PAT — no hay recuperación. COOKIE-ONLY (403 con Bearer).' },
       { method: 'POST', path: '/api/v1/workspaces', purpose: 'Crea un workspace. Única escritura sin scope — es el bootstrap que un PAT nuevo necesita. Exige header Idempotency-Key (8–128 chars [A-Za-z0-9_-], p. ej. un UUID); sin él → 400 idempotency_key_required.' },
       { method: 'GET', path: '/api/v1/workspaces/{id}/invites', purpose: 'Invites del workspace. Exige scope workspace:admin, que un PAT headless nunca tiene → 403.' },
-      { method: 'POST', path: '/api/v1/invites/accept', purpose: 'Acepta una invitación por token.' },
+      { method: 'POST', path: '/api/v1/invites/accept', purpose: 'Acepta una invitación por token. 409 inviter_not_authorized si quien invitó ya no puede invitar (BK-1589).' },
       { method: 'DELETE', path: '/api/v1/workspaces/{id}/membership', purpose: 'Abandona un workspace. COOKIE-ONLY (403 con Bearer).' },
       { method: 'DELETE', path: '/api/v1/workspaces/{id}/members/{userId}', purpose: 'Quita a un compañero del workspace (BK-572): Owner o Admin, nunca a uno mismo (409, eso es Leave) ni un Admin a un Owner (403). En un solo acto revoca sus PATs de este workspace y sus invites pendientes, y desasigna sus Bugs. Exige scope workspace:admin.' },
       { method: 'POST', path: '/api/v1/me/active-workspace', purpose: 'Cambia el workspace activo. Es POST, no PUT. COOKIE-ONLY: un PAT no tiene workspace activo, pasá workspace_id en cada request.' },

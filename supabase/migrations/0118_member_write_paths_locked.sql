@@ -4,7 +4,8 @@
 -- Governing record: the BK-1589 AI Product Owner ruling of 2026-11-05 (G1-G6),
 -- ADR-0012 (RPC authorization invariant) and ADR-0022 with its 2026-11-05
 -- addendum. Additive and idempotent: no table, column or row is removed; every
--- object is `create or replace`, `drop policy if exists` or a `revoke`.
+-- object is `create or replace`, a `drop policy if exists` (with its `create
+-- policy` where one is replaced), or a `revoke` / `grant`.
 --
 -- What it does:
 --   1. G1: drops the INSERT, UPDATE and DELETE policies of workspace_members
@@ -13,6 +14,8 @@
 --   3. G3: bunkai_leave_workspace takes the same lock as removal (0114).
 --   4. G4: bunkai_accept_workspace_invite moves invite accept into one
 --      transaction that re-validates the inviter under lock and fails closed.
+--   5. G4: a user session can no longer rewrite who issued an invite, who it is
+--      addressed to or what role it carries.
 
 -- ============================================================================
 -- 1. workspace_members — no write path through a user session (G1)
@@ -44,10 +47,11 @@ revoke insert, update, delete, truncate on public.workspace_members from public,
 -- ours, and removal only ever unassigns, which takes no member lock.
 --
 -- Body copied forward from 0054. Changes: the eligibility read is FOR UPDATE;
--- the caller is re-checked after it (a wait can now outlast the caller's own
--- membership, same rule as 0114 step 4); and the Bug is locked and re-read
--- before the write, so the no-op test and the event's previous assignee never
--- describe the Bug as it was before the wait.
+-- the Bug is locked and re-read before the write, so the no-op test and the
+-- event's previous assignee never describe the Bug as it was before a wait; and
+-- the caller is re-checked after both locks (a wait can now outlast the caller's
+-- own membership, same rule as 0114 step 4). The eligibility answers come after
+-- that re-check, so a caller who is gone learns nothing about the assignee.
 create or replace function public.bunkai_assign_bug(
   p_bug_id           uuid,
   p_assignee_user_id uuid default null
@@ -90,38 +94,36 @@ begin
   --    on unassign) — the ONE cross-user read this function needs: a
   --    workspace_members row for a user OTHER than the caller, scoped to the
   --    bug's OWN already-authorized workspace_id. Locked, so a removal cannot
-  --    pass between this check and the write.
+  --    pass between this check and the write. Judged at step 5, once the caller
+  --    is known to still be here.
   if p_assignee_user_id is not null then
     select status, role into v_assignee_status, v_assignee_role
       from public.workspace_members
       where workspace_id = v_workspace_id
         and user_id = p_assignee_user_id
       for update;
+  end if;
+
+  -- 5. Lock the Bug (members first, then Bugs) and re-read it, then re-validate
+  --    the caller against what committed during either wait. Same answers as
+  --    steps 1 and 2. A removal's own unassign passes: its caller is active.
+  select assignee_user_id into v_previous_assignee
+    from public.bugs
+    where id = p_bug_id
+    for update;
+  if not found or not public.bunkai_is_workspace_member(v_workspace_id) then
+    raise exception 'bug_not_found' using errcode = 'P0002';
+  end if;
+  if not public.bunkai_can_write_workspace(v_workspace_id) then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+  if p_assignee_user_id is not null then
     if v_assignee_status is distinct from 'active' then
       raise exception 'bug_assignee_not_workspace_member' using errcode = '45312';
     end if;
     if v_assignee_role = 'viewer' then
       raise exception 'bug_assignee_view_only' using errcode = '45313';
     end if;
-
-    -- The lock above may have waited: re-validate the caller against what
-    -- committed meanwhile, same answers as steps 1 and 2.
-    if not public.bunkai_is_workspace_member(v_workspace_id) then
-      raise exception 'bug_not_found' using errcode = 'P0002';
-    end if;
-    if not public.bunkai_can_write_workspace(v_workspace_id) then
-      raise exception 'forbidden' using errcode = '42501';
-    end if;
-  end if;
-
-  -- 5. Lock the Bug (members first, then Bugs) and re-read it: step 3 and the
-  --    event below must describe the Bug as it is now, not before the wait.
-  select assignee_user_id into v_previous_assignee
-    from public.bugs
-    where id = p_bug_id
-    for update;
-  if not found then
-    raise exception 'bug_not_found' using errcode = 'P0002';
   end if;
   if p_assignee_user_id is not distinct from v_previous_assignee then
     return public.bunkai_bug_json(p_bug_id);
@@ -266,7 +268,9 @@ $$;
 -- then the invite row. Removal (0114) goes members, Bugs, invites. Workspace
 -- deletion (0084) goes workspace, invites, so the workspace comes first here or
 -- the two could deadlock. FOR SHARE on the workspace makes an accept wait for a
--- deletion in flight and then see it.
+-- deletion in flight and then see it. Known gap, left open: removal (0114) and
+-- deletion can still deadlock with each other, since removal updates PATs before
+-- its activity insert needs the workspace key lock. It rolls back cleanly.
 --
 -- Check order under the locks:
 --   1. invite or workspace gone, or workspace deleted -> P0002 invite_not_found
@@ -275,7 +279,8 @@ $$;
 --   3. invitee already holds an equal or higher role  -> 45223 (BK-62; before the
 --      inviter check so AC-4.6 reads the same as the route's early refusal)
 --   4. inviter null, gone, not active, not admin or
---      owner, or ranked below the invite's role       -> 45222 inviter_not_authorized
+--      owner, ranked below the invite's role, or not
+--      the one whose row was locked                   -> 45222 inviter_not_authorized
 --
 -- Error codes, re-verified on 2026-11-05 against migrations, app, lib and the one
 -- open PR: 45220/45221 are 0114's, 45222-45224 had no hit.
@@ -299,6 +304,7 @@ declare
   v_existing_role   text;
   v_existing_status text;
   v_inviter_role    text;
+  v_locked_inviter  uuid;
 begin
   -- 0. Actor bind.
   if auth.uid() is not null and auth.uid() <> p_user_id then
@@ -329,8 +335,8 @@ begin
     raise exception 'invite_not_found' using errcode = 'P0002';
   end if;
 
-  select i.role, i.accepted_at, i.revoked_at, i.expires_at
-    into v_role, v_accepted_at, v_revoked_at, v_expires_at
+  select i.role, i.accepted_at, i.revoked_at, i.expires_at, i.invited_by_user_id
+    into v_role, v_accepted_at, v_revoked_at, v_expires_at, v_locked_inviter
     from public.workspace_invites i
    where i.id = p_invite_id
      for update;
@@ -360,13 +366,16 @@ begin
   end if;
 
   -- 4. The inviter still holds the authority the invite was issued under. A null
-  --    inviter (account deleted, FK is on delete set null) fails closed.
+  --    inviter (account deleted, FK is on delete set null) fails closed. So does
+  --    an invite resent during the wait: the row locked is not its inviter's now,
+  --    and the invitee's retry goes through the fresh token anyway.
   select wm.role into v_inviter_role
     from public.workspace_members wm
    where wm.workspace_id = v_workspace_id
      and wm.user_id = v_inviter
      and wm.status = 'active';
-  if v_inviter_role is null
+  if v_locked_inviter is distinct from v_inviter
+     or v_inviter_role is null
      or v_inviter_role not in ('admin', 'owner')
      or public.bunkai_workspace_role_rank(v_inviter_role) < public.bunkai_workspace_role_rank(v_role) then
     raise exception 'inviter_not_authorized' using errcode = '45222';
@@ -410,7 +419,31 @@ begin
 end;
 $$;
 
+-- ============================================================================
+-- 5. workspace_invites — what an invite says cannot be rewritten by a session (G4)
+-- ============================================================================
+-- Step 4 above is only as good as invited_by_user_id. The admin-wide policies and
+-- table-wide privileges let an Admin PATCH that column to the Owner through
+-- PostgREST, or rewrite the email or role of an Owner-issued invite and rotate its
+-- token, keeping the backdoor G4 closes. So the session columns shrink to what the
+-- routes write (POST invites; resend and revoke), and a new invite must name its
+-- real issuer. The resend route re-stamps the inviter with the service role.
+
+revoke insert, update, truncate on public.workspace_invites from public, anon, authenticated;
+grant insert (workspace_id, email, role, invited_by_user_id) on public.workspace_invites to authenticated;
+grant update (expires_at, revoked_at, accepted_at, accepted_by_user_id) on public.workspace_invites to authenticated;
+
+drop policy if exists workspace_invites_insert_admin on public.workspace_invites;
+create policy workspace_invites_insert_admin
+  on public.workspace_invites
+  for insert
+  with check (
+    public.bunkai_is_workspace_admin(workspace_id)
+    and invited_by_user_id = auth.uid()
+  );
+
 -- Verification (run after apply):
 --   select policyname from pg_policies where tablename = 'workspace_members';            -- only the select policy
 --   select has_table_privilege('authenticated', 'public.workspace_members', 'DELETE');   -- false
 --   select has_function_privilege('authenticated', 'public.bunkai_accept_workspace_invite(uuid,uuid)', 'EXECUTE'); -- false
+--   select has_column_privilege('authenticated', 'public.workspace_invites', 'invited_by_user_id', 'UPDATE');      -- false

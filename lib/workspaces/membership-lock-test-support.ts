@@ -48,13 +48,23 @@ export interface OverlapResult<T> {
   results: T[]
 }
 
-// Holds a FOR UPDATE on one member row, fires each call in order, and records
-// how many backends queue behind the holder after each one. `whileHeld` runs
-// once they all queued, for something that must commit during the wait. Always
-// rolls back and always settles every fired call, so a failed assertion leaves
-// no lock.
-export async function overlapOnMemberRow<T>(
-  target: { workspaceId: string, userId: string },
+type Holder = Awaited<ReturnType<SQL['reserve']>>;
+
+export interface RowHold {
+  // Takes the lock inside the holder's open transaction. Must return the row, so
+  // a hold that matched nothing fails instead of proving nothing.
+  hold: (holder: Holder) => PromiseLike<unknown[]>
+  // `commit` when the holder's own write is what the waiters must then see.
+  release?: 'commit' | 'rollback'
+}
+
+// Runs `hold` in an open transaction, fires each call in order, and records how
+// many backends queue behind the holder after each one. `whileHeld` runs once
+// they all queued, for something that must commit during the wait. A failure
+// always rolls back and every fired call always settles, so a failed assertion
+// leaves no lock.
+export async function overlapHolding<T>(
+  rowHold: RowHold,
   calls: Array<() => PromiseLike<T>>,
   whileHeld?: () => Promise<void>,
 ): Promise<OverlapResult<T>> {
@@ -64,15 +74,13 @@ export async function overlapOnMemberRow<T>(
   const blocked: number[] = [];
   try {
     const holder = await holderPool.reserve();
+    let release: 'commit' | 'rollback' = 'rollback';
     try {
       await holder`begin`;
       const [{ pid }] = await holder`select pg_backend_pid() as pid`;
-      const locked = await holder`
-        select 1 from public.workspace_members
-         where workspace_id = ${target.workspaceId}::uuid and user_id = ${target.userId}::uuid
-           for update`;
-      if (locked.length !== 1) {
-        throw new Error('[membership-lock] the member row to hold does not exist');
+      const held = await rowHold.hold(holder);
+      if (held.length !== 1) {
+        throw new Error(`[membership-lock] the hold matched ${held.length} rows, not 1`);
       }
       for (const [index, call] of calls.entries()) {
         // Promise.resolve starts it now: a supabase-js builder is lazy and only
@@ -81,9 +89,10 @@ export async function overlapOnMemberRow<T>(
         blocked.push(await waitForChain(observerPool, Number(pid), index + 1));
       }
       await whileHeld?.();
+      release = rowHold.release ?? 'rollback';
     }
     finally {
-      await holder`rollback`;
+      await holder.unsafe(release);
       holder.release();
     }
     return { blocked, results: await Promise.all(fired) };
@@ -92,6 +101,55 @@ export async function overlapOnMemberRow<T>(
     await Promise.allSettled(fired);
     await holderPool.close();
     await observerPool.close();
+  }
+}
+
+export async function overlapOnMemberRow<T>(
+  target: { workspaceId: string, userId: string },
+  calls: Array<() => PromiseLike<T>>,
+  whileHeld?: () => Promise<void>,
+): Promise<OverlapResult<T>> {
+  return overlapHolding({
+    hold: async holder => holder`
+      select 1 from public.workspace_members
+       where workspace_id = ${target.workspaceId}::uuid and user_id = ${target.userId}::uuid
+         for update`,
+  }, calls, whileHeld);
+}
+
+// Opens a session holding pg_temp.`tempName`, a copy of the deployed function with
+// one lock clause deleted, and hands it to `run`. It is session-local and gone with
+// the connection: nothing persists in the schema. The clause must appear exactly
+// once in the live body, which doubles as a static check. Pass `sub` to run it as
+// that user: auth.uid() reads the setting, for functions a session calls directly.
+export async function withLocklessCopy<R>(
+  args: { signature: string, clause: RegExp, unlocked: string, tempName: string, sub?: string },
+  run: (session: Holder) => Promise<R>,
+): Promise<R> {
+  const pool = new SQL(pgUrl!, { max: 1 });
+  try {
+    const session = await pool.reserve();
+    try {
+      const [{ def }] = await session`select pg_get_functiondef(${args.signature}::regprocedure) as def`;
+      const source = def as string;
+      expect(source.match(new RegExp(args.clause, 'gi'))?.length).toBe(1);
+      const qualified = args.signature.slice(0, args.signature.indexOf('(') + 1);
+      const copy = source
+        .replace(new RegExp(args.clause, 'i'), args.unlocked)
+        .replace(qualified, `pg_temp.${args.tempName}(`);
+      expect(copy).toContain(`pg_temp.${args.tempName}(`);
+      await session.unsafe(copy);
+      if (args.sub) {
+        await session`select set_config('request.jwt.claims', ${JSON.stringify({ sub: args.sub, role: 'authenticated' })}, false)`;
+      }
+      return await run(session);
+    }
+    finally {
+      session.release();
+    }
+  }
+  finally {
+    await pool.close();
   }
 }
 

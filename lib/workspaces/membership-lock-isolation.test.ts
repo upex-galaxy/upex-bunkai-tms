@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { createMembershipFixture, expectEveryCallBlocked, hasLockEnv, overlapOnMemberRow } from './membership-lock-test-support';
+import { createMembershipFixture, expectEveryCallBlocked, hasLockEnv, overlapHolding, overlapOnMemberRow, withLocklessCopy } from './membership-lock-test-support';
 
 // BK-1589 G5 — the lock proofs for assign Bug (AC-2) and for Leave against Remove
 // (AC-3), against the REAL database (migration 0118). Outcome-only assertions do
@@ -95,23 +95,26 @@ describeOrSkip('BK-1589 — assign Bug takes the member lock (AC-2, real databas
   it('does not deadlock when an assign and a removal cross on the same rows (lock order: members, then Bugs)', async () => {
     expect.hasAssertions();
     const seed = await f.seedWorkspace('crossing', { owner: 'owner', member: 'member', other: 'member' });
-    const bug = await f.seedBug(seed, { title: 'moving away from the leaver', author: 'owner', assignee: 'member' });
-    const stays = await f.seedBug(seed, { title: 'stays with the leaver', author: 'owner', assignee: 'member' });
+    const moving = await f.seedBug(seed, { title: 'reassigned away from the removed member', author: 'owner', assignee: 'member' });
+    const stays = await f.seedBug(seed, { title: 'stays with the removed member', author: 'owner', assignee: 'member' });
 
-    // Reassign to the removal's caller, whose row both calls need, while the
-    // removal also has to reach the same Bug.
-    const { blocked, results: [assignment, removal] } = await overlapOnMemberRow(
+    // The removal goes first and needs its caller's row and then the Bugs. The
+    // reassignment wants the same caller's row and the same Bug. An assign that
+    // locked the Bug first would hold it while waiting for the row the removal
+    // holds, and Postgres would raise 40P01 on one of them.
+    const { blocked, results: [removal, assignment] } = await overlapOnMemberRow(
       { workspaceId: seed.workspaceId, userId: users.owner.id },
-      [() => assign('other', bug, users.owner.id), () => remove('owner', seed.workspaceId, users.member.id)],
+      [() => remove('owner', seed.workspaceId, users.member.id), () => assign('other', moving, users.owner.id)],
     );
 
     expectEveryCallBlocked(blocked);
-    expect(assignment.error).toBeNull();
     expect(removal.error).toBeNull();
-    // The reassignment committed first, so this removal must not touch that Bug.
-    expect(await f.bugAssignee(bug)).toBe(users.owner.id);
+    expect(assignment.error).toBeNull();
+    expect((removal.data as { unassigned_bug_count: number }).unassigned_bug_count).toBe(2);
+    expect(await f.bugAssignee(moving)).toBe(users.owner.id);
     expect(await f.bugAssignee(stays)).toBeNull();
-    expect((removal.data as { unassigned_bug_count: number }).unassigned_bug_count).toBe(1);
+    const assigned = await f.activity(seed.workspaceId, 'bug.assigned');
+    expect(assigned.map(a => a.entity_id)).toEqual([moving]);
   }, 60_000);
 
   it('a wait outdates nothing: the trail names the assignee the Bug had once the lock was granted', async () => {
@@ -172,6 +175,72 @@ describeOrSkip('BK-1589 — assign Bug takes the member lock (AC-2, real databas
     expect(assignment.error?.code).toBe('P0002');
     expect(await f.bugAssignee(bug)).toBeNull();
   }, 60_000);
+
+  it('the Bug is read under its own lock: a write that commits during the wait is what the trail names', async () => {
+    expect.hasAssertions();
+    const seed = await f.seedWorkspace('bug-lock', { owner: 'owner', member: 'member', other: 'member' });
+    const bug = await f.seedBug(seed, { title: 'written while the assign waits', author: 'owner' });
+
+    const { blocked, results: [assignment] } = await overlapHolding(
+      {
+        hold: async holder => holder`update public.bugs set assignee_user_id = ${users.other.id}::uuid where id = ${bug}::uuid returning 1`,
+        release: 'commit',
+      },
+      [() => assign('owner', bug, users.member.id)],
+    );
+
+    expectEveryCallBlocked(blocked);
+    expect(assignment.error).toBeNull();
+    expect(await f.activity(seed.workspaceId, 'bug.assigned')).toEqual([]);
+    const reassigned = await f.activity(seed.workspaceId, 'bug.reassigned');
+    expect((reassigned[0].payload as Record<string, unknown>).previous_assignee_user_id).toBe(users.other.id);
+  }, 60_000);
+
+  it('with the Bug lock clause deleted the same scenario writes a false trail (G5)', async () => {
+    expect.hasAssertions();
+    const seed = await f.seedWorkspace('bug-lock-mutant', { owner: 'owner', member: 'member', other: 'member' });
+    const bug = await f.seedBug(seed, { title: 'written while the mutant waits', author: 'owner' });
+
+    await withLocklessCopy(
+      { signature: 'public.bunkai_assign_bug(uuid,uuid)', clause: /where id = p_bug_id\s+for update/, unlocked: 'where id = p_bug_id', tempName: 'assign_without_bug_lock', sub: users.owner.id },
+      async (session) => {
+        await overlapHolding(
+          {
+            hold: async holder => holder`update public.bugs set assignee_user_id = ${users.other.id}::uuid where id = ${bug}::uuid returning 1`,
+            release: 'commit',
+          },
+          [async () => session.unsafe('select pg_temp.assign_without_bug_lock($1::uuid, $2::uuid)', [bug, users.member.id])],
+        );
+      },
+    );
+
+    // Red for the test above: the event claims the Bug had no assignee.
+    expect(await f.activity(seed.workspaceId, 'bug.reassigned')).toEqual([]);
+    const assigned = await f.activity(seed.workspaceId, 'bug.assigned');
+    expect((assigned[0].payload as Record<string, unknown>).previous_assignee_user_id).toBeNull();
+  }, 60_000);
+
+  it.each([
+    ['assign', 'member'],
+    ['unassign', null],
+  ] as const)('a caller removed while waiting on the Bug cannot complete the %s', async (_label, assignee) => {
+    expect.hasAssertions();
+    const seed = await f.seedWorkspace(`caller-gone-bug-${_label}`, { owner: 'owner', member: 'member', other: 'member' });
+    const bug = await f.seedBug(seed, { title: 'caller goes during the Bug wait', author: 'owner', assignee: assignee ? undefined : 'member' });
+
+    const { blocked, results: [answer] } = await overlapHolding(
+      { hold: async holder => holder`select 1 from public.bugs where id = ${bug}::uuid for update` },
+      [() => assign('other', bug, assignee ? users[assignee].id : null)],
+      async () => {
+        const removal = await remove('owner', seed.workspaceId, users.other.id);
+        expect(removal.error).toBeNull();
+      },
+    );
+
+    expectEveryCallBlocked(blocked);
+    expect(answer.error?.code).toBe('P0002');
+    expect(await f.bugAssignee(bug)).toBe(assignee ? null : users.member.id);
+  }, 60_000);
 });
 
 describeOrSkip('BK-1589 — Leave and Remove never leave a half state (AC-3, real database)', () => {
@@ -180,6 +249,7 @@ describeOrSkip('BK-1589 — Leave and Remove never leave a half state (AC-3, rea
     const seed = await f.seedWorkspace('leave-first', { owner: 'owner', admin: 'admin', member: 'member' });
     await seedSpareMemberships('leave-first', { member: 'member' });
     const token = await f.seedToken('member', seed.workspaceId, 'leave-first-scoped');
+    const bug = await f.seedBug(seed, { title: 'held by the member who leaves', author: 'owner', assignee: 'member' });
 
     const { blocked, results: [left, removal] } = await overlapOnMemberRow(
       { workspaceId: seed.workspaceId, userId: users.member.id },
@@ -193,6 +263,8 @@ describeOrSkip('BK-1589 — Leave and Remove never leave a half state (AC-3, rea
     expect(await f.memberRow(seed.workspaceId, 'member')).toBeNull();
     expect(await f.tokenRevokedAt(token)).not.toBeNull();
     expect(await f.activity(seed.workspaceId, 'member.removed')).toEqual([]);
+    // Pinned on purpose: Leave keeps its BK-90 side effects (AI Tech Lead decision).
+    expect(await f.bugAssignee(bug)).toBe(users.member.id);
   }, 60_000);
 
   it('Remove goes first: Leave waits and answers not_a_member, and the removal shows exactly once (AC-3.2)', async () => {
