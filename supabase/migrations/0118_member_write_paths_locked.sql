@@ -28,3 +28,122 @@ drop policy if exists workspace_members_update_admin on public.workspace_members
 drop policy if exists workspace_members_delete_admin on public.workspace_members;
 
 revoke insert, update, delete, truncate on public.workspace_members from public, anon, authenticated;
+
+-- ============================================================================
+-- 2. bunkai_assign_bug — the assignee's member row is locked first (G2)
+-- ============================================================================
+-- Global lock order for membership work: member rows (in user_id order), then
+-- Bugs. Removal (0114) already takes them in that order, so an assign to a
+-- member being removed either commits first (removal then sees the Bug and
+-- unassigns it) or waits and fails 45312 on the locked read. Never a Bug left
+-- assigned to a removed member. Called from inside removal the row is already
+-- ours, and removal only ever unassigns, which takes no member lock.
+--
+-- Body copied forward from 0054. Changes: the eligibility read is FOR UPDATE;
+-- the caller is re-checked after it (a wait can now outlast the caller's own
+-- membership, same rule as 0114 step 4); and the Bug is locked and re-read
+-- before the write, so the no-op test and the event's previous assignee never
+-- describe the Bug as it was before the wait.
+create or replace function public.bunkai_assign_bug(
+  p_bug_id           uuid,
+  p_assignee_user_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_workspace_id      uuid;
+  v_previous_assignee uuid;
+  v_assignee_status   text;
+  v_assignee_role     text;
+  v_action            text;
+begin
+  -- 1. Resolve the bug. A nonexistent bug OR one in a workspace the caller
+  --    isn't even a member of both raise the SAME not-found (non-disclosure).
+  select workspace_id, assignee_user_id
+    into v_workspace_id, v_previous_assignee
+    from public.bugs
+    where id = p_bug_id;
+  if v_workspace_id is null or not public.bunkai_is_workspace_member(v_workspace_id) then
+    raise exception 'bug_not_found' using errcode = 'P0002';
+  end if;
+
+  -- 2. Write-role gate. Disclosed as a DISTINCT error from not-found — safe,
+  --    since the caller (a genuine member) can already SELECT this bug.
+  if not public.bunkai_can_write_workspace(v_workspace_id) then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  -- 3. No-op: identical assign/unassign — silent, no audit row (mirrors
+  --    0023's no-op convention for a same-parent module move).
+  if p_assignee_user_id is not distinct from v_previous_assignee then
+    return public.bunkai_bug_json(p_bug_id);
+  end if;
+
+  -- 4. Assignee eligibility (only when assigning/reassigning to someone, not
+  --    on unassign) — the ONE cross-user read this function needs: a
+  --    workspace_members row for a user OTHER than the caller, scoped to the
+  --    bug's OWN already-authorized workspace_id. Locked, so a removal cannot
+  --    pass between this check and the write.
+  if p_assignee_user_id is not null then
+    select status, role into v_assignee_status, v_assignee_role
+      from public.workspace_members
+      where workspace_id = v_workspace_id
+        and user_id = p_assignee_user_id
+      for update;
+    if v_assignee_status is distinct from 'active' then
+      raise exception 'bug_assignee_not_workspace_member' using errcode = '45312';
+    end if;
+    if v_assignee_role = 'viewer' then
+      raise exception 'bug_assignee_view_only' using errcode = '45313';
+    end if;
+
+    -- The lock above may have waited: re-validate the caller against what
+    -- committed meanwhile, same answers as steps 1 and 2.
+    if not public.bunkai_is_workspace_member(v_workspace_id) then
+      raise exception 'bug_not_found' using errcode = 'P0002';
+    end if;
+    if not public.bunkai_can_write_workspace(v_workspace_id) then
+      raise exception 'forbidden' using errcode = '42501';
+    end if;
+  end if;
+
+  -- 5. Lock the Bug (members first, then Bugs) and re-read it: step 3 and the
+  --    event below must describe the Bug as it is now, not before the wait.
+  select assignee_user_id into v_previous_assignee
+    from public.bugs
+    where id = p_bug_id
+    for update;
+  if not found then
+    raise exception 'bug_not_found' using errcode = 'P0002';
+  end if;
+  if p_assignee_user_id is not distinct from v_previous_assignee then
+    return public.bunkai_bug_json(p_bug_id);
+  end if;
+
+  -- 6. Mutation, re-scoped to THIS bug only (never a broader WHERE).
+  update public.bugs
+    set assignee_user_id = p_assignee_user_id
+    where id = p_bug_id;
+
+  -- 7. Audit — action depends on the old/new assignment state.
+  v_action := case
+    when v_previous_assignee is null then 'bug.assigned'
+    when p_assignee_user_id is null then 'bug.unassigned'
+    else 'bug.reassigned'
+  end;
+  insert into public.activity_log (workspace_id, actor_user_id, entity_type, entity_id, action, payload)
+  values (
+    v_workspace_id, auth.uid(), 'bug', p_bug_id, v_action,
+    jsonb_build_object(
+      'previous_assignee_user_id', v_previous_assignee,
+      'assignee_user_id', p_assignee_user_id
+    )
+  );
+
+  -- 8. Return the composed bug json.
+  return public.bunkai_bug_json(p_bug_id);
+end;
+$$;
