@@ -652,6 +652,7 @@ export function ProjectExplorer({
               onDeleted={() => {
                 if (selectedModuleId === deleteTarget.id) { setSelectedModuleId(null); }
                 setDeleteTarget(null);
+                reloadArchived();
               }}
               onCancel={() => setDeleteTarget(null)}
             />

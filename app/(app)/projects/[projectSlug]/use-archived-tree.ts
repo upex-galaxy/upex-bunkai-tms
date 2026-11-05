@@ -45,9 +45,13 @@ export function useArchivedTree(projectId: string, liveTree: ModuleTreeNode[], e
         return;
       }
       const { modules, user_stories: stories, acceptance_criteria: acceptanceCriteria, archived_atcs: archivedAtcs } = result.listing;
+      // A refresh of the live tree can land after this read: an ATC just archived is
+      // then in both lists, and the read is the newer one.
+      const archivedIds = new Set(archivedAtcs.map(a => a.id));
+      const atcs = [...liveAtcs(liveTree).filter(a => !archivedIds.has(a.id)), ...archivedAtcs];
       setRead({
         status: 'ready',
-        tree: buildModuleTree({ modules, stories, acceptanceCriteria, atcs: [...liveAtcs(liveTree), ...archivedAtcs] }),
+        tree: buildModuleTree({ modules, stories, acceptanceCriteria, atcs }),
         anyArchived: modules.some(m => m.archived_at !== null)
           || stories.some(s => s.archived_at !== null)
           || acceptanceCriteria.some(c => c.archived_at !== null)

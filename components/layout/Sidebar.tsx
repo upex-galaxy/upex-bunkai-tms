@@ -154,7 +154,7 @@ export function Sidebar({
       {(counts.all > 0 || onToggleIncludeArchived) && (
         <div
           data-testid="explorer-filters"
-          className="flex flex-shrink-0 items-center gap-1.5 border-b border-stroke-1 px-2.5 py-2"
+          className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-stroke-1 px-2.5 py-2"
         >
           {counts.all > 0 && FILTERS.map(f => (
             <button

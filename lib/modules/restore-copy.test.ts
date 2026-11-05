@@ -45,7 +45,7 @@ describe('archiveLine', () => {
 
   it('adds who, and what it went down with', () => {
     expect(archiveLine({ archived_at: AT, archived_by: { user_id: 'u', email: 'ana@example.com' }, archived_with: 'Checkout' }))
-      .toBe('2026-11-05 10:30 · ana@example.com · with Checkout');
+      .toBe('2026-11-05 10:30 · with Checkout · ana@example.com');
   });
 
   it('never prints a blank actor', () => {

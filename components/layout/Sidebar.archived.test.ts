@@ -202,7 +202,7 @@ describe('Sidebar archived rows', () => {
     const container = await render(true);
 
     expect(byTestId(container, 'story-archived-s1')?.textContent).toBe('Archived');
-    expect(byTestId(container, 'story-archive-info-s1')?.textContent).toBe('2026-11-05 10:30 · ana@example.com · with Checkout');
+    expect(byTestId(container, 'story-archive-info-s1')?.textContent).toBe('2026-11-05 10:30 · with Checkout · ana@example.com');
 
     await click(byTestId(container, 'story-toggle-s1'));
 

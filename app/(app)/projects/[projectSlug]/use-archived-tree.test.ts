@@ -124,6 +124,15 @@ describe('useArchivedTree', () => {
     expect(snapshot!.tree[1].archive?.archived_at).toBe('2026-11-05T10:00:00Z');
   });
 
+  test('draws an ATC once when the read is newer than the live tree', async () => {
+    responses = [json({ ...listing(true), archived_atcs: [{ ...ATC, tags: [], archived_at: '2026-11-05T10:00:00Z', archive: null }] })];
+    await render(true);
+
+    const atcs = snapshot!.tree[0].atcs;
+    expect(atcs.map(a => a.id)).toEqual(['a1']);
+    expect(atcs[0].archived_at).toBe('2026-11-05T10:00:00Z');
+  });
+
   test('says when nothing is archived', async () => {
     responses = [json(listing(false))];
     await render(true);

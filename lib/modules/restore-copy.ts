@@ -52,7 +52,8 @@ export function formatModuleRestored(action: string, payload: Record<string, unk
 // archived on its own shows the date only, because no actor was ever recorded.
 export function archiveLine(info: ArchiveInfo): string {
   const parts = [formatActivityTime(info.archived_at)];
-  if (info.archived_by) { parts.push(info.archived_by.email ?? 'a former member'); }
+  // Before the email: the row truncates, and what it went down with says more.
   if (info.archived_with) { parts.push(`with ${info.archived_with}`); }
+  if (info.archived_by) { parts.push(info.archived_by.email ?? 'a former member'); }
   return parts.join(' · ');
 }
