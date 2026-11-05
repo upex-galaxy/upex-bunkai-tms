@@ -3,6 +3,7 @@ import { criterionTitleMessage, mapCriterionRpcError } from '@lib/acceptance-cri
 import { criterionTitleError, MAX_CRITERION_DESCRIPTION_BYTES } from '@lib/acceptance-criteria/validation';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { wantsArchivedRows } from '@lib/api/include-archived';
 import { byteLength } from '@lib/markdown/format';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { z } from 'zod';
@@ -12,7 +13,7 @@ import { z } from 'zod';
 //   inside the SECURITY DEFINER function bunkai_insert_acceptance_criterion;
 //   omitting `position` appends at the tail.
 // GET  /api/v1/user-stories/{id}/acceptance-criteria — list active criteria in
-//   position order.
+//   position order. `?include_archived=true` adds the archived ones (BK-039, BK-601).
 //
 // HYBRID error model (mirrors BK-14): body-rule failures keep the house `code`
 // and carry a granular `details.reason`. The Markdown detail is sanitized on
@@ -100,11 +101,11 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   const { db } = getAuth(ctx);
 
-  const { data, error } = await db
+  const scoped = db
     .from('acceptance_criteria')
     .select(AC_COLUMNS)
-    .eq('user_story_id', userStoryId)
-    .is('archived_at', null)
+    .eq('user_story_id', userStoryId);
+  const { data, error } = await (wantsArchivedRows(request) ? scoped : scoped.is('archived_at', null))
     .order('position', { ascending: true });
 
   if (error) {

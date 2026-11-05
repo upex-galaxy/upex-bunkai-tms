@@ -18,6 +18,7 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   'module.description_updated': 'updated a module description',
   'module.moved': 'moved a module',
   'module.archived': 'archived a module',
+  'module.restored': 'restored a module',
   'atc.created': 'created an ATC',
   'atc.updated': 'edited an ATC',
   'atc.archived': 'archived an ATC',

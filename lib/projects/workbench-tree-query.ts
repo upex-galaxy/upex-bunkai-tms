@@ -31,6 +31,12 @@ type Db = SupabaseClient<Database>;
 
 export const TREE_IN_FILTER_BATCH = 100;
 
+// BK-601 — the explicit opt-in. Off by default: every caller that says nothing keeps
+// reading live rows only, and only the Module tree listing ever passes it.
+export interface TreeReadOptions {
+  includeArchived?: boolean
+}
+
 // Every `Atc` field, and nothing else. `select('*')` also pulled `tsv` (the
 // search tsvector), which no tree consumer reads and which the layout then
 // serialized into the RSC payload twice (tree + rows) for every ATC.
@@ -76,13 +82,13 @@ async function fetchInBatches<T>(
 }
 
 // Live modules of the Project, in display order.
-export async function fetchTreeModules(db: Db, projectId: string): Promise<Module[]> {
+export async function fetchTreeModules(db: Db, projectId: string, options: TreeReadOptions = {}): Promise<Module[]> {
   return dedupeById(await fetchAllPages<Module>(async (offset, limit) => {
-    const { data, error } = await db
+    const scoped = db
       .from('modules')
       .select('*')
-      .eq('project_id', projectId)
-      .is('archived_at', null)
+      .eq('project_id', projectId);
+    const { data, error } = await (options.includeArchived ? scoped : scoped.is('archived_at', null))
       .order('position', { ascending: true })
       .order('id', { ascending: true })
       .range(offset, offset + limit - 1);
@@ -107,15 +113,33 @@ export async function fetchTreeAtcs(db: Db, projectId: string): Promise<Atc[]> {
   }));
 }
 
+// BK-601 — the Project's archived ATCs, for the opt-in tree only: a Module's archive
+// takes its ATCs down and each must stay reachable. Nothing here touches the live read.
+export type ArchivedTreeAtc = Atc & { archived_by: string | null, archive_batch_id: string | null };
+
+export async function fetchTreeArchivedAtcs(db: Db, projectId: string): Promise<ArchivedTreeAtc[]> {
+  return dedupeById(await fetchAllPages<ArchivedTreeAtc>(async (offset, limit) => {
+    const { data, error } = await db
+      .from('atcs')
+      .select(`${TREE_ATC_COLUMNS}, archived_by, archive_batch_id`)
+      .eq('project_id', projectId)
+      .not('archived_at', 'is', null)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(offset, offset + limit - 1);
+    return { data: data as ArchivedTreeAtc[] | null, error };
+  }));
+}
+
 // Live stories of the given (live) modules. Batched by module, so every
 // module's stories come back from one batch, in creation order.
-export async function fetchTreeStories(db: Db, moduleIds: string[]): Promise<UserStory[]> {
+export async function fetchTreeStories(db: Db, moduleIds: string[], options: TreeReadOptions = {}): Promise<UserStory[]> {
   return dedupeById(await fetchInBatches(moduleIds, async batch => fetchAllPages<UserStory>(async (offset, limit) => {
-    const { data, error } = await db
+    const scoped = db
       .from('user_stories')
       .select('*')
-      .in('module_id', batch)
-      .is('archived_at', null)
+      .in('module_id', batch);
+    const { data, error } = await (options.includeArchived ? scoped : scoped.is('archived_at', null))
       .order('created_at', { ascending: true })
       .order('id', { ascending: true })
       .range(offset, offset + limit - 1);
@@ -128,13 +152,14 @@ export async function fetchTreeStories(db: Db, moduleIds: string[]): Promise<Use
 export async function fetchTreeAcceptanceCriteria(
   db: Db,
   storyIds: string[],
+  options: TreeReadOptions = {},
 ): Promise<AcceptanceCriterion[]> {
   return dedupeById(await fetchInBatches(storyIds, async batch => fetchAllPages<AcceptanceCriterion>(async (offset, limit) => {
-    const { data, error } = await db
+    const scoped = db
       .from('acceptance_criteria')
       .select('*')
-      .in('user_story_id', batch)
-      .is('archived_at', null)
+      .in('user_story_id', batch);
+    const { data, error } = await (options.includeArchived ? scoped : scoped.is('archived_at', null))
       .order('position', { ascending: true })
       .order('id', { ascending: true })
       .range(offset, offset + limit - 1);

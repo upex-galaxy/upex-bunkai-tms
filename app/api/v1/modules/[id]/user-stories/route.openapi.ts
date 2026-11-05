@@ -56,9 +56,15 @@ registry.registerPath({
   path: '/api/v1/modules/{id}/user-stories',
   tags: ['User Stories'],
   summary: 'List a module\'s active user stories',
-  description: 'Bearer \`atc:read\` (or cookie session). Member-only. Returns active (non-archived) stories, newest first.',
+  description: 'Bearer \`atc:read\` (or cookie session). Member-only. Returns active (non-archived) stories, newest first. \`?include_archived=true\` adds the archived ones, viewers included.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-  parameters: [IdParam],
+  parameters: [IdParam, {
+    name: 'include_archived',
+    in: 'query' as const,
+    required: false,
+    schema: { type: 'string' as const, enum: ['true'] },
+    description: 'Also return archived rows, each with `archived_at` set. Off by default; any other value leaves them out.',
+  }],
   responses: {
     200: { description: 'Stories.', content: { 'application/json': { schema: z.object({ user_stories: z.array(UserStorySchema) }) } } },
     401: { description: 'Not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },

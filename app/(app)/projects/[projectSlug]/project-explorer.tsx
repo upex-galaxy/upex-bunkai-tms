@@ -7,6 +7,7 @@ import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { Button } from '@components/ui/button';
 import { duplicateAtc } from '@lib/atcs/duplicate-client';
+import { ARCHIVED_LOAD_FAILURE_COPY, NOTHING_ARCHIVED_COPY } from '@lib/modules/restore-copy';
 import { moduleBreadcrumb } from '@lib/tree';
 import { cn } from '@lib/utils';
 import { ChevronDown, ChevronLeft, ChevronRight, DownloadCloud, GitBranch, MoreHorizontal, Pencil, Plus, Server, Trash2 } from 'lucide-react';
@@ -24,6 +25,8 @@ import { ImportFromJiraDialog } from './import-from-jira-dialog';
 import { MoveModuleDialog } from './move-module-dialog';
 import { RenameEnvironmentForm } from './rename-environment-form';
 import { RenameModuleForm } from './rename-module-form';
+import { RestoreModuleDialog } from './restore-module-dialog';
+import { useArchivedTree } from './use-archived-tree';
 import { UserStoryForm } from './user-story-form';
 import { useWorkbench } from './workbench-context';
 
@@ -120,6 +123,15 @@ function countSubtree(node: ModuleTreeNode): { modules: number, atcs: number } {
   return { modules, atcs };
 }
 
+function findNode(nodes: ModuleTreeNode[], id: string): ModuleTreeNode | null {
+  for (const node of nodes) {
+    if (node.id === id) { return node; }
+    const inChild = findNode(node.children, id);
+    if (inChild) { return inChild; }
+  }
+  return null;
+}
+
 // Client shell around the existing Sidebar tree. Owns the create-module modal
 // state so the Server Component page can stay free of client hooks, and so the
 // Sidebar (in components/) does not import an app-route form. The tree itself is
@@ -163,6 +175,10 @@ export function ProjectExplorer({
   const [manageStory, setManageStory] = useState<UserStoryWithChildren | null>(null);
   const [importing, setImporting] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+  // BK-601 — off on every mount; see `use-archived-tree.ts`.
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<ModuleTreeNode | null>(null);
+  const { read: archivedRead, tree: shownTree, reload: reloadArchived } = useArchivedTree(projectId, tree, includeArchived);
 
   // Tests group accordion (BK-27). Open by default so a just-created Test is
   // immediately visible after the builder redirects back here.
@@ -216,6 +232,7 @@ export function ProjectExplorer({
       setRenameTarget(null);
       setMoveTarget(null);
       setDeleteTarget(null);
+      setRestoreTarget(null);
       setNewStoryModule(null);
       setEditStory(null);
       setDeleteStory(null);
@@ -253,7 +270,9 @@ export function ProjectExplorer({
     setDuplicatingAtcId(null);
   };
 
-  const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
+  // Read from the live tree: with the opt-in on, a row's children include archived
+  // ones, which the archive would not take and the confirmation must not count.
+  const deleteCounts = deleteTarget ? countSubtree(findNode(tree, deleteTarget.id) ?? deleteTarget) : null;
   const flatModules = useMemo(() => flattenModules(tree), [tree]);
 
   // BK-398 — Command Palette Module deep-link: `?module={moduleId}` selects
@@ -274,7 +293,7 @@ export function ProjectExplorer({
     // Deliberately mount-only — see the comment above.
   }, []);
 
-  const chain = useMemo(() => flattenChain(tree), [tree]);
+  const chain = useMemo(() => flattenChain(shownTree), [shownTree]);
   const breadcrumb = selectedModuleId
     ? moduleBreadcrumb(chain, selectedModuleId)
     : [];
@@ -318,8 +337,19 @@ export function ProjectExplorer({
               <Sidebar
                 projectSlug={projectSlug}
                 projectName={projectName}
-                tree={tree}
+                tree={shownTree}
                 canCreate={canCreate}
+                includeArchived={includeArchived}
+                onToggleIncludeArchived={() => setIncludeArchived(on => !on)}
+                archivedNotice={(
+                  <ArchivedNotice
+                    status={archivedRead.status}
+                    anyArchived={archivedRead.status === 'ready' && archivedRead.anyArchived}
+                    errorMessage={archivedRead.status === 'error' ? archivedRead.message : null}
+                    onRetry={reloadArchived}
+                  />
+                )}
+                onRestoreModule={setRestoreTarget}
                 selectedModuleId={selectedModuleId}
                 selectedAtcId={selectedAtcId}
                 onNewModule={() => setTarget({ parentModuleId: null })}
@@ -622,8 +652,29 @@ export function ProjectExplorer({
               onDeleted={() => {
                 if (selectedModuleId === deleteTarget.id) { setSelectedModuleId(null); }
                 setDeleteTarget(null);
+                reloadArchived();
               }}
               onCancel={() => setDeleteTarget(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {restoreTarget && (
+        <div
+          data-testid="restore-module-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setRestoreTarget(null)}
+        >
+          <div className="w-full max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <RestoreModuleDialog
+              moduleId={restoreTarget.id}
+              moduleName={restoreTarget.name}
+              onRestored={() => {
+                setRestoreTarget(null);
+                reloadArchived();
+              }}
+              onCancel={() => setRestoreTarget(null)}
             />
           </div>
         </div>
@@ -782,4 +833,40 @@ export function ProjectExplorer({
       )}
     </>
   );
+}
+
+// BK-601 — what the opt-in has to say for itself: loading, the named error with Retry,
+// or the note that nothing is archived. Silent once archived rows are on screen.
+function ArchivedNotice({ status, anyArchived, errorMessage, onRetry }: {
+  status: 'off' | 'loading' | 'ready' | 'error'
+  anyArchived: boolean
+  errorMessage: string | null
+  onRetry: () => void
+}) {
+  if (status === 'loading') {
+    return (
+      <p role="status" data-testid="explorer-archived-loading" className="m-0 px-3 py-1.5 text-xs text-fg-3">
+        Loading archived rows…
+      </p>
+    );
+  }
+  if (status === 'error') {
+    return (
+      <div role="alert" data-testid="explorer-archived-error" className="px-3 py-1.5">
+        <p className="m-0 text-xs text-signal-fail">{ARCHIVED_LOAD_FAILURE_COPY}</p>
+        <p className="m-0 text-xs text-fg-3">{errorMessage}</p>
+        <Button type="button" variant="ghost" size="sm" data-testid="explorer-archived-retry" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+  if (status === 'ready' && !anyArchived) {
+    return (
+      <p data-testid="explorer-archived-empty" className="m-0 px-3 py-1.5 text-xs text-fg-3">
+        {NOTHING_ARCHIVED_COPY}
+      </p>
+    );
+  }
+  return null;
 }

@@ -148,8 +148,10 @@ export function deriveItemLabel(row: Pick<ActivityRpcRow, 'action' | 'entity_typ
     case 'atc.restored':
     case 'test.created':
       return nonEmptyString(row.payload.title) ?? fallback;
-    case 'module.description_updated':
     case 'module.archived':
+    case 'module.restored':
+      return nonEmptyString(row.payload.name) ?? fallback;
+    case 'module.description_updated':
     case 'run.finished':
     case 'run.aborted':
     default:

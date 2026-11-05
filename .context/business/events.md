@@ -75,6 +75,10 @@ Emitted only when the Description really changes (BK-1590, migration `0115`): th
 
 `payload`: the same per-table counts the RPC returns — `{ "modules": n, "user_stories": n, "acceptance_criteria": n, "atcs": n }`.
 
+### `module.restored`
+
+`payload`: what came back, in the same shape — `{ "modules": n, "user_stories": n, "acceptance_criteria": n, "atcs": n }`, with `modules` counting the restored Module itself (`bunkai_restore_module_subtree`, `0117_module_restore.sql`). One entry per real restore; an already active Module writes none.
+
 ## Run events (BK-34/36/37/39)
 
 Covers the remaining write sites not already documented above: two `test.*` events (BK-27, BK-26, BK-30) and the three `run.*` events (BK-34/40, BK-36, BK-37). Grouped under one heading per the BK-49 Activity Stream refresh (item 4 of the 2026-07-31 canonical resolution) — the header name mirrors the module-events precedent's format even though it spans two entity types (`test`, `run`), since both are emitted by the Runs/Tests domain's RPCs.

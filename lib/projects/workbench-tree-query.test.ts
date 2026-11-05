@@ -139,7 +139,7 @@ describe('BK-1233 — fetchTreeAtcs (the workbench ATC tree read)', () => {
     await fetchTreeAtcs(db, 'project-1');
     expect(ops(calls[0], 'select')).toEqual([['select', TREE_ATC_COLUMNS]]);
 
-    const atcFields: Record<keyof Atc, true> = {
+    const atcFields: Record<keyof Omit<Atc, 'archive'>, true> = {
       id: true,
       project_id: true,
       module_id: true,

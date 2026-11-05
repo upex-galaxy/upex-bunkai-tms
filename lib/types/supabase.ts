@@ -21,6 +21,7 @@ export interface Database {
     Tables: {
       acceptance_criteria: {
         Row: {
+          archive_batch_id: string | null
           archived_at: string | null
           created_at: string
           description: string | null
@@ -30,6 +31,7 @@ export interface Database {
           user_story_id: string
         }
         Insert: {
+          archive_batch_id?: string | null
           archived_at?: string | null
           created_at?: string
           description?: string | null
@@ -39,6 +41,7 @@ export interface Database {
           user_story_id: string
         }
         Update: {
+          archive_batch_id?: string | null
           archived_at?: string | null
           created_at?: string
           description?: string | null
@@ -264,6 +267,7 @@ export interface Database {
       }
       atcs: {
         Row: {
+          archive_batch_id: string | null
           archived_at: string | null
           archived_by: string | null
           created_at: string
@@ -283,6 +287,7 @@ export interface Database {
           version: number
         }
         Insert: {
+          archive_batch_id?: string | null
           archived_at?: string | null
           archived_by?: string | null
           created_at?: string
@@ -302,6 +307,7 @@ export interface Database {
           version?: number
         }
         Update: {
+          archive_batch_id?: string | null
           archived_at?: string | null
           archived_by?: string | null
           created_at?: string
@@ -944,6 +950,7 @@ export interface Database {
       }
       modules: {
         Row: {
+          archive_batch_id: string | null
           archived_at: string | null
           created_at: string
           description: string | null
@@ -955,6 +962,7 @@ export interface Database {
           project_id: string
         }
         Insert: {
+          archive_batch_id?: string | null
           archived_at?: string | null
           created_at?: string
           description?: string | null
@@ -966,6 +974,7 @@ export interface Database {
           project_id: string
         }
         Update: {
+          archive_batch_id?: string | null
           archived_at?: string | null
           created_at?: string
           description?: string | null
@@ -1741,6 +1750,7 @@ export interface Database {
       }
       user_stories: {
         Row: {
+          archive_batch_id: string | null
           archived_at: string | null
           created_at: string
           description: string | null
@@ -1753,6 +1763,7 @@ export interface Database {
           title: string
         }
         Insert: {
+          archive_batch_id?: string | null
           archived_at?: string | null
           created_at?: string
           description?: string | null
@@ -1765,6 +1776,7 @@ export interface Database {
           title: string
         }
         Update: {
+          archive_batch_id?: string | null
           archived_at?: string | null
           created_at?: string
           description?: string | null
@@ -2727,6 +2739,10 @@ export interface Database {
       }
       bunkai_restore_atc: {
         Args: { p_actor_user_id: string, p_atc_id: string }
+        Returns: Json
+      }
+      bunkai_restore_module_subtree: {
+        Args: { p_module_id: string }
         Returns: Json
       }
       bunkai_restore_workspace_deletion: {

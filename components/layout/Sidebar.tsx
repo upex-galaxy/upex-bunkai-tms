@@ -1,10 +1,12 @@
 'use client';
 
-import type { Atc, AtcStatus, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
+import type { ArchiveInfo, Atc, AtcStatus, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Button } from '@components/ui/button';
+import { archiveLine } from '@lib/modules/restore-copy';
 import { cn, shortSlug } from '@lib/utils';
-import { Archive, ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Copy, FilePlus, Files, FileText, FlaskConical, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Copy, FilePlus, Files, FileText, FlaskConical, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -78,6 +80,13 @@ interface SidebarProps {
   // Archives an ATC from its context menu (BK-571), next to Duplicate. The
   // caller owns the confirmation dialog.
   onArchiveAtc?: (atc: Atc) => void
+  // BK-601 — the archived opt-in. Absent toggle: the control does not render.
+  includeArchived?: boolean
+  onToggleIncludeArchived?: () => void
+  // Loading, error and "nothing archived" states of the opt-in, owned by the caller.
+  archivedNotice?: ReactNode
+  // Opens the restore confirmation for an archived Module.
+  onRestoreModule?: (node: ModuleTreeNode) => void
 }
 
 export function Sidebar({
@@ -100,6 +109,10 @@ export function Sidebar({
   onOpenAtc,
   onDuplicateAtc,
   onArchiveAtc,
+  includeArchived = false,
+  onToggleIncludeArchived,
+  archivedNotice,
+  onRestoreModule,
 }: SidebarProps) {
   const router = useRouter();
   const [filter, setFilter] = useState<ExplorerFilter>('all');
@@ -136,13 +149,14 @@ export function Sidebar({
           : <span className="text-xs text-fg-3">{projectName}</span>}
       </div>
       {/* Status filter chips (BK-9). Hidden when the project has no ATCs yet so
-          an empty project doesn't show four zero-count chips. */}
-      {counts.all > 0 && (
+          an empty project doesn't show four zero-count chips. The archived opt-in
+          (BK-601) stays: an empty tree may be one whose Modules are all archived. */}
+      {(counts.all > 0 || onToggleIncludeArchived) && (
         <div
           data-testid="explorer-filters"
-          className="flex flex-shrink-0 items-center gap-1.5 border-b border-stroke-1 px-2.5 py-2"
+          className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-stroke-1 px-2.5 py-2"
         >
-          {FILTERS.map(f => (
+          {counts.all > 0 && FILTERS.map(f => (
             <button
               key={f.key}
               type="button"
@@ -160,8 +174,27 @@ export function Sidebar({
               <span className="ml-1 font-mono text-fg-4">{counts[f.key]}</span>
             </button>
           ))}
+          {onToggleIncludeArchived && (
+            <button
+              type="button"
+              data-testid="explorer-include-archived"
+              aria-pressed={includeArchived}
+              onClick={onToggleIncludeArchived}
+              title={includeArchived ? 'Hide archived rows' : 'Show archived rows'}
+              className={cn(
+                'ml-auto inline-flex items-center gap-1 rounded-1 border px-1.5 py-0.5 text-2xs font-medium transition-colors',
+                includeArchived
+                  ? 'border-stroke-3 bg-surface-3 text-fg-0'
+                  : 'border-stroke-1 text-fg-2 hover:border-stroke-2 hover:text-fg-1',
+              )}
+            >
+              <Archive size={10} aria-hidden />
+              archived
+            </button>
+          )}
         </div>
       )}
+      {archivedNotice}
       <nav className="flex-1 overflow-auto py-1.5">
         {tree.length === 0
           ? (
@@ -209,6 +242,7 @@ export function Sidebar({
                 onSelect={onSelect}
                 onContextMenu={openCtx}
                 onOpenAtc={onOpenAtc}
+                onRestoreModule={onRestoreModule}
               />
             ))}
       </nav>
@@ -230,6 +264,7 @@ export function Sidebar({
           onManageCriteria={onManageCriteria}
           onDuplicateAtc={onDuplicateAtc}
           onArchiveAtc={onArchiveAtc}
+          onRestoreModule={onRestoreModule}
         />
       )}
     </aside>
@@ -255,6 +290,28 @@ interface ModuleNodeProps {
   onSelect?: (moduleId: string) => void
   onContextMenu: OpenCtx
   onOpenAtc?: (atc: Atc) => void
+  onRestoreModule?: (node: ModuleTreeNode) => void
+}
+
+// BK-601 — the marker every archived row carries (BK-571's badge), never color alone.
+function ArchivedBadge({ testId }: { testId: string }) {
+  return <span className="status-chip shrink-0" data-status="skipped" data-testid={testId}>Archived</span>;
+}
+
+// When, and who or what when that is known: `archiveLine`.
+function ArchivedMeta({ info, indent, testId }: { info: ArchiveInfo | null | undefined, indent: number, testId: string }) {
+  if (!info) { return null; }
+  const line = archiveLine(info);
+  return (
+    <div
+      data-testid={testId}
+      title={line}
+      className="truncate pb-0.5 text-2xs text-fg-3"
+      style={{ paddingLeft: indent, paddingRight: 8 }}
+    >
+      {line}
+    </div>
+  );
 }
 
 function ModuleNode({
@@ -276,7 +333,9 @@ function ModuleNode({
   onSelect,
   onContextMenu,
   onOpenAtc,
+  onRestoreModule,
 }: ModuleNodeProps) {
+  const archived = node.archived_at !== null;
   const hasChildren
     = node.children.length > 0 || node.user_stories.length > 0 || node.atcs.length > 0;
   const [open, setOpen] = useState(depth < 2);
@@ -288,7 +347,7 @@ function ModuleNode({
   // flat here, so a story-linked ATC isn't drawn twice.
   const storyIds = new Set(node.user_stories.map(s => s.id));
   const visibleAtcs = node.atcs.filter(
-    atc => !storyIds.has(atc.user_story_id) && atcMatches(atc.status, filter),
+    atc => !storyIds.has(atc.user_story_id) && atcMatches(atc, filter),
   );
 
   return (
@@ -330,11 +389,31 @@ function ModuleNode({
           {open
             ? <FolderOpen size={12} className="text-fg-2" />
             : <FolderClosed size={12} className="text-fg-2" />}
-          <span className="truncate font-semibold text-fg-0">{node.name}</span>
-          {moduleRollup && <span className="dot ml-auto shrink-0" data-status={moduleRollup} />}
-          <span className={cn('font-mono text-xs text-fg-4', !moduleRollup && 'ml-auto')}>{countAtcs(node)}</span>
+          <span className={cn('truncate font-semibold', archived ? 'text-fg-3' : 'text-fg-0')}>{node.name}</span>
+          {archived
+            ? <span className="ml-auto flex"><ArchivedBadge testId={`module-archived-${node.id}`} /></span>
+            : (
+                <>
+                  {moduleRollup && <span className="dot ml-auto shrink-0" data-status={moduleRollup} />}
+                  <span className={cn('font-mono text-xs text-fg-4', !moduleRollup && 'ml-auto')}>{countAtcs(node)}</span>
+                </>
+              )}
         </button>
-        {canCreate && (onAddSubModule || onRenameModule || onMoveModule || onDeleteModule) && (
+        {archived && canCreate && onRestoreModule && (
+          <div className="absolute right-1 hidden items-center gap-0.5 group-focus-within:flex group-hover:flex">
+            <button
+              type="button"
+              data-testid={`module-restore-${node.id}`}
+              onClick={() => onRestoreModule(node)}
+              title="Restore module"
+              aria-label={`Restore ${node.name}`}
+              className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+            >
+              <ArchiveRestore size={11} aria-hidden />
+            </button>
+          </div>
+        )}
+        {!archived && canCreate && (onAddSubModule || onRenameModule || onMoveModule || onDeleteModule) && (
           <div className="absolute right-1 hidden items-center gap-0.5 group-hover:flex">
             {onAddSubModule && (
               <button
@@ -399,6 +478,7 @@ function ModuleNode({
           </div>
         )}
       </div>
+      {archived && <ArchivedMeta info={node.archive} indent={indent + 16} testId={`module-archive-info-${node.id}`} />}
       {open && (
         <div>
           {node.children.map(child => (
@@ -422,6 +502,7 @@ function ModuleNode({
               onSelect={onSelect}
               onContextMenu={onContextMenu}
               onOpenAtc={onOpenAtc}
+              onRestoreModule={onRestoreModule}
             />
           ))}
           {node.user_stories.map(story => (
@@ -499,8 +580,9 @@ function StoryNode({
 }) {
   const [open, setOpen] = useState(false);
   const acs = story.acceptance_criteria;
-  const storyAtcs = story.atcs.filter(atc => atcMatches(atc.status, filter));
-  const storyRollup = rollupStatus(story.atcs.map(a => a.status));
+  const storyAtcs = story.atcs.filter(atc => atcMatches(atc, filter));
+  const storyRollup = rollupStatus(story.atcs.filter(isLiveAtc).map(a => a.status));
+  const archived = story.archived_at !== null;
   const hasChildren = acs.length > 0 || story.atcs.length > 0;
   const newAtcHref = `/projects/${projectSlug}/atcs/new?story=${story.id}`;
 
@@ -537,7 +619,8 @@ function StoryNode({
           {story.external_id && (
             <span className="shrink-0 whitespace-nowrap font-mono text-xs text-accent">{story.external_id}</span>
           )}
-          <span className="min-w-0 flex-1 truncate text-fg-2">{story.title}</span>
+          <span className={cn('min-w-0 flex-1 truncate', archived ? 'text-fg-3' : 'text-fg-2')}>{story.title}</span>
+          {archived && <ArchivedBadge testId={`story-archived-${story.id}`} />}
           {storyRollup && <span className="dot shrink-0" data-status={storyRollup} />}
           {story.status === 'ready_to_test' && (
             <span
@@ -548,7 +631,7 @@ function StoryNode({
             </span>
           )}
         </button>
-        {canCreate && (
+        {canCreate && !archived && (
           <div className="absolute right-1 hidden items-center gap-0.5 group-hover:flex">
             <Link
               href={newAtcHref}
@@ -598,35 +681,40 @@ function StoryNode({
           </div>
         )}
       </div>
+      {archived && <ArchivedMeta info={story.archive} indent={indent + 16} testId={`story-archive-info-${story.id}`} />}
       {open && (
         <div>
           {acs.map(ac => (
-            <div
-              key={ac.id}
-              className="group/ac relative flex h-5 items-center hover:bg-surface-2"
-              style={{ paddingLeft: indent + 22, paddingRight: 8 }}
-            >
-              <button
-                type="button"
-                data-testid={`ac-row-${ac.id}`}
-                onClick={() => onManageCriteria?.(story)}
-                title="View acceptance criteria"
-                className="flex h-5 min-w-0 flex-1 items-center gap-1.5 text-left text-xs text-fg-3"
+            <div key={ac.id}>
+              <div
+                className="group/ac relative flex h-5 items-center hover:bg-surface-2"
+                style={{ paddingLeft: indent + 22, paddingRight: 8 }}
               >
-                <ListChecks size={10} className="shrink-0 text-fg-4" />
-                <span className="min-w-0 flex-1 truncate">{ac.title}</span>
-              </button>
-              {canCreate && (
-                <Link
-                  href={`${newAtcHref}&ac=${ac.id}`}
-                  data-testid={`ac-new-atc-${ac.id}`}
-                  title="Create ATC from this criterion"
-                  aria-label="Create ATC from this criterion"
-                  className="absolute right-1 hidden h-4 w-4 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-accent group-hover/ac:flex"
+                <button
+                  type="button"
+                  data-testid={`ac-row-${ac.id}`}
+                  onClick={() => onManageCriteria?.(story)}
+                  disabled={ac.archived_at !== null}
+                  title={ac.archived_at !== null ? undefined : 'View acceptance criteria'}
+                  className="flex h-5 min-w-0 flex-1 items-center gap-1.5 text-left text-xs text-fg-3"
                 >
-                  <Plus size={10} />
-                </Link>
-              )}
+                  <ListChecks size={10} className="shrink-0 text-fg-4" />
+                  <span className="min-w-0 flex-1 truncate">{ac.title}</span>
+                  {ac.archived_at !== null && <ArchivedBadge testId={`ac-archived-${ac.id}`} />}
+                </button>
+                {canCreate && !archived && ac.archived_at === null && (
+                  <Link
+                    href={`${newAtcHref}&ac=${ac.id}`}
+                    data-testid={`ac-new-atc-${ac.id}`}
+                    title="Create ATC from this criterion"
+                    aria-label="Create ATC from this criterion"
+                    className="absolute right-1 hidden h-4 w-4 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-accent group-hover/ac:flex"
+                  >
+                    <Plus size={10} />
+                  </Link>
+                )}
+              </div>
+              {ac.archived_at !== null && <ArchivedMeta info={ac.archive} indent={indent + 22} testId={`ac-archive-info-${ac.id}`} />}
             </div>
           ))}
           {storyAtcs.map(atc => (
@@ -669,37 +757,45 @@ function AtcLink({
   onContextMenu: OpenCtx
   onOpenAtc?: (atc: Atc) => void
 }) {
+  const archived = !isLiveAtc(atc);
   return (
-    <Link
-      href={`/projects/${projectSlug}/atcs/${atc.id}`}
-      onContextMenu={e => onContextMenu(e, { kind: 'atc', atc })}
-      onClick={(e) => {
+    <>
+      <Link
+        href={`/projects/${projectSlug}/atcs/${atc.id}`}
+        onContextMenu={e => onContextMenu(e, { kind: 'atc', atc })}
+        onClick={(e) => {
         // In the Tree workbench, a plain click opens the ATC in an in-pane tab
         // instead of navigating to the full editor. Modifier/middle clicks keep
         // the native link behaviour (open the editor in a new tab).
-        if (onOpenAtc && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
-          e.preventDefault();
-          onOpenAtc(atc);
-        }
-      }}
-      className={cn(
-        'flex h-6 items-center gap-1.5 text-sm transition-colors',
-        selected
-          ? 'border-l-2 border-accent bg-accent-soft text-fg-0'
-          : 'border-l-2 border-transparent text-fg-1 hover:bg-surface-2',
-      )}
-      style={{ paddingLeft: indent, paddingRight: 8 }}
-    >
-      <span className="dot shrink-0" data-status={atc.status} />
-      <span className="shrink-0 font-mono text-xs text-fg-3" title={atc.slug}>{shortSlug(atc.slug)}</span>
-      <span className="min-w-0 flex-1 truncate">{atc.title}</span>
-      <span
-        className="layer-chip shrink-0"
-        data-layer={atc.layer.toLowerCase()}
+          if (onOpenAtc && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+            e.preventDefault();
+            onOpenAtc(atc);
+          }
+        }}
+        className={cn(
+          'flex h-6 items-center gap-1.5 text-sm transition-colors',
+          selected
+            ? 'border-l-2 border-accent bg-accent-soft text-fg-0'
+            : 'border-l-2 border-transparent text-fg-1 hover:bg-surface-2',
+        )}
+        style={{ paddingLeft: indent, paddingRight: 8 }}
       >
-        {atc.layer}
-      </span>
-    </Link>
+        {!archived && <span className="dot shrink-0" data-status={atc.status} />}
+        <span className="shrink-0 font-mono text-xs text-fg-3" title={atc.slug}>{shortSlug(atc.slug)}</span>
+        <span className={cn('min-w-0 flex-1 truncate', archived && 'text-fg-3')}>{atc.title}</span>
+        {archived
+          ? <ArchivedBadge testId={`atc-archived-${atc.id}`} />
+          : (
+              <span
+                className="layer-chip shrink-0"
+                data-layer={atc.layer.toLowerCase()}
+              >
+                {atc.layer}
+              </span>
+            )}
+      </Link>
+      {archived && <ArchivedMeta info={atc.archive} indent={indent} testId={`atc-archive-info-${atc.id}`} />}
+    </>
   );
 }
 
@@ -738,6 +834,7 @@ interface ContextMenuProps {
   onManageCriteria?: (story: UserStoryWithChildren) => void
   onDuplicateAtc?: (atc: Atc) => void
   onArchiveAtc?: (atc: Atc) => void
+  onRestoreModule?: (node: ModuleTreeNode) => void
 }
 
 function ExplorerContextMenu({
@@ -757,6 +854,7 @@ function ExplorerContextMenu({
   onManageCriteria,
   onDuplicateAtc,
   onArchiveAtc,
+  onRestoreModule,
 }: ContextMenuProps) {
   // Close on Escape, on scroll, and on resize — a positioned menu shouldn't
   // linger detached from the row it points at.
@@ -787,6 +885,19 @@ function ExplorerContextMenu({
   function buildMenu(): { title: string, kind: string, entries: MenuEntry[] } {
     if (target.kind === 'module') {
       const node = target.node;
+      // BK-601 — an archived Module offers its way back and nothing that edits it.
+      if (node.archived_at !== null) {
+        return {
+          title: node.name,
+          kind: 'Archived module',
+          entries: [
+            ...(canCreate && onRestoreModule
+              ? [{ label: 'Restore', icon: ArchiveRestore, onClick: () => onRestoreModule(node) }, 'divider' as const]
+              : []),
+            { label: 'Copy ID', icon: Copy, shortcut: '⌘C', onClick: () => copyId(node.id) },
+          ],
+        };
+      }
       const entries: MenuEntry[] = [
         { label: 'Open', icon: ArrowRight, shortcut: '⏎', onClick: () => onSelect?.(node.id) },
       ];
@@ -812,6 +923,13 @@ function ExplorerContextMenu({
 
     if (target.kind === 'story') {
       const story = target.story;
+      if (story.archived_at !== null) {
+        return {
+          title: story.external_id ?? story.title,
+          kind: 'Archived user story',
+          entries: [{ label: 'Copy ID', icon: Copy, shortcut: '⌘C', onClick: () => copyId(story.external_id ?? story.id) }],
+        };
+      }
       const entries: MenuEntry[] = [];
       if (canCreate) {
         entries.push(
@@ -834,13 +952,13 @@ function ExplorerContextMenu({
       { label: 'Open', icon: ArrowRight, shortcut: '⏎', onClick: () => router.push(href) },
       { label: 'Open in new tab', icon: ArrowUpRight, shortcut: '⌘⏎', onClick: () => window.open(href, '_blank', 'noopener') },
     ];
-    if (canCreate && onDuplicateAtc) {
+    if (canCreate && onDuplicateAtc && isLiveAtc(atc)) {
       entries.push(
         'divider',
         { label: 'Duplicate', icon: Files, shortcut: '⌘D', onClick: () => onDuplicateAtc(atc) },
       );
     }
-    if (canCreate && onArchiveAtc) {
+    if (canCreate && onArchiveAtc && isLiveAtc(atc)) {
       entries.push(
         { label: 'Archive', icon: Archive, onClick: () => onArchiveAtc(atc) },
       );
@@ -917,12 +1035,18 @@ function ExplorerContextMenu({
   );
 }
 
-function atcMatches(status: AtcStatus, filter: ExplorerFilter): boolean {
-  return filter === 'all' || status === filter;
+// BK-601 — an archived ATC is on screen only under the opt-in, and only in the `all`
+// view: it has no run status to filter by, and no chip or roll-up ever counts it.
+function isLiveAtc(atc: Atc): boolean {
+  return atc.archived_at === null;
+}
+
+function atcMatches(atc: Atc, filter: ExplorerFilter): boolean {
+  return filter === 'all' || (isLiveAtc(atc) && atc.status === filter);
 }
 
 function countAtcs(node: ModuleTreeNode): number {
-  let n = node.atcs.length;
+  let n = node.atcs.filter(isLiveAtc).length;
   for (const c of node.children) { n += countAtcs(c); }
   return n;
 }
@@ -943,7 +1067,7 @@ function rollupStatus(statuses: AtcStatus[]): AtcStatus | null {
 // node.atcs already holds every ATC in the module (the tree builder buckets
 // story-linked ATCs there too), so recursing children alone covers the subtree.
 function moduleStatuses(node: ModuleTreeNode): AtcStatus[] {
-  const acc = node.atcs.map(a => a.status);
+  const acc = node.atcs.filter(isLiveAtc).map(a => a.status);
   for (const c of node.children) { acc.push(...moduleStatuses(c)); }
   return acc;
 }
@@ -951,7 +1075,7 @@ function moduleStatuses(node: ModuleTreeNode): AtcStatus[] {
 function countByStatus(tree: ModuleTreeNode[]): Record<ExplorerFilter, number> {
   const acc: Record<ExplorerFilter, number> = { all: 0, fail: 0, blocked: 0, unrun: 0 };
   const walk = (node: ModuleTreeNode) => {
-    for (const atc of node.atcs) {
+    for (const atc of node.atcs.filter(isLiveAtc)) {
       acc.all += 1;
       if (atc.status === 'fail') { acc.fail += 1; }
       else if (atc.status === 'blocked') { acc.blocked += 1; }
