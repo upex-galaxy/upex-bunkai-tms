@@ -79,3 +79,20 @@ minting a second row with the same name. The first row (`20261101213717`, the
 pre-amendment content) was deleted; the surviving row (`20261101214059`) holds
 the final file content byte for byte (md5 match), and the live `prosrc` of all
 three functions matches the file's function bodies.
+
+### 2026-11-05 — BK-1589: 0118 applied twice on purpose, collapsed to one row
+
+`0118_member_write_paths_locked.sql` was re-applied whole to prove idempotence
+(AC-5.1), minting a second row with the same name. Before the collapse, both
+rows' `statements` carried the file byte for byte (md5
+`ba15a973750a662e15e1f5c0f5825c2e`), and the second apply changed nothing: the
+live `prosrc`, policies, and table and column grants read the same before and
+after. The first row (`20261105170245`) was deleted; the surviving row is
+`20261105171000`. The live `md5(prosrc)` equals the file's function body for all
+three functions (AC-5.2): `bunkai_assign_bug`
+`28b6540600f94ab86c9860509856af03`, `bunkai_leave_workspace`
+`fd64c8e8ce3b01b69a07bae0416470d6`, `bunkai_accept_workspace_invite`
+`494c5a5285a0424be16183f432867c97`. Policies come back deparsed from
+`pg_policies`, so they were checked by reading them back: `workspace_members`
+keeps only `workspace_members_select_self_or_admin`, and `anon` and
+`authenticated` hold no INSERT, UPDATE, DELETE or TRUNCATE on it.

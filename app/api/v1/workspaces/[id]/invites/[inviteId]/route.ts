@@ -48,14 +48,29 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('not_found', 'Invite not found or you lack permission.');
   }
 
-  // The RLS-gated update above proved the caller is a workspace admin. Rotate
-  // the secret in the sibling table (service-role; QA/analytics cannot read it).
-  const { error: secretError } = await createAdminClient()
+  // The RLS-gated update above proved the caller is a workspace admin, so the
+  // service-role writes below are authorization-safe. Rotate the secret in the
+  // sibling table first (QA/analytics cannot read it): if the stamp below fails,
+  // the old token is already dead and the invite fails closed.
+  const admin = createAdminClient();
+  const { error: secretError } = await admin
     .from('workspace_invite_secrets')
     .upsert({ invite_id: inviteId, token_hash: newHash }, { onConflict: 'invite_id' });
 
   if (secretError) {
     throw new ApiError('internal_error', secretError.message);
+  }
+
+  // The caller now answers for this invite: accept re-validates its inviter
+  // (BK-1589), and a resend must not hand out a link tied to an Admin who has
+  // since lost the authority.
+  const { error: stampError } = await admin
+    .from('workspace_invites')
+    .update({ invited_by_user_id: principal.userId })
+    .eq('id', inviteId);
+
+  if (stampError) {
+    throw new ApiError('internal_error', stampError.message);
   }
 
   const acceptUrl = `${webUrl('/invites/accept')}?token=${encodeURIComponent(newToken)}`;

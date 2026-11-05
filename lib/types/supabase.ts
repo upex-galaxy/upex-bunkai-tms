@@ -2244,6 +2244,10 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_accept_workspace_invite: {
+        Args: { p_invite_id: string, p_user_id: string }
+        Returns: Json
+      }
       bunkai_add_tests_to_plan: {
         Args: { p_test_ids: string[], p_test_plan_id: string }
         Returns: Json

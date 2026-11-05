@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { SQL } from 'bun';
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 
 // BK-572 — DB-integration proof for removing a teammate from a workspace
@@ -13,10 +14,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //     deleted, member.removed written), isolation from a second workspace,
 //     authorship preserved, the rollback when a failure is forced after
 //     every other write (AC-14), and crossing removals (AC-10.1, E2);
-//   * the narrowed workspace_members RLS policies, attacked DIRECTLY through
-//     PostgREST as an Admin (AC-18, E7): an RLS-filtered DELETE / UPDATE
-//     answers success with ZERO rows, so every refusal is asserted on the
-//     affected-row count AND re-read with the service role;
+//   * BK-1589 G1: workspace_members has no write path through a user session,
+//     attacked DIRECTLY through PostgREST as an Admin and an Owner (AC-1), and
+//     the catalog holds no write privilege or policy for a user role. The
+//     migration 0118 must be applied for these to pass;
 //   * the activity feed: member.removed is listed with its projection, and
 //     the removed teammate's email resolves even though they never acted.
 //
@@ -492,56 +493,103 @@ describeOrSkip('BK-572 — remove a teammate (RPC + RLS ladder, real database)',
     expect(count).toBe(1);
   }, 60_000);
 
-  it('the data API enforces the same ladder: DELETE (AC-18)', async () => {
+  // BK-1589 G1: the data API has no write path at all, so a refusal is the
+  // missing table privilege (42501), never an RLS-filtered zero-row success.
+  // The service role re-reads each row. Personas: Owner, Admin and, below,
+  // every role of AC-1.1 on an insert.
+  it('the data API refuses every DELETE, for Admin and Owner alike, and leaves the side effects alone (AC-1.3, AC-18)', async () => {
     expect.hasAssertions();
     const seed = await seedWorkspace('rls-delete', { owner: 'owner', admin: 'admin', member: 'member' });
-    const asAdmin = clients.admin;
+    const bug = await seedBug(seed, { title: 'held through a refused delete', assignee: 'member', author: 'owner' });
+    const token = await seedToken('member', seed.workspaceId, 'refused-delete-scoped');
+    const invite = await seedInvite(seed.workspaceId, users.member.email, 'owner');
 
-    // An RLS-filtered DELETE answers success with zero rows: assert the count, then re-read.
-    const onOwner = await asAdmin.from('workspace_members').delete({ count: 'exact' }).eq('workspace_id', seed.workspaceId).eq('user_id', users.owner.id);
-    expect(onOwner.error).toBeNull();
-    expect(onOwner.count).toBe(0);
-    expect((await memberRow(seed.workspaceId, 'owner'))?.role).toBe('owner');
+    for (const [caller, target] of [['admin', 'owner'], ['admin', 'admin'], ['admin', 'member'], ['owner', 'member'], ['owner', 'admin']] as const) {
+      const before = await memberRow(seed.workspaceId, target);
+      const { error } = await clients[caller].from('workspace_members').delete().eq('workspace_id', seed.workspaceId).eq('user_id', users[target].id);
+      expect(error?.code).toBe('42501');
+      expect(await memberRow(seed.workspaceId, target)).toEqual(before);
+    }
 
-    const onSelf = await asAdmin.from('workspace_members').delete({ count: 'exact' }).eq('workspace_id', seed.workspaceId).eq('user_id', users.admin.id);
-    expect(onSelf.count).toBe(0);
-    expect(await memberRow(seed.workspaceId, 'admin')).not.toBeNull();
-
-    // Rank-based, not a blanket denial: the ladder permits a Member's row.
-    const onMember = await asAdmin.from('workspace_members').delete({ count: 'exact' }).eq('workspace_id', seed.workspaceId).eq('user_id', users.member.id);
-    expect(onMember.count).toBe(1);
-    expect(await memberRow(seed.workspaceId, 'member')).toBeNull();
+    const { data: bugRow } = await service().from('bugs').select('assignee_user_id').eq('id', bug).single();
+    expect(bugRow?.assignee_user_id).toBe(users.member.id);
+    const { data: tokenRow } = await service().from('access_tokens').select('revoked_at').eq('id', token).single();
+    expect(tokenRow?.revoked_at).toBeNull();
+    const { data: inviteRow } = await service().from('workspace_invites').select('revoked_at').eq('id', invite).single();
+    expect(inviteRow?.revoked_at).toBeNull();
+    expect(await activityActions(seed.workspaceId)).not.toContain('member.removed');
   }, 60_000);
 
-  it('the data API enforces the same ladder: UPDATE and INSERT (AC-18, E7)', async () => {
+  it('the data API refuses every UPDATE: another member, an Owner, and the caller\'s own row (AC-1.2, AC-18, E7)', async () => {
     expect.hasAssertions();
-    const seed = await seedWorkspace('rls-write', { owner: 'owner', admin: 'admin', member: 'member' });
-    const asAdmin = clients.admin;
+    const seed = await seedWorkspace('rls-update', { owner: 'owner', admin: 'admin', member: 'member' });
 
-    const demoteOwner = await asAdmin.from('workspace_members').update({ role: 'member' }, { count: 'exact' }).eq('workspace_id', seed.workspaceId).eq('user_id', users.owner.id);
-    expect(demoteOwner.count ?? 0).toBe(0);
-    expect((await memberRow(seed.workspaceId, 'owner'))?.role).toBe('owner');
+    const attempts: Array<[Persona, Persona, Record<string, string>]> = [
+      ['admin', 'owner', { role: 'member' }],
+      ['admin', 'owner', { status: 'suspended' }],
+      ['admin', 'admin', { role: 'owner' }],
+      ['admin', 'member', { role: 'admin' }],
+      ['owner', 'member', { role: 'viewer' }],
+    ];
+    for (const [caller, target, patch] of attempts) {
+      const before = await memberRow(seed.workspaceId, target);
+      const { error } = await clients[caller].from('workspace_members').update(patch).eq('workspace_id', seed.workspaceId).eq('user_id', users[target].id);
+      expect(error?.code).toBe('42501');
+      expect(await memberRow(seed.workspaceId, target)).toEqual(before);
+    }
+  }, 60_000);
 
-    const suspendOwner = await asAdmin.from('workspace_members').update({ status: 'suspended' }, { count: 'exact' }).eq('workspace_id', seed.workspaceId).eq('user_id', users.owner.id);
-    expect(suspendOwner.count ?? 0).toBe(0);
-    expect((await memberRow(seed.workspaceId, 'owner'))?.status).toBe('active');
+  it('the data API refuses every INSERT, whatever the role, so an invite is the only way in (AC-1.1, AC-18)', async () => {
+    expect.hasAssertions();
+    const seed = await seedWorkspace('rls-insert', { owner: 'owner', admin: 'admin' });
 
-    const promoteSelf = await asAdmin.from('workspace_members').update({ role: 'owner' }, { count: 'exact' }).eq('workspace_id', seed.workspaceId).eq('user_id', users.admin.id);
-    expect(promoteSelf.count ?? 0).toBe(0);
-    expect((await memberRow(seed.workspaceId, 'admin'))?.role).toBe('admin');
+    for (const caller of ['admin', 'owner'] as const) {
+      for (const role of ['viewer', 'member', 'admin', 'owner'] as const) {
+        const { error } = await clients[caller].from('workspace_members').insert({ workspace_id: seed.workspaceId, user_id: users.outsider.id, role, status: 'active' });
+        expect(error?.code).toBe('42501');
+        expect(await memberRow(seed.workspaceId, 'outsider')).toBeNull();
+      }
+    }
+  }, 60_000);
 
-    // The old row passes, the new one does not: the `with check` refuses with 42501.
-    const promoteMember = await asAdmin.from('workspace_members').update({ role: 'owner' }).eq('workspace_id', seed.workspaceId).eq('user_id', users.member.id);
-    expect(promoteMember.error?.code).toBe('42501');
-    expect((await memberRow(seed.workspaceId, 'member'))?.role).toBe('member');
+  it('the catalog holds no write privilege or write policy for a user role (AC-1.5)', async () => {
+    expect.hasAssertions();
+    const pgUrl = process.env.POSTGRES_URL_NON_POOLING;
+    if (!pgUrl) {
+      throw new Error('[member-removal-isolation] POSTGRES_URL_NON_POOLING is missing, so the catalog cannot be checked; refusing to pass.');
+    }
+    const sql = new SQL(pgUrl);
+    try {
+      const grants = await sql`
+        select grantee, privilege_type
+          from information_schema.role_table_grants
+         where table_schema = 'public'
+           and table_name = 'workspace_members'
+           and grantee in ('anon', 'authenticated', 'PUBLIC')
+           and privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')`;
+      expect(grants).toEqual([]);
+      const policies = await sql`
+        select policyname, cmd
+          from pg_policies
+         where schemaname = 'public'
+           and tablename = 'workspace_members'
+         order by policyname`;
+      expect([...policies]).toEqual([{ policyname: 'workspace_members_select_self_or_admin', cmd: 'SELECT' }]);
+      const [select] = await sql`select has_table_privilege('authenticated', 'public.workspace_members', 'SELECT') as allowed`;
+      expect(select.allowed).toBe(true);
+    }
+    finally {
+      await sql.close();
+    }
+  }, 60_000);
 
-    const insertOwner = await asAdmin.from('workspace_members').insert({ workspace_id: seed.workspaceId, user_id: users.outsider.id, role: 'owner', status: 'active' });
-    expect(insertOwner.error?.code).toBe('42501');
-    expect(await memberRow(seed.workspaceId, 'outsider')).toBeNull();
-
-    const insertViewer = await asAdmin.from('workspace_members').insert({ workspace_id: seed.workspaceId, user_id: users.outsider.id, role: 'viewer', status: 'active' });
-    expect(insertViewer.error).toBeNull();
-    expect((await memberRow(seed.workspaceId, 'outsider'))?.role).toBe('viewer');
+  it('a teammate still reads the membership rows the select policy gives them (AC-1.4)', async () => {
+    expect.hasAssertions();
+    const seed = await seedWorkspace('rls-read', { owner: 'owner', admin: 'admin', member: 'member' });
+    const { data: asAdmin } = await clients.admin.from('workspace_members').select('user_id').eq('workspace_id', seed.workspaceId);
+    expect(asAdmin?.length).toBe(3);
+    const { data: asMember } = await clients.member.from('workspace_members').select('user_id').eq('workspace_id', seed.workspaceId);
+    expect(asMember).toEqual([{ user_id: users.member.id }]);
   }, 60_000);
 
   it('a re-invited teammate returns as a new joiner and the revoked PAT stays revoked (AC-15)', async () => {
@@ -551,7 +599,7 @@ describeOrSkip('BK-572 — remove a teammate (RPC + RLS ladder, real database)',
     const token = await seedToken('member', seed.workspaceId, 'rejoin-scoped');
     expect((await remove('owner', seed.workspaceId, users.member.id)).error).toBeNull();
 
-    // The accept route re-adds through the service role; mirror it.
+    // Only the row matters here (accept is proven in invite-accept-isolation).
     await service().from('workspace_members').insert({ workspace_id: seed.workspaceId, user_id: users.member.id, role: 'viewer', status: 'active' });
     const back = await memberRow(seed.workspaceId, 'member');
     expect(back?.role).toBe('viewer');

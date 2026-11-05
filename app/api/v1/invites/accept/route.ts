@@ -8,10 +8,20 @@ import { hashInviteToken } from '@lib/api/invite-tokens';
 import { createAdminClient } from '@lib/supabase/admin';
 import { inviteAcceptAction } from '@lib/workspaces/invites';
 import { z } from 'zod';
+import {
+  alreadyMember,
+  invalidInviteToken,
+  INVITE_ACCEPTED_MESSAGE,
+  INVITE_EXPIRED_MESSAGE,
+  INVITE_REVOKED_MESSAGE,
+  redeemInvite,
+} from './response';
 
 // POST /api/v1/invites/accept — invitee redeems a raw token. The caller must
-// be signed in; the call adds a row to `workspace_members` for the caller in
-// the invite's workspace + role, and stamps `accepted_at` on the invite.
+// be signed in. This route owns the token hash, the non-disclosure order and the
+// email gate; the membership write and the invite stamp are one transaction in
+// `bunkai_accept_workspace_invite` (migration 0118, BK-1589), which also refuses
+// an invite whose inviter was removed or demoted since issuing it.
 //
 // Email matching: the caller's auth email must equal the invite's email.
 // Bypassing this would let a user redeem invites addressed to other people.
@@ -25,13 +35,6 @@ interface RedeemableInvite {
   workspace_id: string
   email: string
   role: string
-}
-
-// The single refusal a token that never existed gets. Every path that must
-// not disclose existence builds its error HERE, so status + body stay
-// byte-identical by construction (BK-988 / BK-512 AC-14).
-function invalidInviteToken(): ApiError {
-  return new ApiError('not_found', 'Invite token is invalid.');
 }
 
 // Resolve a hashed token to an invite the caller may try to redeem, or throw.
@@ -91,13 +94,13 @@ export async function resolveRedeemableInvite(
   }
 
   if (invite.revoked_at) {
-    throw new ApiError('conflict', 'Invite has been revoked.');
+    throw new ApiError('conflict', INVITE_REVOKED_MESSAGE);
   }
   if (invite.accepted_at) {
-    throw new ApiError('conflict', 'Invite has already been accepted.');
+    throw new ApiError('conflict', INVITE_ACCEPTED_MESSAGE);
   }
   if (new Date(invite.expires_at) < new Date()) {
-    throw new ApiError('conflict', 'Invite has expired.');
+    throw new ApiError('conflict', INVITE_EXPIRED_MESSAGE);
   }
 
   return { id: invite.id, workspace_id: invite.workspace_id, email: invite.email, role: invite.role };
@@ -130,8 +133,8 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   // BK-62: an accept must never demote. If the caller already holds an active
-  // membership with an equal or higher role, reject instead of upserting —
-  // the unconditional upsert here is what demoted a workspace owner to member.
+  // membership with an equal or higher role, refuse early; the RPC holds the same
+  // rule under its lock, for a role that changes after this read.
   const { data: existingMember, error: existingError } = await admin
     .from('workspace_members')
     .select('role, status')
@@ -145,45 +148,15 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 
   const action = inviteAcceptAction(existingMember, invite.role as WorkspaceRole);
   if (action === 'reject_already_member') {
-    throw new ApiError('conflict', 'You are already a member of this workspace with an equal or higher role.', {
-      details: { reason: 'already_member_equal_or_higher_role' },
-    });
+    throw alreadyMember();
   }
 
-  // Upsert membership: insert a new row, activate a non-active row (e.g.
-  // status='invited'), or apply a legitimate promotion to a higher role.
-  const { error: memberError } = await admin
-    .from('workspace_members')
-    .upsert(
-      {
-        workspace_id: invite.workspace_id,
-        user_id: principal.userId,
-        role: invite.role,
-        status: 'active',
-      },
-      { onConflict: 'workspace_id,user_id' },
-    );
-
-  if (memberError) {
-    throw new ApiError('internal_error', memberError.message);
-  }
-
-  const { error: stampError } = await admin
-    .from('workspace_invites')
-    .update({
-      accepted_at: new Date().toISOString(),
-      accepted_by_user_id: principal.userId,
-    })
-    .eq('id', invite.id);
-
-  if (stampError) {
-    throw new ApiError('internal_error', stampError.message);
-  }
+  const redeemed = await redeemInvite(admin, { inviteId: invite.id, userId: principal.userId });
 
   return jsonResponse({
     ok: true,
-    workspace_id: invite.workspace_id,
-    role: invite.role,
+    workspace_id: redeemed.workspace_id,
+    role: redeemed.role,
   });
 }, {
   auth: 'authenticated',
