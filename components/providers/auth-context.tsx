@@ -4,7 +4,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import { handleAuthChangeRedirect } from '@lib/account/auth-redirect';
 import { createClient } from '@lib/supabase/client';
-import { createContext, use, useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, use, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 interface AuthState {
   user: User | null
@@ -12,20 +12,55 @@ interface AuthState {
   loading: boolean
 }
 
-interface AuthContextValue extends AuthState {
+interface AuthActions {
   signInWithMagicLink: (email: string, redirectTo?: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<{ error: Error | null }>
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+interface AuthContextValue extends AuthState, AuthActions {}
+
+// What the server render and the first client render both see. One constant, so
+// `useSyncExternalStore` gets the same reference on every call.
+const INITIAL_AUTH_STATE: AuthState = { user: null, session: null, loading: true };
+
+interface AuthStore {
+  subscribe: (onChange: () => void) => () => void
+  getSnapshot: () => AuthState
+  setState: (next: AuthState) => void
+}
+
+function createAuthStore(): AuthStore {
+  let snapshot = INITIAL_AUTH_STATE;
+  const listeners = new Set<() => void>();
+  return {
+    subscribe: (onChange) => {
+      listeners.add(onChange);
+      return () => { listeners.delete(onChange); };
+    },
+    getSnapshot: () => snapshot,
+    setState: (next) => {
+      snapshot = next;
+      listeners.forEach(onChange => onChange());
+    },
+  };
+}
+
+// BK-1618 — the context carries a store and two stable actions, never the auth
+// state itself, so its value keeps one identity for the provider's whole life.
+// The session resolves on the client right after hydration (`getSession` and
+// the `INITIAL_SESSION` event). When that resolution changed the context value,
+// React treated every Suspense boundary below it that was not hydrated yet as
+// changed and rendered it again on the client, while the server copy of the
+// same content still sat in React's hidden streaming container (React 19.2
+// holds a streamed boundary there for up to ~300 ms before revealing it): the
+// Tests list showed two `tests-list` containers. Consumers subscribe to the
+// store instead, so only they re-render when the session lands.
+export const AuthContext = createContext<{ store: AuthStore } & AuthActions | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    session: null,
-    loading: true,
-  });
+  const [store] = useState(createAuthStore);
+  const setState = store.setState;
 
   useEffect(() => {
     let active = true;
@@ -63,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, setState]);
 
   const signInWithMagicLink = useCallback(
     async (email: string, redirectTo?: string) => {
@@ -81,9 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ?? null };
   }, [supabase]);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({ ...state, signInWithMagicLink, signOut }),
-    [state, signInWithMagicLink, signOut],
+  const value = useMemo(
+    () => ({ store, signInWithMagicLink, signOut }),
+    [store, signInWithMagicLink, signOut],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;
@@ -94,5 +129,11 @@ export function useAuth(): AuthContextValue {
   if (!ctx) {
     throw new Error('useAuth must be used inside <AuthProvider>');
   }
-  return ctx;
+  const { store, signInWithMagicLink, signOut } = ctx;
+  const state = useSyncExternalStore(store.subscribe, store.getSnapshot, getServerAuthSnapshot);
+  return { ...state, signInWithMagicLink, signOut };
+}
+
+function getServerAuthSnapshot(): AuthState {
+  return INITIAL_AUTH_STATE;
 }
