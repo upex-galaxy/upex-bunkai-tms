@@ -62,6 +62,7 @@ const TreeUserStorySchema = z
   .object({
     id: z.string().uuid(),
     module_id: z.string().uuid(),
+    project_id: z.string().uuid().nullable(),
     title: z.string(),
     description: z.string().nullable(),
     external_id: z.string().nullable(),

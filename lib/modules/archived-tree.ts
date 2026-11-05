@@ -1,4 +1,4 @@
-import type { AcceptanceCriterion, Module, UserStory } from '@lib/types';
+import type { AcceptanceCriterion, ArchiveInfo, Module, UserStory } from '@lib/types';
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError } from '@lib/api/error-envelope';
@@ -18,16 +18,7 @@ import { resolveActivityActors } from '@lib/supabase/rpc';
 //   * a Story or Criterion archived on its own: the date only, because no actor was
 //     ever recorded and the screen must not invent one.
 
-export interface ArchiveActor {
-  user_id: string
-  email: string | null
-}
-
-export interface ArchiveInfo {
-  archived_at: string
-  archived_by: ArchiveActor | null
-  archived_with: string | null
-}
+type ArchiveActor = NonNullable<ArchiveInfo['archived_by']>;
 
 interface ArchiveStamp {
   archived_at: string | null
@@ -112,9 +103,9 @@ export function annotateArchive({ modules, stories, criteria, actorByModule }: A
 }
 
 export interface ModuleTreeListing {
-  modules: (Omit<Module, 'archive_batch_id'> & { archive: ArchiveInfo | null })[]
-  user_stories: (Omit<UserStory, 'archive_batch_id' | 'project_id'> & { archive: ArchiveInfo | null })[]
-  acceptance_criteria: (Omit<AcceptanceCriterion, 'archive_batch_id'> & { archive: ArchiveInfo | null })[]
+  modules: Module[]
+  user_stories: UserStory[]
+  acceptance_criteria: AcceptanceCriterion[]
 }
 
 async function loadArchiveActors(
@@ -186,6 +177,7 @@ export async function loadModuleTreeListing(
     user_stories: stories.map(s => ({
       id: s.id,
       module_id: s.module_id,
+      project_id: s.project_id,
       title: s.title,
       description: s.description,
       external_id: s.external_id,

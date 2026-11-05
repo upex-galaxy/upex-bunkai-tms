@@ -39,6 +39,14 @@ export interface Project {
   created_at: Timestamp
 }
 
+// BK-601 — what an archived row says about itself. Only the opt-in listing fills it
+// (`lib/modules/archived-tree.ts`); the default tree read leaves it undefined.
+export interface ArchiveInfo {
+  archived_at: Timestamp
+  archived_by: { user_id: Uuid, email: string | null } | null
+  archived_with: string | null
+}
+
 export interface Module {
   id: Uuid
   project_id: Uuid
@@ -51,6 +59,7 @@ export interface Module {
   archived_at: Timestamp | null
   // BK-601 — which Module archive took this row down. Internal: never in an API body.
   archive_batch_id?: Uuid | null
+  archive?: ArchiveInfo | null
 }
 
 export type UserStoryStatus = 'draft' | 'ready_to_test';
@@ -68,6 +77,7 @@ export interface UserStory {
   archived_at: Timestamp | null
   // BK-601 — which Module archive took this row down. Internal: never in an API body.
   archive_batch_id?: Uuid | null
+  archive?: ArchiveInfo | null
 }
 
 export interface AcceptanceCriterion {
@@ -80,6 +90,7 @@ export interface AcceptanceCriterion {
   archived_at: Timestamp | null
   // BK-601 — which Module archive took this row down. Internal: never in an API body.
   archive_batch_id?: Uuid | null
+  archive?: ArchiveInfo | null
 }
 
 export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed';

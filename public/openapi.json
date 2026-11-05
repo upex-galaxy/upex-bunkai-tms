@@ -3838,6 +3838,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "project_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
           "title": {
             "type": "string"
           },
@@ -3869,6 +3873,7 @@
         "required": [
           "id",
           "module_id",
+          "project_id",
           "title",
           "description",
           "external_id",
