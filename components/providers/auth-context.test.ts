@@ -29,10 +29,8 @@ const client = {
   },
 };
 void mock.module('@lib/supabase/client', () => ({ createClient: () => client }));
-const redirects: string[] = [];
-void mock.module('@lib/account/auth-redirect', () => ({
-  handleAuthChangeRedirect: (event: string) => { redirects.push(event); },
-}));
+// The real redirect handler stays in place: it acts on SIGNED_OUT only, and a
+// mock of it would leak into its own test file within one bun process.
 
 const { act, createElement, use } = await import('react');
 const { createRoot } = await import('react-dom/client');
@@ -85,11 +83,9 @@ describe('AuthProvider', () => {
     expect(users[users.length - 1]).toBe(USER);
   });
 
-  test('keeps handing auth events to the redirect handler and unsubscribes on unmount', async () => {
-    redirects.length = 0;
+  test('unsubscribes from auth events on unmount', async () => {
     const before = unsubscribed;
     await renderProbes();
-    expect(redirects).toEqual(['INITIAL_SESSION']);
     const { container, root } = mounted!;
     act(() => root.unmount());
     container.remove();

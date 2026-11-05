@@ -272,7 +272,7 @@ export function WorkbenchProvider({
       document.removeEventListener('click', cancelOnLinkClick, true);
       if (addressWriter.current === writer) { addressWriter.current = null; }
     };
-    // `savedViewKey` stands in for `savedViewState`, which is a fresh object each render.
+    // `savedViewKey` stands in for `savedViewState`: the effect re-runs on a change of content.
   }, [hydrated, pathname, indexHref, savedViewKey]);
   const [openTabs, setOpenTabs] = useState<WorkbenchTab[]>(() => {
     const seed = activeAtcId

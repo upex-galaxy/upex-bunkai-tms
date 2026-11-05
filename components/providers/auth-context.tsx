@@ -54,7 +54,8 @@ function createAuthStore(): AuthStore {
 // same content still sat in React's hidden streaming container (React 19.2
 // holds a streamed boundary there for up to ~300 ms before revealing it): the
 // Tests list showed two `tests-list` containers. Consumers subscribe to the
-// store instead, so only they re-render when the session lands.
+// store instead, so only they re-render when the session lands. Exported so a
+// test can check that identity; app code reads it through `useAuth()`.
 export const AuthContext = createContext<{ store: AuthStore } & AuthActions | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
