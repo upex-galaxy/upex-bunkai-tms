@@ -13,7 +13,7 @@ import { stateFromParams } from '@lib/saved-views/state';
 import { workbenchFiltersFromState, workbenchStateFromFilters } from '@lib/saved-views/workbench-state';
 import { shortSlug } from '@lib/utils';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 // Client state layer for the project workbench (BK-147). The persistent shell
 // (project-shell.tsx) and the index page both read this. Tabs are route-driven:
@@ -156,10 +156,20 @@ function findTab(
   };
 }
 
-export function WorkbenchProvider({ children, ...data }: WorkbenchData & { children: ReactNode }) {
+export function WorkbenchProvider({
+  children,
+  projectId,
+  projectSlug,
+  projectName,
+  workspaceName,
+  tree,
+  rows,
+  tests,
+  environments,
+  canCreate,
+}: WorkbenchData & { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { rows, tests, projectSlug } = data;
   const params = useParams<{ atcId?: string, testId?: string, runId?: string }>();
   const activeAtcId = params.atcId ?? null;
   const activeTestId = params.testId ?? null;
@@ -205,7 +215,10 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
   // silently drop the tail of what the member typed.
   const setAtcQuery = useCallback((value: string) => setAtcQueryRaw(clampSavedViewText(value)), []);
   const setTagInput = useCallback((value: string) => setTagInputRaw(clampSavedViewText(value)), []);
-  const savedViewState = workbenchStateFromFilters({ atcQuery, tagInput, atcFilters });
+  const savedViewState = useMemo(
+    () => workbenchStateFromFilters({ atcQuery, tagInput, atcFilters }),
+    [atcQuery, tagInput, atcFilters],
+  );
   const applySavedViewState = useCallback((state: SavedViewState) => {
     const next = workbenchFiltersFromState(state);
     setAtcQueryRaw(next.atcQuery);
@@ -259,7 +272,7 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
       document.removeEventListener('click', cancelOnLinkClick, true);
       if (addressWriter.current === writer) { addressWriter.current = null; }
     };
-    // `savedViewKey` stands in for `savedViewState`, which is a fresh object each render.
+    // `savedViewKey` stands in for `savedViewState`: the effect re-runs on a change of content.
   }, [hydrated, pathname, indexHref, savedViewKey]);
   const [openTabs, setOpenTabs] = useState<WorkbenchTab[]>(() => {
     const seed = activeAtcId
@@ -300,7 +313,7 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     });
   }, [activeAtcId, activeTestId, activeRunId, rows, tests, runLabels, projectSlug]);
 
-  const closeTab = (kind: WorkbenchTabKind, id: string) => {
+  const closeTab = useCallback((kind: WorkbenchTabKind, id: string) => {
     const idx = openTabs.findIndex(t => t.kind === kind && t.id === id);
     const next = openTabs.filter(t => !(t.kind === kind && t.id === id));
     setOpenTabs(next);
@@ -318,10 +331,25 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
       const neighbour = next[idx] ?? next[idx - 1] ?? null;
       router.push(neighbour ? neighbour.href : `/projects/${projectSlug}`);
     }
-  };
+  }, [openTabs, activeAtcId, activeTestId, activeRunId, router, projectSlug]);
 
-  const value: WorkbenchContextValue = {
-    ...data,
+  // BK-1618 — the value keeps its identity until something it carries changes.
+  // As a fresh object on every render, the provider's own mount-time re-render
+  // (`setHydrated` above) became a context change. On a full page load React
+  // reads a context change above a Suspense boundary it has not hydrated yet as
+  // a reason to render that boundary again on the client, while the server copy
+  // still waits in React's hidden streaming container: two Tests lists. The
+  // same rule holds the auth provider above this one (`auth-context.tsx`).
+  const value = useMemo<WorkbenchContextValue>(() => ({
+    projectId,
+    projectSlug,
+    projectName,
+    workspaceName,
+    tree,
+    rows,
+    tests,
+    environments,
+    canCreate,
     view,
     setView,
     openTabs,
@@ -345,7 +373,39 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     setTagInput,
     savedViewState,
     applySavedViewState,
-  };
+  }), [
+    projectId,
+    projectSlug,
+    projectName,
+    workspaceName,
+    tree,
+    rows,
+    tests,
+    environments,
+    canCreate,
+    view,
+    openTabs,
+    activeAtcId,
+    activeTestId,
+    activeRunId,
+    registerRunLabel,
+    closeTab,
+    testTagFilter,
+    filteredTestIds,
+    setTestTagFilter,
+    testTagLookupFailed,
+    tagLookupAttempt,
+    retryTestTagLookup,
+    atcFilters,
+    setAtcFilters,
+    resetAtcFilters,
+    atcQuery,
+    setAtcQuery,
+    tagInput,
+    setTagInput,
+    savedViewState,
+    applySavedViewState,
+  ]);
 
   return <WorkbenchContext.Provider value={value}>{children}</WorkbenchContext.Provider>;
 }
