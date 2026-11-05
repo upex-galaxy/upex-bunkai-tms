@@ -171,7 +171,7 @@ describe('BK-497 — every API route handler declares a capability posture', () 
     const rows = actual.filter(r => AUTHORING.includes(r.file));
     // Guard the guard: a rename that silently emptied this set would otherwise
     // make every assertion below vacuously true.
-    expect(rows).toHaveLength(23);
+    expect(rows).toHaveLength(24);
 
     for (const row of rows) {
       const expected = row.method === 'GET' ? 'required:atc:read' : 'required:atc:write';

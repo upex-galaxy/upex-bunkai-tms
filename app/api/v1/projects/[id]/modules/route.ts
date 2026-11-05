@@ -1,12 +1,15 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { wantsArchivedRows } from '@lib/api/include-archived';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
+import { loadModuleTreeListing } from '@lib/modules/archived-tree';
 import { buildModulePath, computeDepth, MAX_MODULE_DEPTH, nextPosition } from '@lib/modules/path';
 import { stripHtmlTags } from '@lib/modules/validation';
 import { hasAlphanumeric, slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
 
+// GET  /api/v1/projects/{id}/modules — the Module tree, see the handler below.
 // POST /api/v1/projects/{id}/modules — a workspace member (role >= member)
 // creates a module inside a project. Modules form a self-referential tree (max
 // depth 6) keyed by a materialized slash-separated `path` (NO leading slash).
@@ -164,6 +167,41 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     { status: 201 },
   );
 }, { auth: 'required', requires: ['atc:write'] });
+
+// GET /api/v1/projects/{id}/modules — the Project's Module tree as flat lists: its
+// Modules, their User Stories and those Stories' Acceptance Criteria (BK-601). Live
+// rows only, unless `?include_archived=true`: then archived rows come too, each
+// saying when it was archived, and by whom when that was recorded. RLS scopes every
+// read, so the opt-in changes visibility, never permission: a viewer can read the
+// archive and an outsider gets 404.
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+  const projectId = extractProjectId(request);
+  if (!isUuid(projectId)) {
+    throw new ApiError('bad_request', 'Project id must be a UUID.');
+  }
+
+  const { db } = getAuth(ctx);
+
+  const { data: project, error: projectError } = await db
+    .from('projects')
+    .select('id, workspace_id')
+    .eq('id', projectId)
+    .maybeSingle();
+  if (projectError) {
+    throw new ApiError('internal_error', projectError.message);
+  }
+  if (!project) {
+    throw new ApiError('not_found', 'Project not found.');
+  }
+
+  const listing = await loadModuleTreeListing(db, {
+    projectId,
+    workspaceId: project.workspace_id,
+    includeArchived: wantsArchivedRows(request),
+  });
+
+  return jsonResponse(listing, { status: 200 });
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractProjectId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/');

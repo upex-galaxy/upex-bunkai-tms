@@ -49,6 +49,8 @@ export interface Module {
   description: string | null
   created_at: Timestamp
   archived_at: Timestamp | null
+  // BK-601 — which Module archive took this row down. Internal: never in an API body.
+  archive_batch_id?: Uuid | null
 }
 
 export type UserStoryStatus = 'draft' | 'ready_to_test';
@@ -64,6 +66,8 @@ export interface UserStory {
   status: UserStoryStatus
   created_at: Timestamp
   archived_at: Timestamp | null
+  // BK-601 — which Module archive took this row down. Internal: never in an API body.
+  archive_batch_id?: Uuid | null
 }
 
 export interface AcceptanceCriterion {
@@ -74,6 +78,8 @@ export interface AcceptanceCriterion {
   position: number
   created_at: Timestamp
   archived_at: Timestamp | null
+  // BK-601 — which Module archive took this row down. Internal: never in an API body.
+  archive_batch_id?: Uuid | null
 }
 
 export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed';

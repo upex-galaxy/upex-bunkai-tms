@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { runIdempotentCreate } from '@lib/api/idempotent-create';
+import { wantsArchivedRows } from '@lib/api/include-archived';
 import { byteLength } from '@lib/markdown/format';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { mapStoryWriteError, titleMessage } from '@lib/user-stories/errors';
@@ -11,6 +12,7 @@ import { z } from 'zod';
 // POST /api/v1/modules/{id}/user-stories — create a User Story anchored to the
 //   module. Member-only (RLS on user_stories joins module -> project -> members).
 // GET  /api/v1/modules/{id}/user-stories — list the module's active stories.
+//   `?include_archived=true` adds the archived ones (BK-039, BK-601).
 //
 // HYBRID error model (mirrors the module routes): body-rule failures keep the
 // house `code` and carry a granular `details.reason`. The Markdown description
@@ -110,11 +112,11 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   const { db } = getAuth(ctx);
 
-  const { data, error } = await db
+  const scoped = db
     .from('user_stories')
     .select(STORY_COLUMNS)
-    .eq('module_id', moduleId)
-    .is('archived_at', null)
+    .eq('module_id', moduleId);
+  const { data, error } = await (wantsArchivedRows(request) ? scoped : scoped.is('archived_at', null))
     .order('created_at', { ascending: false });
 
   if (error) {

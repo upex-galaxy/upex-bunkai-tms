@@ -3736,18 +3736,53 @@
         },
         "required": ["test_plan_ids"]
       },
-      "ModuleCreateResponse": {
-        "type": "object",
-        "properties": {
-          "module": {
+      "TreeModule": {
+        "allOf": [
+          {
             "$ref": "#/components/schemas/Module"
           },
-          "warning": {
+          {
+            "type": "object",
+            "properties": {
+              "archived_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "archive": {
+                "$ref": "#/components/schemas/ArchiveInfo"
+              }
+            },
+            "required": ["archived_at", "archive"]
+          }
+        ]
+      },
+      "ArchiveInfo": {
+        "type": ["object", "null"],
+        "properties": {
+          "archived_at": {
             "type": "string",
-            "description": "Present only when the resulting nesting depth is >= 5."
+            "format": "date-time"
+          },
+          "archived_by": {
+            "type": ["object", "null"],
+            "properties": {
+              "user_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["user_id", "email"],
+            "description": "From the `module.archived` Activity entry of the archive's top Module. Null when no actor was recorded: a User Story or Acceptance Criterion archived on its own shows the date only."
+          },
+          "archived_with": {
+            "type": ["string", "null"],
+            "description": "The Module or User Story this row went down with. Null when it was archived on its own or is the top of the archive."
           }
         },
-        "required": ["module"]
+        "required": ["archived_at", "archived_by", "archived_with"]
       },
       "Module": {
         "type": "object",
@@ -3791,6 +3826,114 @@
           "description",
           "created_at"
         ]
+      },
+      "TreeUserStory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "external_id": {
+            "type": ["string", "null"]
+          },
+          "external_url": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "ready_to_test"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "archive": {
+            "$ref": "#/components/schemas/ArchiveInfo"
+          }
+        },
+        "required": [
+          "id",
+          "module_id",
+          "title",
+          "description",
+          "external_id",
+          "external_url",
+          "status",
+          "created_at",
+          "archived_at",
+          "archive"
+        ]
+      },
+      "TreeAcceptanceCriterion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_story_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "position": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "archive": {
+            "$ref": "#/components/schemas/ArchiveInfo"
+          }
+        },
+        "required": [
+          "id",
+          "user_story_id",
+          "title",
+          "description",
+          "position",
+          "created_at",
+          "archived_at",
+          "archive"
+        ]
+      },
+      "ModuleCreateResponse": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "$ref": "#/components/schemas/Module"
+          },
+          "warning": {
+            "type": "string",
+            "description": "Present only when the resulting nesting depth is >= 5."
+          }
+        },
+        "required": ["module"]
       },
       "ModuleCreateBody": {
         "type": "object",
@@ -7426,7 +7569,7 @@
       "get": {
         "tags": ["Acceptance Criteria"],
         "summary": "List a story's active acceptance criteria",
-        "description": "Bearer `atc:read` (or cookie session). Member-only. Returns active (non-archived) criteria in position order.",
+        "description": "Bearer `atc:read` (or cookie session). Member-only. Returns active (non-archived) criteria in position order. `?include_archived=true` adds the archived ones, viewers included.",
         "security": [
           {
             "cookieAuth": []
@@ -7444,6 +7587,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["true"]
+            },
+            "description": "Also return archived rows, each with `archived_at` set. Off by default; any other value leaves them out."
           }
         ],
         "responses": {
@@ -11107,7 +11260,7 @@
       "get": {
         "tags": ["User Stories"],
         "summary": "List a module's active user stories",
-        "description": "Bearer `atc:read` (or cookie session). Member-only. Returns active (non-archived) stories, newest first.",
+        "description": "Bearer `atc:read` (or cookie session). Member-only. Returns active (non-archived) stories, newest first. `?include_archived=true` adds the archived ones, viewers included.",
         "security": [
           {
             "cookieAuth": []
@@ -11125,6 +11278,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["true"]
+            },
+            "description": "Also return archived rows, each with `archived_at` set. Off by default; any other value leaves them out."
           }
         ],
         "responses": {
@@ -12107,6 +12270,113 @@
       }
     },
     "/api/v1/projects/{id}/modules": {
+      "get": {
+        "tags": ["Modules"],
+        "summary": "List a project's module tree",
+        "description": "Bearer `atc:read` (or cookie session). Any workspace member, viewers included. Returns the Project's Modules, their User Stories and those Stories' Acceptance Criteria as flat lists. Live rows only by default; `?include_archived=true` adds archived rows, each carrying `archive`. ATCs are not listed here: the archived-ATC view is `/atcs?view=archived`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["true"]
+            },
+            "description": "Also return archived rows. Off by default; any other value leaves them out."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The tree.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "modules": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TreeModule"
+                      }
+                    },
+                    "user_stories": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TreeUserStory"
+                      }
+                    },
+                    "acceptance_criteria": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TreeAcceptanceCriterion"
+                      }
+                    }
+                  },
+                  "required": ["modules", "user_stories", "acceptance_criteria"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found, or out of reach.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": ["Modules"],
         "summary": "Create a module in a project",

@@ -51,9 +51,15 @@ registry.registerPath({
   path: '/api/v1/user-stories/{id}/acceptance-criteria',
   tags: ['Acceptance Criteria'],
   summary: 'List a story\'s active acceptance criteria',
-  description: 'Bearer \`atc:read\` (or cookie session). Member-only. Returns active (non-archived) criteria in position order.',
+  description: 'Bearer \`atc:read\` (or cookie session). Member-only. Returns active (non-archived) criteria in position order. \`?include_archived=true\` adds the archived ones, viewers included.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-  parameters: [IdParam],
+  parameters: [IdParam, {
+    name: 'include_archived',
+    in: 'query' as const,
+    required: false,
+    schema: { type: 'string' as const, enum: ['true'] },
+    description: 'Also return archived rows, each with `archived_at` set. Off by default; any other value leaves them out.',
+  }],
   responses: {
     200: { description: 'Criteria.', content: { 'application/json': { schema: z.object({ acceptance_criteria: z.array(AcceptanceCriterionSchema) }) } } },
     401: { description: 'Not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },

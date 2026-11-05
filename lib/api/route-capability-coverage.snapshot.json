@@ -292,6 +292,11 @@
   },
   {
     "file": "app/api/v1/projects/[id]/modules/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/modules/route.ts",
     "method": "POST",
     "posture": "required:atc:write"
   },
