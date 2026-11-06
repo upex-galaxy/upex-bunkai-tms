@@ -24,6 +24,7 @@ void mock.module('server-only', () => ({}));
 
 const principalModule = await import('@lib/api/principal');
 const checkModule = await import('@lib/jira/project-check');
+const credentialsModule = await import('@lib/jira/credentials');
 const adminModule = await import('@lib/supabase/admin');
 const rpcModule = await import('@lib/supabase/rpc');
 const { GET, PUT } = await import('./route');
@@ -119,6 +120,8 @@ let spies: Mock<(...args: never[]) => unknown>[] = [];
 let checkSpy: Mock<(...args: never[]) => unknown>;
 let rpcSpy: Mock<(...args: never[]) => unknown>;
 let adminSpy: Mock<(...args: never[]) => unknown>;
+let credentialsSpy: Mock<(...args: never[]) => unknown>;
+const CREDENTIALS = { url: 'https://acme.atlassian.net', email: 'qa@acme.test', token: 'secret-token' };
 let rpcAnswer: { data: unknown, error: { code?: string, message: string } | null };
 let checkAnswer: Awaited<ReturnType<typeof checkModule.checkJiraDestination>>;
 
@@ -144,7 +147,9 @@ beforeEach(() => {
   checkSpy = spyOn(checkModule, 'checkJiraDestination').mockImplementation(async () => checkAnswer) as never;
   rpcSpy = spyOn(rpcModule, 'upsertProjectTrackerSettings').mockImplementation((async () => rpcAnswer) as never) as never;
   adminSpy = spyOn(adminModule, 'createAdminClient').mockImplementation((() => ({ sentinel: 'admin' })) as never) as never;
-  spies.push(checkSpy, rpcSpy, adminSpy);
+  // BK-1170: the workspace's Jira connection comes from the credentials loader.
+  credentialsSpy = spyOn(credentialsModule, 'loadWorkspaceJiraCredentials').mockImplementation((async () => CREDENTIALS) as never) as never;
+  spies.push(checkSpy, rpcSpy, adminSpy, credentialsSpy);
 });
 
 afterEach(() => {
@@ -333,6 +338,7 @@ describe('PUT tracker-settings: check on save (PO Q2)', () => {
     const response = await PUT(request('PUT', putBody({ enabled: false })));
     expect(response.status).toBe(200);
     expect(checkSpy).not.toHaveBeenCalled();
+    expect(credentialsSpy).not.toHaveBeenCalled();
     expect(rpcSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -341,6 +347,9 @@ describe('PUT tracker-settings: check on save (PO Q2)', () => {
     checkAnswer = { ok: true, issueTypeName: 'Bug' };
     await PUT(request('PUT', putBody({ issue_type_name: ' bug ', enabled: true })));
     expect(callArg(checkSpy, 0, 0)).toEqual({ projectKey: 'QAS', issueTypeName: 'bug' });
+    // BK-1170: the check runs with the PROJECT'S workspace connection.
+    expect(callArg(checkSpy, 0, 1)).toEqual({ credentials: CREDENTIALS });
+    expect(callArg(credentialsSpy, 0, 1)).toBe(WORKSPACE_ID);
     expect(lastRpcArgs().issueTypeName).toBe('Bug');
   });
 

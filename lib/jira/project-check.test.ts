@@ -2,10 +2,9 @@ import type { JiraCredentials } from './project-check';
 import { ApiError } from '@lib/api/error-envelope';
 import { describe, expect, it, mock } from 'bun:test';
 
-// `project-check` reads the deployment credential through `@lib/env`, which pulls
-// in `server-only`; shim it so the module graph loads under Bun (same convention
-// as lib/billing/checkout.test.ts). Every test injects its own credentials and
-// `fetch`, so the real env is never consulted.
+// Shim `server-only` so the module graph loads under Bun (same convention as
+// lib/billing/checkout.test.ts). Every test injects its own credentials (the
+// workspace's Jira connection, BK-1170) and `fetch`; nothing reads the environment.
 void mock.module('server-only', () => ({}));
 const { checkJiraDestination } = await import('./project-check');
 
@@ -150,7 +149,7 @@ describe('checkJiraDestination: outcomes', () => {
 
   it('with no credential it answers not_set_up without any request (AC-2.5)', async () => {
     const { result, calls } = run(() => json({}), {}, { credentials: null });
-    expect(await result).toEqual({ ok: false, kind: 'not_set_up', message: 'Jira is not set up on this deployment.' });
+    expect(await result).toEqual({ ok: false, kind: 'not_set_up', message: 'Jira is not connected for this workspace. An owner or admin can connect it in Settings > Jira.' });
     expect(calls).toHaveLength(0);
   });
 });
@@ -241,6 +240,8 @@ describe('checkJiraDestination: no secret reaches a result (AC-2.3 / 2.5)', () =
 
   it('the missing-credential result names no variable', async () => {
     const outcome = JSON.stringify(await run(() => json({}), {}, { credentials: null }).result);
+    expect(outcome).toContain('not_set_up');
+    expect(outcome).toContain('Settings > Jira');
     expect(outcome).not.toMatch(/ATLASSIAN/);
   });
 });

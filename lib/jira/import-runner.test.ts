@@ -80,6 +80,8 @@ function onePage(issues: JiraIssue[]): JiraSearchResult {
 }
 
 const PROJECT = 'P1';
+const CREDENTIALS = { url: 'https://acme.atlassian.net', email: 'qa@acme.test', token: 'tok-secret' };
+const withCredentials = async () => CREDENTIALS;
 function queuedJob(id: string): Row {
   return { id, workspace_id: 'W1', project_id: PROJECT, jql: 'project = ACME', status: 'queued', next_page_token: null, imported_count: 0, created_count: 0, updated_count: 0, skipped_count: 0, errors: [], started_at: null, completed_at: null };
 }
@@ -94,7 +96,7 @@ describe('executeImport', () => {
     });
     const search: SearchFn = async () => onePage([issue('ACME-1', 'Auth'), issue('ACME-9', null)]);
 
-    await executeImport(db as never, search, 'J1');
+    await executeImport(db as never, search, 'J1', withCredentials);
 
     const job = db._store.import_jobs[0];
     expect(job.status).toBe('completed');
@@ -120,10 +122,10 @@ describe('executeImport', () => {
     });
     const search: SearchFn = async () => onePage([issue('ACME-1', 'Auth'), issue('ACME-9', null)]);
 
-    await executeImport(db as never, search, 'J1');
+    await executeImport(db as never, search, 'J1', withCredentials);
     // Second run: a new queued job, same JQL/issues.
     db._store.import_jobs.push(queuedJob('J2'));
-    await executeImport(db as never, search, 'J2');
+    await executeImport(db as never, search, 'J2', withCredentials);
 
     const job2 = db._store.import_jobs.find(j => j.id === 'J2');
     expect(job2?.status).toBe('completed');
@@ -142,7 +144,7 @@ describe('executeImport', () => {
         : { issues: [issue('ACME-2', null)], nextPageToken: null, isLast: true };
     };
 
-    await executeImport(db as never, search, 'J1');
+    await executeImport(db as never, search, 'J1', withCredentials);
 
     expect(call).toBe(2);
     expect(db._store.import_jobs[0].status).toBe('completed');
@@ -154,11 +156,38 @@ describe('executeImport', () => {
     const db = fakeSupabase({ import_jobs: [queuedJob('J1')], modules: [], user_stories: [], acceptance_criteria: [] });
     const search: SearchFn = async () => { throw new JiraAuthError('bad creds'); };
 
-    await executeImport(db as never, search, 'J1');
+    await executeImport(db as never, search, 'J1', withCredentials);
 
     const job = db._store.import_jobs[0];
     expect(job.status).toBe('failed');
     expect((job.errors as { code: string }[]).some(e => e.code === 'jira_unauthorized')).toBe(true);
+  });
+
+  test('the workspace credentials are loaded for the job\'s workspace and passed to the search (BK-1170)', async () => {
+    const db = fakeSupabase({ import_jobs: [queuedJob('J1')], modules: [], user_stories: [], acceptance_criteria: [] });
+    const seen: unknown[] = [];
+    const search: SearchFn = async (_params, credentials) => { seen.push(credentials); return onePage([]); };
+    const requested: string[] = [];
+
+    await executeImport(db as never, search, 'J1', async (_admin, workspaceId) => { requested.push(workspaceId); return CREDENTIALS; });
+
+    expect(requested).toEqual(['W1']);
+    expect(seen).toEqual([CREDENTIALS]);
+    expect(db._store.import_jobs[0].status).toBe('completed');
+  });
+
+  test('a workspace without a Jira connection fails the job with jira_not_connected and never searches (BK-1170)', async () => {
+    const db = fakeSupabase({ import_jobs: [queuedJob('J1')], modules: [], user_stories: [], acceptance_criteria: [] });
+    let called = false;
+    const search: SearchFn = async () => { called = true; return onePage([]); };
+
+    await executeImport(db as never, search, 'J1', async () => null);
+
+    expect(called).toBe(false);
+    const job = db._store.import_jobs[0];
+    expect(job.status).toBe('failed');
+    const codes = (job.errors as { code: string }[]).map(e => e.code);
+    expect(codes).toEqual(['jira_not_connected']);
   });
 
   test('a non-queued job is a no-op (claim guard)', async () => {
@@ -166,7 +195,7 @@ describe('executeImport', () => {
     let called = false;
     const search: SearchFn = async () => { called = true; return onePage([]); };
 
-    await executeImport(db as never, search, 'J1');
+    await executeImport(db as never, search, 'J1', withCredentials);
 
     expect(called).toBe(false); // never claimed -> never searched
     expect(db._store.import_jobs[0].status).toBe('running');

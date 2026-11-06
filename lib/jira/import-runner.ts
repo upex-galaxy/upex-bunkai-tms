@@ -2,6 +2,7 @@ import type { ImportJobError } from '@lib/types';
 import type { Database, Json } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { JiraIssue } from './client';
+import type { JiraCredentials } from './credentials';
 import { byteLength } from '@lib/markdown/format';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { buildModulePath, nextPosition } from '@lib/modules/path';
@@ -9,6 +10,7 @@ import { createAdminClient } from '@lib/supabase/admin';
 import { slugify } from '@lib/utils/slug';
 import { adfToMarkdown } from './adf-to-markdown';
 import { JiraAuthError, searchIssues } from './client';
+import { JiraNotConnectedError, loadWorkspaceJiraCredentials } from './credentials';
 import { extractAcceptanceCriteria } from './extract-acceptance-criteria';
 import 'server-only';
 
@@ -44,13 +46,20 @@ export async function runImportJob(jobId: string): Promise<void> {
 // background trigger, or the serialize race, cannot spawn a second worker that
 // double-counts), then pages through Jira. Any throw AFTER the claim lands the
 // job in `failed` — it is never left stuck in `running`.
-export async function executeImport(supabase: Admin, search: SearchFn, jobId: string): Promise<void> {
+export type LoadCredentialsFn = (admin: Admin, workspaceId: string) => Promise<JiraCredentials | null>;
+
+export async function executeImport(
+  supabase: Admin,
+  search: SearchFn,
+  jobId: string,
+  loadCredentials: LoadCredentialsFn = loadWorkspaceJiraCredentials,
+): Promise<void> {
   const { data: claimed } = await supabase
     .from('import_jobs')
     .update({ status: 'running', started_at: new Date().toISOString() })
     .eq('id', jobId)
     .eq('status', 'queued')
-    .select('id, project_id, jql')
+    .select('id, workspace_id, project_id, jql')
     .maybeSingle();
   if (!claimed) {
     // Not a queued job — already claimed, completed, failed, or missing.
@@ -68,10 +77,16 @@ export async function executeImport(supabase: Admin, search: SearchFn, jobId: st
   const inbox = { id: moduleByName.get('inbox') ?? null };
 
   try {
+    // BK-1170: the workspace's own Jira connection; no environment fallback.
+    const credentials = await loadCredentials(supabase, claimed.workspace_id);
+    if (!credentials) {
+      throw new JiraNotConnectedError();
+    }
+
     let pageToken: string | null = null;
     let pages = 0;
     for (;;) {
-      const page = await search({ jql: claimed.jql, pageToken, maxResults: PAGE_SIZE });
+      const page = await search({ jql: claimed.jql, pageToken, maxResults: PAGE_SIZE }, credentials);
 
       for (const issue of page.issues) {
         try {
@@ -120,8 +135,16 @@ export async function executeImport(supabase: Admin, search: SearchFn, jobId: st
       .eq('id', jobId);
   }
   catch (fatal) {
-    const code = fatal instanceof JiraAuthError ? 'jira_unauthorized' : 'job_failed';
-    errors.push({ code, message: fatal instanceof Error ? fatal.message : String(fatal) });
+    let code = 'job_failed';
+    let message = fatal instanceof Error ? fatal.message : String(fatal);
+    if (fatal instanceof JiraNotConnectedError) {
+      code = 'jira_not_connected';
+      message = 'Jira is not connected for this workspace. An owner or admin can connect it in Settings > Jira, then the import can be run again.';
+    }
+    else if (fatal instanceof JiraAuthError) {
+      code = 'jira_unauthorized';
+    }
+    errors.push({ code, message });
     await supabase
       .from('import_jobs')
       .update({ status: 'failed', completed_at: new Date().toISOString(), errors: errors as unknown as Json })

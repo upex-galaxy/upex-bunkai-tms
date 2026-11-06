@@ -30,15 +30,7 @@ const EnvSchema = z.object({
   // Defaults to localhost in dev; must be set in every deployed env.
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
 
-  // Atlassian / Jira REST — server-only. Used by the Jira import worker (BK-17).
-  // Optional: missing or invalid credentials surface as a failed import job
-  // (errors[].code = jira_unauthorized), not an app-boot error.
-  ATLASSIAN_URL: z.string().url().optional(),
-  ATLASSIAN_EMAIL: z.string().optional(),
-  ATLASSIAN_API_TOKEN: z.string().optional(),
-
-  // Stripe — server-only (BK-230). Optional, same posture as the Atlassian
-  // vars above: a missing key is not a boot-time crash, it is a
+  // Stripe — server-only (BK-230). Optional: a missing key is not a boot-time crash, it is a
   // `payment_processor_unavailable` 503 the first time a workspace tries to
   // reach checkout — see lib/billing/stripe.ts.
   STRIPE_SECRET_KEY: z.string().optional(),
@@ -47,7 +39,7 @@ const EnvSchema = z.object({
 
   // Resend — server-only. Used by the BK-214 notification digest sender.
   // Optional: missing/invalid credentials surface as a failed digest send
-  // (logged per-user, never an app-boot error) — mirrors the Atlassian vars.
+  // (logged per-user, never an app-boot error) — same posture as the Stripe keys.
   RESEND_API_KEY: z.string().optional(),
   // Sender address for digest emails. No custom domain is verified in Resend
   // for this project yet, so this defaults to Resend's own sandbox sender
@@ -70,9 +62,6 @@ const parsed = EnvSchema.safeParse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-  ATLASSIAN_URL: process.env.ATLASSIAN_URL,
-  ATLASSIAN_EMAIL: process.env.ATLASSIAN_EMAIL,
-  ATLASSIAN_API_TOKEN: process.env.ATLASSIAN_API_TOKEN,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   STRIPE_CLOUD_PRICE_ID: process.env.STRIPE_CLOUD_PRICE_ID,

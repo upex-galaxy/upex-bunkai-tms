@@ -31,6 +31,10 @@ export const BILLING_NAV_ROLES: readonly MemberRole[] = ['owner', 'admin'];
 // role-gated nav entry.
 export const DATA_EXPORT_NAV_ROLES: readonly MemberRole[] = ['owner'];
 
+// BK-1170 — the workspace's Jira connection: owner or admin, the same set the
+// API enforces on PUT / DELETE / check.
+export const JIRA_NAV_ROLES: readonly MemberRole[] = ['owner', 'admin'];
+
 export const SETTINGS_NAV_AVAILABLE: SettingsNavItem[] = [
   { id: 'account', label: 'Account', href: '/settings/account' },
   { id: 'tokens', label: 'Tokens', href: '/settings/tokens' },
@@ -45,6 +49,8 @@ export const SETTINGS_NAV_AVAILABLE: SettingsNavItem[] = [
   // but never at the NAVIGATION level, so members saw the entry and clicked
   // into a dead end.
   { id: 'billing', label: 'Billing', href: '/settings/billing', roles: BILLING_NAV_ROLES },
+  // BK-1170 — Jira connection for the workspace, owner/admin only.
+  { id: 'jira', label: 'Jira', href: '/settings/jira', roles: JIRA_NAV_ROLES },
   // BK-508 — Data export section, Owner only.
   { id: 'data-export', label: 'Data export', href: '/settings/data-export', roles: DATA_EXPORT_NAV_ROLES },
 ];

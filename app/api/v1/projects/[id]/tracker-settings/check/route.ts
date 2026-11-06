@@ -1,14 +1,16 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { loadWorkspaceJiraCredentials } from '@lib/jira/credentials';
 import { checkJiraDestination } from '@lib/jira/project-check';
+import { createAdminClient } from '@lib/supabase/admin';
 import { assertCanAdministerTracker, assertProjectIdIsUuid, extractProjectId } from '@lib/tracker-settings/access';
 import { withCheckGuard } from '@lib/tracker-settings/check-guard';
 import { parseTrackerSettingsBody, TrackerSettingsCheckBodySchema } from '@lib/tracker-settings/validation';
 
 // POST /api/v1/projects/{id}/tracker-settings/check — "Run connection check"
-// (BK-371). Owner / admin only: the check asks the company Jira, with a shared
-// credential, whether a key exists, so members and viewers must not be able to
+// (BK-371). Owner / admin only: the check asks the company Jira, with the
+// workspace's Jira credential, whether a key exists, so members and viewers must not be able to
 // probe it (PO Q4). Reads and creates nothing in Bunkai; creates nothing in Jira.
 //
 // The typed (possibly unsaved) key and issue type are validated and normalised
@@ -21,17 +23,19 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   assertProjectIdIsUuid(projectId);
 
   const { principal, db } = getAuth(ctx);
-  await assertCanAdministerTracker({ db, principal, projectId });
+  const project = await assertCanAdministerTracker({ db, principal, projectId });
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const body = parseTrackerSettingsBody(TrackerSettingsCheckBodySchema, payload);
 
+  // BK-1170: the workspace's own Jira connection (null = not connected).
+  const credentials = await loadWorkspaceJiraCredentials(createAdminClient(), project.workspaceId);
   const result = await withCheckGuard(principal.userId, async () => checkJiraDestination({
     projectKey: body.destination_project_key,
     issueTypeName: body.issue_type_name,
-  }));
+  }, { credentials }));
 
   return jsonResponse(
     result.ok
