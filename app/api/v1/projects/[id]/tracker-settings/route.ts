@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { loadWorkspaceJiraCredentials } from '@lib/jira/credentials';
 import { checkJiraDestination } from '@lib/jira/project-check';
 import { createAdminClient } from '@lib/supabase/admin';
 import { upsertProjectTrackerSettings } from '@lib/supabase/rpc';
@@ -51,7 +52,7 @@ export const PUT = withApiHandler(async (request: NextRequest, ctx) => {
 
   // 404 when RLS hides the Project, workspace-context match for PATs, and the
   // live owner/admin role: all BEFORE any body is parsed and any Jira call.
-  await assertCanAdministerTracker({ db, principal, projectId });
+  const project = await assertCanAdministerTracker({ db, principal, projectId });
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -65,10 +66,12 @@ export const PUT = withApiHandler(async (request: NextRequest, ctx) => {
     // Same per-person guard as POST .../check (PO Q4, one check at a time): a PUT
     // must not be a way around it. An overlapping call is the guard's own 429
     // `rate_limited` / `check_in_progress`; nothing is saved.
+    // BK-1170: the workspace's own Jira connection (null = not connected).
+    const credentials = await loadWorkspaceJiraCredentials(createAdminClient(), project.workspaceId);
     const check = await withCheckGuard(principal.userId, async () => checkJiraDestination({
       projectKey: body.destination_project_key,
       issueTypeName: body.issue_type_name,
-    }));
+    }, { credentials }));
     if (!check.ok) {
       throw new ApiError('validation_failed', check.message, {
         details: { reason: 'connection_check_failed', check: { kind: check.kind, message: check.message } },

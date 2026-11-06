@@ -7081,6 +7081,119 @@
         },
         "required": ["invites"]
       },
+      "WorkspaceJiraConnectionResponse": {
+        "type": "object",
+        "properties": {
+          "jira_connection": {
+            "$ref": "#/components/schemas/WorkspaceJiraConnection"
+          }
+        },
+        "required": ["jira_connection"]
+      },
+      "WorkspaceJiraConnection": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean",
+            "description": "Whether the workspace has a Jira connection."
+          },
+          "site_url": {
+            "type": "string",
+            "description": "https://<name>.atlassian.net. Owner / admin only."
+          },
+          "email": {
+            "type": "string",
+            "description": "Atlassian account email. Owner / admin only."
+          },
+          "has_token": {
+            "type": "boolean",
+            "description": "True when a token is stored. The token itself is never returned. Owner / admin only."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Owner / admin only."
+          },
+          "updated_by": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "User who last saved the connection. Owner / admin only on GET."
+          }
+        },
+        "required": ["connected"]
+      },
+      "WorkspaceJiraConnectionPutBody": {
+        "type": "object",
+        "properties": {
+          "site_url": {
+            "type": "string",
+            "description": "Jira Cloud site, https://<name>.atlassian.net. Trimmed, lower-cased and stripped of a trailing slash; anything else is rejected (`invalid_site_url`)."
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "description": "Email of the Atlassian account that owns the API token."
+          },
+          "api_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "description": "Write-only. Required on the first save and whenever the site URL changes; omit it to change only the email. Never returned."
+          }
+        },
+        "required": ["site_url", "email"]
+      },
+      "WorkspaceJiraConnectionCheckResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": ["object", "null"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "unauthorized_401",
+                  "forbidden_403",
+                  "site_not_found",
+                  "jira_busy",
+                  "site_unreachable",
+                  "unexpected_status",
+                  "not_connected"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "Constant copy; never contains the email, token, host or Jira response."
+              }
+            },
+            "required": ["kind", "message"]
+          }
+        },
+        "required": ["ok", "reason"]
+      },
+      "WorkspaceJiraConnectionCheckBody": {
+        "type": "object",
+        "properties": {
+          "site_url": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "api_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "description": "Write-only; never returned or logged."
+          }
+        }
+      },
       "WorkspaceMemberRemoveResponse": {
         "type": "object",
         "properties": {
@@ -19099,6 +19212,357 @@
           },
           "403": {
             "description": "Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); or the PAT is bound to a DIFFERENT workspace than `{id}`. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/jira-connection": {
+      "get": {
+        "tags": ["Jira connection"],
+        "summary": "Read the workspace's Jira connection",
+        "description": "Any active workspace member. Members see only `{ connected }`; owners and admins also see `site_url`, `email`, `has_token`, `updated_at` and `updated_by`. The API token is never returned.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The connection state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceJiraConnectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope, or a token scoped to another workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found, or the caller is not an active member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Jira connection"],
+        "summary": "Save the workspace's Jira connection",
+        "description": "Owner or admin only (scope `workspace:admin` plus a live role check). The `api_token` is write-only: it is stored encrypted in Supabase Vault and never returned. It is required on the first save and whenever `site_url` changes. Saving does not call Jira; use the check route to test it.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceJiraConnectionPutBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceJiraConnectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing workspace:admin scope, a token scoped to another workspace, or the caller is not an owner or admin (`details.reason` `admin_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found, or not visible to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. `details.reason` is `invalid_site_url`, `invalid_email`, `token_required` or `invalid_body`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Jira connection"],
+        "summary": "Disconnect the workspace from Jira",
+        "description": "Owner or admin only. Removes the connection and deletes the stored API token. Jira imports and defect sync stop working for the workspace until it is connected again.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Disconnected."
+          },
+          "400": {
+            "description": "Malformed workspace id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing workspace:admin scope, or the caller is not an owner or admin (`details.reason` `admin_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found, or it has no Jira connection (`details.reason` `not_connected`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/jira-connection/check": {
+      "post": {
+        "tags": ["Jira connection"],
+        "summary": "Test a Jira connection",
+        "description": "Owner or admin only. Send nothing to test the stored connection, or all of `site_url`, `email` and `api_token` to test unsaved values (a partial body is a 422 `incomplete_body`). The site URL is validated before any request, so only https://<name>.atlassian.net is contacted. A failed test is a 200 with `ok: false`. The token is never returned. One check at a time per person (429 `check_in_progress`).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceJiraConnectionCheckBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The outcome of the check.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceJiraConnectionCheckResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing workspace:admin scope, or the caller is not an owner or admin (`details.reason` `admin_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found, or not visible to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. `details.reason` is `invalid_site_url`, `invalid_email`, `token_required`, `incomplete_body` or `invalid_body`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A check by the same person is already running (`details.reason` `check_in_progress`).",
             "content": {
               "application/json": {
                 "schema": {

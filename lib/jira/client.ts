@@ -1,11 +1,13 @@
-// Typed Jira Cloud REST v3 search client (BK-17). Server-only network module:
-// reads Atlassian credentials from `@lib/env` and talks to the `/search/jql`
-// endpoint via the global `fetch`. Kept pure-ish — no React/Next/DB imports, the
+// Typed Jira Cloud REST v3 search client (BK-17). Network module: the caller
+// passes the workspace's Jira credentials (BK-1170; no environment fallback) and
+// it talks to the `/search/jql` endpoint via the global `fetch`. Kept pure-ish — no React/Next/DB imports, the
 // only side effects are the HTTP call and the backoff `sleep`. No unit test: it
 // hits the network; integration coverage lives with the import worker.
 
 import type { AdfNode } from './adf-to-markdown';
-import { env } from '@lib/env';
+import type { JiraCredentials } from './credentials';
+import { jiraBasicAuthHeader } from './basic-auth';
+import { normalizeJiraSiteUrl } from './site-url';
 
 export interface JiraComponent {
   name: string
@@ -29,7 +31,7 @@ export interface JiraSearchResult {
   isLast: boolean
 }
 
-// Thrown when credentials are missing or Jira answers 401/403. Callers map this
+// Thrown when credentials are unusable or Jira answers 401/403. Callers map this
 // to the `jira_unauthorized` import error code.
 export class JiraAuthError extends Error {}
 
@@ -111,17 +113,14 @@ function normalizeIssue(raw: RawJiraIssue): JiraIssue {
 // Run a JQL search against Jira Cloud, returning one normalized page. Retries
 // 429s with exponential backoff; throws `JiraAuthError` for auth failures and
 // `JiraError` for any other non-ok response.
-export async function searchIssues(params: SearchParams): Promise<JiraSearchResult> {
+export async function searchIssues(params: SearchParams, credentials: JiraCredentials): Promise<JiraSearchResult> {
   const { jql, pageToken, maxResults } = params;
-  const url = env.ATLASSIAN_URL;
-  const email = env.ATLASSIAN_EMAIL;
-  const token = env.ATLASSIAN_API_TOKEN;
-
-  if (!url || !email || !token) {
-    throw new JiraAuthError('Jira credentials are not configured.');
+  const baseUrl = normalizeJiraSiteUrl(credentials.url);
+  if (baseUrl === null) {
+    throw new JiraAuthError('Jira site URL is not valid.');
   }
 
-  const authorization = `Basic ${btoa(`${email}:${token}`)}`;
+  const authorization = jiraBasicAuthHeader(credentials.email, credentials.token);
   const body = JSON.stringify({
     jql,
     maxResults: maxResults ?? DEFAULT_MAX_RESULTS,
@@ -130,8 +129,10 @@ export async function searchIssues(params: SearchParams): Promise<JiraSearchResu
   });
 
   for (let attempt = 0; ; attempt++) {
-    const response = await fetch(`${url}/rest/api/3/search/jql`, {
+    const response = await fetch(`${baseUrl}/rest/api/3/search/jql`, {
       method: 'POST',
+      // The Authorization header must never follow a redirect to another host.
+      redirect: 'error',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',

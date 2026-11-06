@@ -2155,6 +2155,44 @@ export interface Database {
           },
         ]
       }
+      workspace_jira_connections: {
+        Row: {
+          created_at: string
+          email: string
+          site_url: string
+          token_secret_id: string
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          site_url: string
+          token_secret_id: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          site_url?: string
+          token_secret_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'workspace_jira_connections_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: true
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       workspace_members: {
         Row: {
           joined_at: string
@@ -2464,6 +2502,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_environment_id: string }
         Returns: Json
       }
+      bunkai_delete_workspace_jira_connection: {
+        Args: { p_actor_user_id: string, p_workspace_id: string }
+        Returns: boolean
+      }
       bunkai_detach_plan_from_milestone: {
         Args: { p_milestone_id: string, p_test_plan_id: string }
         Returns: Json
@@ -2513,6 +2555,10 @@ export interface Database {
       }
       bunkai_get_test_expanded: {
         Args: { p_actor_user_id: string, p_test_id: string }
+        Returns: Json
+      }
+      bunkai_get_workspace_jira_credentials: {
+        Args: { p_workspace_id: string }
         Returns: Json
       }
       bunkai_init_run_step_attachment: {
@@ -2876,6 +2922,16 @@ export interface Database {
           p_enabled: boolean
           p_issue_type_name: string
           p_project_id: string
+        }
+        Returns: Json
+      }
+      bunkai_upsert_workspace_jira_connection: {
+        Args: {
+          p_actor_user_id: string
+          p_api_token?: string
+          p_email: string
+          p_site_url: string
+          p_workspace_id: string
         }
         Returns: Json
       }

@@ -16,20 +16,20 @@ export interface SavedSettings {
 export type SaveOutcome
   = | { kind: 'saved', settings: SavedSettings, requeued: number }
     | { kind: 'confirm', queueCount: number }
-    | { kind: 'check_failed', message: string }
+    | { kind: 'check_failed', message: string, notSetUp?: true }
     | { kind: 'invalid', reason: string, message: string }
     | { kind: 'forbidden', message: string }
     | { kind: 'error', message: string };
 
 export type CheckOutcome
-  = | { kind: 'result', ok: boolean, message: string | null }
+  = | { kind: 'result', ok: boolean, message: string | null, notSetUp?: true }
     | { kind: 'busy', message: string }
     | { kind: 'invalid', reason: string, message: string }
     | { kind: 'forbidden', message: string }
     | { kind: 'error', message: string };
 
 interface ErrorBody {
-  error?: { code?: string, message?: string, details?: { reason?: string, queue_count?: number, check?: { message?: string } } }
+  error?: { code?: string, message?: string, details?: { reason?: string, queue_count?: number, check?: { kind?: string, message?: string } } }
 }
 
 const NETWORK_MESSAGE = 'Could not reach Bunkai. Check your connection and try again.';
@@ -87,7 +87,12 @@ export async function saveTrackerSettings(
     return { kind: 'confirm', queueCount: error.details.queue_count };
   }
   if (response.status === 422 && reason === 'connection_check_failed') {
-    return { kind: 'check_failed', message: error?.details?.check?.message ?? message };
+    return {
+      kind: 'check_failed',
+      message: error?.details?.check?.message ?? message,
+      // BK-1170 — the workspace has no Jira connection; the screen links to Settings > Jira.
+      ...(error?.details?.check?.kind === 'not_set_up' ? { notSetUp: true as const } : {}),
+    };
   }
   if (response.status === 422 && reason !== undefined) {
     return { kind: 'invalid', reason, message };
@@ -117,11 +122,16 @@ export async function runTrackerCheck(
 
   const json = await readJson(response);
   if (response.ok) {
-    const body = json as { ok?: boolean, reason?: { message?: string } | null } | null;
+    const body = json as { ok?: boolean, reason?: { kind?: string, message?: string } | null } | null;
     if (typeof body?.ok !== 'boolean') {
       return { kind: 'error', message: GENERIC_MESSAGE };
     }
-    return { kind: 'result', ok: body.ok, message: body.reason?.message ?? null };
+    return {
+      kind: 'result',
+      ok: body.ok,
+      message: body.reason?.message ?? null,
+      ...(body.reason?.kind === 'not_set_up' ? { notSetUp: true as const } : {}),
+    };
   }
 
   const error = (json as ErrorBody | null)?.error;

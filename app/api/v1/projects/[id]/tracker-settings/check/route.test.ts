@@ -11,6 +11,9 @@ void mock.module('server-only', () => ({}));
 
 const principalModule = await import('@lib/api/principal');
 const checkModule = await import('@lib/jira/project-check');
+const credentialsModule = await import('@lib/jira/credentials');
+const adminModule = await import('@lib/supabase/admin');
+const CREDENTIALS = { url: 'https://acme.atlassian.net', email: 'qa@acme.test', token: 'secret-token' };
 const { POST } = await import('./route');
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -75,7 +78,12 @@ beforeEach(() => {
   spies = [];
   checkImpl = async () => ({ ok: true, issueTypeName: 'Bug' });
   checkSpy = spyOn(checkModule, 'checkJiraDestination').mockImplementation((async (...args: unknown[]) => checkImpl(...args)) as never) as never;
-  spies.push(checkSpy);
+  // BK-1170: the workspace's Jira connection comes from the credentials loader.
+  spies.push(
+    checkSpy,
+    spyOn(credentialsModule, 'loadWorkspaceJiraCredentials').mockImplementation((async () => CREDENTIALS) as never) as never,
+    spyOn(adminModule, 'createAdminClient').mockImplementation((() => ({ sentinel: 'admin' })) as never) as never,
+  );
 });
 
 afterEach(() => {
@@ -91,6 +99,7 @@ describe('POST tracker-settings/check', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true, reason: null });
     expect(callArg(checkSpy, 0, 0)).toEqual({ projectKey: 'QAS', issueTypeName: 'Bug' });
+    expect(callArg(checkSpy, 0, 1)).toEqual({ credentials: CREDENTIALS });
   });
 
   test('a FAILED check is still a 200, carrying the kind and frozen text (AC-2.2)', async () => {

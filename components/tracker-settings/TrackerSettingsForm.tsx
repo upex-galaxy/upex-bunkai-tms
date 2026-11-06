@@ -22,6 +22,7 @@ import {
   validateValues,
 } from '@lib/tracker-settings/form-state';
 import { TRACKER_SETTINGS_MESSAGES } from '@lib/tracker-settings/rules';
+import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -48,6 +49,8 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
   const [formError, setFormError] = useState<string | null>(null);
   const [demoted, setDemoted] = useState(false);
   const [queueCount, setQueueCount] = useState<number | null>(null);
+  // BK-1170 — the last failed check said the workspace has no Jira connection.
+  const [notSetUp, setNotSetUp] = useState(false);
 
   const canEdit = canEditProp && !demoted;
 
@@ -55,6 +58,7 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
     setCard(previous => applyEdit(previous, patch));
     setFormError(null);
     setFieldErrors({});
+    setNotSetUp(false);
   };
 
   // A server-side 422 that the screen's own validation did not catch (the rules
@@ -85,10 +89,12 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
     }
     setBusy('check');
     setFormError(null);
+    setNotSetUp(false);
     const outcome = await runTrackerCheck({ projectId, values: current });
     setBusy(null);
     switch (outcome.kind) {
       case 'result':
+        setNotSetUp(outcome.notSetUp === true);
         setCard(previous => applyCheckResult(previous, { checked: current, ok: outcome.ok, message: outcome.message }));
         break;
       case 'busy':
@@ -125,6 +131,7 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
         break;
       case 'check_failed':
         setQueueCount(null);
+        setNotSetUp(outcome.notSetUp === true);
         setCard(previous => applyCheckResult(previous, { checked: attempted, ok: false, message: outcome.message }));
         break;
       case 'invalid':
@@ -149,6 +156,7 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
     }
     setBusy('save');
     setFormError(null);
+    setNotSetUp(false);
     const outcome = await saveTrackerSettings({ projectId, values: current, confirmQueueCount });
     setBusy(null);
     applySaveOutcome(outcome, current);
@@ -267,6 +275,14 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
                   {visibleCheck.ok
                     ? `Jira project ${visibleCheck.destinationKey} accepts ${visibleCheck.issueTypeName} issues.`
                     : visibleCheck.message}
+                  {!visibleCheck.ok && notSetUp && (
+                    <>
+                      {' '}
+                      <Link href="/settings/jira" data-testid="tracker-settings-jira-link" className="text-accent hover:underline">
+                        Open Jira settings
+                      </Link>
+                    </>
+                  )}
                 </span>
               </div>
             )}

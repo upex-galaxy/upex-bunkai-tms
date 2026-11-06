@@ -86,6 +86,15 @@ describe('settingsNavItemsForRole (BK-740 — Billing nav gate)', () => {
       .toBe('/settings/billing');
   });
 
+  // BK-1170 — Jira connection entry is owner/admin only.
+  test('Jira is offered to owner and admin only', () => {
+    expect(ids('owner')).toContain('jira');
+    expect(ids('admin')).toContain('jira');
+    for (const role of ['member', 'viewer', null] as const) {
+      expect(ids(role)).not.toContain('jira');
+    }
+  });
+
   test('ungated personal sections stay visible to every role, including none', () => {
     for (const role of ['owner', 'admin', 'member', 'viewer', null] as const) {
       expect(ids(role)).toEqual(expect.arrayContaining(['account', 'tokens', 'workspaces', 'notifications']));

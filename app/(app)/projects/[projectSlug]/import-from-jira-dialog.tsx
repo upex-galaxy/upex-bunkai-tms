@@ -20,12 +20,23 @@ interface ImportFromJiraDialogProps {
   onClose?: () => void
 }
 
+// BK-1170 — the explorer only knows "can create" (member or above), not whether the
+// caller may administer the workspace, so these stay text-only: no link to Settings > Jira.
+const JIRA_NOT_CONNECTED_ASK = 'Jira is not connected for this workspace. Ask a workspace owner or admin to connect it in Settings > Jira.';
+
+const JOB_ERROR_COPY: Record<string, string> = {
+  jira_unauthorized: 'Jira rejected this workspace\'s credentials. An owner or admin should re-check them in Settings > Jira.',
+  jira_not_connected: 'Jira is not connected for this workspace. An owner or admin can connect it in Settings > Jira.',
+};
+
 function friendlyError(body: ApiErrorBody): string {
   switch (body.error?.details?.reason) {
     case 'import_in_progress':
       return 'An import is already running for this project — wait for it to finish.';
     case 'not_a_member':
       return 'You do not have permission in this project.';
+    case 'jira_not_connected':
+      return JIRA_NOT_CONNECTED_ASK;
   }
   switch (body.error?.code) {
     case 'not_found':
@@ -202,8 +213,20 @@ export function ImportFromJiraDialog({ projectId, onClose }: ImportFromJiraDialo
                   {errors.map((e, i) => (
                     <p key={`${e.jira_key ?? 'job'}-${i}`} className="font-mono text-xs text-signal-fail">
                       {e.jira_key ? `${e.jira_key}: ` : ''}
-                      {e.code}
-                      {e.message ? ` — ${e.message}` : ''}
+                      {JOB_ERROR_COPY[e.code]
+                        ? (
+                            <>
+                              {JOB_ERROR_COPY[e.code]}
+                              {' '}
+                              <span className="text-[10px] text-fg-4" data-testid="import-error-code">{e.code}</span>
+                            </>
+                          )
+                        : (
+                            <>
+                              {e.code}
+                              {e.message ? ` — ${e.message}` : ''}
+                            </>
+                          )}
                     </p>
                   ))}
                 </div>

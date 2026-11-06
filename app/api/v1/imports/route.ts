@@ -1,7 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { hasWorkspaceJiraConnection } from '@lib/jira/credentials';
 import { runImportJob } from '@lib/jira/import-runner';
+import { createAdminClient } from '@lib/supabase/admin';
 import { after } from 'next/server';
 import { z } from 'zod';
 
@@ -37,6 +39,15 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
   if (!project) {
     throw new ApiError('not_found', 'Project not found.');
+  }
+
+  // BK-1170: the workspace must have its own Jira connection. Checked before
+  // any job row exists, so a missing connection leaves nothing behind. Presence
+  // only; the token is decrypted by the worker, never here.
+  if (!(await hasWorkspaceJiraConnection(createAdminClient(), project.workspace_id))) {
+    throw new ApiError('conflict', 'Jira is not connected for this workspace. Ask a workspace owner or admin to connect it in Settings > Jira.', {
+      details: { reason: 'jira_not_connected' },
+    });
   }
 
   // Serialize: at most one active (queued/running) import per project. A partial

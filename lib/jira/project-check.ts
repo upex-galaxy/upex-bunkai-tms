@@ -1,6 +1,8 @@
+import type { JiraCredentials } from './credentials';
 import { ApiError } from '@lib/api/error-envelope';
-import { env } from '@lib/env';
 import { codePointLength, DESTINATION_KEY_PATTERN, ISSUE_TYPE_MAX, TRACKER_SETTINGS_MESSAGES } from '@lib/tracker-settings/validation';
+import { jiraBasicAuthHeader } from './basic-auth';
+import { normalizeJiraSiteUrl } from './site-url';
 
 // BK-371 — the connection check behind "Run connection check" and the
 // check-on-save of a sync-ON save. It proves four things and creates nothing:
@@ -10,7 +12,7 @@ import { codePointLength, DESTINATION_KEY_PATTERN, ISSUE_TYPE_MAX, TRACKER_SETTI
 // retry (T3): `searchIssues` in `client.ts` sleeps through 429s for ~31 s and
 // must not be reused here.
 //
-//   GET {ATLASSIAN_URL}/rest/api/3/issue/createmeta/{KEY}/issuetypes
+//   GET {workspace Jira site}/rest/api/3/issue/createmeta/{KEY}/issuetypes
 //
 // That endpoint lists the issue types the CONNECTION may create in the project,
 // so a missing type covers "not there" and "not allowed" alike.
@@ -37,20 +39,17 @@ export type ProjectCheckResult
   = | { ok: true, issueTypeName: string }
     | { ok: false, kind: ProjectCheckKind, message: string };
 
-export interface JiraCredentials {
-  url: string
-  email: string
-  token: string
-}
+export type { JiraCredentials };
 
 export interface ProjectCheckDeps {
   fetch?: typeof fetch
+  // The workspace's Jira connection (BK-1170); null / missing = not connected.
   credentials?: JiraCredentials | null
   timeoutMs?: number
 }
 
 const FIXED_MESSAGES = {
-  not_set_up: 'Jira is not set up on this deployment.',
+  not_set_up: 'Jira is not connected for this workspace. An owner or admin can connect it in Settings > Jira.',
   credential_rejected: 'Jira did not accept the Bunkai connection.',
   unreachable: 'Jira could not be reached. Try again in a few minutes.',
   jira_busy: 'Jira is asking Bunkai to slow down. Try again in a few minutes.',
@@ -58,11 +57,6 @@ const FIXED_MESSAGES = {
 
 function fail(kind: 'not_set_up' | 'credential_rejected' | 'unreachable' | 'jira_busy'): ProjectCheckResult {
   return { ok: false, kind, message: FIXED_MESSAGES[kind] };
-}
-
-function envCredentials(): JiraCredentials | null {
-  const { ATLASSIAN_URL: url, ATLASSIAN_EMAIL: email, ATLASSIAN_API_TOKEN: token } = env;
-  return url && email && token ? { url, email, token } : null;
 }
 
 interface IssueTypesBody {
@@ -123,13 +117,16 @@ export async function checkJiraDestination(
     });
   }
 
-  const credentials = deps.credentials === undefined ? envCredentials() : deps.credentials;
+  const credentials = deps.credentials ?? null;
   if (!credentials) {
     return fail('not_set_up');
   }
 
   const doFetch = deps.fetch ?? fetch;
-  const base = credentials.url.replace(/\/+$/, '');
+  const base = normalizeJiraSiteUrl(credentials.url);
+  if (base === null) {
+    return fail('not_set_up');
+  }
   const url = `${base}/rest/api/3/issue/createmeta/${encodeURIComponent(args.projectKey)}/issuetypes?maxResults=${ISSUE_TYPE_PAGE_SIZE}`;
 
   let response: Response;
@@ -138,7 +135,7 @@ export async function checkJiraDestination(
       method: 'GET',
       headers: {
         Accept: 'application/json',
-        Authorization: `Basic ${btoa(`${credentials.email}:${credentials.token}`)}`,
+        Authorization: jiraBasicAuthHeader(credentials.email, credentials.token),
       },
       // The Authorization header must never follow a redirect to another host.
       redirect: 'error',

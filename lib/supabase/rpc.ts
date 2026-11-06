@@ -760,6 +760,46 @@ export async function upsertProjectTrackerSettings(
   });
 }
 
+// BK-1170 — a workspace's own Jira connection (site URL, email, API token in
+// Supabase Vault). Migration 0119, granted to service_role only, explicit actor
+// as in the wrappers above. The token travels one way: into the RPC. Nothing
+// returns it, except `getWorkspaceJiraCredentials`, whose only caller is
+// lib/jira/credentials.ts.
+export interface UpsertWorkspaceJiraConnectionArgs {
+  actorUserId: string
+  workspaceId: string
+  siteUrl: string
+  email: string
+  apiToken?: string | null
+}
+
+export async function upsertWorkspaceJiraConnection(
+  supabase: Client,
+  args: UpsertWorkspaceJiraConnectionArgs,
+) {
+  return supabase.rpc('bunkai_upsert_workspace_jira_connection', {
+    p_actor_user_id: args.actorUserId,
+    p_workspace_id: args.workspaceId,
+    p_site_url: args.siteUrl,
+    p_email: args.email,
+    ...(args.apiToken === null || args.apiToken === undefined ? {} : { p_api_token: args.apiToken }),
+  });
+}
+
+export async function deleteWorkspaceJiraConnection(
+  supabase: Client,
+  args: { actorUserId: string, workspaceId: string },
+) {
+  return supabase.rpc('bunkai_delete_workspace_jira_connection', {
+    p_actor_user_id: args.actorUserId,
+    p_workspace_id: args.workspaceId,
+  });
+}
+
+export async function getWorkspaceJiraCredentials(supabase: Client, workspaceId: string) {
+  return supabase.rpc('bunkai_get_workspace_jira_credentials', { p_workspace_id: workspaceId });
+}
+
 // BK-40 — file a TMS-native bug, either linked to a failed run step or
 // standalone. Same explicit-actor contract as the other wrappers; the
 // SECURITY DEFINER RPC re-validates member+ write access via
