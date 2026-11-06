@@ -97,3 +97,6 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - Tech Story and Tech Debt share one short workflow (To Do, In Progress, In Review, then FIXED, Completed or AUTOMATED), and the gank JQL ignores them: they reach the Jungla only as a proactive pick. A Story retyped to Tech Story by the owner changes its status set (BK-1589 became FIXED). Findings and the proposal (drop FIXED, keep Completed and AUTOMATED) were sent to the owner on 2026-11-05; no decision yet.
 - A sonnet shift-left subagent finishes a story refinement in about 3 to 5 minutes, but cannot set Story Points or the AC field (`acli` writes no custom fields): expect an unpointed story.
 - A subagent's report can contain a false negative (it said `wait-jungla.sh` did not exist): verify any "not found" before repeating it to the owner.
+
+## 2026-11-06 · A clone's code ships under the original's key
+- BK-467 sat as `qa-approved-no-code` for six days because the G3 code gate searched `git log` for its own key. It is a clone of BK-315, and the feature (PR 207, BK-637) carries BK-315's key. Before holding a story at the code gate, read its `story.md` links (clone of, relates to) and search the git log for the linked keys too; the QA comments say it outright ("clone of BK-315").
