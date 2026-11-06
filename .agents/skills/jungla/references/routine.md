@@ -53,6 +53,8 @@ Before starting any work, `touch $JUNGLA_STATE_DIR/working` (and again before ev
 - **GANK**: each event is `{key, type, status, gank}`. Handle per `references/ganks.md`. `blocked` alone is a signal to look for the defect that blocked it, not a job by itself.
 - **PROACTIVE**: no gank waiting and no heavy worker running. Take the first mission in `state.json` `missions` with `status: ready` and do one slice of it (`references/missions.md`): one worker, or one hour of your own reading and writing. Add the slot to `proactive_done`.
 
+**At every wake-up, first relaunch the watcher, then check the mailbox of each active run** (`orca orchestration check --run <run_id>`; the terminal is bound to the latest run, so check the newest one, and `--ack <delivery_id>` what you handled). A worker's `question` and `worker_done` never fire the watcher: six confirmations (2026-11-01 to 2026-11-05), `worker_done` sat 1 to 1.5 hours until a heartbeat.
+
 After each wake-up: update `state.json` and append to the journal (time, what woke you, what you did, commit or PR or worker, what is left). No personal data. Then back to Phase 1.
 
 ## Phase 3 · Delegate
