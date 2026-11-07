@@ -151,6 +151,11 @@ export function deriveItemLabel(row: Pick<ActivityRpcRow, 'action' | 'entity_typ
     case 'module.archived':
     case 'module.restored':
       return nonEmptyString(row.payload.name) ?? fallback;
+    // BK-1619 — the Jira site host (migration 0120), never an email or a secret.
+    case 'jira_connection.connected':
+    case 'jira_connection.changed':
+    case 'jira_connection.disconnected':
+      return nonEmptyString(row.payload.site_host) ?? 'the Jira connection';
     case 'module.description_updated':
     case 'run.finished':
     case 'run.aborted':

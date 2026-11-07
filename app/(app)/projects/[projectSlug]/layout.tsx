@@ -74,6 +74,9 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
   // remains the authority; this is a UX hint). Default to hiding when unknown.
   const { data: { user } } = await supabase.auth.getUser();
   let canCreate = false;
+  // BK-1619 — owner / admin only: the import dialog links to Settings > Jira for
+  // them, and stays text-only for everyone else. A UX hint; the API is the authority.
+  let canConfigure = false;
   if (user) {
     const { data: membership } = await supabase
       .from('workspace_members')
@@ -82,6 +85,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       .eq('user_id', user.id)
       .maybeSingle();
     canCreate = membership != null && membership.role !== 'viewer';
+    canConfigure = membership != null && (membership.role === 'owner' || membership.role === 'admin');
   }
 
   // `archived_at IS NULL` keeps soft-deleted (BK-10) modules and their cascade
@@ -156,6 +160,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       tests={tests}
       environments={environments}
       canCreate={canCreate}
+      canConfigure={canConfigure}
     >
       {children}
     </ProjectShell>

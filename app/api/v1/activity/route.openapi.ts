@@ -133,6 +133,17 @@ const ActivityItemSchema = z
       removed_user_id: z.string().uuid().nullable(),
       removed_role: z.enum(['viewer', 'member', 'admin', 'owner']).nullable(),
     }),
+    // BK-1619 — projection of migration 0120. `item.label` is the Jira site
+    // host; the payload never carries the token, the secret id or the email.
+    activityItemVariant('JiraConnectionConnected', 'jira_connection.connected', 'workspace_jira_connection', {
+      site_host: z.string().nullable(),
+    }),
+    activityItemVariant('JiraConnectionChanged', 'jira_connection.changed', 'workspace_jira_connection', {
+      site_host: z.string().nullable(),
+    }),
+    activityItemVariant('JiraConnectionDisconnected', 'jira_connection.disconnected', 'workspace_jira_connection', {
+      site_host: z.string().nullable(),
+    }),
   ])
   .openapi('ActivityItem');
 

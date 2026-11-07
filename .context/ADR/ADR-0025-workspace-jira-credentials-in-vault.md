@@ -41,6 +41,7 @@ Invariants every change must keep:
   - Any server code holding the admin client could call the get-credentials RPC. The only protection is the convention above; nothing in the database stops it.
   - Local, staging and production share one Supabase project (MVP), so they all see the same connections.
   - No key rotation story beyond re-saving the token.
+- **Audit:** connecting, changing and disconnecting the Jira connection are recorded in the activity log (`jira_connection.connected`, `.changed`, `.disconnected`; migration 0120). The payload holds the site host only, never the token, the secret id or the email.
 - **Neutral / follow-ups:** the `ATLASSIAN_*` variables remain for developer tooling only (acli, sync scripts) and are not read by the app.
 
 ## Alternatives considered

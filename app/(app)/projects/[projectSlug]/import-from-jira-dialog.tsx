@@ -3,6 +3,7 @@
 import type { ImportJob, ImportJobError } from '@lib/types';
 import { Button } from '@components/ui/button';
 import { DownloadCloud } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -17,26 +18,50 @@ interface ApiErrorBody {
 
 interface ImportFromJiraDialogProps {
   projectId: string
+  // BK-1619 — true only for a workspace owner / admin. They get a link to
+  // Settings > Jira next to the not-connected and unauthorized messages; everyone
+  // else keeps the text-only "ask an owner or admin" copy. Omitted = false.
+  canConfigure?: boolean
   onClose?: () => void
 }
 
-// BK-1170 — the explorer only knows "can create" (member or above), not whether the
-// caller may administer the workspace, so these stay text-only: no link to Settings > Jira.
+const SETTINGS_JIRA_HREF = '/settings/jira';
 const JIRA_NOT_CONNECTED_ASK = 'Jira is not connected for this workspace. Ask a workspace owner or admin to connect it in Settings > Jira.';
+const JIRA_NOT_CONNECTED_ADMIN = 'Jira is not connected for this workspace.';
+
+// Job error codes that Settings > Jira can fix, and the copy shown to an owner /
+// admin (who gets the link) instead of the "ask an admin" copy.
+const ADMIN_FIXABLE_CODES = new Set(['jira_unauthorized', 'jira_not_connected']);
+const JOB_ERROR_COPY_ADMIN: Record<string, string> = {
+  jira_unauthorized: 'Jira rejected this workspace\'s credentials.',
+  jira_not_connected: 'Jira is not connected for this workspace.',
+};
+
+function SettingsJiraLink() {
+  return (
+    <Link
+      href={SETTINGS_JIRA_HREF}
+      data-testid="import-settings-jira-link"
+      className="font-medium text-accent underline underline-offset-2"
+    >
+      Open Settings &gt; Jira
+    </Link>
+  );
+}
 
 const JOB_ERROR_COPY: Record<string, string> = {
   jira_unauthorized: 'Jira rejected this workspace\'s credentials. An owner or admin should re-check them in Settings > Jira.',
   jira_not_connected: 'Jira is not connected for this workspace. An owner or admin can connect it in Settings > Jira.',
 };
 
-function friendlyError(body: ApiErrorBody): string {
+function friendlyError(body: ApiErrorBody, canConfigure: boolean): string {
   switch (body.error?.details?.reason) {
     case 'import_in_progress':
       return 'An import is already running for this project — wait for it to finish.';
     case 'not_a_member':
       return 'You do not have permission in this project.';
     case 'jira_not_connected':
-      return JIRA_NOT_CONNECTED_ASK;
+      return canConfigure ? JIRA_NOT_CONNECTED_ADMIN : JIRA_NOT_CONNECTED_ASK;
   }
   switch (body.error?.code) {
     case 'not_found':
@@ -53,13 +78,15 @@ const ACTIVE = new Set(['queued', 'running']);
 // Import-from-Jira dialog (BK-17): enter a JQL, start an async job, then poll the
 // job row every 2 s and show live status / counts / per-issue errors. Refreshes
 // the tree when the import completes so the imported stories appear.
-export function ImportFromJiraDialog({ projectId, onClose }: ImportFromJiraDialogProps) {
+export function ImportFromJiraDialog({ projectId, canConfigure = false, onClose }: ImportFromJiraDialogProps) {
   const router = useRouter();
   const [jql, setJql] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<ImportJob | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The refusal that Settings > Jira can fix (not connected), to show the link.
+  const [errorFixableInSettings, setErrorFixableInSettings] = useState(false);
 
   const status = job?.status ?? (jobId ? 'queued' : null);
   const polling = status !== null && ACTIVE.has(status);
@@ -103,6 +130,7 @@ export function ImportFromJiraDialog({ projectId, onClose }: ImportFromJiraDialo
     }
     setSubmitting(true);
     setError(null);
+    setErrorFixableInSettings(false);
     try {
       const res = await fetch('/api/v1/imports', {
         method: 'POST',
@@ -110,7 +138,9 @@ export function ImportFromJiraDialog({ projectId, onClose }: ImportFromJiraDialo
         body: JSON.stringify({ project_id: projectId, jql: jql.trim() }),
       });
       if (!res.ok) {
-        setError(friendlyError((await res.json().catch(() => ({}))) as ApiErrorBody));
+        const errorBody = (await res.json().catch(() => ({}))) as ApiErrorBody;
+        setError(friendlyError(errorBody, canConfigure));
+        setErrorFixableInSettings(errorBody.error?.details?.reason === 'jira_not_connected');
         return;
       }
       const body = (await res.json()) as { import_job_id: string, status: ImportJob['status'] };
@@ -151,7 +181,7 @@ export function ImportFromJiraDialog({ projectId, onClose }: ImportFromJiraDialo
                   autoFocus
                   data-testid="import-jql"
                   value={jql}
-                  onChange={(e) => { setJql(e.target.value); if (error) { setError(null); } }}
+                  onChange={(e) => { setJql(e.target.value); if (error) { setError(null); setErrorFixableInSettings(false); } }}
                   placeholder="project = ACME AND issuetype = Story"
                   rows={3}
                   className="w-full rounded-2 border border-stroke-2 bg-surface-0 px-3 py-2 font-mono text-sm text-fg-1 outline-none focus:border-accent"
@@ -159,7 +189,15 @@ export function ImportFromJiraDialog({ projectId, onClose }: ImportFromJiraDialo
               </label>
 
               {error && (
-                <p className="mb-3 text-xs text-signal-fail" data-testid="import-error">{error}</p>
+                <p className="mb-3 text-xs text-signal-fail" data-testid="import-error">
+                  {error}
+                  {canConfigure && errorFixableInSettings && (
+                    <>
+                      {' '}
+                      <SettingsJiraLink />
+                    </>
+                  )}
+                </p>
               )}
 
               <div className="flex items-center gap-2">
@@ -216,7 +254,13 @@ export function ImportFromJiraDialog({ projectId, onClose }: ImportFromJiraDialo
                       {JOB_ERROR_COPY[e.code]
                         ? (
                             <>
-                              {JOB_ERROR_COPY[e.code]}
+                              {canConfigure && ADMIN_FIXABLE_CODES.has(e.code) ? JOB_ERROR_COPY_ADMIN[e.code] : JOB_ERROR_COPY[e.code]}
+                              {canConfigure && ADMIN_FIXABLE_CODES.has(e.code) && (
+                                <>
+                                  {' '}
+                                  <SettingsJiraLink />
+                                </>
+                              )}
                               {' '}
                               <span className="text-[10px] text-fg-4" data-testid="import-error-code">{e.code}</span>
                             </>

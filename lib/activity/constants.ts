@@ -49,6 +49,11 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   'export.downloaded',
   // BK-572 — an Owner or Admin removed a teammate (entity_type workspace_member).
   'member.removed',
+  // BK-1619 — the workspace's Jira connection (entity_type
+  // workspace_jira_connection; migration 0120). Payload: the site host only.
+  'jira_connection.connected',
+  'jira_connection.changed',
+  'jira_connection.disconnected',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ALLOWED_ACTIONS)[number];

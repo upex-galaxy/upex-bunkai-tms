@@ -63,6 +63,9 @@ interface ProjectExplorerProps {
   // True when the caller's workspace role is >= member. Gates the create
   // affordances; the API remains the authority and rejects unauthorized writes.
   canCreate: boolean
+  // BK-1619 — true only for a workspace owner / admin: the Import-from-Jira dialog
+  // then links to Settings > Jira. Omitted = false.
+  canConfigure?: boolean
   // Route-driven workbench (BK-147): a plain ATC/Test click navigates to its
   // route, which opens as a tab in the persistent shell. `selectedAtcId` /
   // `selectedTestId` (derived from the active route) highlight the open item.
@@ -144,6 +147,7 @@ export function ProjectExplorer({
   tests = [],
   environments = [],
   canCreate,
+  canConfigure = false,
   selectedAtcId,
   selectedTestId,
 }: ProjectExplorerProps) {
@@ -776,6 +780,7 @@ export function ProjectExplorer({
           <div className="w-full max-w-[520px]" onClick={e => e.stopPropagation()}>
             <ImportFromJiraDialog
               projectId={projectId}
+              canConfigure={canConfigure}
               onClose={() => setImporting(false)}
             />
           </div>

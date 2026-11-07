@@ -104,6 +104,10 @@ updater:
     - .agents/skills/git-flow-master/evals/evals.json # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
     - .agents/skills/agentic-dev-core/references/skill-composition-strategy.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
     - .agents/skills/agentic-dev-core/references/orchestration-doctrine.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - cli/lib/variables-manifest.ts # BK-1619: ATLASSIAN_URL no longer pushed to Vercel (the app reads the Jira connection per workspace, ADR-0025)
+    - cli/lib/atlassian-instance.ts # BK-1619: comments follow the manifest change above
+    - cli/lib/variables-flow.ts # BK-1619: comment follows the manifest change above
+    - .agents/instructions/agent-project-variables.md # BK-1619: states ATLASSIAN_URL is no longer Vercel runtime config
 
 # Variables declared above that are consumed OUTSIDE the {{TEMPLATE}} system
 # (env vars in scripts/, shell `yq` reads embedded in skill docs, etc.).
