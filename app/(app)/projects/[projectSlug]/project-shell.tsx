@@ -48,6 +48,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
     tests,
     environments,
     canCreate,
+    canConfigure,
     view,
     setView,
     openTabs,
@@ -154,6 +155,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
               tests={tests}
               environments={environments}
               canCreate={canCreate}
+              canConfigure={canConfigure}
               selectedAtcId={activeAtcId}
               selectedTestId={activeTestId}
             />
