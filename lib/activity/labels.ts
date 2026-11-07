@@ -33,6 +33,9 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   'export.requested': 'requested a workspace data export',
   'export.downloaded': 'downloaded the workspace data export',
   'member.removed': 'removed a teammate',
+  'jira_connection.connected': 'connected Jira',
+  'jira_connection.changed': 'changed the Jira connection',
+  'jira_connection.disconnected': 'disconnected Jira',
 };
 
 // R1 backstop (implementation-plan.md Risk R1 — allowlist/label-map drift):

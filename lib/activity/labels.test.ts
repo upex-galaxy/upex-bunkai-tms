@@ -16,11 +16,11 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
     }
   });
 
-  test('the label map carries exactly the 14 allowlisted actions — no orphan, no gap', () => {
+  test('the label map carries exactly the allowlisted actions — no orphan, no gap', () => {
     expect(Object.keys(ACTION_LABELS).sort()).toEqual([...ACTIVITY_ALLOWED_ACTIONS].sort());
   });
 
-  test('the exact 15-row table matches implementation-plan.md / BK-264 + BK-508\'s AC verbatim', () => {
+  test('the exact 22-row table matches implementation-plan.md / BK-264 + BK-508\'s AC verbatim', () => {
     expect(ACTION_LABELS).toEqual({
       'module.renamed': 'renamed a module',
       'module.description_updated': 'updated a module description',
@@ -41,6 +41,9 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
       'export.requested': 'requested a workspace data export',
       'export.downloaded': 'downloaded the workspace data export',
       'member.removed': 'removed a teammate',
+      'jira_connection.connected': 'connected Jira',
+      'jira_connection.changed': 'changed the Jira connection',
+      'jira_connection.disconnected': 'disconnected Jira',
     });
   });
 });

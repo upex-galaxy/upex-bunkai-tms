@@ -320,6 +320,15 @@
           },
           {
             "$ref": "#/components/schemas/ActivityItemMemberRemoved"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemJiraConnectionConnected"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemJiraConnectionChanged"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemJiraConnectionDisconnected"
           }
         ],
         "discriminator": {
@@ -341,7 +350,10 @@
             "bug.reassigned": "#/components/schemas/ActivityItemBugReassigned",
             "bug.unassigned": "#/components/schemas/ActivityItemBugUnassigned",
             "bug.status_changed": "#/components/schemas/ActivityItemBugStatusChanged",
-            "member.removed": "#/components/schemas/ActivityItemMemberRemoved"
+            "member.removed": "#/components/schemas/ActivityItemMemberRemoved",
+            "jira_connection.connected": "#/components/schemas/ActivityItemJiraConnectionConnected",
+            "jira_connection.changed": "#/components/schemas/ActivityItemJiraConnectionChanged",
+            "jira_connection.disconnected": "#/components/schemas/ActivityItemJiraConnectionDisconnected"
           }
         }
       },
@@ -1365,6 +1377,168 @@
           }
         },
         "required": ["removed_user_id", "removed_role"]
+      },
+      "ActivityItemJiraConnectionConnected": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["workspace_jira_connection"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["jira_connection.connected"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadJiraConnectionConnected"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadJiraConnectionConnected": {
+        "type": "object",
+        "properties": {
+          "site_host": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["site_host"]
+      },
+      "ActivityItemJiraConnectionChanged": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["workspace_jira_connection"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["jira_connection.changed"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadJiraConnectionChanged"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadJiraConnectionChanged": {
+        "type": "object",
+        "properties": {
+          "site_host": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["site_host"]
+      },
+      "ActivityItemJiraConnectionDisconnected": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["workspace_jira_connection"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["jira_connection.disconnected"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadJiraConnectionDisconnected"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadJiraConnectionDisconnected": {
+        "type": "object",
+        "properties": {
+          "site_host": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["site_host"]
       },
       "SendDigestResponse": {
         "type": "object",

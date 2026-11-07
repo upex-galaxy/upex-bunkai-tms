@@ -192,6 +192,13 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
     expect(deriveItemLabel({ action: 'module.restored', entity_type: 'module', payload: {} })).toBe('a module');
   });
 
+  it('BK-1619: the Jira connection events name the site host, never a raw entity type', () => {
+    for (const action of ['jira_connection.connected', 'jira_connection.changed', 'jira_connection.disconnected']) {
+      expect(deriveItemLabel({ action, entity_type: 'workspace_jira_connection', payload: { site_host: 'acme.atlassian.net' } })).toBe('acme.atlassian.net');
+      expect(deriveItemLabel({ action, entity_type: 'workspace_jira_connection', payload: {} })).toBe('the Jira connection');
+    }
+  });
+
   it('module.archived falls back generic', () => {
     expect(deriveItemLabel({ action: 'module.archived', entity_type: 'module', payload: { modules: 2, atcs: 5 } })).toBe('a module');
   });
