@@ -73,7 +73,7 @@ The DoD is the QA boilerplate's: `/Users/ely/Desktop/projects/boilerplates/agent
 Only on stories **no student took in 7 days** (D7 note 4). This overrides, for those stories only, Bunkai rule AI-LED-DECISIONS's "missing shift-left is not yours to invent".
 
 ```
-project = BK AND issuetype = Story AND status in (Backlog, Estimation, "Shift-Left QA") AND assignee is EMPTY AND updated <= -7d ORDER BY rank
+project = BK AND issuetype = Story AND status in (Backlog, "Shift-Left QA") AND assignee is EMPTY AND updated <= -7d ORDER BY rank
 ```
 
 (`JUNGLA_SHIFTLEFT_JQL`; 0 results on 2026-10-30.) Swept once per day in a proactive block. Run the QA boilerplate's `/shift-left-testing` on one story per block, with its Shift-Left DoD (refined Given/When/Then ACs, gaps as questions, test design applied, no TMS test entities), publish to the ticket, transition it to `Ready For Dev`, and it becomes a G1.

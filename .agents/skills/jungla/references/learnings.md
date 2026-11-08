@@ -111,3 +111,7 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - `ps -axww | grep '[w]ait-jungla.sh' | wc -l` reads 2 for ONE watcher (the shell wrapper plus the script): count it as 1, and never launch a second one on that reading.
 - `cd <dir with a glob> && wc ...` on a `.context/PBI/.../STORY-*` folder was denied (the `.auth/**` deny rule matched the compound command). Locate the folder with `find`, then use the Read tool on `comments.md`.
 - A QA story whose result is PASSED WITH ISSUES (0 failed, deferred cases with a stated reason, improvements filed as tickets) meets the G3 minimum; the deferred cases go into the review-request for the tutor (BK-572).
+
+## 2026-11-08 · Sunday run (Estimation is gone from the JQL too)
+- `JUNGLA_SHIFTLEFT_JQL` and `JUNGLA_STOCK_JQL` listed `Estimation`, a status the live workflow no longer has, so `acli` answered "the value 'estimation' does not exist for the field 'status'" and the G4 sweep silently found nothing. Removed it from `jungla.conf` and `references/ganks.md`. Same root as the 2026-11-05 entry: the cached workflow was stale. Run a JQL by hand after any workflow change.
+- A watcher that ends with HEARTBEAT is gone by the time the notification arrives: do not read a `ps` count taken before relaunching as "still alive". Count after the relaunch (2 lines = one watcher).
