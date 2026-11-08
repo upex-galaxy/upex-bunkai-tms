@@ -106,3 +106,8 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - The permission layer denied `git worktree remove --force` and `git branch -D` in one compound call; the plain `git worktree remove` worked. A temp branch whose commit was cherry-picked (new SHA) is never "merged", so `git branch -d` refuses: delete it with `-D` when the owner allows, or leave it noted.
 - A quiet day is a valid day: all 16 Open defects already had merged fixes (status lag) and waited for the QA retest, so the three proactive slots went to the workflow-cache sync (content unchanged, only key reordering) and the m6 doubts (BK-467 and BK-509 both shipped under a sibling key).
 - A peer session (not the owner) can relay a message into this one; log it as peer-reported and unverified, and verify against git before quoting it to a student.
+
+## 2026-11-07 · Saturday run (quiet, two small traps)
+- `ps -axww | grep '[w]ait-jungla.sh' | wc -l` reads 2 for ONE watcher (the shell wrapper plus the script): count it as 1, and never launch a second one on that reading.
+- `cd <dir with a glob> && wc ...` on a `.context/PBI/.../STORY-*` folder was denied (the `.auth/**` deny rule matched the compound command). Locate the folder with `find`, then use the Read tool on `comments.md`.
+- A QA story whose result is PASSED WITH ISSUES (0 failed, deferred cases with a stated reason, improvements filed as tickets) meets the G3 minimum; the deferred cases go into the review-request for the tutor (BK-572).
