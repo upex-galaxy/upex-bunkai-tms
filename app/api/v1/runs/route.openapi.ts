@@ -43,6 +43,8 @@ const RunSchema = z
     abort_reason: z.string().nullable().describe('BK-36 — the reason captured when the run was aborted; null for non-aborted runs.'),
     executor_mode: z.enum(['human', 'agent', 'ci']),
     executor_user_id: z.string().uuid().nullable(),
+    executor_name: z.string().nullable().describe('BK-222 — the name of the access token that submitted the run; null for runs started by hand.'),
+    evidence_urls: z.array(z.string()).describe('BK-222 — http(s) evidence links reported with a submitted run (at most 20); empty for other runs.'),
     test_title: z.string().describe('Snapshot of the Test title at start.'),
     version: z.number().int(),
     started_at: z.string().datetime(),
@@ -52,7 +54,7 @@ const RunSchema = z
     atc_count: z.number().int(),
     step_count: z.number().int(),
     atcs: z.array(RunAtcSchema).describe('The snapshot chain, ordered by position.'),
-    replayed: z.boolean().optional().describe('true when this call returned an existing Run within the 24h same-token window (HTTP 200); false/absent when freshly created (HTTP 201).'),
+    replayed: z.boolean().optional().describe('true when this call returned an existing Run within the 24h idempotency window (HTTP 200: the same start_token for POST /runs, the same idempotency_key for POST /runs/submissions); false/absent when freshly created (HTTP 201).'),
   })
   .openapi('Run');
 

@@ -4933,6 +4933,17 @@
             "type": ["string", "null"],
             "format": "uuid"
           },
+          "executor_name": {
+            "type": ["string", "null"],
+            "description": "BK-222 — the name of the access token that submitted the run; null for runs started by hand."
+          },
+          "evidence_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "BK-222 — http(s) evidence links reported with a submitted run (at most 20); empty for other runs."
+          },
           "test_title": {
             "type": "string",
             "description": "Snapshot of the Test title at start."
@@ -4971,7 +4982,7 @@
           },
           "replayed": {
             "type": "boolean",
-            "description": "true when this call returned an existing Run within the 24h same-token window (HTTP 200); false/absent when freshly created (HTTP 201)."
+            "description": "true when this call returned an existing Run within the 24h idempotency window (HTTP 200: the same start_token for POST /runs, the same idempotency_key for POST /runs/submissions); false/absent when freshly created (HTTP 201)."
           }
         },
         "required": [
@@ -4985,6 +4996,8 @@
           "abort_reason",
           "executor_mode",
           "executor_user_id",
+          "executor_name",
+          "evidence_urls",
           "test_title",
           "version",
           "started_at",
@@ -5585,6 +5598,73 @@
           }
         },
         "required": ["status"]
+      },
+      "RunSubmissionBody": {
+        "type": "object",
+        "properties": {
+          "test_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The Test being reported. Must belong to the token's workspace (otherwise 404)."
+          },
+          "environment": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "The NAME of one of the Test's Project environments (case-insensitive). An unknown name is rejected and never created."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["passed", "failed"],
+            "description": "`passed` requires every step to be `pass`; `failed` requires at least one `fail` or `block`. Contradictions are rejected, never corrected."
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400,
+            "description": "Whole seconds. The run finishes at submission time and starts that many seconds earlier."
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunSubmissionStep"
+            },
+            "minItems": 1,
+            "description": "One result for EVERY chain position 1..N, each reported once."
+          },
+          "evidence_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "maxItems": 20,
+            "description": "Optional http or https links, stored as links only (never fetched)."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Optional domain idempotency key, scoped per workspace with a 24 hour window. The same key and payload returns the original run (200, `replayed: true`); the same key with a different payload is 409; after 24 hours the key is free. A rejected submission does not consume the key. The `Idempotency-Key` header is NOT used on this endpoint (ADR-0026)."
+          }
+        },
+        "required": ["test_id", "environment", "verdict", "duration_seconds", "steps"]
+      },
+      "RunSubmissionStep": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The chain position of the step, 1..N in the Test's chain (the same ATC can appear at several positions)."
+          },
+          "result": {
+            "type": "string",
+            "enum": ["pass", "fail", "block"],
+            "description": "The step outcome."
+          }
+        },
+        "required": ["position", "result"]
       },
       "SearchPageResponse": {
         "type": "object",
@@ -15205,6 +15285,122 @@
           },
           "422": {
             "description": "Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not an http:// or https:// URL (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/submissions": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Submit a finished automated Run with step results",
+        "description": "Bearer token only, scope `run:execute`, owner with member role or higher in the token's workspace (a cookie session gets 403 `token_required`; a token without a workspace gets 403 `token_not_workspace_scoped`). Creates the Run already finished in one transaction: executor mode `agent` attributed to the token name, the Test's chain snapshotted into run_atcs/run_steps with the submitted statuses, and `run.started` + `run.finished` audit rows. Step results are keyed by chain position. Returns 201 on create, 200 when the `idempotency_key` replays an existing run.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunSubmissionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replay: the same `idempotency_key` and payload within 24 hours returned the original Run (`replayed: true`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Run recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON body (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated, or the token is revoked or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `run:execute` scope, a viewer owner, a cookie session (`token_required`) or a token not bound to a workspace (`token_not_workspace_scoped`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Test does not exist or belongs to another workspace than the token's (`not_found`); reveals nothing about other workspaces.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The `idempotency_key` was already used with a different payload within 24 hours (`conflict`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (`validation_failed`: reasons `verdict_invalid`, `step_result_invalid`, `steps_incomplete` with `missing_positions`, `steps_duplicate_position`, `verdict_inconsistent`, `duration_invalid`, `evidence_*`, `idempotency_key_invalid`), `environment_invalid` (names the unknown environment) or `no_executable_steps`. Nothing is recorded.",
             "content": {
               "application/json": {
                 "schema": {
