@@ -92,6 +92,18 @@ alter table public.run_submission_keys enable row level security;
 
 -- No policy at all: only the SECURITY DEFINER RPC below reads or writes it.
 revoke all on public.run_submission_keys from anon, authenticated;
+-- 0085 default privileges grant new tables to the QA inspector roles: this one is
+-- DEFINER-only, so revoke them (same guarded form as 0119).
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'qa_inspector_ro') then
+    revoke all on public.run_submission_keys from qa_inspector_ro;
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'qa_inspector_rw') then
+    revoke all on public.run_submission_keys from qa_inspector_rw;
+  end if;
+end
+$$;
 grant select, insert, update, delete on public.run_submission_keys to service_role;
 
 -- ============================================================================
@@ -322,6 +334,9 @@ begin
   if p_steps is null or jsonb_typeof(p_steps) <> 'array' then
     raise exception 'submission_steps_invalid' using errcode = '45234', detail = 'steps must be an array';
   end if;
+  if jsonb_array_length(p_steps) > 500 then
+    raise exception 'submission_steps_invalid' using errcode = '45234', detail = 'at most 500 steps';
+  end if;
 
   for v_el in select value from jsonb_array_elements(p_steps) loop
     if jsonb_typeof(v_el) <> 'object'
@@ -498,3 +513,14 @@ $$;
 
 revoke execute on function public.bunkai_submit_automated_run(uuid, uuid, uuid, text, text, int, jsonb, text[], text) from public, anon;
 grant execute on function public.bunkai_submit_automated_run(uuid, uuid, uuid, text, text, int, jsonb, text[], text) to authenticated, service_role;
+
+-- 0085 default privileges also grant EXECUTE on new functions to qa_inspector_ro; a
+-- volatile DEFINER writer must not be callable by a read-only role (0086, 0119 form),
+-- since a direct connection has no auth.uid() and skips the actor bind.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'qa_inspector_ro') then
+    revoke all on function public.bunkai_submit_automated_run(uuid, uuid, uuid, text, text, int, jsonb, text[], text) from qa_inspector_ro;
+  end if;
+end
+$$;

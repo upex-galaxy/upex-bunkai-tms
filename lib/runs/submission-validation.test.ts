@@ -93,8 +93,10 @@ describe('parseRunSubmissionBody', () => {
     }
   });
 
-  test('an empty steps list is rejected', () => {
+  test('an empty or oversized steps list is rejected', () => {
     expect(fail(valid({ steps: [] })).details).toMatchObject({ reason: 'steps_invalid' });
+    const many = Array.from({ length: 501 }, (_, i) => ({ position: i + 1, result: 'pass' }));
+    expect(fail(valid({ steps: many })).details).toMatchObject({ reason: 'steps_invalid' });
   });
 
   describe('duration BVA', () => {

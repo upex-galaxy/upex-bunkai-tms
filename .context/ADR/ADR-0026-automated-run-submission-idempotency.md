@@ -27,6 +27,7 @@ The product rulings for this endpoint do not fit that contract: the key is optio
 
 - **Positive:** the contract matches the PO rulings and the SRS; failures are race-free inside one transaction; no second round trip to a snapshot store.
 - **Negative:** ADR-0002's invariant ("never an ad-hoc variant") is departed from for this one endpoint, so clients meet two idempotency shapes in the API (`Idempotency-Key` header on most writes, body key on run submissions). The OpenAPI spec states plainly that the header is not used here.
+- **Negative (accepted):** the replay lookup runs after the chain-dependent checks, so an identical retry after the Test's chain was edited or the environment removed answers 422/404 instead of replaying. `run_submission_keys` is purged only when a key is reused after its window; a periodic sweep is a follow-up if the table grows.
 - **Neutral:** ADR-0002 stays in force for every other endpoint. A future endpoint that wants a domain key should cite this ADR rather than re-deciding.
 
 ## Alternatives considered

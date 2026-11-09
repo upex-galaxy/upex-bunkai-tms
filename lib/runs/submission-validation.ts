@@ -13,6 +13,7 @@ export const SUBMISSION_VERDICTS = ['passed', 'failed'] as const;
 export const SUBMISSION_STEP_RESULTS = ['pass', 'fail', 'block'] as const;
 export const SUBMISSION_DURATION_MAX_SECONDS = 86400;
 export const SUBMISSION_EVIDENCE_MAX = 20;
+export const SUBMISSION_STEPS_MAX = 500;
 export const SUBMISSION_KEY_MAX = 64;
 export const SUBMISSION_ENVIRONMENT_MAX = 60;
 
@@ -86,8 +87,11 @@ export function parseRunSubmissionBody(payload: unknown): RunSubmissionBody {
   }
 
   const rawSteps = payload.steps;
-  if (!Array.isArray(rawSteps) || rawSteps.length === 0) {
-    return invalid('steps_invalid', 'steps must be a non-empty list of { position, result } entries.');
+  if (!Array.isArray(rawSteps) || rawSteps.length === 0 || rawSteps.length > SUBMISSION_STEPS_MAX) {
+    return invalid(
+      'steps_invalid',
+      `steps must be a list of 1 to ${SUBMISSION_STEPS_MAX} { position, result } entries.`,
+    );
   }
   const steps: SubmissionStep[] = [];
   const seen = new Set<number>();
