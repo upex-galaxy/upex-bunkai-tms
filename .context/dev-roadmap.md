@@ -215,6 +215,7 @@ BK-221 Automation & CI Ingestion:
   BK-222 Submit automated run ──> BK-88, BK-34, BK-39        (entry point of the cluster)
   BK-223 Stream step results ──> BK-222, BK-88, BK-34, BK-39  ··> BK-35
   BK-226 Upload CI file ──> BK-222, BK-88
+  BK-222 ✅ dev-done (2026-11-09) — PR #332 (feat/BK-222-submit-automated-run): POST /api/v1/runs/submissions, migration 0121, ADR-0026. Unblocks BK-223 and BK-226.
   BK-228 Commit/branch links ──> BK-226
   BK-225 Mode filter ──> BK-38  ··> BK-222, BK-227
   BK-227 Automation status ──> BK-27
