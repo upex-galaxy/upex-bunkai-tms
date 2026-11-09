@@ -291,12 +291,11 @@ orchestration:
   # Entry shape: {topics: [security, migration], tier: worker, model: <full id>, effort: max}
   # (tier: worker | conductor | subagent). A list, read by path, not a {{VAR}}.
   model_overrides:
-    - {
-        topics: [security, auth, migration, rollback, architecture, supabase, rls],
-        tier: worker,
-        model: claude-opus-5-5,
-        effort: high,
-      }
+    - topics: [security, auth, migration, rollback, architecture, supabase, rls]
+      tier: worker
+      model: claude-opus-5-5
+      effort: high
+
   # WHICH orchestrator, named here instead of hardcoded in a skill. Empty
   # `orchestrator_cli` = no orchestrator on this machine: every workflow skill
   # falls back to the pasted-launch-line path and says NOTHING about it.
