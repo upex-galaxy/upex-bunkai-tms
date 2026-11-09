@@ -1410,12 +1410,54 @@ export interface Database {
           },
         ]
       }
+      run_submission_keys: {
+        Row: {
+          created_at: string
+          idempotency_key: string
+          request_hash: string
+          run_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          idempotency_key: string
+          request_hash: string
+          run_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          idempotency_key?: string
+          request_hash?: string
+          run_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'run_submission_keys_run_id_fkey'
+            columns: ['run_id']
+            isOneToOne: false
+            referencedRelation: 'runs'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'run_submission_keys_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       runs: {
         Row: {
           abort_reason: string | null
           created_at: string
           environment_id: string
+          evidence_urls: string[]
           executor_mode: string
+          executor_name: string | null
+          executor_token_id: string | null
           executor_user_id: string | null
           finished_at: string | null
           id: string
@@ -1434,7 +1476,10 @@ export interface Database {
           abort_reason?: string | null
           created_at?: string
           environment_id: string
+          evidence_urls?: string[]
           executor_mode: string
+          executor_name?: string | null
+          executor_token_id?: string | null
           executor_user_id?: string | null
           finished_at?: string | null
           id?: string
@@ -1453,7 +1498,10 @@ export interface Database {
           abort_reason?: string | null
           created_at?: string
           environment_id?: string
+          evidence_urls?: string[]
           executor_mode?: string
+          executor_name?: string | null
+          executor_token_id?: string | null
           executor_user_id?: string | null
           finished_at?: string | null
           id?: string
@@ -1474,6 +1522,13 @@ export interface Database {
             columns: ['environment_id']
             isOneToOne: false
             referencedRelation: 'project_environments'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'runs_executor_token_id_fkey'
+            columns: ['executor_token_id']
+            isOneToOne: false
+            referencedRelation: 'access_tokens'
             referencedColumns: ['id']
           },
           {
@@ -2854,6 +2909,20 @@ export interface Database {
       }
       bunkai_set_user_story_status: {
         Args: { p_id: string, p_status: string }
+        Returns: Json
+      }
+      bunkai_submit_automated_run: {
+        Args: {
+          p_actor_user_id: string
+          p_duration_seconds: number
+          p_environment_name: string
+          p_evidence_urls?: string[]
+          p_idempotency_key?: string
+          p_steps: Json
+          p_test_id: string
+          p_token_id: string
+          p_verdict: string
+        }
         Returns: Json
       }
       bunkai_sweep_abandoned_runs: {
