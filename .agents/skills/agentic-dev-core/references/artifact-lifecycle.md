@@ -38,7 +38,7 @@ named as someone else's.
 | Artifact | Work type | Created by | Created in | Moved by → target (transition slug) | Terminal |
 |---|---|---|---|---|---|
 | **Epic** | `epic` | `/product-management` (epic creation, add-feature) | `backlog` | `/product-management` right after create: `plan` → `planning` (`statuses.epic_default`). **No dev skill moves an epic past that**: `ready_to_work` and `complete` belong to the PO / team. The Epic precheck reads the epic, it never transitions it | `done` |
-| **Story** | `story` | `/product-management` (add-feature, story refinement; `autonomous-delivery` `discovery` routes through it) | `backlog` | `/product-management` after create: `analyze` → `shift_left_qa` (`statuses.story_default`) · QA shift-left owns `refined` → `ready_for_dev` (`shift_left_qa` → `ready_for_dev`, AI Effort set first) · `/sprint-development` Stage 1 end: `start_working` → `in_progress` · Stage 3 (PR opened): automation fires `pull_request` → `in_review`; **if it did not fire, the stage fires it** · Stage 4 (merged + staging deploy green): automation fires `deployed` → `ready_for_qa`; if not, the stage fires it · QA owns `start_testing` / `qa_sign_off`; release owns `include_in_release` / `released` | `deployed_to_production` (released by the team, never by a dev skill) |
+| **Story** | `story` | `/product-management` (add-feature, story refinement; `autonomous-delivery` `discovery` routes through it) | `backlog` | `/product-management` after create: `analyze` → `shift_left_qa` (`statuses.story_default`) · QA shift-left owns `refined` → `ready_for_dev` (`shift_left_qa` → `ready_for_dev`, AI Effort set first) · `/sprint-development` Stage 1 end: `start_working` → `in_progress` · Stage 3 (PR opened): automation fires `pull_request` → `in_review`; **if it did not fire, the stage fires it** · Stage 4 (merged + staging deploy green): automation fires `deployed` → `ready_for_qa`; if not, the stage fires it · QA owns `start_testing` / `qa_sign_off`; QA's `defect_reported` moves the story `in_test` → `blocked`, and the dev then fires `fix_defect` → `in_progress` on the Story, fixes, and re-delivers to `ready_for_qa` (`pushed`, or `pull_request` + `deployed`); `back_to_dev` (`blocked` → `ready_for_dev`) exists in the catalog and no stage fires it on its own; release owns `include_in_release` / `released` | `deployed_to_production` (released by the team, never by a dev skill) |
 | **Bug** (also `defect`, `improvement`) | `bug` / `defect` / `improvement` | QA or a reporter (external); a Stage 3 review may file one under the parent story | `open` | `/sprint-development` bug-fix triage: real bug `start_fixing` → `in_progress` · duplicate `is_duplicated` → `duplicated` · works as designed `is_wad` → `rejected` · enhancement `is_not_a_bug` → `enhancement` · cannot reproduce `is_cnr` → `cannot_reproduce` · low priority `defer` → `deferred` · PR opened: `pull_request` → `in_review` · merged + deployed: `fixed_and_deployed` → `ready_for_qa` · urgent hotfix with no review step: `hard_pushed` → `ready_for_qa` · QA owns `retest_passed` → `closed` | `closed` (or a triage terminal) |
 | **Tech Story / Tech Debt** | `tech_story` / `tech_debt` | dev / PM (external) | `to_do` | `/sprint-development` Stage 1 end: `start_working` → `in_progress` · Stage 3 (PR opened): `ready` → `in_review` · merged with no QA scope: `complete` → `completed` · QA owns `test_finished` → `automated` when the item carried test scope | `completed` / `automated` |
 | **Feature Implementation Plan** | field `feature_implementation_plan` on the Epic | `/sprint-development` Stage 1 (macro plan, `references/feature-plan.md`) | — (a field, not an issue) | authored in-session → pushed to the field (or its `## Feature Implementation Plan (Dev)` fallback comment) → `bun run jira:sync-issues get <EPIC>` → read back from the synced `feature-implementation-plan.md`. Re-pushed when the plan changes; never hand-written locally (`.agents/instructions/agent-local-context-pbi.md` §9) | the field |
@@ -58,28 +58,35 @@ The catalog is the authority. Route around these, never invent an id:
 - **A story transition from `in_review` back to `ready_for_dev`.** Review feedback keeps the
   story `in_review` while Stage 2 loops; `back_from_in_progress` only exists from `in_progress`.
 - **A `story` move past `ready_for_qa` by a dev skill.** `start_testing`, `qa_sign_off`,
-  `include_in_release` and `released` exist, and none of them is a dev skill's to fire. Stage 5
+  `include_in_release` and `released` exist, and none of them is a dev skill's to fire. The one
+  dev move out of QA's territory is the defect loop: after QA's `defect_reported` the story sits in
+  `blocked`, and `fix_defect` (`blocked` → `in_progress`) is the dev's. Stage 5
   shipping to production does not move the story: the release owner does.
 - **A bug status named `Need Info`.** The bug workflow has `cannot_reproduce`, `deferred` and a
   comment; a "need more information" outcome is a comment plus whichever of those the user picks.
   A project that does have such a status is the §4 case, not a reason to hard-code its name.
 
-Transitions the catalog lists that no stage fires (`aborted`, `recover`, the `back_from_*`
-family, `re_open`) are legitimate for a project to use by hand; no skill fires them on its own.
+Transitions the catalog lists that no stage fires (`aborted`, `recover`, `back_to_dev`, the
+`back_from_*` family, `re_open`) are legitimate for a project to use by hand; no skill fires them on its own.
 
 ---
 
-## 2. Ownership rule — read the assignee around every transition
+## 2. Ownership rule: read the assignee around every transition
 
 **The dev harness does not set an assignee at create.** Epics and stories are created
-unassigned (`/product-management`); the team assigns work. Only the hand-offs below move the
-assignee, and each one is explicit.
+unassigned (`/product-management`); the team assigns work. **The native `assignee` follows the
+dev model**: it names the current holder of the issue. The one hand-off a dev skill owns: when a
+Story reaches `ready_for_qa`, the dev moves `assignee` to the QA named in `{{jira.qa_assignee}}`
+(the record of the QA who followed the story since shift-left; read it, never overwrite it). If
+`qa_assignee` is empty, the dev leaves `assignee` as it is and says so in the QA notification
+comment; it never guesses a QA. Transitions that put the QA in `assignee` on the QA side
+(`start_testing`, `qa_sign_off`) are expected.
 
 **A transition can reassign the issue behind your back.** Tracker automation and workflow
 post-functions are invisible in the transition catalog. The one this harness already relies on
 having observed: **merge automation assigns the merged story to the developer**, while Stage 4's
-rule says a story at `ready_for_qa` belongs to its shift-left QA owner. So on every transition a
-dev skill fires or verifies:
+rule moves a story at `ready_for_qa` to the QA. So on every transition a dev skill fires or
+verifies:
 
 1. **Read `assignee` before firing.** The same issue read that lists the available transitions
    returns it (`bun run jira:sync-issues get <KEY>`).
@@ -87,13 +94,14 @@ dev skill fires or verifies:
    its status change is confirmed, not when the merge lands.
 3. **If the transition moved it** and the stage has no hand-off rule for that status, **restore
    the previous owner** and record the post-function in the `progress.md` checkpoint. Where the
-   stage does have a rule (Stage 4 → shift-left QA owner, or unassigned when none can be
-   identified), apply the rule, never the automation's choice.
+   stage does have a rule (Stage 4 at `ready_for_qa`: the `{{jira.qa_assignee}}` QA, or the
+   current holder when it is empty), apply the rule, never the automation's choice.
 4. **Verify the write landed.** Some CLI assignment paths report success while CLEARING the
    field (`sprint-development` Stage 4 gotchas); the read-back is the only proof.
 
-**Before editing an issue someone else owns** to make a write go through: ask the user. Taking
-ownership silently is not a fix; a declined reassignment is reported as blocked, naming the owner.
+**Before editing an issue someone else owns** to make a write go through: ask the user.
+Taking ownership silently is not a fix; a declined reassignment is reported as blocked, naming
+the owner.
 
 ---
 
@@ -200,9 +208,12 @@ of its lines read this file, and a third applies to Stage 4:
   it was not (§4 skip, §4.2 leave, unattended flag).
 - **Assignee**: read back after every transition the stage fired or verified (§2). A transition
   that moved it with no hand-off rule and was not restored is a `NO`.
-- **Token usage**: `{{jira.development_token_usage}}` written from the harness's
-  measured consumption when the story reached `ready_for_qa`, or a stated N/A with the reason when
-  the harness exposes no figure. Tokens are measured, never estimated.
+- **Token usage**: `{{jira.development_token_usage}}` is cumulative and optional. When the story
+  is verified at `ready_for_qa` (and again after each fix loop), read the current value, add this
+  cycle's measured delta (K = input plus output tokens, cache reads apart), never overwrite, and
+  post one `DTU cycle N: +x K (total y K) source=<harness or human>` comment. No figure available
+  is a stated N/A with the reason and never a `NO`; so is an item that never reaches
+  `ready_for_qa`. Tokens are measured, never estimated.
 
 A stage owner lists only its stage-specific lines inline (which issue, which slug) and cites
 Part 3 for the rest.

@@ -162,7 +162,7 @@ Anything else: do not touch it. Put the exact edit you wanted in your report.
 
 ## Report
 Write <ABS>/.session/orchestration/<slug>/reports/<label>.md with:
-## Summary · ## Files changed · ## Commits · ## Decisions taken · ## Verification · ## Left open
+## Summary · ## Files changed · ## Commits · ## Decisions taken · ## Verification · ## Left open · ## Tokens (optional: measured, or `unknown`, never estimated)
 Then send worker_done exactly once, outcome succeeded|failed, with --files-modified and
 --report-path. Then stop.
 

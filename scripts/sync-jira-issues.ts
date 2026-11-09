@@ -1452,7 +1452,7 @@ function syncFieldFiles(
 // MARKDOWN GENERATORS
 // ============================================================================
 
-/** Display value of the AI Effort select ('-' when unset or the field is not on the instance). */
+/** Display value of the AI Effort select ('-' when unset or the field is not on the instance; the fallback `## AI Effort` comment, when QA used it, lives in comments.md). */
 function aiEffortOf(issue: JiraIssue): string {
   const raw: unknown = issue.fields[CUSTOM_FIELDS.aiEffort];
   return raw !== null && typeof raw === 'object' && 'value' in raw ? String((raw as { value: unknown }).value) : '-';
@@ -1573,7 +1573,7 @@ function generateStoryMarkdown(
     `**Type:** ${String(fields.issuetype?.name || 'Story')}`,
     `**Status:** ${String(fields.status?.name || 'Unknown')}`,
     `**Priority:** ${String(fields.priority?.name || 'Not set')}`,
-    `**AI Effort:** ${aiEffortOf(story)}`,
+    `**AI Effort:** ${aiEffortOf(story)}${aiEffortOf(story) === '-' ? ' (field value absent; the fallback `## AI Effort` comment, if any, is in comments.md)' : ''}`,
     `**Token usage (K):** DTU ${tokensOf(story, 'developmentTokenUsage')} | QTU ${tokensOf(story, 'qualityTokenUsage')}`,
   );
   if (webLink) {

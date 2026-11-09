@@ -64,7 +64,7 @@ A user story, bug or tech story is delivered as exactly ONE pull request, whatev
 
 Jira moves a story to `Ready For QA` when a PR carrying its key is merged, and the workflow has no way back, so a ticket-keyed PR merges only into its final target (`staging`), only when truly ready.
 
-The rule binds executors through the `## Compact Rules` of `git-flow-master` and `sprint-development` (both on `updater.protected_paths` in `.agents/project.yaml`, so no sync reverts them). Detail: `.agents/skills/git-flow-master/SKILL.md` Step 4 and `.agents/skills/sprint-development/references/workload-forecast.md`.
+The rule binds executors through the `## Compact Rules` of `git-flow-master` and `sprint-development` (both on `updater.protected_paths` in `.agents/project.yaml`, so no sync reverts them). Detail: `.agents/skills/git-flow-master/SKILL.md` Step 4 and `.agents/skills/sprint-development/references/review-size-forecast.md`.
 
 ## Git Strategy (this repository)
 

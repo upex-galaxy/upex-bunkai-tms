@@ -623,7 +623,7 @@ The orchestrator verifies each finding against the **actual diff + AC** and reco
 
 ### Reviewing a large PR (commit by commit)
 
-A story is always ONE PR, however big (see `workload-forecast.md`). A `Medium` or `Large` PR is reviewed **commit by commit**, not as one undifferentiated diff:
+A story is always ONE PR, however big (see `review-size-forecast.md`). A `Medium` or `Large` PR is reviewed **commit by commit**, not as one undifferentiated diff:
 
 1. **Read the plan first.** The reviewer gets the commit list (`git log --oneline origin/<base>..HEAD`) plus the `Commit plan` and `Review guide` from the forecast block (also in the PR body). Reading order follows the guide; riskiest commits get scrutiny first.
 2. **Review commit groups.** Each commit is one responsibility and leaves lint, types and tests green, so each can be read and judged on its own (`git show <sha>`). For a `Large` PR the orchestrator may dispatch several reviewers, one per commit group (for example schema + domain, API, UI + docs), **sequentially** (never in parallel). Every reviewer is independent and adversarial, per the contract above, and receives the AC plus the full commit list for context.

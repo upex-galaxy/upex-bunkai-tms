@@ -89,7 +89,7 @@ A flag is an **implementation tactic** for a story. An epic is a **product-level
 | Dimension              | Target Range | Why                                                            |
 | ---------------------- | ------------ | -------------------------------------------------------------- |
 | **Story count**        | 3-8 stories  | <3 → it's a story; >8 → split into multiple epics              |
-| **AI Effort mix**      | No `High`    | QA sets it in shift-left; a `High` story proposes a split the PO signs |
+| **AI Effort mix**      | No `High`    | QA sets it in shift-left; a `High` story only warns the dev; a split is an optional PO proposal |
 | **Sprint span**        | 2-4 sprints  | Long enough to deliver value, short enough to stay focused     |
 | **Team count**         | 1 team       | Multi-team epics need coordination overhead — split them       |
 
@@ -336,11 +336,11 @@ See: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/feature-implementatio
 2. [KEY-2] - [Story title] - Core logic
    ...
 
-### Estimated Effort
+### Delivery shape
 
-- **Development:** [X sprints / Y weeks]
-- **Testing:** [X sprint / Y weeks]
-- **Total:** [X sprints]
+- **Execution Sprints (topological levels):** [N]
+- **Stories per level:** [counts]
+- Durations and capacity are human-owned and not stated here.
 
 ---
 
@@ -401,7 +401,7 @@ See `references/dependency-linking.md` for the full pseudo-code, slug-resolution
 **Action:** Order the child stories into **Execution Sprints** using the dependency graph as the primary constraint and value / risk as tie-breakers. Invoke `/project-context dev-roadmap` to write the execution-sprint sort to `.context/dev-roadmap.md` §4 (which also preserves the hand-authored backbone/edges/gates) — this skill DELEGATES the write, it no longer authors the file itself.
 
 - Sequence stories so that no story is scheduled before its `{{jira.link_types.dependencies}}` predecessors.
-- Group stories into Execution Sprints by topological level only (the sort in `references/sprint-sequencing.md`): no capacity fill, because the sprint is not forecast (anti-pattern `I16`) and capacity belongs to the human sprint-planning meeting that consumes the ordering.
+- Group stories into Execution Sprints by topological level only (the sort in `references/sprint-sequencing.md`): no capacity fill: capacity is human-owned and belongs to the sprint-planning meeting that consumes the ordering.
 - Cross-reference the epic's Master Sprint context from §`Master Sprint` above.
 
 See `references/sprint-sequencing.md` for the full algorithm, conflict resolution, and the exact shape of the §4 schema `/project-context dev-roadmap` emits into `.context/dev-roadmap.md`.
@@ -446,7 +446,7 @@ Each story under an epic must pass INVEST. This is a lightweight pass at epic-cr
 | **N**egotiable  | Is there flexibility in the implementation?                   |
 | **V**aluable    | Does the "so that…" clearly state user/business value?        |
 | **E**stimable   | Can QA tell Low, Medium or High from the story as written?    |
-| **S**mall       | AI Effort `High`? Then a split is proposed before creating.   |
+| **S**mall       | AI Effort `High`? Optionally propose a split before creating (a warning, not a gate).   |
 | **T**estable    | Are acceptance criteria verifiable (Gherkin Scenario format)? |
 
 For the full INVEST treatment + 3-amigos refinement guidance, see `story-refinement.md`.

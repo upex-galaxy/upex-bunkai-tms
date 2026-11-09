@@ -81,6 +81,7 @@ Light stage verifier — <Stage name>
 [ ] Tracker status — the issue re-read (bun run jira:sync-issues get <KEY>) shows the status this stage meant to reach
     (artifact-lifecycle.md §1: name the slug fired or verified, or the stated reason it was not)
 [ ] Assignee — read back after every transition fired or verified (artifact-lifecycle.md §2), or stated N/A
+[ ] DTU — a `DTU cycle N: +x K (total y K) source=<...>` comment and the cumulative `{{jira.development_token_usage}}` when the story reached `ready_for_qa`, or a stated N/A with the reason (no measured figure, or the item never reaches Ready For QA). Empty is valid, never a `NO`
 [ ] Tracker writes — every field / comment this stage owns actually landed (re-read body, not the "created OK")
 [ ] PR — exists, base branch matches the git strategy, `gh pr checks` state named (green / red / pending)
 [ ] Migration — the schema or migration ledger re-read shows the change (db capability), or stated N/A
@@ -99,4 +100,4 @@ No single subagent sees the whole session: the **orchestrator** is the one place
 
 ### Briefing snippet (paste into component 6, Report format)
 
-> **Session-footer fields (mandatory in your structured report):** `skills_loaded` (array), `mcps_used` (array), `clis_used` (array), `dev_surfaces_touched` (array of `{surface, note}`; include a `{surface, note: "none"}` entry for any surface your stage would normally touch but did not), `evidence_captured` (array of repo-relative paths). Never drop a field; report an empty array explicitly.
+> **Session-footer fields (mandatory in your structured report):** `skills_loaded` (array), `mcps_used` (array), `clis_used` (array), `dev_surfaces_touched` (array of `{surface, note}`; include a `{surface, note: "none"}` entry for any surface your stage would normally touch but did not), `evidence_captured` (array of repo-relative paths). Never drop a field; report an empty array explicitly. Also report `tokens_used`: the tokens this dispatch measurably spent (K = input plus output, cache reads apart) with its source (`harness` or `human`), or `unknown`; never an estimate. The orchestrator sums the figures into the DTU cycle.

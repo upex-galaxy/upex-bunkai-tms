@@ -55,7 +55,7 @@
    the workflow skill declares, always by absolute path: a report written inside your worktree dies
    with it).
    Sections: `## Summary`, `## Files changed`, `## Commits` (sha + subject), `## Decisions taken`
-   (and why), `## Verification` (commands + exit codes), `## Left open`. The message body is a
+   (and why), `## Verification` (commands + exit codes), `## Left open`, and optionally `## Tokens` (measured K, input plus output, or `unknown`; never estimated). The message body is a
    summary; the file is the record.
 
 8. **Launched without a dispatch?** Then your brief carries a `Run: <run_id>` line, and you report

@@ -102,7 +102,7 @@ The "Soft dependencies" section is informational — it lists `relates` links so
 - NEVER guess dependencies. Only links that actually exist in Jira count toward the sort. If a story "feels like" it depends on another, that is a refinement signal — go add the link via `dependency-linking.md`, then re-run the sort.
 - NEVER skip cycle detection. Halting on a cycle is the whole point; silently ignoring one produces a wrong execution plan.
 - NEVER conflate Master Sprint with Execution Sprint. They live at different layers and have different update cadences. The same story can sit in "Master Sprint 3, Execution Sprint 2" — both labels are valid simultaneously.
-- NEVER treat `.context/dev-roadmap.md` §4 as the team's final sprint commitment. It is an INPUT to the human sprint-planning meeting (capacity, priorities, holidays, dependencies on other teams) — not an output of one.
+- NEVER treat `.context/dev-roadmap.md` §4 as the team's final sprint commitment. It is an INPUT to the human sprint-planning meeting (human-owned capacity, priorities, holidays, dependencies on other teams) — not an output of one.
 
 ---
 

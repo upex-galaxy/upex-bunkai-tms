@@ -84,7 +84,9 @@ in your final report. That is the whole reason this table is in your brief.
 ## Report
 
 Write your report to the path above, with: `## Summary`, `## Files changed`, `## Commits`,
-`## Decisions taken`, `## Verification` (commands + exit codes), `## Left open`.
+`## Decisions taken`, `## Verification` (commands + exit codes), `## Left open`, and optionally
+`## Tokens` (the tokens you measurably spent, K = input plus output with cache reads apart, plus the
+source `harness` or `human`; `unknown` when the harness shows none; never an estimate).
 Then send `worker_done` exactly once — explicit outcome, modified files, report path. Then stop.
 
 ## Rules

@@ -25,9 +25,11 @@ compact_rules: |
   - **Live-UI validation is browser-based at the gate.** A UI story cannot be approved on HTTP-probe evidence alone; Tier 0 probes carry the inner loop and non-visual assertions only (`references/live-ui-validation.md` §7). Never validate against a production build.
   - **Browser sessions are named, in memory, and closed.** `/playwright-cli` is the only browser path: every session is `-s=<name>` (never the default), never `--persistent` or `--profile`, never the human's own browser; credentials are typed only as `--raw fill <ref> "$VAR"`; one identity = one live browser (same-identity subagents run serially); every session is closed before the report and `playwright-cli list` proves it; never `close-all` / `kill-all` / `pkill`. Report `browser_sessions:` with the names. Detail: `references/live-ui-validation.md` §3.
   - **A DEFINER function's `WHERE` clause is not authorization.** `SECURITY DEFINER` bypasses RLS unless the table declares `FORCE ROW LEVEL SECURITY` (verify for your schema; never assume it), so a filter on a caller-supplied identity or scope parameter selects rows — it does not decide who may ask. Writing or changing such a function requires BOTH an actor bind at step 0 (`if auth.uid() is not null and auth.uid() <> p_actor_user_id then raise ... errcode 'P0002'`) AND explicit scoping of every returned row; asserting the caller's own membership does NOT scope the result set. First ask whether `SECURITY INVOKER` — or deleting the identity parameter — removes the class instead. Prove it with a DB-integration test that attempts the spoof against the real database: a mocked `db.rpc` proves nothing. See `references/rpc-authorization.md`.
-  - **One PR per user story, always.** Size never splits a story into PRs; the Stage 1 forecast (`references/workload-forecast.md`) is informational and gates nothing. Granularity = atomic commits planned in the forecast `Commit plan` (one responsibility each, tests with their behaviour, every commit green). Merge the PR with a merge commit (`--no-ff`), never squash. NEVER stack or chain PRs unless the user explicitly asks for it in that run. A too-large story is split in the BACKLOG via `/product-management`, never by PR.
+  - **One PR per user story, always.** Size never splits a story into PRs; the Stage 1 forecast (`references/review-size-forecast.md`) is informational and gates nothing. Granularity = atomic commits planned in the forecast `Commit plan` (one responsibility each, tests with their behaviour, every commit green). Merge the PR with a merge commit (`--no-ff`), never squash. NEVER stack or chain PRs unless the user explicitly asks for it in that run. A too-large story is split in the BACKLOG via `/product-management`, never by PR.
   - **Merging a PR with a ticket key flips the ticket to Ready For QA, and the workflow has no way back.** Merge only into the final target (`staging`), only when truly ready (migrations applied if any, checks green). Never merge a ticket-keyed PR into any intermediate branch.
-  - **DTU duty**: when the story moves to `{{jira.status.story.ready_for_qa}}` (Stage 4), write `{{jira.development_token_usage}}` with the MEASURED tokens (thousands) the dev agent spent on the item; field absent from `.agents/jira-fields.json` → structured Jira comment `Development Token Usage (K): <n>`, never block; harness exposes no figure → leave it empty and the verifier line says N/A with the reason. NEVER estimate or invent it.
+  - **AI Effort High warns, never blocks.** At pickup read the QA shift-left handoff comment, the ATP (the QA test intent) and `{{jira.ai_effort}}`, then ALWAYS proceed. `High` → write in the plan and the PR description that the story may be large and may be split; it stays ONE PR per story (S20) and you still work the whole ticket. Unset → proceed and note it. Autonomous and fleet runs never skip or stop a story for `High`. A missing ATP is flagged to QA in a comment, never a block.
+  - **Assignee follows the dev model.** At Ready For QA move the native `assignee` to the QA named in `{{jira.qa_assignee}}` (the record of the QA who followed the story since shift-left; read it, never overwrite it), then read `assignee` back. `qa_assignee` empty → leave `assignee` as it is and say so in the QA notification comment.
+  - **DTU is optional, measured and cumulative.** At the VERIFIED `{{jira.status.story.ready_for_qa}}` state (not at the `deployed` automation firing) and again after each fix loop: read the current `{{jira.development_token_usage}}`, add this cycle's MEASURED delta (K = input plus output tokens, cache reads apart), never overwrite (empty current value → write just the delta), and post one comment `DTU cycle N: +x K (total y K) source=<harness or human>`. Each session appends its measured tokens to `progress.md` so Stage 4 can sum them. Field absent from `.agents/jira-fields.json` → the comment carries the figure. No figure from the harness and none from a human → leave it empty and state N/A with the reason in the stage verifier (empty is valid, never a failure). NEVER estimate or invent a number. An item that never reaches Ready For QA (a tech item that goes straight to `completed`) states N/A with that reason.
   - **Ticket availability is queried, never read from prose.** Before planning or recommending a ticket, query the tracker live for that ticket and its direct blockers. `.context/dev-roadmap.md` is authoritative for dependency edges and mockup gates, never for current status — a recent timestamp on that file says nothing about a ticket's live status.
   - **Config claims cite the file they came from.** Read `.agents/project.yaml` / `package.json` / `.env.example` before asserting what the project is configured to do. Never quote a value from a skill reference or worked example as project state.
   - **Product docs are the PRD/SRS OR the business maps.** Fast-fail only when NEITHER set exists (Pre-requisites); never author a PRD, an SRS or a Constitution to satisfy the check: an existing app's product docs are its business maps + domain glossary + dev guide. Which files each case reads: `## Inputs` → "Product docs: PRD/SRS or business maps".
@@ -77,9 +79,11 @@ The same pipeline runs whether the input is a new story, a bug fix, or a resume 
 - **Live-UI validation is browser-based at the gate.** A UI story cannot be approved on HTTP-probe evidence alone; Tier 0 probes carry the inner loop and non-visual assertions only (`references/live-ui-validation.md` §7). Never validate against a production build.
 - **Browser sessions are named, in memory, and closed.** `/playwright-cli` is the only browser path: every session is `-s=<name>` (never the default), never `--persistent` or `--profile`, never the human's own browser; credentials are typed only as `--raw fill <ref> "$VAR"`; one identity = one live browser (same-identity subagents run serially); every session is closed before the report and `playwright-cli list` proves it; never `close-all` / `kill-all` / `pkill`. Report `browser_sessions:` with the names. Detail: `references/live-ui-validation.md` §3.
 - **A DEFINER function's `WHERE` clause is not authorization.** `SECURITY DEFINER` bypasses RLS unless the table declares `FORCE ROW LEVEL SECURITY` (verify for your schema; never assume it), so a filter on a caller-supplied identity or scope parameter selects rows — it does not decide who may ask. Writing or changing such a function requires BOTH an actor bind at step 0 (`if auth.uid() is not null and auth.uid() <> p_actor_user_id then raise ... errcode 'P0002'`) AND explicit scoping of every returned row; asserting the caller's own membership does NOT scope the result set. First ask whether `SECURITY INVOKER` — or deleting the identity parameter — removes the class instead. Prove it with a DB-integration test that attempts the spoof against the real database: a mocked `db.rpc` proves nothing. See `references/rpc-authorization.md`.
-- **One PR per user story, always.** Size never splits a story into PRs; the Stage 1 forecast (`references/workload-forecast.md`) is informational and gates nothing. Granularity = atomic commits planned in the forecast `Commit plan` (one responsibility each, tests with their behaviour, every commit green). Merge the PR with a merge commit (`--no-ff`), never squash. NEVER stack or chain PRs unless the user explicitly asks for it in that run. A too-large story is split in the BACKLOG via `/product-management`, never by PR.
+- **One PR per user story, always.** Size never splits a story into PRs; the Stage 1 forecast (`references/review-size-forecast.md`) is informational and gates nothing. Granularity = atomic commits planned in the forecast `Commit plan` (one responsibility each, tests with their behaviour, every commit green). Merge the PR with a merge commit (`--no-ff`), never squash. NEVER stack or chain PRs unless the user explicitly asks for it in that run. A too-large story is split in the BACKLOG via `/product-management`, never by PR.
 - **Merging a PR with a ticket key flips the ticket to Ready For QA, and the workflow has no way back.** Merge only into the final target (`staging`), only when truly ready (migrations applied if any, checks green). Never merge a ticket-keyed PR into any intermediate branch.
-- **DTU duty**: when the story moves to `{{jira.status.story.ready_for_qa}}` (Stage 4), write `{{jira.development_token_usage}}` with the MEASURED tokens (thousands) the dev agent spent on the item; field absent from `.agents/jira-fields.json` → structured Jira comment `Development Token Usage (K): <n>`, never block; harness exposes no figure → leave it empty and the verifier line says N/A with the reason. NEVER estimate or invent it.
+- **AI Effort High warns, never blocks.** At pickup read the QA shift-left handoff comment, the ATP (the QA test intent) and `{{jira.ai_effort}}`, then ALWAYS proceed. `High` → write in the plan and the PR description that the story may be large and may be split; it stays ONE PR per story (S20) and you still work the whole ticket. Unset → proceed and note it. Autonomous and fleet runs never skip or stop a story for `High`. A missing ATP is flagged to QA in a comment, never a block.
+- **Assignee follows the dev model.** At Ready For QA move the native `assignee` to the QA named in `{{jira.qa_assignee}}` (the record of the QA who followed the story since shift-left; read it, never overwrite it), then read `assignee` back. `qa_assignee` empty → leave `assignee` as it is and say so in the QA notification comment.
+- **DTU is optional, measured and cumulative.** At the VERIFIED `{{jira.status.story.ready_for_qa}}` state (not at the `deployed` automation firing) and again after each fix loop: read the current `{{jira.development_token_usage}}`, add this cycle's MEASURED delta (K = input plus output tokens, cache reads apart), never overwrite (empty current value → write just the delta), and post one comment `DTU cycle N: +x K (total y K) source=<harness or human>`. Each session appends its measured tokens to `progress.md` so Stage 4 can sum them. Field absent from `.agents/jira-fields.json` → the comment carries the figure. No figure from the harness and none from a human → leave it empty and state N/A with the reason in the stage verifier (empty is valid, never a failure). NEVER estimate or invent a number. An item that never reaches Ready For QA (a tech item that goes straight to `completed`) states N/A with that reason.
 - **Ticket availability is queried, never read from prose.** Before planning or recommending a ticket, query the tracker live for that ticket and its direct blockers. `.context/dev-roadmap.md` is authoritative for dependency edges and mockup gates, never for current status — a recent timestamp on that file says nothing about a ticket's live status.
 - **Config claims cite the file they came from.** Read `.agents/project.yaml` / `package.json` / `.env.example` before asserting what the project is configured to do. Never quote a value from a skill reference or worked example as project state.
 - **Product docs are the PRD/SRS OR the business maps.** Fast-fail only when NEITHER set exists (Pre-requisites); never author a PRD, an SRS or a Constitution to satisfy the check: an existing app's product docs are its business maps + domain glossary + dev guide. Which files each case reads: `## Inputs` → "Product docs: PRD/SRS or business maps".
@@ -122,6 +126,7 @@ Trigger phrases: "implementar esta historia", "implement this story", "trabajar 
   - **Business maps**: the data map is generated (`bun run context:map business-data-context` prints sections, not the placeholder notice). The existing-app chain: `/project-adoption` → `/project-context refresh-all` → `/project-foundation` Discovery-only for the dev guide and the glossary.
   - Neither → fast-fail and hand off: `/project-foundation` for a product being defined, `/project-context data` for an app whose code already exists. Never write a PRD or SRS to get past this check.
 - Story exists in the issue tracker with refined Acceptance Criteria. If backlog is empty or AC are unclear, run `/product-management` first.
+- Pickup read, a warning and never a gate: the QA shift-left handoff comment, the ATP and `{{jira.ai_effort}}` (Phase 0b step 5). `High` AI Effort never stops the work.
 - Branch policy clear and CI configured. First-time-only setup lives in `references/setup-linting.md` and `references/ci-cd-setup.md`.
 - Working directory is the **target project repo**. Sprint-dev runs there, not in the boilerplate.
 - `.env` populated with environment URLs and credentials. Never hardcode credentials.
@@ -255,12 +260,12 @@ Solo trades context isolation for fewer round-trips and one legible transcript �
 | Stage / step                              | Pattern                | Subagent role                                                                                 |
 | ----------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------- |
 | Trigger / context-load (epic precheck)    | inline                 | orchestrator reads epic artifacts + ticket; no subagent yet                                   |
-| Stage 1 — Plan creation                   | Single                 | dedicated planner subagent: read story + AC, decompose tasks, output `implementation-plan.md` |
+| Stage 1 — Plan creation                   | Single                 | dedicated planner subagent: pickup read (QA handoff, ATP, AI Effort warn), read story + AC, decompose tasks, output `implementation-plan.md` |
 | Stage 2 — Implementation (multi-file)     | Sequential or Parallel | impl agent(s); split by file or feature slice per the implementation plan                     |
 | Stage 2 — Verification (lint+types+tests) | Parallel cap=3         | three verifiers in parallel: the app's `lint`, `types` and `test` scripts (`{{stack.package_manager}} run {{stack.scripts.<role>}}`; a null role is skipped and reported) |
 | Stage 3 — Code review                     | Single                 | **independent adversarial** reviewer subagent: severity-tagged findings (BLOCKER/MAJOR/MINOR/NIT) vs AC + code-standards; orchestrator adjudicates each |
 | Stage 3 — Fix-and-iterate (if review red) | Sequential             | impl agent picks up review notes via `fix-issues.md`; re-runs verification                    |
-| Stage 4 — Deploy to staging               | Single + Background    | deploy agent kicks off; background monitor watches health/smoke                               |
+| Stage 4 — Deploy to staging               | Single + Background    | deploy agent kicks off; background monitor watches health/smoke; then the Ready For QA hand-off (assignee to QA, DTU cycle, notification) |
 | Pre-prod gate                             | inline                 | orchestrator gates with the user; never auto-promote                                          |
 | Stage 5 — Deploy to production            | Single + Background    | same pattern as staging, prod target, plus rollback ready                                     |
 | Fleet fan-out (batch-sprint, N>1 executors ONLY) | Parallel        | NOT subagents of this turn: one launchable worker session per ticket of the round, each running this skill single-ticket through Stages 1-3; the conductor keeps Stage 4 per `references/fleet-mode.md` |
@@ -346,7 +351,8 @@ When delegating to a sub-agent, inject a `## Composable Skills` block into the s
    +--------------------------+
    | Stage 1: PLANNING        |   references/feature-plan.md, story-plan.md
    |  - Read story + AC       |
-   |  - Discover ATP (if any) |
+   |  - Read QA handoff + ATP |
+   |  - Note AI Effort (warn) |
    |  - Decompose into tasks  |
    |  - Push plan -> Jira     |
    |    field; sync; read     |
@@ -382,7 +388,8 @@ When delegating to a sub-agent, inject a `## Composable Skills` block into the s
    |  - Merge -> CI green     |
    |  - Auto-deploy staging   |
    |  - Jira: auto -> Ready For QA
-   |  - Notify QA in ticket   |
+   |  - Assignee -> QA owner  |
+   |  - Notify QA, DTU cycle  |
    +--------------------------+
        |
        v
@@ -433,6 +440,12 @@ Immediately after the resume check, before Epic precheck, consult `.context/dev-
    - If this ticket is new and absent from §3, add its edge (cite the real Jira link / data-map / design source) or, if unclear, log it to the §6 edge-mapping TODO.
    - **NEVER write live status** into the doc — status stays a §6 query recipe. **NEVER regenerate §4 inline** — a structural re-sort is `/project-context dev-roadmap`'s job; if many edges changed, recommend re-running `/project-context dev-roadmap` instead of hand-editing.
 
+5. **Pickup read (always proceeds, never a gate).** After the live status query, read the synced story (`bun run jira:sync-issues get <KEY> --include-comments`) and note each item in the Stage 1 plan:
+   - **QA handoff comment**: the shift-left comment (ATP pointer, risks, open questions). It is the QA's written intent for the story.
+   - **ATP**: read it as the QA test intent. QA now always delivers it, so a missing ATP is flagged to QA in a Jira comment and the work continues.
+   - **AI Effort** (`{{jira.ai_effort}}`; with the field absent from `.agents/jira-fields.json`, the `## AI Effort` comment in `comments.md`). `Low` or `Medium`: note it. `High` WARNS only: write in the plan and in the PR description that the story may be large and may be split. You may split your own work into stacked small PRs (reference: about 200 changed lines and 2 to 5 files per PR), and you still work the ticket. Unset: proceed, note it in the plan, and optionally mention it to QA in the notification comment. Autonomous and fleet runs never skip or stop a story for `High`.
+   - A PO (`/product-management`) MAY propose splitting a `High` story: clone it, refine both, leave both Ready For Dev. That is optional help and nobody waits for it. Whoever resolves a split may add ONE optional label (`split-accepted`, `split-edited` or `split-rejected`); absence is valid.
+
 Phase 0b is inline. It reads on every invocation; it writes only the narrow flips above (and only when this run actually changed the ticket's state).
 
 **`progress.md` Cross-references contract**: when the orchestrator writes the first entry, the file's `## Cross-references` section MUST cite both `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (canonical plan, synced from Jira) and `.context/reports/SPRINT-<N>-DEVELOPMENT.md` (cross-ticket sprint tracker, when batch mode is active). These two pointers replace the `plan.md` that the full variant would write.
@@ -467,16 +480,16 @@ Read for guidance:
 
 Output: the plan is authored in-session, then **pushed to the Jira `spec_implementation_plan` field** (story-level) / `feature_implementation_plan` field (epic-level) via `[ISSUE_TRACKER_TOOL]` — or, if the field is absent, a `## Spec Implementation Plan (Dev)` / `## Feature Implementation Plan (Dev)` fallback comment per `.agents/jira-required.yaml`. Then run `bun run jira:sync-issues get <KEY> --include-comments` and read the materialized `implementation-plan.md` / `feature-implementation-plan.md` under the synced PBI tree (read-only cache). Transition Jira `Ready For Dev -> In Progress` (`start_working`; assignee read before and after, unmapped slug → fallback protocol, per `agentic-dev-core/references/artifact-lifecycle.md` §2 and §4).
 
-**Sprint report**: if batch mode is active, update the in-flight row for this ticket: Status PENDING → IN_PROGRESS; fill Owner, Path (A or B), Impl Plan link, Forecast Size from the Workload Forecast block. See `references/sprint-report.md` §Part 2.
+**Sprint report**: if batch mode is active, update the in-flight row for this ticket: Status PENDING → IN_PROGRESS; fill Owner, Path (A or B), Impl Plan link, Review Size from the Review Size Forecast block. See `references/sprint-report.md` §Part 2.
 
 Persistence: the canonical plan lives in the Jira `spec_implementation_plan` field and is materialized by the sync to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` with topic_key `pbi/{ticket}/implementation-plan`; macro feature plans live in the Jira `feature_implementation_plan` field, materialized to `feature-implementation-plan.md` with topic_key `pbi/{epic}/feature-implementation-plan`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
-#### Workload Forecast (required output of Stage 1)
+#### Review Size Forecast (required output of Stage 1)
 
 The delivery unit is **one PR per user story**. Size never splits a story into PRs; granularity lives in atomic commits. After the plan is authored, the planner emits a forecast block at the bottom of the plan body (so it lands in the Jira `spec_implementation_plan` field and the synced `implementation-plan.md`) and into the orchestrator turn-summary:
 
 ```
-## Review Workload Forecast
+## Review Size Forecast
 
 Estimated: <X> additions + <Y> deletions = <Z> total lines
 Size: Small | Medium | Large
@@ -485,7 +498,7 @@ Commit plan: <ordered list of planned commits: what each contains + which AC it 
 Review guide: <Medium/Large: order to read the commits + the riskiest commits to scrutinise>
 ```
 
-Algorithm (per-file multipliers, 20% test+docs buffer), size indicators (`<400` Small, `400-1500` Medium, `>1500` Large; indicators, not limits), size-counting notes (generated code and mechanical diffs) and the commit-plan rules live in `references/workload-forecast.md`.
+Algorithm (per-file multipliers, 20% test+docs buffer), size indicators (`<400` Small, `400-1500` Medium, `>1500` Large; indicators, not limits), size-counting notes (generated code and mechanical diffs) and the commit-plan rules live in `references/review-size-forecast.md`.
 
 **The forecast is informational and gates nothing.** The commit plan orders commits dependencies first (schema/types, domain logic, API, UI, docs), keeps tests with the behaviour they verify, and requires every commit to leave lint, types and tests green. When a story is genuinely too large (Large with independently valuable increments, or an AI Effort of High), the planner records a RECOMMENDATION to split the STORY in the backlog via `/product-management`; it never blocks implementation by default (Bunkai rule AI-LED-DECISIONS, `.agents/instructions/agent-project.md`).
 
@@ -509,7 +522,7 @@ Mechanics — the identity contract (§0), `[AUTOMATION_TOOL]` resolution (§1),
 
 ### Stage 2: Implementation
 
-**Commit plan, not a gate**: Stage 2 implements the Stage 1 `Commit plan` as one atomic commit per entry, on ONE story branch that becomes ONE PR. Nothing in the forecast blocks Stage 2. If the real diff diverges from the plan, update the commit plan (and the Jira `spec_implementation_plan` field, then re-sync) and keep going: never split the story into extra PRs. See `references/workload-forecast.md`.
+**Commit plan, not a gate**: Stage 2 implements the Stage 1 `Commit plan` as one atomic commit per entry, on ONE story branch that becomes ONE PR. Nothing in the forecast blocks Stage 2. If the real diff diverges from the plan, update the commit plan (and the Jira `spec_implementation_plan` field, then re-sync) and keep going: never split the story into extra PRs. See `references/review-size-forecast.md`.
 
 Pick the right entry point based on ticket type:
 
@@ -593,16 +606,35 @@ Read for guidance:
 
 After deploy: post a QA notification comment on the ticket with PR URL, branch name, and an `@`-mention of the QA owner who did the Shift-Left.
 
-**Development Token Usage (mandatory at Ready For QA).** In the same step that moves the story to `{{jira.status.story.ready_for_qa}}`, write `{{jira.development_token_usage}}` (DTU, thousands of tokens) with the dev agent's MEASURED consumption for this item, read from the harness's own usage report. Field absent from `.agents/jira-fields.json` → post a structured comment `Development Token Usage (K): <n>` instead, never block. The harness exposes no figure → leave DTU empty and let the stage verifier say N/A with that reason. Never estimate, round or invent a number.
+**Development Token Usage (optional audit aid, cumulative).** Tied to the VERIFIED `{{jira.status.story.ready_for_qa}}` state (the status read back after the move), not to the `deployed` automation having fired. Write it after that read-back, and again after each fix loop that returns the story to Ready For QA:
 
-#### Hand-off to QA — assignment rule (mandatory at Ready For QA)
+1. Read the current `{{jira.development_token_usage}}` from the synced story.
+2. Sum this cycle's MEASURED tokens from the `progress.md` entries (each session appends `tokens: <n> K, source=<harness|human|unknown>` to its checkpoint). K = input plus output tokens; cache reads are reported apart.
+3. Write current plus delta, never overwrite. Empty current value: write just the delta.
+4. Post one short comment `DTU cycle N: +x K (total y K) source=<harness or human>`. Field absent from `.agents/jira-fields.json`: the comment carries the figure.
 
-When a story reaches Ready For QA (merged to the integration branch + deployed), set its assignee to the **QA person who performed the SHIFT-LEFT testing/refinement** for that story. Find them from the story's shift-left / refinement artifacts or the tracker's comments / changelog (who authored the shift-left refinement, held the issue during the "Shift-Left QA" status, and transitioned it out). If NO shift-left QA person can be confidently identified (e.g. a PM-only story with no shift-left phase), LEAVE IT UNASSIGNED at Ready For QA. Never assign the developer; never guess.
+The harness shows no tokens and no human enters them: leave DTU empty and let the stage verifier say N/A with that reason. Empty is valid and never a failure. Never estimate, round or invent a number. An item that never reaches Ready For QA (a tech item that goes straight to `completed`) states N/A with that reason.
+
+#### Hand-off to QA: assignee and notification (mandatory at Ready For QA)
+
+The native `assignee` follows the dev model. When the story reaches Ready For QA (merged and deployed, status read back), move `assignee` to the QA named in `{{jira.qa_assignee}}`: the record of the QA who followed the story since shift-left, filled by QA and never overwritten by the dev. Read it from the synced story. `qa_assignee` empty (a story with no shift-left phase): leave `assignee` as it is, never guess a QA from the comments, and say so in the QA notification comment. Read `assignee` back to prove the change.
 
 **Assignment gotchas (observed live):**
 
-- The tracker's merge automation tends to assign the merged story to the **DEVELOPER** — so the skill must EXPLICITLY re-assign; it will not be correct by default.
-- Assigning through `[ISSUE_TRACKER_TOOL]` with a raw `712020:`-prefixed accountId can **SILENTLY UNASSIGN** (some CLI paths report SUCCESS "unassigned" while clearing the field). Prefer the Atlassian MCP `editJiraIssue` (`fields.assignee.accountId`), then **VERIFY** the assignee actually changed. Exact CLI syntax (the HOW) lives in the `/acli` skill.
+- The tracker's merge automation tends to assign the merged story to the **DEVELOPER**, so the dev explicitly moves it to the QA; it will not be correct by default.
+- Assigning through `[ISSUE_TRACKER_TOOL]` with a raw `712020:`-prefixed accountId can **SILENTLY UNASSIGN** (some CLI paths report SUCCESS while clearing the field). Prefer the Atlassian MCP `editJiraIssue` (`fields.assignee.accountId`), then **VERIFY** the assignee actually changed. Exact CLI syntax (the HOW) lives in the `/acli` skill.
+
+The QA notification comment carries the PR URL, the branch, the staging URL, the DTU cycle line (or its N/A), the AI Effort note when it was `High` or unset, and an `@`-mention of the `{{jira.qa_assignee}}` QA.
+
+#### Defect loop: the story is in `blocked`
+
+QA's `defect_reported` moves the story from `in_test` to `blocked` while a Defect is open. The dev:
+
+1. Reads the Defect and the story, then fires `fix_defect` (`blocked` to `in_progress`) on the **Story** (artifact-lifecycle.md §1.1).
+2. Fixes through `references/bug-fix-workflow.md`, then Stages 2 and 3 as usual.
+3. Re-delivers the story to Ready For QA (`pushed` from `in_progress`, or `pull_request` then `deployed`), reads the status back, moves `assignee` to the QA again and writes the next DTU cycle.
+
+`back_to_dev` (`blocked` to `ready_for_dev`) is in the catalog for a story that has to return to the dev queue before work resumes; no stage fires it on its own. `back_from_blocked` (`blocked` to `in_test`) is QA's.
 
 Sync the integration branch locally (`git pull origin <integration>`, name from `git_strategy.branches.integration`) and clean up the merged branch. Wait for the user to indicate the next ticket.
 
@@ -642,6 +674,10 @@ Dispatch is **Single + Background**: one subagent runs the deploy, a background 
 - All green -> Stage 4 (merge + deploy)
 - Comments to address -> loop back to Stage 2 via `fix-issues.md`
 - Architectural rework -> back to Stage 1 with a new spec
+
+### QA defect on a blocked story
+
+- Story in `blocked` after `defect_reported` -> the defect loop in Stage 4 (`fix_defect`, fix, re-deliver to Ready For QA)
 
 ### Staging deploy result
 
@@ -744,9 +780,11 @@ If any required var is unset, ensure `.agents/project.yaml` exists (when it does
 10. **No automation tests in this skill**: E2E / integration test automation is out of scope. Unit tests live in Stage 2 via `/unit-testing`. Anything QA-side is out of scope here.
 11. **Language**: artifacts, code, and commit messages in English. Mirror the user's language only in conversation.
 12. **ADR-worthy decisions get recorded**: a decision that is architectural AND hard to reverse goes to `.context/ADR/` (append-only), not buried in the impl plan. Story-local trade-offs stay in the plan. Read existing ADRs before planning a cross-cutting story so you don't violate one. See `agentic-dev-core/references/adr-doctrine.md`.
-13. **Binding rules travel in the briefing**: a prohibition that lives only in a `references/*.md` never reaches a stage subagent. Restate the identity contract, the prohibition list, and the hygiene contract in briefing component 7 for every dispatch that could trip them (`agentic-dev-core/references/orchestration-doctrine.md` → "Rule reachability").
+13. **Binding rules travel in the briefing**: a prohibition that lives only in a `references/*.md` never reaches a stage subagent. Restate the identity contract, the prohibition list, and the hygiene contract in briefing component 7 for every dispatch that could trip them (`agentic-dev-core/references/orchestration-doctrine.md` → "Rule reachability"). The same goes for the DTU rule, the assignee rule and the AI Effort pickup rule: restate them in component 7 of every Stage 1 and Stage 4 dispatch, and ask for `tokens_used` (measured or `unknown`, never estimated) in component 6.
 14. **Every report carries `secrets_materialized:` + `cleaned:`** — `cleaned: no` is a blocker, surfaced to the user, never passed over silently.
 15. **Status is queried, config is read**: ticket availability comes from a live tracker query, project configuration comes from the actual file (`.agents/project.yaml`, `package.json`, `.env.example`). Never from prose, a cached doc, or a skill's worked example.
+16. **AI Effort High warns, never blocks**: read `{{jira.ai_effort}}` at pickup, note `High` in the plan and the PR description, split your own work into stacked small PRs if useful (about 200 changed lines and 2 to 5 files per PR as a reference), and work the ticket. Never skip, stop or escalate a story for `High`; a fleet or autonomous run behaves the same.
+17. **DTU is measured and cumulative, or N/A**: written at the verified Ready For QA state and after each fix loop as read, add the cycle delta, never overwrite, one `DTU cycle N` comment. No figure available means empty and N/A with the reason. Never invent a number.
 
 ---
 
@@ -771,8 +809,9 @@ If any required var is unset, ensure `.agents/project.yaml` exists (when it does
 - [ ] **Stage 3 findings adjudicated** (legitimate vs false-positive with a reason); only legitimate ones fixed
 - [ ] Stage 3 doc updates (docs follow-through) made in the PR branch
 - [ ] Stage 4 PR merged to the integration branch (or, with a `null` integration branch, its Preview deployment verified); CI green; auto-deploy fired; Jira to `Ready For QA`; QA notified in comment
-- [ ] **DTU written**: `{{jira.development_token_usage}}` set from measured consumption at Ready For QA, or N/A stated with the reason
-- [ ] **Ready-For-QA story re-assigned** to its shift-left QA owner (or left unassigned if none); assignee verified
+- [ ] **Pickup read done**: QA handoff comment and ATP read, missing ATP flagged to QA, `{{jira.ai_effort}}` noted in the plan (High: size note in the plan and the PR description); the story was never stopped for it
+- [ ] **DTU cycle written or N/A**: `{{jira.development_token_usage}}` read, cycle delta added (never overwritten), `DTU cycle N: +x K (total y K) source=<...>` comment posted; or N/A stated with the reason (no figure available, or the item never reaches Ready For QA)
+- [ ] **Ready-For-QA assignee moved** to the `{{jira.qa_assignee}}` QA and read back; or left as is with the reason said in the QA notification comment when `qa_assignee` is empty
 - [ ] Stage 5 (only if applicable): pre-deploy checklist green; rollback plan loaded; monitoring window observed
 - [ ] Hand-off identified for next step (QA workflow, or next story)
 
@@ -795,13 +834,15 @@ If any required var is unset, ensure `.agents/project.yaml` exists (when it does
 - **S13.** NEVER rewrite or delete an existing ADR in `.context/ADR/` to change course, and NEVER mark an ADR `Accepted` when no human ever approved the decision (a decision the human already took is `Accepted` from the start, citing the approval). ADRs are append-only: supersede with a new `ADR-NNNN` that links back, and flip the old one's `Status` line only. See `agentic-dev-core/references/adr-doctrine.md`.
 - **S14.** NEVER skip live-UI validation on a UI story by leaning on tests / types / lint alone — those are green while the rendered UI is wrong. Validate the RUNNING app, in the active flow mode, via the project's `[AUTOMATION_TOOL]`; never validate against a production build.
 - **S15.** NEVER auto-accept reviewer findings wholesale. Each finding is adjudicated (verify, or dismiss-with-reason); applying false positives is as much a defect as ignoring real ones.
-- **S16.** NEVER leave a Ready-For-QA story assigned to the developer. Re-assign to the shift-left QA owner, or leave unassigned if there was no shift-left phase. Verify the change (assignment gotchas in Stage 4).
+- **S16.** NEVER leave a Ready-For-QA story assigned to the developer when `{{jira.qa_assignee}}` names a QA: move the native `assignee` to that QA and verify the change (assignment gotchas in Stage 4). When `qa_assignee` is empty, leave `assignee` as it is and say so in the QA notification comment; never guess a QA.
 - **S17.** NEVER improvise an identity to log into a running app. Use the account declared in `.agents/project.yaml` → `testing.automation_identity`; if it is absent or its variable is missing from `.env`, STOP and report. Never substitute another account, never query the database for one, never create one mid-run, never reuse the human's authenticated browser session.
 - **S18.** NEVER obtain a session by bypassing the app's own login path: no service-role / secret / admin keys, no admin user-management APIs, no generated magic or password-reset links, no locally-signed JWTs, no hand-crafted session cookies, no impersonation of any account. If a check seems to require one, that is a finding to surface, not a step to take. See `references/live-ui-identity.md` §3.
 - **S19.** NEVER leave session material on disk. Cookie jars, `storageState.json`, token files, and `.har` captures live in the session scratch directory and are deleted before reporting; the report carries `secrets_materialized:` + `cleaned:`. Never echo a credential value into a report, plan, commit, PR body, or tracker comment.
 - **S20.** NEVER split one story into stacked or chained PRs, and never squash-merge the story's PR. One story = one PR, merged with a merge commit; size is handled with atomic commits and commit-by-commit review. Chained or stacked PRs exist only when the user explicitly asks for them in that run. A story that is too large is split in the BACKLOG via `/product-management`, not by PR.
 - **S21.** NEVER recommend, plan, or start a ticket on the strength of roadmap prose. Query the tracker live for the candidate and its direct blockers first (Phase 0b). `.context/dev-roadmap.md` owns dependency edges and mockup gates; it never owns current status, and a recent timestamp on it is not evidence about any ticket's live status.
 - **S22.** NEVER approve a UI story on HTTP-probe evidence alone. Tier 0 probes cover routes, redirects, and server-rendered markup; layout, computed tokens, client-rendered states, breakpoints, and interactive AC flows require the browser tier (`references/live-ui-validation.md` §7).
+- **S23.** NEVER stop, skip, escalate or hold a story because its AI Effort is `High`, in a manual, fleet or autonomous run. It is a size warning: note it in the plan and the PR description, and work the ticket as ONE PR (S20).
+- **S24.** NEVER estimate, round or invent a token figure for `{{jira.development_token_usage}}`, and NEVER overwrite it: read the current value, add this cycle's measured delta. No measured figure means empty and N/A.
 
 ---
 

@@ -1,4 +1,4 @@
-# Workload Forecast — Stage 1 size indicator and commit plan
+# Review Size Forecast — Stage 1 size indicator and commit plan
 
 > Reference for sprint-development Stage 1 (Planning).
 > Cited from: `SKILL.md` end-of-Stage-1, Stage 2, Stage 3.
@@ -20,7 +20,7 @@ Background: a reviewer doing focused, defect-finding work loses effectiveness pa
 The planner subagent emits this block as the final artifact of Stage 1, at the bottom of the plan body (it lands in the Jira `spec_implementation_plan` field and the synced `implementation-plan.md`) and in the orchestrator turn-summary.
 
 ```
-## Review Workload Forecast
+## Review Size Forecast
 
 Estimated: <X> additions + <Y> deletions = <Z> total lines
 Size: Small | Medium | Large
@@ -44,7 +44,7 @@ Field rules:
 ### Example (Large)
 
 ```
-## Review Workload Forecast
+## Review Size Forecast
 
 Estimated: 1900 additions + 300 deletions = 2200 total lines
 Size: Large

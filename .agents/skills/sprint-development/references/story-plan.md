@@ -27,7 +27,7 @@ Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO vive
 - **Design System:** [usar `DESIGN.md` (tokens y personalidad visual) y, en stories con UI, `.context/design/master-design-plan.md` §8 (fila US→Screen) → §4 (spec de pantalla) + el mockup en `.context/designs/` (Critical Rule #14)]
 
 **⚠️ IMPORTANTE - Jira es la fuente de verdad para el Acceptance Test Plan:**
-Los escenarios del Acceptance Test Plan (definidos durante la fase de planning) son los que la implementación DEBE cubrir. Cada escenario debe mapearse a un step de implementación (línea **Covers** del step) para garantizar cobertura completa. NO omitir ninguno.
+Los escenarios del Acceptance Test Plan (definidos durante la fase de planning) son los que la implementación DEBE cubrir. Cada escenario debe mapearse a un step de implementación (línea **Covers** del step) para garantizar cobertura completa. NO omitir ninguno. QA entrega siempre el ATP y el comentario de handoff de shift-left: léelos como la intención de prueba de QA. Si el ATP falta, avisa a QA con un comentario en la story y continúa; no bloquea.
 
 **Autor del plan → Jira → sync → lee.** NO escribas a mano `implementation-plan.md`. Es un archivo `[SYNC]` (read-only cache): redacta el plan en sesión, publícalo al campo `{{jira.spec_implementation_plan}}` de la Story (o comentario fallback per `.agents/jira-required.yaml`), corre `bun run jira:sync-issues get <STORY_KEY> --include-comments`, y lee el `implementation-plan.md` materializado en `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/`. El cuerpo del plan sigue el esqueleto de abajo.
 
@@ -89,7 +89,6 @@ Lo que se publica es solo el cuerpo entre los marcadores `plan-body`. Todo lo de
 - **Edge cases:** [caso]: [cómo se maneja]
 - **Covers:** [TC-001, AC 2]
 - **Testing:** [tipo]: [qué verifica]
-- **Estimate:** [tiempo]
 
 (un step por unidad de trabajo; el último integra y corre el E2E)
 
@@ -107,7 +106,10 @@ Lo que se publica es solo el cuerpo entre los marcadores `plan-body`. Todo lo de
 
 ## AI Effort
 
-**AI Effort:** [Low | Medium | High] (lo fija QA en shift-left y se lee de `story.md`; el plan no lo re-estima)
+**AI Effort:** [Low | Medium | High | sin definir] (lo fija QA en shift-left y se lee de `story.md`, o del comentario `## AI Effort` en `comments.md` cuando el campo no existe; el plan no lo re-estima)
+
+- **Si es High:** nota aquí (y en la descripción del PR) que la story puede ser grande y puede dividirse. Puedes partir tu propio trabajo en PRs apilados pequeños (referencia: unas 200 líneas cambiadas y de 2 a 5 archivos por PR), pero trabajas el ticket completo. Es solo un aviso: nunca detiene la story.
+- **Si está sin definir:** sigue adelante, anótalo aquí y, si quieres, menciónalo a QA en el comentario de notificación.
 
 ## Story-specific Done
 

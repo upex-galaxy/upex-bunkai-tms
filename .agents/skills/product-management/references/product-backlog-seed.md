@@ -45,7 +45,7 @@ Slugs written by this workflow:
 - `{{jira.mockup}}` — design references (Figma URLs etc.).
 - `{{jira.workflow}}` — narrative description of a non-trivial flow, written from the persona's POV (not a code-walkthrough). See anti-pattern `I15`.
 - `{{jira.weblink}}` — app URL for the story (conditional — only when known with certainty).
-- `{{jira.ai_effort}}` — NEVER set by the PO. QA sets it in shift-left (Low, Medium or High); `High` proposes a split and the PO signs or rejects it. See anti-pattern `I16`.
+- `{{jira.ai_effort}}` — NEVER set by the PO. QA sets it in shift-left (Low, Medium or High); `High` only warns the dev; the PO MAY propose a split (optional, never a gate). See anti-pattern `I16`.
 
 Field reads/writes route through `[ISSUE_TRACKER_TOOL]`; the owning tool skill resolves the slug → numeric ID before issuing the call. See `references/jira-operations.md` for the routing decision table.
 
@@ -279,7 +279,7 @@ Phase 2 — Core features (Master Sprint 2):
 | **N**egotiable   | Is there flexibility in the implementation?                    |
 | **V**aluable     | Does the "so that" clause carry clear user / business value?   |
 | **E**stimable    | Can QA tell Low, Medium or High from the story as written?     |
-| **S**mall        | AI Effort `High`? Then a split is proposed before creating.    |
+| **S**mall        | AI Effort `High`? Optionally propose a split before creating (a warning, not a gate).    |
 | **T**estable     | Are the acceptance criteria observable and verifiable?         |
 
 If any criterion fails, split or rewrite the story before creating it. Never push an INVEST-failing story to Jira just to keep the count up.
@@ -297,7 +297,7 @@ If any criterion fails, split or rewrite the story before creating it. Never pus
   - `{{jira.acceptance_criteria}}` — minimum 3 Gherkin scenarios (1 happy path + 2 edge / error cases), each wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`). Persona-observable language only; no endpoint paths, HTTP status codes, table names, or framework names (anti-pattern `I15`).
   - `{{jira.scope}}` — in-scope bullets only. Bullets describe capabilities the persona gains, not endpoints / DB tables / services (anti-pattern `I15`).
   - `{{jira.out_of_scope}}` — explicit exclusions, also in persona-capability voice.
-  - `{{jira.ai_effort}}` — NEVER set by the PO. QA sets it in shift-left (Low, Medium or High); `High` proposes a split and the PO signs or rejects it. See anti-pattern `I16`.
+  - `{{jira.ai_effort}}` — NEVER set by the PO. QA sets it in shift-left (Low, Medium or High); `High` only warns the dev; the PO MAY propose a split (optional, never a gate). See anti-pattern `I16`.
   - `{{jira.business_rules_specification}}` — optional. Domain rules (boundaries, role gates, retry semantics, audit guarantees) — NOT internal algorithms.
   - `{{jira.mockup}}` — optional.
   - `{{jira.workflow}}` — optional. Narrates the persona's flow, not the code's flow.
