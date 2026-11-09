@@ -138,7 +138,7 @@ Stacked or chained PRs are not an option the planner offers. They are a legacy p
 
 ## When a story is too large
 
-If `Size` is `Large` AND the commit plan shows increments that each deliver value on their own, OR the story carries more than ~13 story points of real work, the remedy is at the **backlog level**, not the PR level:
+If `Size` is `Large` AND the commit plan shows increments that each deliver value on their own, OR the story carries an AI Effort of `High` (set by QA in shift-left), the remedy is at the **backlog level**, not the PR level:
 
 - Add a `Notes:` line to the forecast block recommending that the STORY be split in the tracker through `/product-management`. Each resulting story gets its own plan, its own PR.
 - This is a RECOMMENDATION recorded in the plan. It does not block implementation by default; absent a decision to split, the story proceeds as one PR with the commit plan above (Bunkai rule AI-LED-DECISIONS in `.agents/instructions/agent-project.md`: the AI decides, nobody waits).
@@ -166,7 +166,7 @@ When emitting the forecast block:
 3. Apply the multipliers, sum, multiply by 1.2. Apply any size-counting notes.
 4. Pick `Size` from the indicator table. Always write `Delivery: single-pr`.
 5. For `Medium` / `Large`: write the commit plan (dependencies first, tests with their behaviour, each commit green) and the review guide. Map every commit to the AC it serves.
-6. If the story is `Large` with independently valuable increments (or > ~13 points), add the backlog-split recommendation to `Notes:`.
+6. If the story is `Large` with independently valuable increments (or AI Effort `High`), add the backlog-split recommendation to `Notes:`.
 7. Append the block at the bottom of the plan and to the orchestrator turn-summary.
 
 The planner emits; nothing downstream is gated on it. Stage 2 implements the commit plan, one atomic commit per entry, adjusting the plan (and the Jira field) if reality diverges.

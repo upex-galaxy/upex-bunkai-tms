@@ -44,7 +44,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
    | `{{jira.status.story.ready_for_dev}}`                                                                                       | Queue head — pull next     | Queue              |
    | `{{jira.status.story.ready_for_qa}}` / `{{jira.status.story.qa_approved}}` / `{{jira.status.story.deployed_to_production}}` | Done from dev's POV        | Done — This Sprint |
    | `{{jira.status.story.blocked}}`                                                                                             | Blocking issue (monitor)   | Blocked            |
-   | `{{jira.status.story.backlog}}` / `estimation` / `shift_left_qa`                                                            | Not pulled into sprint yet | Pipeline           |
+   | `{{jira.status.story.backlog}}` / `shift_left_qa`                                                                       | Not pulled into sprint yet | Pipeline           |
    | `{{jira.status.story.aborted}}`                                                                                             | Cancelled (terminal)       | Cancelled          |
 
    If the project's substrate lacks a slug (e.g. no `blocked` status), drop that row gracefully and continue.
@@ -52,7 +52,8 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 3. **Detect carryovers** if `previous_sprint_file` was provided. Scan it for tickets whose status is NOT `PROD_DEPLOYED` / `ABORTED`. For each, check whether it appears in the current sprint; if yes, mark as carryover with prior context; if no, note as "dropped from sprint" and inform the user.
 4. **Build Board Summary** counts (Ready For Dev / In Progress / In Review / Ready For QA / Deployed to Prod / Blocked / Total).
 5. **Build In-Flight table** with the 11-column shape below (`#`, Ticket, Type, Title, Priority, Owner, Impl Plan, PR, Delivery Strategy, Forecast Size, Status). Status column is the canonical state machine value, not the Jira label.
-6. **Populate Stats** section from the counts (in-flight, merged, staging-deployed, prod-deployed, blocked, cancelled, carryovers, estimated total LOC from implementation-plan forecasts).
+6. **Populate Stats** section from the counts (in-flight, merged, staging-deployed, prod-deployed, blocked, cancelled, carryovers, estimated total LOC from implementation-plan forecasts, and the token usage of the previous sprint).
+   There is no capacity or workload forecast for the sprint: the report states what is done and what the previous sprint measurably cost in tokens.
 7. **Write the file** using the framework structure below.
 8. **Append Session Log entry** for the setup pass — date, totals, in-flight IDs, assigned/unassigned counts, carryover IDs, "Created SPRINT-{N}-DEVELOPMENT.md tracker".
 9. **Report** a short board summary back to the user: totals, in-flight count, carryovers.
@@ -102,7 +103,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 
 ### Pipeline — Pending Refinement
 
-> Backlog / Estimation / Shift-Left-QA — not yet pulled into the sprint.
+> Backlog / Shift-Left-QA — not yet pulled into the sprint.
 
 ### Done — This Sprint
 
@@ -138,6 +139,8 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 | Cancelled                           | {count}                        |
 | Carryovers from Sprint {N-1}        | {count or 0}                   |
 | Estimated total LOC delivered       | {sum from implementation-plan forecasts} |
+| Previous sprint DTU (K tokens)      | {sum and average of `{{jira.development_token_usage}}` as measured, or N/A} |
+| Previous sprint QTU (K tokens)      | {sum and average of `{{jira.quality_token_usage}}` as measured, or N/A} |
 
 ## Session Log
 

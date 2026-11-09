@@ -464,6 +464,8 @@ Envía staging URL al equipo de QA y comunica la versión desplegada.
 
 _QA verification on staging is out of scope here._
 
+**Development Token Usage.** Al mover la story a `{{jira.status.story.ready_for_qa}}`, escribe `{{jira.development_token_usage}}` (DTU, miles de tokens) con el consumo MEDIDO del agente dev en este item, leído del reporte de uso del propio harness. Si el campo no existe en `.agents/jira-fields.json`, publica el comentario estructurado `Development Token Usage (K): <n>` y no bloquees. Si el harness no expone la cifra, deja el campo vacío y el verificador dice N/A con ese motivo. Nunca estimes ni inventes el número.
+
 ---
 
 ## 📊 Deployment Summary:
@@ -509,6 +511,7 @@ Lista para QA y exploratory testing.
 
 - [ ] URL compartida con QA
 - [ ] Next steps comunicados
+- [ ] `{{jira.development_token_usage}}` escrito desde consumo medido, o N/A con motivo
 
 ---
 
