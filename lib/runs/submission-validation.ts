@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { isHttpUrl, SUBMISSION_EVIDENCE_URL_MAX } from '@lib/runs/evidence-url';
 
 // BK-222 — request validation for POST /api/v1/runs/submissions. Hand-written
 // rather than a bare Zod parse because the acceptance criteria freeze messages
@@ -12,7 +13,6 @@ export const SUBMISSION_VERDICTS = ['passed', 'failed'] as const;
 export const SUBMISSION_STEP_RESULTS = ['pass', 'fail', 'block'] as const;
 export const SUBMISSION_DURATION_MAX_SECONDS = 86400;
 export const SUBMISSION_EVIDENCE_MAX = 20;
-export const SUBMISSION_EVIDENCE_URL_MAX = 2048;
 export const SUBMISSION_KEY_MAX = 64;
 export const SUBMISSION_ENVIRONMENT_MAX = 60;
 
@@ -42,19 +42,6 @@ function invalid(reason: string, message: string, extra: Record<string, unknown>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-export function isHttpUrl(value: string): boolean {
-  if (value.length > SUBMISSION_EVIDENCE_URL_MAX || /\s/.test(value)) {
-    return false;
-  }
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  }
-  catch {
-    return false;
-  }
 }
 
 // Throws an AC-exact `validation_failed` ApiError on the first broken rule.
