@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { generateSchema, isMaintainerCopy, isSchemaOwner, SCHEMA_SOURCE, seedFromSchema, yamlLeafWalk } from './agents-schema.ts';
+import { generateSchema, isMaintainerCopy, isSchemaOwner, SCHEMA_FILE, SCHEMA_SOURCE, seedFromSchema, yamlLeafWalk } from './agents-schema.ts';
 import {
   deriveIdentity,
   detectStack,
@@ -29,7 +29,7 @@ import {
 
 const REPO_ROOT = join(import.meta.dir, '..', '..');
 const realSource = (): string => readFileSync(join(REPO_ROOT, SCHEMA_SOURCE), 'utf8');
-const realSchema = (): string => generateSchema(realSource()).schema;
+const realSchema = (): string => generateSchema(realSource(), readFileSync(join(REPO_ROOT, SCHEMA_FILE), 'utf8')).schema;
 
 /**
  * The boilerplate's own checkout: the package name AND the maintainer sentinel
@@ -245,9 +245,8 @@ describe('writeStack', () => {
 
   test.skipIf(!MAINTAINER_CHECKOUT)('a project without the block gets it from the schema, at the schema\'s position', () => {
     const source = realSource();
-    const start = source.indexOf('\n# The application\'s REAL stack');
-    const end = source.indexOf('\nissue_tracker:');
-    const stripped = source.slice(0, start) + source.slice(end - 1);
+    const stripped = source.replace(/\nstack:\n(?: {2}.*\n)+/, '\n');
+    expect(stripped).not.toBe(source);
     expect(readStack(stripped).present).toBe(false);
 
     const result = writeStack(stripped, realSchema(), { 'database.schema_source': 'migrations' });
@@ -272,8 +271,11 @@ describe('writeStack', () => {
     expect(result.text).toBe(realSource());
   });
 
-  test('filling a TODO leaf drops the TODO prefix from its comment', () => {
-    const withTodo = realSource().replace(/test_runner: null # /, 'test_runner: null # TODO: ');
+  // A commented yaml (a project scaffolded before ADR-0021, or the schema
+  // itself) keeps its comments through a write.
+  test.skipIf(!MAINTAINER_CHECKOUT)('filling a TODO leaf drops the TODO prefix from its comment', () => {
+    const withTodo = realSchema().replace(/test_runner: null # /, 'test_runner: null # TODO: ');
+    expect(withTodo).toContain('test_runner: null # TODO: ');
     const result = writeStack(withTodo, realSchema(), { test_runner: 'vitest' });
     expect(result.error).toBeNull();
     expect(result.text).toMatch(/test_runner: vitest # vitest \|/);
@@ -312,7 +314,10 @@ describe('identity leaves derived from the stack', () => {
 
   test.skipIf(!MAINTAINER_CHECKOUT)('writeDerivedIdentity fills only null leaves, answers their TODO, never overwrites', () => {
     const root = repo({ 'src/app/page.tsx': '' });
-    const filledSource = realSource().replace(/^ {2}db_type: null.*$/m, '  db_type: MySQL # the app says so');
+    // The commented template stands in for a project yaml that still carries
+    // its comments (one scaffolded before ADR-0021).
+    const filledSource = realSchema().replace(/^ {2}db_type: null.*$/m, '  db_type: MySQL # the app says so');
+    expect(filledSource).toContain('  db_type: MySQL # the app says so');
     const result = writeDerivedIdentity(filledSource, root);
     expect(result.error).toBeNull();
     expect(result.filled['database.db_type']).toBeUndefined();

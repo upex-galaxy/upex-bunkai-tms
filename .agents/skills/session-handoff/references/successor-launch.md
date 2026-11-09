@@ -17,9 +17,9 @@ The correct family is the plain terminal-and-worktree one. When a runtime's comm
 
 ## The launch line
 
-The launch line is the harness's, not the runtime's. A Claude Code predecessor launches a Claude Code successor; OpenCode launches OpenCode; Codex launches Codex.
+The launch line is the harness's, not the runtime's. A Claude Code predecessor launches a Claude Code successor; OpenCode launches OpenCode; Codex launches Codex; Pi launches Pi (`pi -n <name> "<first prompt>"`).
 
-Start it with the harness's own binary (`claude`, `opencode`, `codex`), with no wrapper and no env loader in front of it: the harness process holds no `.env` value, and its MCP servers read `.env` through the loader when they spawn (ADR-0016). Never prefix the line with `varlock run`, `dotenv` or `source .env`.
+Start it with the harness's own binary (`claude`, `opencode`, `codex`, `pi`), with no wrapper and no env loader in front of it: the harness process holds no `.env` value, and its MCP servers read `.env` through the loader when they spawn (ADR-0016). Never prefix the line with `varlock run`, `dotenv` or `source .env`.
 
 The line carries two things:
 

@@ -53,6 +53,7 @@ import { parse as parseYaml } from 'yaml';
 
 const REPO_ROOT = join(import.meta.dir, '..');
 const PROJECT_YAML = join(REPO_ROOT, '.agents', 'project.yaml');
+const PROJECT_SCHEMA_YAML = join(REPO_ROOT, '.agents', 'project.schema.yaml');
 const JIRA_REQUIRED_YAML = join(REPO_ROOT, '.agents', 'jira-required.yaml');
 
 // Directories to scan recursively. AI-facing content only.
@@ -287,15 +288,39 @@ function loadManifestSlugs(yamlPath: string): {
 }
 
 /**
+ * The `external_consumers:` entries of a yaml text, each with its line and
+ * whether it carries an inline `# ...` comment.
+ */
+function externalConsumerEntries(rawText: string): Array<{ name: string, line: number, commented: boolean }> {
+  const entries: Array<{ name: string, line: number, commented: boolean }> = [];
+  const lines = rawText.split('\n');
+  let inBlock = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^external_consumers:\s*(?:#.*)?$/.test(line)) { inBlock = true; continue; }
+    if (!inBlock) { continue; }
+    // Stop when we hit a non-indented non-comment non-empty line.
+    if (line.length > 0 && !line.startsWith(' ') && !line.startsWith('#') && !line.startsWith('-')) { break; }
+    // List entry: `  - <name>` optionally followed by `# comment`.
+    const entryMatch = line.match(/^\s*-\s+([a-z_]\w*)\s*(#.*)?$/i);
+    if (entryMatch) {
+      entries.push({ name: entryMatch[1], line: i + 1, commented: Boolean(entryMatch[2]) && entryMatch[2].trim().length > 1 });
+    }
+  }
+  return entries;
+}
+
+/**
  * Load the `external_consumers:` allowlist from project.yaml.
- * Each entry MUST have an inline `# ...` comment on its source line
- * explaining where the variable is consumed. Entries without a comment
- * are reported as undocumented errors so the allowlist cannot rot silently.
+ * Each entry MUST carry an inline `# ...` comment explaining where the
+ * variable is consumed, so the allowlist cannot rot silently. The comment
+ * lives in `.agents/project.schema.yaml` (project.yaml is values only,
+ * ADR-0021); a project's own entry may carry it in its own yaml instead.
  *
  * Returns the set of UPPER_SNAKE_CASE names that should be skipped from
  * DECLARED_BUT_UNUSED, plus the list of undocumented entries.
  */
-function loadExternalConsumers(yamlPath: string): {
+function loadExternalConsumers(yamlPath: string, docsPath: string): {
   allowlist: Set<string>
   undocumented: Array<{ name: string, line: number }>
 } {
@@ -303,32 +328,17 @@ function loadExternalConsumers(yamlPath: string): {
   const parsed = parseYaml(rawText);
   const allowlist = new Set<string>();
   const undocumented: Array<{ name: string, line: number }> = [];
+  const documentedInSchema = new Set(
+    existsSync(docsPath) ? externalConsumerEntries(readFileSync(docsPath, 'utf-8')).filter(e => e.commented).map(e => e.name) : [],
+  );
 
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
     const externalRaw = (parsed as Record<string, unknown>).external_consumers;
     if (Array.isArray(externalRaw)) {
-      // Find the start of `external_consumers:` in raw text to scan per-entry comments.
-      const lines = rawText.split('\n');
-      let inBlock = false;
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (/^external_consumers:\s*$/.test(line)) { inBlock = true; continue; }
-        if (inBlock) {
-          // Stop when we hit a non-indented non-comment non-empty line.
-          if (line.length > 0 && !line.startsWith(' ') && !line.startsWith('#') && !line.startsWith('-')) {
-            inBlock = false;
-            continue;
-          }
-          // List entry: `  - <name>` optionally followed by `# comment`.
-          const entryMatch = line.match(/^\s*-\s+([a-z_]\w*)\s*(#.*)?$/i);
-          if (entryMatch) {
-            const name = entryMatch[1];
-            const hasComment = Boolean(entryMatch[2]) && entryMatch[2].trim().length > 1; // `#` + at least one char
-            allowlist.add(name.toUpperCase());
-            if (!hasComment) {
-              undocumented.push({ name, line: i + 1 });
-            }
-          }
+      for (const entry of externalConsumerEntries(rawText)) {
+        allowlist.add(entry.name.toUpperCase());
+        if (!entry.commented && !documentedInSchema.has(entry.name)) {
+          undocumented.push({ name: entry.name, line: entry.line });
         }
       }
     }
@@ -576,7 +586,7 @@ function scanFiles(files: string[]): ScanResult {
 function main(): void {
   const declared = loadDeclaredVariables(PROJECT_YAML);
   const manifest = loadManifestSlugs(JIRA_REQUIRED_YAML);
-  const external = loadExternalConsumers(PROJECT_YAML);
+  const external = loadExternalConsumers(PROJECT_YAML, PROJECT_SCHEMA_YAML);
   const files = collectFiles();
   const result = scanFiles(files);
 
@@ -696,7 +706,7 @@ function main(): void {
       console.log(`  - UNDECLARED stack reference: {{stack.${hit.path}}} at ${rel}:${hit.line}  (not a leaf of the stack: block in .agents/project.yaml)`);
     }
     for (const entry of external.undocumented) {
-      console.log(`  - EXTERNAL_CONSUMER_UNDOCUMENTED: ${entry.name} at .agents/project.yaml:${entry.line}  (missing inline '# ...' comment explaining where it's consumed)`);
+      console.log(`  - EXTERNAL_CONSUMER_UNDOCUMENTED: ${entry.name} at .agents/project.yaml:${entry.line}  (missing a '# ...' comment, in .agents/project.schema.yaml or on the entry, explaining where it's consumed)`);
     }
   }
   console.log('');

@@ -44,10 +44,11 @@
  * source, and step 2 above degraded to a compatibility shim for a repo that has
  * not run `bun run agents:setup` yet.
  *
- * The name is NOT pushed to the deploy backend: since BK-1170 the app reads the
- * Jira site per workspace, not from the environment, so the variable manifest
- * gives it `valueSource: 'atlassian-instance'` and no destination. The yaml feeds
- * the local tooling (`scripts/`, `acli`) only.
+ * The name survives as RUNTIME configuration in the deploy backend (Vercel env),
+ * because a serverless Jira integration cannot read `.agents/project.yaml`. The
+ * variable manifest routes it there with `valueSource: 'atlassian-instance'`, so
+ * the value pushed to Vercel is read from this resolver — the yaml feeds both the
+ * local tooling and the remote scope, and the two cannot drift.
  *
  * Everything that needs the host from a SHELL calls the accessor instead of
  * interpolating an env var: `bun run jira:url` (base URL) / `--slug` (bare host

@@ -1,5 +1,5 @@
 /**
- * Prompt-time context: ONE emitter, three harness adapters.
+ * Prompt-time context: ONE emitter, one adapter per harness.
  *
  * Why this exists: AGENTS.md §2 (Butler + PM Voice + Visual Mapping) and the
  * user-level OUTPUT STYLE are read ONCE at session start and then dilute as
@@ -27,14 +27,17 @@
  *      plus at most one `ROUTE-OPTIONAL:` line. 0 bytes when nothing new
  *      matches. A `SessionStart` with source `compact` or `clear` re-arms
  *      them and prints nothing (which host sends which source: the adapter
- *      list below). A harness task notification (`isHarnessNotification`)
- *      routes nothing and leaves the session state untouched: no human
- *      wrote it.
+ *      list below). A harness notification (`isHarnessNotification`: a task
+ *      notification, a bare agent-message hand-back, or a prompt made only of
+ *      harness blocks such as system reminders) routes nothing and leaves the
+ *      session state untouched: no human wrote it. Harness blocks inside a human prompt are dropped
+ *      before it is classified (`stripHarnessBlocks`).
  *
  * Claude Code also runs it on `PostToolUse` (`.claude/settings.json`, no
  * matcher): it prints nothing but, at most once per prompt, a `ROUTE-PENDING:`
- * line when a routed section is still unread (see `pendingRouteReminder`).
- * Any other event prints nothing.
+ * line when a routed section is still unread (see `pendingRouteReminder`); the
+ * Pi adapter does the same from its `tool_result` event. Any other event
+ * prints nothing.
  *
  * The text lives HERE and nowhere else. Each harness reaches it through a thin
  * adapter:
@@ -49,7 +52,10 @@
  *     OpenCode 1 also routes from `chat.message` and re-arms on
  *     `experimental.session.compacting` only (the adapter registers no `/clear` hook);
  *     OpenCode 2 is router-only, so it has nothing to re-arm.
- * `bun run agents:compat:check` pins the three adapters to this emitter.
+ *   - Pi: `.pi/extensions/agentic-dev.js` imports the same exports, injects
+ *     the lines as a hidden message in `before_agent_start`, and re-arms on
+ *     the `session_compact` event only; `/new` starts a new session id.
+ * `bun run agents:compat:check` pins the adapters to this emitter.
  *
  * Hook wire (verified against the vendor docs): Claude Code pipes a JSON
  * payload with `session_id`, `prompt` and an optional `session_title`, and
@@ -143,21 +149,85 @@ export const ORCA_LAUNCHED_LINE = [
  */
 export const HARNESS_NOTIFICATION_PREFIX = '<task-notification>';
 
+/**
+ * Every opening that marks the rest of a prompt as harness text: the task
+ * notification tag, and the preamble Claude Code puts before it when it
+ * delivers a hand-back wrapped in system reminders (measured 2026-10-31).
+ */
+export const HARNESS_NOTIFICATION_PREFIXES = [HARNESS_NOTIFICATION_PREFIX, '[SYSTEM NOTIFICATION - NOT USER INPUT]'];
+
+/**
+ * A hand-back Claude Code delivers as a bare prompt, with no reminder around
+ * it: the agent-message preamble, then the `<agent-message>` block that holds
+ * a subagent's (or a peer session's) report (measured 2026-11-06). Model text,
+ * never a human's. The preamble alone is not enough: a human who quotes it
+ * without the block still routes.
+ */
+const HARNESS_HANDBACK_PATTERN = /^Another Claude session sent a message[^\n:]*:\s*<agent-message\b/;
+
+/** Blocks the harness injects into a prompt. No human typed their content. */
+const HARNESS_BLOCK_TAGS = ['system-reminder', 'tools-used-before-summary'];
+
+/**
+ * A closed block is removed from its opening tag to its closing tag. A closing
+ * tag that repeats the opening tag's attributes (`</system-reminder id="…">`,
+ * the measured shape) is preferred, so a reminder that quotes a bare closing
+ * tag is still removed whole. An unclosed block stays: failing toward routing
+ * is the old behaviour, never an over-skip.
+ */
+function stripBlocks(prompt, tag) {
+  const opening = new RegExp(`<${tag}\\b([^>]*)>`, 'g');
+  let kept = '';
+  let from = 0;
+  for (let found = opening.exec(prompt); found; found = opening.exec(prompt)) {
+    const after = found.index + found[0].length;
+    const closers = found[1].trim() ? [`</${tag}${found[1]}>`, `</${tag}>`] : [`</${tag}>`];
+    const close = closers.map(closer => ({ at: prompt.indexOf(closer, after), length: closer.length })).find(candidate => candidate.at !== -1);
+    if (!close) { continue; }
+    kept += `${prompt.slice(from, found.index)}\n`;
+    from = close.at + close.length;
+    opening.lastIndex = from;
+  }
+  return kept + prompt.slice(from);
+}
+
+/**
+ * The prompt without the blocks the harness injected into it: what a human
+ * (or a conductor) actually wrote. Routing, the fleet token and the session
+ * title all read this text, so a reminder that quotes a brief can neither
+ * route nor launch nor name the session.
+ */
+export function stripHarnessBlocks(prompt) {
+  if (typeof prompt !== 'string') { return ''; }
+  return HARNESS_BLOCK_TAGS.reduce(stripBlocks, prompt);
+}
+
+/**
+ * A prompt no human wrote: made only of harness blocks, or whose first text
+ * after them opens a harness notification. A human prompt that carries a
+ * reminder alongside real text is a prompt.
+ */
 export function isHarnessNotification(prompt) {
-  return typeof prompt === 'string' && prompt.trimStart().startsWith(HARNESS_NOTIFICATION_PREFIX);
+  if (typeof prompt !== 'string' || prompt.trim().length === 0) { return false; }
+  const rest = stripHarnessBlocks(prompt).trimStart();
+  return rest.length === 0
+    || HARNESS_NOTIFICATION_PREFIXES.some(prefix => rest.startsWith(prefix))
+    || HARNESS_HANDBACK_PATTERN.test(rest);
 }
 
 /**
  * The fleet-worker token names the session after the roster label:
  * `/<skill> <label> fleet worker` → `<label>`, plus `--<handle>` when the
  * session runs in an Orca terminal (`ORCA_TERMINAL_HANDLE`), so the name is
- * `<label>--<handle>` and splits on its last `--term_`. Any skill slug qualifies and
- * the label is whatever the conductor wrote: a ticket key, `<KEY>-<slug>`, or
- * a kebab slug. Unanchored, because on the supervised path the runtime
- * prepends its own preamble to the prompt that carries the token.
+ * `<label>--<handle>` and splits on its last `--term_`. Any skill slug qualifies (a
+ * fleet is not limited to the workflow skills) and the label is whatever the
+ * conductor wrote: a ticket key, `<KEY>-<slug>`, or a kebab slug. Anchored to
+ * the start of the task text (`fleetToken`): the runtime's preamble is cut at
+ * its task marker, and a prompt that quotes the token mid-sentence is not a
+ * launch.
  */
 export const FLEET_PROMPT_PATTERN
-  = /(?:^|\s)\/([a-z][a-z0-9-]*)\s+([A-Za-z0-9][\w.-]{0,59})\s+fleet worker\b/;
+  = /^\/([a-z][a-z0-9-]*)\s+([A-Za-z0-9][\w.-]{0,59})\s+fleet worker\b/;
 
 /**
  * Outside a fleet, a ticket-driven workflow skill plus an issue key in the
@@ -776,10 +846,11 @@ export function neutralizePaths(text, root = '') {
  * A `ROUTE-SCOPE:` line wins (all of them, joined; it opens a line or follows
  * a sentence, so a prompt that merely mentions it in backticks is not
  * scoped); else the task block after the last orchestrator preamble marker;
- * else the whole prompt. Absolute paths are neutralized in all three.
+ * else the whole prompt. The harness blocks are removed first
+ * (`stripHarnessBlocks`), and absolute paths are neutralized in all three.
  */
 export function routeScope(router, prompt) {
-  const scope = scopeOf(router, prompt);
+  const scope = scopeOf(router, stripHarnessBlocks(prompt));
   return { text: neutralizePaths(scope.text, router?.root ?? ''), ids: scope.ids };
 }
 
@@ -801,6 +872,26 @@ function scopeOf(router, prompt) {
     if (at !== -1) { return { text: prompt.slice(at + marker.length), ids: new Set() }; }
   }
   return { text: prompt, ids: new Set() };
+}
+
+/**
+ * The fleet token at the start of the task text, or null: harness blocks
+ * removed, then the text after the last orchestrator task marker
+ * (`TASK_BLOCK_MARKERS`) when there is one, else the whole prompt. A harness
+ * notification carries none. Independent of `ROUTE-SCOPE:`, which narrows
+ * routing only.
+ */
+export function fleetToken(prompt) {
+  if (typeof prompt !== 'string' || isHarnessNotification(prompt)) { return null; }
+  let task = stripHarnessBlocks(prompt);
+  for (const marker of TASK_BLOCK_MARKERS) {
+    const at = task.lastIndexOf(marker);
+    if (at !== -1) {
+      task = task.slice(at + marker.length);
+      break;
+    }
+  }
+  return FLEET_PROMPT_PATTERN.exec(task.trimStart());
 }
 
 /**
@@ -1050,7 +1141,7 @@ export function rearmRoutes(options = {}) {
 
 /**
  * Was this session launched by a conductor? Yes when this prompt carries the
- * fleet token (`FLEET_PROMPT_PATTERN`) or an earlier prompt of the session
+ * fleet token at the start of its task text (`fleetToken`) or an earlier prompt of the session
  * did (the `launched` field of the session record, written here). A harness
  * notification neither sets nor clears it: its result text may quote a brief
  * that carries the token. Without a session id only the current prompt decides.
@@ -1065,7 +1156,7 @@ export function sessionLaunched(options = {}) {
     : options.routeState;
   const record = routeState ? normalizeRouteRecord(routeState.read()) : null;
   if (record?.launched) { return true; }
-  const carries = typeof prompt === 'string' && !isHarnessNotification(prompt) && FLEET_PROMPT_PATTERN.test(prompt);
+  const carries = fleetToken(prompt) !== null;
   if (carries && routeState) { routeState.write({ ...record, launched: true }); }
   return carries;
 }
@@ -1137,14 +1228,15 @@ export function proposeSessionTitle({ prompt = '', identity = {}, handle = '' } 
 }
 
 function titleFromPrompt(prompt, handle) {
-  const fleet = FLEET_PROMPT_PATTERN.exec(prompt);
+  const fleet = fleetToken(prompt);
   if (fleet) {
     const label = sanitizeTitle(fleet[2]);
     return handle ? `${label}--${handle}` : label;
   }
-  const explicit = EXPLICIT_NAME_PATTERN.exec(prompt);
+  const written = stripHarnessBlocks(prompt);
+  const explicit = EXPLICIT_NAME_PATTERN.exec(written);
   if (explicit) { return sanitizeTitle(explicit[1] ?? explicit[2] ?? ''); }
-  const workflow = WORKFLOW_PROMPT_PATTERN.exec(prompt);
+  const workflow = WORKFLOW_PROMPT_PATTERN.exec(written);
   return workflow ? sanitizeTitle(`${workflow[2]}-${workflow[1]}`) : '';
 }
 

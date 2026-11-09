@@ -38,7 +38,7 @@ named as someone else's.
 | Artifact | Work type | Created by | Created in | Moved by → target (transition slug) | Terminal |
 |---|---|---|---|---|---|
 | **Epic** | `epic` | `/product-management` (epic creation, add-feature) | `backlog` | `/product-management` right after create: `plan` → `planning` (`statuses.epic_default`). **No dev skill moves an epic past that**: `ready_to_work` and `complete` belong to the PO / team. The Epic precheck reads the epic, it never transitions it | `done` |
-| **Story** | `story` | `/product-management` (add-feature, story refinement; `autonomous-delivery` `discovery` routes through it) | `backlog` | `/product-management` after create: `analyze` → `shift_left_qa` (`statuses.story_default`) · QA shift-left + team own `estimate` → `estimation` and `estimated_and_ready_to_work` → `ready_for_dev` · `/sprint-development` Stage 1 end: `start_working` → `in_progress` · Stage 3 (PR opened): automation fires `pull_request` → `in_review`; **if it did not fire, the stage fires it** · Stage 4 (merged + staging deploy green): automation fires `deployed` → `ready_for_qa`; if not, the stage fires it · QA owns `start_testing` / `qa_sign_off`; release owns `include_in_release` / `released` | `deployed_to_production` (released by the team, never by a dev skill) |
+| **Story** | `story` | `/product-management` (add-feature, story refinement; `autonomous-delivery` `discovery` routes through it) | `backlog` | `/product-management` after create: `analyze` → `shift_left_qa` (`statuses.story_default`) · QA shift-left owns `refined` → `ready_for_dev` (`shift_left_qa` → `ready_for_dev`, AI Effort set first) · `/sprint-development` Stage 1 end: `start_working` → `in_progress` · Stage 3 (PR opened): automation fires `pull_request` → `in_review`; **if it did not fire, the stage fires it** · Stage 4 (merged + staging deploy green): automation fires `deployed` → `ready_for_qa`; if not, the stage fires it · QA owns `start_testing` / `qa_sign_off`; release owns `include_in_release` / `released` | `deployed_to_production` (released by the team, never by a dev skill) |
 | **Bug** (also `defect`, `improvement`) | `bug` / `defect` / `improvement` | QA or a reporter (external); a Stage 3 review may file one under the parent story | `open` | `/sprint-development` bug-fix triage: real bug `start_fixing` → `in_progress` · duplicate `is_duplicated` → `duplicated` · works as designed `is_wad` → `rejected` · enhancement `is_not_a_bug` → `enhancement` · cannot reproduce `is_cnr` → `cannot_reproduce` · low priority `defer` → `deferred` · PR opened: `pull_request` → `in_review` · merged + deployed: `fixed_and_deployed` → `ready_for_qa` · urgent hotfix with no review step: `hard_pushed` → `ready_for_qa` · QA owns `retest_passed` → `closed` | `closed` (or a triage terminal) |
 | **Tech Story / Tech Debt** | `tech_story` / `tech_debt` | dev / PM (external) | `to_do` | `/sprint-development` Stage 1 end: `start_working` → `in_progress` · Stage 3 (PR opened): `ready` → `in_review` · merged with no QA scope: `complete` → `completed` · QA owns `test_finished` → `automated` when the item carried test scope | `completed` / `automated` |
 | **Feature Implementation Plan** | field `feature_implementation_plan` on the Epic | `/sprint-development` Stage 1 (macro plan, `references/feature-plan.md`) | — (a field, not an issue) | authored in-session → pushed to the field (or its `## Feature Implementation Plan (Dev)` fallback comment) → `bun run jira:sync-issues get <EPIC>` → read back from the synced `feature-implementation-plan.md`. Re-pushed when the plan changes; never hand-written locally (`.agents/instructions/agent-local-context-pbi.md` §9) | the field |
@@ -174,8 +174,8 @@ A match is a **suggestion to the user**, never an automatic choice. Present it, 
 2. **Fill what the stage legitimately knows**, then re-fire ONCE. A bug fix's `root_cause` and
    `fix` type, the PR link, the deployed environment: the stage has real content for those, so it
    writes them and retries without asking.
-3. **Never invent a value to satisfy a validator.** Story points, a severity, an estimation the
-   stage does not actually know is fabricated data that outlives the session and is later read as
+3. **Never invent a value to satisfy a validator.** A token-usage figure, a severity, an effort
+   level the stage does not actually know is fabricated data that outlives the session and is later read as
    the team's judgement.
 4. **Whatever is left → ONE question**, naming the issue, the target status, the exact fields the
    validator demands and which of them the stage cannot answer: *fill them together now* /
@@ -193,13 +193,16 @@ A match is a **suggestion to the user**, never an automatic choice. Present it, 
 ## 5. Closing every stage — the light verifier
 
 The verifier itself lives in `session-footer-contract.md` Part 3; it is not redefined here. Two
-of its lines read this file:
+of its lines read this file, and a third applies to Stage 4:
 
 - **Tracker status**: the status this stage meant to reach is the §1 row for the artifact, and
   the line names the slug fired (by the stage or by automation it verified) or the stated reason
   it was not (§4 skip, §4.2 leave, unattended flag).
 - **Assignee**: read back after every transition the stage fired or verified (§2). A transition
   that moved it with no hand-off rule and was not restored is a `NO`.
+- **Token usage**: `{{jira.development_token_usage}}` written from the harness's
+  measured consumption when the story reached `ready_for_qa`, or a stated N/A with the reason when
+  the harness exposes no figure. Tokens are measured, never estimated.
 
 A stage owner lists only its stage-specific lines inline (which issue, which slug) and cites
 Part 3 for the rest.

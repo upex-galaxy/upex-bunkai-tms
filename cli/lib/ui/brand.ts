@@ -19,6 +19,8 @@ export interface Brand {
   templateRepo: string
   /** What `bun setup` downloads in its Install phase: the preflight proves those hosts answer (owner answer Q2). */
   setupDownloads: ('chromium' | 'skills')[]
+  /** Optional tools the setup preflight reports as information (never a block): `python` = Python 3.9+ with Pillow, for the evidence pages. Absent = none. */
+  prereqs?: ('python')[]
 }
 
 export const BRAND: Brand = {

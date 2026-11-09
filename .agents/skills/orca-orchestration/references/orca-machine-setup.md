@@ -69,7 +69,7 @@ tier should run in (`orchestration.permission_modes` in `.agents/project.yaml`, 
 harness, and the conductor VERIFIES the result on each worker at readiness
 (`references/coordinator-playbook.md` §1 step 5).
 
-| Mode | Claude Code | Codex CLI (rust-v0.165.0) | OpenCode (v1.19.5 / v2.2.0) | Pi (v1.4.0; not a supported harness of this repo) |
+| Mode | Claude Code | Codex CLI (rust-v0.165.0) | OpenCode (v1.19.5 / v2.2.0) | Pi (v1.4.0) |
 |---|---|---|---|---|
 | bypass | `--dangerously-skip-permissions` (= `--permission-mode bypassPermissions`); the first run needs `skipDangerousModePermissionPrompt: true` in the user settings | `--dangerously-bypass-approvals-and-sandbox` (`-a never -s workspace-write` keeps `.git` read-only and the network off: a worker cannot commit) | `--auto` (hidden aliases `--yolo`, `--dangerously-skip-permissions`) or `"permission": {"*": "allow"}` | nothing to set (no approval system); pass `--approve` to skip the project-trust prompt |
 | auto | `--permission-mode auto` (a classifier; it pauses and PROMPTS after 3 consecutive or 20 total blocks, and falls back to manual when it is unavailable) | `--approve-for-me` (a reviewer model answers approvals) | no equivalent (closest: per-tool `ask` / `allow` / `deny`) | no equivalent |
@@ -89,6 +89,8 @@ a destructive-annotated MCP call still asks under it is **(unverified)**. The re
 `permissions.deny` list stays in every mode. `auto` and an edits-only mode
 (`acceptEdits`) are not non-interactive: the first stalls after its block limit, the second on its
 first Bash call, and a worker nobody watches stalls with them (gotcha G27).
+
+A Pi conductor cannot honour `permission_modes.conductor: auto`: bypass is the only state Pi has, and ADR-0020's stated exposure applies. `worker-start --agent pi` launches it with no flag and on the model in its own config (ADR-0022).
 
 What to set in the app (Settings, the Agents section), per agent the fleet uses:
 
@@ -128,7 +130,7 @@ the mode off each worker instead of trusting this checklist.
 
 No harness process holds a `.env` value, whether it is a supervised native launch or a pasted
 launch line (ADR-0016): both open the bare harness binary. That does not leave a worker without MCP
-credentials: on all three hosts every MCP server that needs `.env` values starts
+credentials: on every host every MCP server that needs `.env` values starts
 through the `.env` loader (`bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter <its vars> -- <server>`,
 `.agents/instructions/agent-harnesses.md` §5.5, `MCP_ENV_LOADER_*` in `cli/lib/agent-compatibility-contracts.ts`).
 It reads the varlock schema plus `.env` / `.env.local` (or the secret manager the schema names) from
@@ -227,6 +229,9 @@ find out during a real fleet, and record it in `references/gotchas.md`.
     command needing a `.env` value runs as `bunx varlock run -- <cmd>` (verify on the worker's
     screen at launch)
 [ ] `orca.yaml` hooks honoured: source policy not local-only, trust approved, setup run-by-default
+[ ] Pi workers: trust the parent folder of the worktrees (`/trust` in a session there, or
+    `defaultProjectTrust`), because a launch passes no flags and an untrusted Pi session gets
+    AGENTS.md and nothing else; `bun run setup:doctor` reports it
 [ ] (optional) phone paired
 [ ] a single test worker launched and released end to end BEFORE a real fleet
 ```

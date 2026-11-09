@@ -57,11 +57,10 @@ export type VarScope = 'production' | 'preview' | 'development';
  * cache from a dead Jira site with exit code 0. The host is project identity,
  * so it is anchored to a versioned file that shows up in a diff.
  *
- * Since BK-1170 the app no longer reads `ATLASSIAN_URL` at runtime: each workspace
- * carries its own Jira site (migration 0119), so the var has NO destination at
- * all. It stays in the manifest only as dev-tooling metadata (the installer prompt,
- * `scripts/` and `acli`), always resolved from the yaml, and it is never pushed to
- * Vercel nor written to `.env`.
+ * The NAME still has to reach the deploy backend, because a serverless Jira
+ * integration cannot read `.agents/project.yaml`. So the var keeps a `vercel`
+ * destination and drops `local`: one value, in the yaml, feeding both the local
+ * tooling and the remote scope, with no second copy to drift.
  */
 export type VarValueSource = 'env-file' | 'atlassian-instance';
 
@@ -97,11 +96,10 @@ export interface VarSpec {
   /** UPPER_SNAKE_CASE env-var name, exactly as it appears in `.env.example`. */
   name: string
   /**
-   * Write destinations. Includes `local` for every var whose value lives in
-   * `.env` — i.e. everything except a var that declares a non-default
+   * One or more write destinations. Includes `local` for every var whose value
+   * lives in `.env` — i.e. everything except a var that declares a non-default
    * `valueSource` (see `VarValueSource`), which is never written to `.env` at
-   * all. Such a var may also have NO destination (empty): read from its source by
-   * the dev tooling, written nowhere. `validateVarManifest` enforces exactly that.
+   * all. `validateVarManifest` enforces exactly that correspondence.
    */
   destinations: VarDestination[]
   /**
@@ -179,17 +177,18 @@ export const VAR_MANIFEST: VarSpec[] = [
   // `.agents/project.yaml` (versioned, shows up in a diff) instead of a local
   // file a stale process value can shadow in silence. See `VarValueSource`.
   //
-  // BK-1619: it is NOT pushed to Vercel any more. The app stopped reading it at
-  // runtime in BK-1170 (the Jira site is a per-workspace setting), so it has no
-  // destination; the dev tooling keeps reading it from the yaml.
+  // It keeps a `vercel` destination because the deployed app cannot read the
+  // yaml; `runRemote` sources the value from the resolver, so the yaml is the
+  // single origin for both the local tooling and the remote scope.
   {
     name: 'ATLASSIAN_URL',
-    destinations: [],
+    destinations: ['vercel'],
+    scopes: ALL_SCOPES,
     valueSource: 'atlassian-instance',
     secret: false,
     required: true,
     critical: true,
-    note: 'Atlassian site URL. SOURCE OF TRUTH is .agents/project.yaml -> issue_tracker.atlassian_url, NOT .env — prompted at install and written there. Dev tooling only (scripts/, acli): not pushed to Vercel, the app reads the Jira site per workspace (BK-1170).',
+    note: 'Atlassian site URL. SOURCE OF TRUTH is .agents/project.yaml -> issue_tracker.atlassian_url, NOT .env — prompted at install and written there. Pushed to Vercel for the serverless Jira integration.',
   },
   {
     name: 'ATLASSIAN_EMAIL',
@@ -625,8 +624,7 @@ const NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
  *
  * Checks:
  *  - non-empty, UPPER_SNAKE_CASE, unique names
- *  - every var has at least one destination (unless its value is sourced outside
- *    `.env`, where none is allowed), all destinations valid
+ *  - every var has at least one destination, all destinations valid
  *  - `local` destination iff the value is sourced from `.env` (`valueSource`)
  *  - `scopes` present + valid iff `vercel` is a destination
  *  - conditional `required` references a non-empty gate name
@@ -647,7 +645,7 @@ export function validateVarManifest(): void {
     }
     seen.add(spec.name);
 
-    if (spec.destinations.length === 0 && valueSourceOf(spec) === 'env-file') {
+    if (spec.destinations.length === 0) {
       throw new VarManifestError(`Var '${spec.name}' has no destinations.`);
     }
     for (const dest of spec.destinations) {

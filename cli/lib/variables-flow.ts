@@ -474,9 +474,9 @@ async function runRemote(
   }
 
   // --- Collect candidate vars (resolvable value, per the spec's source). ---
-  // NOT every Vercel-bound var has to live in `.env`: `currentValueOf` reads a
-  // var from its declared `valueSource`. (ATLASSIAN_URL, the one yaml-sourced var,
-  // has no Vercel destination since BK-1170, so it is never a candidate here.)
+  // NOT every Vercel-bound var lives in `.env`: ATLASSIAN_URL is read from
+  // `.agents/project.yaml`, so the yaml is the single origin for both the local
+  // tooling and the deploy scope and the two cannot drift apart.
   const env = await readEnvValues();
   const values = new Map<string, string>();
   for (const spec of varsFor('vercel')) {

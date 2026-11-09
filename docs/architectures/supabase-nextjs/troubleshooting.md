@@ -6,7 +6,7 @@ Common issues when connecting to a Supabase database, from your own code or thro
 
 ## Supabase MCP Issues
 
-The AI reaches the database through the `supabase` server declared in `.mcp.json`, `opencode.jsonc` and `.codex/config.toml`. It reads one variable, `SUPABASE_ACCESS_TOKEN`, which the `.env` loader (`varlock run --filter SUPABASE_ACCESS_TOKEN`) takes from `.env` when the server spawns.
+The AI reaches the database through the `supabase` server declared in `.mcp.json`, `opencode.jsonc`, `.codex/config.toml` and `.pi/mcp.json`. It reads one variable, `SUPABASE_ACCESS_TOKEN`, which the `.env` loader (`varlock run --filter SUPABASE_ACCESS_TOKEN`) takes from `.env` when the server spawns.
 
 ### A 401 / 403, or a tool call that fails for no visible reason
 
@@ -33,7 +33,7 @@ If the server behaves as if `.env` were ignored, your shell probably exports a v
 
 ### A server added to one harness only
 
-Every server must exist in the config of every harness in use (`harnesses:` in `.agents/project.yaml`; the boilerplate checks all three) with the same `.env` dependencies. `bun run agents:compat:check` fails naming the server and the harness that lacks it.
+Every server must exist in the config of every harness in use (`harnesses:` in `.agents/project.yaml`; the boilerplate checks every harness) with the same `.env` dependencies. `bun run agents:compat:check` fails naming the server and the harness that lacks it.
 
 ---
 

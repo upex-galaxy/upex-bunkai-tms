@@ -55,7 +55,7 @@ A piece of work is a single **story** when:
 
 - It is a refinement or extension of existing functionality
 - It clearly fits inside one existing epic
-- It can complete in 1-8 story points
+- It fits in one story (QA's AI Effort in shift-left is expected to be Low or Medium, never High)
 - It does not require architectural changes
 - One user story is enough to express it
 
@@ -80,8 +80,8 @@ Every refined story must pass INVEST. This is the gate between "exists" and "rea
 | **I**ndependent | Can be developed without depending on other stories       | Can it be completed in isolation?       |
 | **N**egotiable  | Implementation details can be adjusted during development | Is there flexibility in implementation? |
 | **V**aluable    | Delivers value to the user or the business                | Is the "so that…" clear and valuable?   |
-| **E**stimable   | Effort can be estimated with the info given               | Can the team assign story points?       |
-| **S**mall       | Can complete in one sprint (max 8 story points)           | Under 8 SP? If not, split.              |
+| **E**stimable   | Enough detail for QA to size it in shift-left             | Can QA tell Low, Medium or High?        |
+| **S**mall       | Can complete in one sprint                                | AI Effort High? Then a split is proposed. |
 | **T**estable    | Acceptance criteria are verifiable                        | Are the Scenarios clear and measurable? |
 
 > **Voice check** (complements INVEST; applies to `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}`, `{{jira.workflow}}`): does each criterion stay true after a stack swap? If endpoint paths, HTTP status codes, table/column names, framework or library names, error-code identifiers, or transaction/locking patterns appear, the criterion is implementation, not behavior — rewrite from the persona's POV. **Exception**: persona is an API consumer (DevEx, integration agent, headless client) — API surface IS their UX. See anti-pattern `I15` in `SKILL.md`. The Voice check is a hard gate alongside INVEST; failing it blocks Ready-for-Development.
@@ -196,7 +196,7 @@ A 3-amigos session aligns Product, Engineering, and QA on a story before it ente
 - [ ] Edge cases discussed and either covered, deferred (with story link), or out-of-scope
 - [ ] Dependencies (Blocked By / Blocks) named
 - [ ] Tech approach has no major unknowns (or a spike is split out)
-- [ ] Size fits one sprint (Story Points only when the user asked for estimation, anti-pattern `I16`)
+- [ ] Size fits one sprint (QA's AI Effort is not High, or the PO signed the split, anti-pattern `I16`)
 
 If any item is unchecked at the end of the session, schedule a follow-up — do not mark Ready.
 
@@ -217,7 +217,7 @@ A story is Ready when **all** of these are true:
 - [ ] **Voice gate passed** — AC / Scope / Out-of-Scope / Workflow describe persona-observable behavior; no endpoint paths, HTTP status codes, table/column names, framework names, or internal algorithms appear (anti-pattern `I15`). Exception: API-consumer persona.
 - [ ] **Persona grounded** — `As a` line names a persona that exists in `.context/PRD/user-personas.md` (or, with no PRD, in the glossary / the data map's `access-control` roles); no generic "user" / "system" actors (anti-pattern `I19`).
 - [ ] **Deduplication audit passed** — run the dedup audit per `references/description-custom-field-dedup.md`. Confirm the description body excludes AC / Scope / OOS H2 sections and that those contents live in `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}` respectively. If a duplicate is found, strip from the description and keep the custom field as canonical.
-- [ ] **Story Points** — leave `{{jira.story_points}}` EMPTY by default. Populate ONLY if the user explicitly requested estimation in this session. Estimation belongs to the team that will build the story (Design + Dev + Test), not to the PO/BA. When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
+- [ ] **Effort fields**: leave `{{jira.ai_effort}}`, `{{jira.development_token_usage}}` and `{{jira.quality_token_usage}}` EMPTY. QA sets AI Effort in shift-left (`High` proposes a split the PO signs); the agents write the token fields from measured usage. See anti-pattern `I16`.
 - [ ] **Dependency Discovery executed** — active pass over the current backlog graph (epic-tree + Jira link graph + the data map in `business-data-context`) ran BEFORE creation/edit. Candidate `(from, to, source)` matrix surfaced to the user; global/infrastructural noise filtered out; only feature-level explicit dependencies kept. See anti-pattern `I18`.
 - [ ] **Dependencies named** — Blocked By / Blocks / Related confirmed with the user from the discovery matrix (they live as Jira issue links; the sync renders them into `story.md`)
 - [ ] **Dependencies published to Jira** — see the "Dependency-link verification" step below

@@ -2,7 +2,7 @@
 name: orca-orchestration
 description: "Multi-session agent orchestration for this repo: one conductor session coordinating a fleet of persistent worker sessions (one per story, per module, per bug cluster) through the Orca runtime, plus the non-Orca fallback where the same launch lines are pasted by hand. Owns the HOW of fleet work — terminals, Runs, Tasks, dispatch, briefs, claims, board cards, liveness, cleanup — while each workflow skill keeps owning the WHAT. Use when the user wants to: orchestrate or parallelize work across sessions (`orchestrate`, `fleet`, `launch workers`, `one session per story`, `parallelize the sprint`, `run these in parallel`, `orquestar`, `lanza workers`, `una sesión por historia`, `paraleliza el sprint`), talk to or steer a running worker (`talk to the worker on BK-123`, `ask W2 if`, `pause X`, `close X`, `comunícate con el worker`, `pregúntale a W2`, `cierra las sesiones`), check or resume a fleet (`how is the fleet doing`, `fleet status`, `resume the run`, `pick up last night's run`, `estado de la flota`, `retoma el run`), set up an Orca worktree for a worker, or schedule an unattended routine through Orca (`automation routine`, `orca automation`, `automatización nocturna`). ALSO trigger in WORKER mode when a brief names this skill. Do NOT use for: one-shot subagent dispatch inside the current turn (that is AGENTS.md §3 and stays the default), a pure ownership handoff of work to another agent with no supervision (that is the vendor `orca-cli` guide, not orchestration), one story implemented in one session (use /sprint-development), the audit and selection of an unattended delivery run (use /autonomous-delivery, which this skill only launches workers for), branch / commit / PR mechanics (use /git-flow-master), or plain `git worktree` work with no fleet (use /git-flow-master `git-flow-master/references/worktrees.md`)."
 license: MIT
-compatibility: [claude-code, codex, opencode]
+compatibility: [claude-code, codex, opencode, pi]
 complementary_categories:
   - orchestration
 metadata:
@@ -262,7 +262,7 @@ state is read:
 | plan | identical: same topology decision, same triage-time collision check, same rounds |
 | brief | identical: `COMMON.md` + `W-<label>.md` in the scope, cited by absolute path |
 | launch | the conductor prints `launch.txt` and the human opens N terminals and pastes N lines. This is the ONLY path where the launch line itself is the payload, which is why the file is still written unconditionally |
-| identity | Claude Code: the identity hook names the session from the prompt token (the line carries no name flag); Pi: the line's own name flag; Codex and OpenCode v2.2: the human types `/rename <label>--<handle>` once it is up (`<label>` alone outside Orca); a worker never renames its own session |
+| identity | Claude Code and Pi: the identity hook or the adapter names the session from the prompt token (the line carries no name flag); Codex and OpenCode v2.2: the human types `/rename <label>--<handle>` once it is up (`<label>` alone outside Orca); a worker never renames its own session |
 | state | the workflow's own blocked-state tokens plus the tracker and git, exactly as a single session already does |
 | questions | the worker writes the question in its report with options and a recommendation, and keeps going on what does not depend on the answer |
 | close | the human closes the terminals |

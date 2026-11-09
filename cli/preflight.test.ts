@@ -9,7 +9,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { BRAND } from './lib/ui/brand.ts';
 
-import { exitCodeOf, plainMsg, preflightJson, readYamlScalars, runSetupGate, runSetupPreflight, runUpPreflight, verdictOf } from './preflight.ts';
+import { exitCodeOf, plainMsg, preflightJson, pythonCheck, readYamlScalars, runSetupGate, runSetupPreflight, runUpPreflight, verdictOf } from './preflight.ts';
 
 function repo(): string {
   const root = mkdtempSync(join(tmpdir(), 'preflight-'));
@@ -94,6 +94,9 @@ const OK = (stdout = ''): CmdResult => ({ ok: true, missing: false, stdout, stde
 const MISSING: CmdResult = { ok: false, missing: true, stdout: '', stderr: '', timedOut: false };
 const FAIL: CmdResult = { ok: false, missing: false, stdout: '', stderr: 'no', timedOut: false };
 
+/** The argv tail every Python candidate is probed with. */
+const PY_PROBE = '-c import sys; print("%d.%d" % sys.version_info[:2]); import PIL';
+
 /** A machine with every tool, minus the ones named in `without`. */
 function machine(without: string[] = [], overrides: Record<string, CmdResult> = {}): (cmd: string, args: string[]) => CmdResult {
   const table: Record<string, CmdResult> = {
@@ -106,6 +109,7 @@ function machine(without: string[] = [], overrides: Record<string, CmdResult> = 
     'gh auth status': OK(),
     'gh --version': OK('gh version 2.63.0'),
     'git remote get-url origin': FAIL,
+    [`python3 ${PY_PROBE}`]: OK('3.12'),
     ...overrides,
   };
   return (cmd, args) => {
@@ -119,6 +123,7 @@ const reachAll = async (): Promise<{ ok: boolean, ms: number }> => ({ ok: true, 
 const reachNone = async (): Promise<{ ok: boolean, ms: number }> => ({ ok: false, ms: 3000 });
 const BIG = { block: 1, warn: 2 };
 const CHROMIUM = BRAND.setupDownloads.includes('chromium');
+const PYTHON = BRAND.prereqs?.includes('python') === true;
 
 function project(opts: { yaml?: string, steps?: Record<string, string>, env?: string } = {}): string {
   const root = repo();
@@ -139,13 +144,31 @@ describe('checks for bun setup', () => {
   test('a ready machine is clear, every group present, the downloads reachable', async () => {
     const r = await runSetupPreflight({ cwd: project(), lang: 'en', run: machine(), reach: reachAll, env: { HOME: '/nowhere', INSTALL_SKIP_PLAYWRIGHT: '1' }, disk: BIG });
     // Chromium is a row only for a product that downloads it (BRAND.setupDownloads).
-    expect(r.checks.map(c => c.id)).toEqual(['bun', 'node', 'git', 'acli', 'engram', 'gh', 'agent-claude', 'agent-codex', 'agent-opencode', 'repo', 'disk', 'net-npm', 'net-github', ...(CHROMIUM ? ['net-playwright'] : [])]);
+    expect(r.checks.map(c => c.id)).toEqual(['bun', 'node', 'git', 'acli', 'engram', 'gh', ...(PYTHON ? ['python'] : []), 'agent-claude', 'agent-codex', 'agent-opencode', 'agent-pi', 'repo', 'disk', 'net-npm', 'net-github', ...(CHROMIUM ? ['net-playwright'] : [])]);
     expect(r.verdict).toBe('clear');
     expect(new Set(r.checks.map(c => c.group))).toEqual(new Set(['Tools', 'AI agents', 'This machine', 'Network']));
   });
 
+  // Python with Pillow serves only the evidence pages: never a warning, never a block.
+  test('a missing Python, an old one or a missing Pillow is information, with the fix', () => {
+    const none = pythonCheck(machine(['python3', 'python']), 'darwin', 'en');
+    expect(none).toMatchObject({ id: 'python', state: 'info', neededBy: 'evidence', fix: 'python3 -m pip install pillow' });
+    expect(none.msg).toContain('Homebrew Python: brew install pillow');
+    const old = pythonCheck(machine([], { [`python3 ${PY_PROBE}`]: OK('3.8') }), 'linux', 'en');
+    expect(old).toMatchObject({ state: 'info', value: '3.8' });
+    const noPillow = pythonCheck(machine([], { [`python3 ${PY_PROBE}`]: { ...FAIL, stdout: '3.12' } }), 'linux', 'en');
+    expect(noPillow).toMatchObject({ state: 'info', value: '3.12, no Pillow', fix: 'python3 -m pip install pillow' });
+    expect(pythonCheck(machine(), 'linux', 'en')).toMatchObject({ state: 'ok', value: '3.12' });
+  });
+
+  test('on Windows the py launcher is tried first, and python3 is not required', () => {
+    const r = pythonCheck(machine(['python3'], { [`py -3 ${PY_PROBE}`]: OK('3.11') }), 'win32', 'es');
+    expect(r).toMatchObject({ state: 'ok', value: '3.11' });
+    expect(pythonCheck(machine(['python3', 'python', 'py']), 'win32', 'en')).toMatchObject({ state: 'info', fix: 'py -m pip install pillow' });
+  });
+
   test('no AI agent and no Node block; nothing starts', async () => {
-    const r = await runSetupPreflight({ cwd: project(), lang: 'es', run: machine(['claude', 'codex', 'opencode', 'node']), reach: reachAll, env: { HOME: '/nowhere', INSTALL_SKIP_PLAYWRIGHT: '1' }, disk: BIG });
+    const r = await runSetupPreflight({ cwd: project(), lang: 'es', run: machine(['claude', 'codex', 'opencode', 'pi', 'node']), reach: reachAll, env: { HOME: '/nowhere', INSTALL_SKIP_PLAYWRIGHT: '1' }, disk: BIG });
     expect(r.verdict).toBe('block');
     expect(r.checks.find(c => c.id === 'harness')).toMatchObject({ state: 'block' });
     expect(r.checks.find(c => c.id === 'node')).toMatchObject({ state: 'block' });

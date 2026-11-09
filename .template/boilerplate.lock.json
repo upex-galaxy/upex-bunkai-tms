@@ -3,34 +3,36 @@
   "templateRepo": "upex-galaxy/agentic-dev-boilerplate",
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
-    "cli": "f9cae5618f42706c91a6f77fc1c895062a2c580e",
+    "cli": "5f25de922f1bb1e340957a460166a398d1e92059",
     "claude": "babed50e23cf3db1d2b4dac69eb784fbba3979d7",
     "claude-config": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
-    "agents": "d6da55a91440de29e93f6f75652b99429c29853f",
+    "agents": "5f25de922f1bb1e340957a460166a398d1e92059",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "f9cae5618f42706c91a6f77fc1c895062a2c580e",
-    "docs": "d6da55a91440de29e93f6f75652b99429c29853f",
+    "scripts": "5f25de922f1bb1e340957a460166a398d1e92059",
+    "docs": "5f25de922f1bb1e340957a460166a398d1e92059",
     "context": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
     "context-engineering": "2815ca05d87c4d4eca75fb63f3792039644eb137",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "d6da55a91440de29e93f6f75652b99429c29853f",
-    "husky": "d6da55a91440de29e93f6f75652b99429c29853f",
+    "husky": "5f25de922f1bb1e340957a460166a398d1e92059",
     "tooling": "d6da55a91440de29e93f6f75652b99429c29853f",
     "env-template": "2815ca05d87c4d4eca75fb63f3792039644eb137",
-    "agent-compatibility": "d6da55a91440de29e93f6f75652b99429c29853f",
+    "agent-compatibility": "5f25de922f1bb1e340957a460166a398d1e92059",
     "commands": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
     "agent-root-config": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
     "codex-config": "d6da55a91440de29e93f6f75652b99429c29853f",
-    "instructions": "f9cae5618f42706c91a6f77fc1c895062a2c580e",
+    "instructions": "5f25de922f1bb1e340957a460166a398d1e92059",
     "env-schema": "d6da55a91440de29e93f6f75652b99429c29853f",
     "worktree-include": "d6da55a91440de29e93f6f75652b99429c29853f",
     "orca-config": "d6da55a91440de29e93f6f75652b99429c29853f",
-    "playwright-cli-config": "d6da55a91440de29e93f6f75652b99429c29853f"
+    "playwright-cli-config": "d6da55a91440de29e93f6f75652b99429c29853f",
+    "pi-adapter": "5f25de922f1bb1e340957a460166a398d1e92059",
+    "pi-config": "5f25de922f1bb1e340957a460166a398d1e92059"
   },
   "syncedComponents": [],
   "ignoreFileSync": {
     ".gitignore": {
-      "lastSyncedSha": "4e23adf7b59cbcd848bfad7d1d3c8b1d5a984f5b",
+      "lastSyncedSha": "a6f82db0a1f0fb72017024f5e5a60c1a739d9c7e",
       "appendedLines": [
         "dbhub.toml",
         ".claude/scheduled_tasks.lock",
@@ -53,11 +55,20 @@
         "storage-state-*.json",
         ".playwright/profiles/",
         ".envrc",
-        ".template/doctrine-ledger.json"
+        ".template/doctrine-ledger.json",
+        ".pi/*",
+        "!.pi/mcp.json",
+        "!.pi/settings.json",
+        "!.pi/SYSTEM.md",
+        "!.pi/APPEND_SYSTEM.md",
+        "!.pi/extensions/",
+        "!.pi/skills/",
+        "!.pi/prompts/",
+        "!.pi/themes/"
       ]
     },
     ".prettierignore": {
-      "lastSyncedSha": "a632f78365980a31c5e60bfbbc0c2d8d8fa56ebf",
+      "lastSyncedSha": "49fb525dbcaebef1be9cb9a1923163d34c9be034",
       "appendedLines": [
         ".claude/worktrees/",
         "api/openapi*",
@@ -66,12 +77,19 @@
         ".playwright-mcp/",
         "packages/decks/",
         ".scratch/",
-        ".session/"
+        ".session/",
+        ".pi/*",
+        "!.pi/mcp.json",
+        "!.pi/settings.json",
+        "!.pi/extensions/",
+        "!.pi/skills/",
+        "!.pi/prompts/",
+        "!.pi/themes/"
       ]
     }
   },
   "cliVersion": "8.8",
-  "lastSyncedAt": "2026-10-31T05:19:27.850Z",
+  "lastSyncedAt": "2026-11-09T01:40:14.682Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {

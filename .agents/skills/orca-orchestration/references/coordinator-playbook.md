@@ -74,7 +74,7 @@ bun run worktree:provision <wt>             # references/provisioning.md
 
 # 4 · LAUNCH natively → supervised, with the preamble injected by the runtime
 orca orchestration worker-start --task <task_id> --worktree <current|id:<repoId>::<path>> \
-  --agent <claude|codex|opencode> --model <full-model-id> --effort <level> --json </dev/null
+  --agent <claude|codex|opencode|pi> --model <full-model-id> --effort <level> --json </dev/null
 #     Model and effort: the worker tier's {{DEFAULT_MODEL}} / {{DEFAULT_EFFORT}}, unless an
 #       `orchestration.model_overrides` entry for tier worker matches the brief's topics, or the user
 #       said otherwise (the user always wins). A full model id, never an alias (G29).
@@ -111,10 +111,13 @@ orca terminal read --terminal <handle> --screen --json </dev/null
 #     fix them (orca-machine-setup.md §3.1) and relaunch BEFORE dispatching any work; record the
 #     verified mode in the roster's `Mode` column. A worker in `auto` stalls on a prompt nobody sees
 #     after 3 consecutive or 20 total classifier blocks; an edits-only mode stalls on its first Bash.
-#     Also the SESSION NAME in the status bar. Claude Code: the identity hook composed it from the
-#     prompt token plus the handle; the bar reads `<label>--<handle>`. Codex, OpenCode v2.2 and Pi
-#     have no hook that can: drive the TUI with `terminal send --enter --text '/rename <label>--<handle>'`
-#     (Pi: `/name <label>--<handle>`) once the screen shows it ready, then read the bar back.
+#     Also the SESSION NAME in the status bar. Claude Code and Pi: the identity hook or the adapter
+#     composed it from the prompt token plus the handle; the bar reads `<label>--<handle>`. Codex and
+#     OpenCode v2.2 have no hook that can: drive the TUI with `terminal send --enter --text '/rename <label>--<handle>'`
+#     once the screen shows it ready, then read the bar back.
+#     A Pi worker also starts on the model in its OWN config: `--model` and `--effort`, and so
+#     `default_model` and `model_overrides`, never reach it, and `worker-read` reports `model: null`.
+#     Read the model on its status bar and, when it differs, `terminal send --enter --text '/model <provider/id>'`.
 #     OpenCode v1 (`/rename` opens a dialog, no argument) or any harness that cannot be renamed: the
 #     roster `Name` column is the only record of the name, mark it `(roster only)`, give the worker
 #     that name for its `Session:` trailer, and say so once in the run report. A worker cannot run
@@ -174,7 +177,7 @@ about each:
 
 | Given up | Consequence | Compensation |
 |---|---|---|
-| the session-name flag, and any say over the tab title | the roster, the board card and the `Session:` commit trailer all key off the name, and the runtime titles the tab `worker-<task id>` (G71) | the prompt opens with `/<workflow-skill> <label> fleet worker` and the identity hook names a Claude Code session `<label>--<handle>` from it plus `ORCA_TERMINAL_HANDLE`; the conductor sends the rename verb to Codex, OpenCode v2.2 and Pi (step 5); the worker renames its own tab first and the conductor re-issues it (step 4b, §5). `references/session-identity.md` §2b |
+| the session-name flag, and any say over the tab title | the roster, the board card and the `Session:` commit trailer all key off the name, and the runtime titles the tab `worker-<task id>` (G71) | the prompt opens with `/<workflow-skill> <label> fleet worker` and the identity hook (the adapter on Pi) names the session `<label>--<handle>` from it plus `ORCA_TERMINAL_HANDLE`; the conductor sends the rename verb to Codex and OpenCode v2.2 (step 5); the worker renames its own tab first and the conductor re-issues it (step 4b, §5). `references/session-identity.md` §2b |
 | environment variables in the launch line | a worker cannot be marked as a fleet worker by an exported variable | the brief and the prompt token carry it. `sprint-development` detects worker mode from them, not from the environment |
 | the prompt in the launch itself | the worker starts idle at its prompt | step 6: `terminal send` immediately after readiness. Until it lands, the worker has nothing to do |
 | a launch line that also loads the env file | MCP servers on every host load the worktree's `.env` themselves through the `.env` loader (a `.env` change needs a session restart); a CLI inside any worker depends on the MACHINE having it logged in, and nothing reports either gap | step 5: verify credentials on screen BEFORE dispatching work (G45) |

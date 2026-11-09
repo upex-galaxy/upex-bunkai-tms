@@ -190,3 +190,14 @@ storage-state-*.json
 .agents/skills/seo/
 .agents/skills/react-hook-form/
 .agents/skills/zod/
+
+# ----- 2026-11-09 (sync) -----
+.pi/*
+!.pi/mcp.json
+!.pi/settings.json
+!.pi/SYSTEM.md
+!.pi/APPEND_SYSTEM.md
+!.pi/extensions/
+!.pi/skills/
+!.pi/prompts/
+!.pi/themes/

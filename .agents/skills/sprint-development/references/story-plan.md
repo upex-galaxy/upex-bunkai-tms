@@ -43,7 +43,7 @@ Lo que se publica es solo el cuerpo entre los marcadores `plan-body`. Todo lo de
 - **UI.** Aplica Critical Rule #14 (`AGENTS.md`): la UI viva es la referencia, el mockup es inspiración; inspeccioná y reutilizá los componentes existentes y nunca inventes UI. La personalidad visual (bordes, sombras, espaciado, hover) y la paleta ya están congeladas en `DESIGN.md`: el plan no las repite. Un diagrama ASCII de layout entra solo cuando no hay mockup que citar.
 - **Copy real.** Los textos salen del vocabulario de `.context/business/domain-glossary.md` y del PRD (`executive-summary.md`, `user-personas.md`), con el tono del producto; sin PRD, del glosario y del copy que la UI viva ya usa. Nada de frases genéricas ("Bienvenido a nuestra plataforma", "La mejor solución para...").
 - **Base de datos.** El plan describe los cambios de schema; no incluye SQL estático. El cambio se aplica durante la implementación por el DB MCP según `{{stack.database.migrations_tool}}`, después de leer el historial de migraciones por el mismo MCP (`agentic-dev-core/references/db-change-doctrine.md`); una story sin cambios de base de datos no necesita la capability `db`. Sin MCP en una story que sí la necesita: STOP per `agentic-dev-core/references/mcp-capabilities.md` §4.
-- **Steps.** Específicos y ejecutables, cada uno con su testing y su estimación; la suma coincide con los story points de `story.md`. El último step integra y corre el escenario E2E completo.
+- **Steps.** Específicos y ejecutables, cada uno con su testing; sin estimación de tiempo ni de puntos (el esfuerzo es el AI Effort que QA fijó en `story.md`). El último step integra y corre el escenario E2E completo.
 - **Lo que no va en el cuerpo.** El Definition of Done genérico vale para toda story y lo verifican Stage 2-4 de `/sprint-development`; el plan lista solo los checks propios de esta story. Genérico: código según el plan; todos los AC pasando; tipos del backend sin type errors; personalidad de `DESIGN.md` y copy del dominio aplicados; middleware actualizado si hay rutas privadas nuevas; tests unitarios (cobertura según `unit-testing/references/test-coverage.md`: metas por tipo de código, piso y no meta), de integración y E2E (los TC del ATP) pasando; lint, build y TypeScript limpios; code review aprobado; deploy a staging con smoke test en desktop y mobile. Lo que ya dice el Feature Implementation Plan del Epic se enlaza, no se repite.
 - **Detalle de trabajo.** Specs largas de componentes, payloads de API o notas de schema que solo sirven para implementar van a `.session/sprint-development/<STORY_KEY>/notes.md` (notas de trabajo locales; esta skill nunca escribe un `plan.md` bajo `.session/`, ver `agentic-dev-core/references/session-management.md` §13); nada que el revisor necesite puede vivir solo ahí.
 - **Forma.** Una sección que no aplica se omite, no se publica vacía. Listas cortas antes que tablas o paneles: en ADF una tabla cuesta varias veces lo que cuesta la misma información en lista, así que una tabla entra solo cuando reemplaza varias listas paralelas, y un panel `[!WARNING]` solo para un riesgo que bloquea (`../../acli/references/adf-authoring-style.md`).
@@ -105,9 +105,9 @@ Lo que se publica es solo el cuerpo entre los marcadores `plan-body`. Todo lo de
 
 - **[Riesgo]** (impact H/M/L): [mitigación]
 
-## Estimate
+## AI Effort
 
-**Total:** [tiempo] · **Story points:** [N] (coincide con story.md)
+**AI Effort:** [Low | Medium | High] (lo fija QA en shift-left y se lee de `story.md`; el plan no lo re-estima)
 
 ## Story-specific Done
 

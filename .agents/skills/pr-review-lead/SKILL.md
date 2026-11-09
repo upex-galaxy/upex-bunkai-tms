@@ -2,7 +2,7 @@
 name: pr-review-lead
 description: "Acts as a Tech Lead reviewing a teammate's pull request against this repo's development doctrine (or the target repo's own doctrine, if it has one): TypeScript patterns, scaffold layer boundaries, UI fidelity (Critical Rule #14), ADRs, security and RPC authorization, the sprint-development review checklist. Every finding is grounded in a concrete doctrine citation or code location, never a guess. Use whenever the user wants to review, audit, or give feedback on a colleague's PR, whether it lives in THIS repo or an external repo the user points at (owner/repo#PR via gh). Triggers on: revisa este PR, review this PR, revisá este pull request, dame feedback de este PR, actúa de tech lead, haz de tech lead reviewer, audita este pull request, pr-review-lead, revisión de PR externo, review external repo PR, dale feedback a este trabajo, evalúa este PR contra nuestros estándares, is this PR any good, cómo quedó este PR. Always runs a strictness preflight first (Flexible / Standard / Strict) before analyzing anything, and never posts a comment to GitHub without the user's explicit final OK. Do NOT use for: the reviewer pass inside a story's own pipeline (that is `/sprint-development` Stage 3, `references/review-pr.md`), reviewing your own uncommitted working-tree diff before opening a PR (the harness's code-review flow), or opening / merging the PR itself (`/git-flow-master`)."
 license: MIT
-compatibility: [claude-code, codex, opencode]
+compatibility: [claude-code, codex, opencode, pi]
 metadata:
   kind: workflow
 ---

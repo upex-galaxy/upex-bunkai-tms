@@ -2,7 +2,7 @@
 name: project-bootstrap
 description: 'Scaffolds the technical infrastructure of a new project: backend (DB schemas, API base, types, error handling), frontend (design system, project skeleton, routing), and incremental features (OpenAPI/Scalar UI, API routes + middleware, bearer-token auth, env vars + URL builders, Supabase types generation). The base phases (backend + frontend) are GREENFIELD-ONLY: on a repo that already holds an application (`bun run bootstrap:guard`: adoption lock, app `package.json`, app files) they refuse and route to `/project-adoption`; the add-on phases stay available and read the `stack:` block. Triggers on: `scaffolding del proyecto`, `setup del backend`, `inicializar el frontend`, `configurar OpenAPI`, `API routes setup`, `bearer token authentication`, `env vars setup`, `supabase types generation`, `infrastructure setup`, `backend skeleton`, `frontend boilerplate`. Do NOT use for: product definition (use `/project-foundation`), backlog seeding (use `/product-management`), per-story development (use `/sprint-development`), unit testing (use `/unit-testing`), test framework setup (out of scope), teaching the agentic layer an existing app (use `/project-adoption`), or recording the design identity of an existing app (use `/design-system extract`).'
 license: MIT
-compatibility: [claude-code, codex, opencode]
+compatibility: [claude-code, codex, opencode, pi]
 phase: foundation
 complementary_categories:
   - frontend-framework

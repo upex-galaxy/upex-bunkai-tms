@@ -1,6 +1,9 @@
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
-import { legacyCredentialKeys, repoCheckRunsAppWideLegs, worktreeSetupAction } from './doctor.ts';
+import { legacyCredentialKeys, piTrustStatus, repoCheckRunsAppWideLegs, worktreeSetupAction } from './doctor.ts';
 
 describe('worktreeSetupAction', () => {
   test('a provisioned worktree needs nothing', () => {
@@ -38,5 +41,42 @@ describe('repoCheckRunsAppWideLegs', () => {
     expect(repoCheckRunsAppWideLegs('bun scripts/tooling-check.ts repo && bun run vars:check')).toBe(false);
     expect(repoCheckRunsAppWideLegs(undefined)).toBe(false);
     expect(repoCheckRunsAppWideLegs('npm run ci')).toBe(false);
+  });
+});
+
+describe('piTrustStatus', () => {
+  const workspace = (trust?: unknown, settings?: unknown): { root: string, env: Record<string, string> } => {
+    const base = realpathSync(mkdtempSync(join(tmpdir(), 'pi-trust-')));
+    const root = join(base, 'group', 'repo');
+    const agentDir = join(base, 'agent');
+    mkdirSync(root, { recursive: true });
+    mkdirSync(agentDir, { recursive: true });
+    if (trust !== undefined) { writeFileSync(join(agentDir, 'trust.json'), JSON.stringify(typeof trust === 'function' ? trust(base) : trust)); }
+    if (settings !== undefined) { writeFileSync(join(agentDir, 'settings.json'), JSON.stringify(settings)); }
+    return { root, env: { PI_CODING_AGENT_DIR: agentDir } };
+  };
+
+  test('the default on a fresh machine is to ask', () => {
+    const { root, env } = workspace();
+    expect(piTrustStatus(root, env)).toBe('ask');
+  });
+
+  test('defaultProjectTrust decides when nothing is saved', () => {
+    const always = workspace(undefined, { defaultProjectTrust: 'always' });
+    expect(piTrustStatus(always.root, always.env)).toBe('trusted');
+    const never = workspace(undefined, { defaultProjectTrust: 'never' });
+    expect(piTrustStatus(never.root, never.env)).toBe('declined');
+  });
+
+  test('the closest saved decision wins, a parent counts, and it beats the default', () => {
+    const parent = workspace((base: string) => ({ [join(base, 'group')]: true }));
+    expect(piTrustStatus(parent.root, parent.env)).toBe('trusted');
+    const closer = workspace((base: string) => ({ [join(base, 'group')]: true, [join(base, 'group', 'repo')]: false }), { defaultProjectTrust: 'always' });
+    expect(piTrustStatus(closer.root, closer.env)).toBe('declined');
+  });
+
+  test('no agent directory at all is unknown', () => {
+    const { root } = workspace();
+    expect(piTrustStatus(root, { PI_CODING_AGENT_DIR: join(root, 'nowhere') })).toBe('unknown');
   });
 });

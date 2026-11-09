@@ -16,7 +16,7 @@ gap. It disguises itself as something else, and the worker then debugs the wrong
 | `.env` (and `.env.local`) | ignored | **silent on every host** (Critical Rule #9): every MCP server that needs `.env` values starts through the `.env` loader, which reads THIS checkout's `.env`; with no file the server starts without its credential and dies on its first authenticated call (401/403), not at parse time. Any script needing credentials fails on missing variables | copied from the primary checkout, mode `0600`. On the SUPERVISED path the file existing is not enough — see §1b |
 | `.vercel/` (the `vercel link` output) | ignored | loud with the wrong message: the Vercel CLI asks to link a project, and `/vercel-cli` deploy verification cannot find the project id | copied from the primary checkout |
 | `.claude/settings.local.json`, `.mcp.local.json`, `opencode.local.jsonc` | ignored | quiet: per-developer permissions and MCP overrides are missing, so the worker prompts for permissions nobody answers or runs without an override the owner relies on | copied from the primary checkout, mode `0600` |
-| the `.claude/skills` alias → `.agents/skills` | ignored | loud, on Claude Code only: `Skill` answers `Unknown skill`. OpenCode and Codex read `.agents/skills/` natively and do not need it | `bun run agents:compat` inside the worktree (it creates a POSIX symlink or a Windows junction) |
+| the `.claude/skills` alias → `.agents/skills` | ignored | loud, on Claude Code only: `Skill` answers `Unknown skill`. OpenCode, Codex and Pi read `.agents/skills/` natively and do not need it | `bun run agents:compat` inside the worktree (it creates a POSIX symlink or a Windows junction) |
 | the T3 community skills `cli/install.ts` installs | ignored by explicit `.gitignore` entries | loud, at load time: the skill simply is not there (gotcha G41) | copy the directories from the primary checkout, or re-run the installer |
 | `node_modules/` and the `.husky/_` hook shims | ignored | loud **with the wrong message**: `Cannot find module`, which reads as a broken import. Without `.husky/_` git hooks do not run at all, so a worker's commit skips every gate and succeeds | `bun install --frozen-lockfile` |
 | `.context/PBI/` (the Jira cache) | ignored | **silent**: the worker cannot see the synced story, its acceptance criteria or its implementation plan, and quietly works from the ticket title alone | `bun run context:hydrate`, or a scoped per-story sync named in the brief (`bun run jira:sync-issues get <KEY> --include-comments`) |
@@ -37,7 +37,7 @@ either way. A worker gets credentials only from processes that load their own co
 
 - **The MCP `.env` loader, on every host.** Each MCP server that needs `.env` values starts through
   `bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter <its vars> -- <server>`
-  in `.mcp.json`, `opencode.jsonc` and `.codex/config.toml` (`.agents/instructions/agent-harnesses.md`
+  in `.mcp.json`, `opencode.jsonc`, `.codex/config.toml` and `.pi/mcp.json` (`.agents/instructions/agent-harnesses.md`
   §5.5), so it reads the worktree's `.env` (or the secret manager the schema names) at spawn time and
   gets only its own variables. This is the route by which any worker's MCP servers get their
   credentials, with no shell involved. Provisioning derives nothing from the copied `.env` and never

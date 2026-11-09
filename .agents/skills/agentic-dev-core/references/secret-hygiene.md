@@ -10,7 +10,7 @@ A secret VALUE that enters the model context also enters the provider request an
 |---|---|---|
 | `curl -sS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" ...` | no | the command text carries the NAME; the shell expands it inside the child process |
 | `printf '%s' "$ATLASSIAN_API_TOKEN" \| <cli> login --token-stdin` (the tracker login: `[ISSUE_TRACKER_TOOL] Authenticate`, owned by `/acli`) | no | the value goes into a pipe, never to the output |
-| `--filter SUPABASE_ACCESS_TOKEN` on the `.env` loader of an MCP server in `.mcp.json`, `opencode.jsonc` or `.codex/config.toml` | no | the loader resolves it in the server's own process, outside the transcript |
+| `--filter SUPABASE_ACCESS_TOKEN` on the `.env` loader of an MCP server in `.mcp.json`, `opencode.jsonc`, `.codex/config.toml` or `.pi/mcp.json` | no | the loader resolves it in the server's own process, outside the transcript |
 | `Read(.env)`, `cat .env`, `grep KEY .env`, `awk 1 .env` | **yes** | the file content becomes tool output |
 | `printenv`, `env`, `echo $SECRET`, `set -x`, `curl -v` | **yes** | the value (or the `Authorization:` header) is printed |
 | `varlock printenv`, `varlock reveal`, `varlock load` without `--agent` | **yes** | these print raw values by design |
@@ -79,6 +79,7 @@ The AI never asks the human to paste a secret into the chat to "save it for them
 | Claude Code | `.claude/settings.json` → `permissions.deny`: `Read(...)` on the paths of §2 (a `Read` deny also refuses `cat`, `head`, `grep`, `awk` and writes or moves on that path) plus `Bash(printenv*)`, `Bash(env)`, `Bash(varlock printenv*)`, `Bash(varlock reveal*)` and their `bunx` forms. Deny applies in every permission mode, `bypassPermissions` included |
 | OpenCode | `opencode.jsonc` → `permission.read` denies the same paths; `permission.bash` denies `cat` of them plus the same printing commands, placed after the broad allows (last match wins) |
 | Codex | `[shell_environment_policy] inherit = "core"` in `.codex/config.toml`: the shell Codex runs does not inherit the session's secrets in the first place, so `printenv` has nothing to show. Its MCP servers get their values through the per-server `.env` loader, outside the shell |
+| Pi | `tool_call` block in `.pi/extensions/agentic-dev.js`: direct `read` and `grep` of the `.env` and `.envrc` families, `.auth/**` and `.claude/settings.local.json` (path and case variants too), a `grep` glob naming one, plus Claude's secret `Bash` entries; lines from those files are also dropped from `grep` output, because a wildcard glob overrides `.gitignore`. A test derives its cases from `.claude/settings.json`. Pi has no deny config of its own, so this is a seatbelt: `.env.example` and the schemas stay readable, shell variants such as `cat .env` pass, `pi-subagents` background children are untested, and the block exists only where the adapter loads (an untrusted session, or a print or RPC session under `ask`, has none) |
 
 Two limits, both by design. The deny rules match command PATTERNS, so a subprocess that opens a file itself (`node -e`, a script) is not caught; and `source <file>` loads values into the shell without printing them, so it is not caught either (and needs no catching). The rule text is what binds; the deny list is the net under it.
 

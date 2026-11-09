@@ -2,7 +2,7 @@
 id: skills-and-mcps
 title: "Skills, modes and MCPs registry"
 load_when: "choosing, invoking or editing a skill or one of its modes, adding a skill, or deciding which MCP capability provides a tool"
-triggers: ["\\bskills?\\b", "\\bmodes?\\b", "\\bmodo\\b", "(?<!\\.)\\bmcps?\\b", "context7", "web search", "\\bexa\\b", "tavily", "n8n", "REGISTRY\\.md"]
+triggers: ["\\bskills?\\b", "\\bmodes?\\b", "\\bmodo\\b", "(?<![./])\\bmcps?\\b", "context7", "web search", "\\bexa\\b", "tavily", "n8n", "REGISTRY\\.md"]
 paths: [".agents/skills/"]
 ---
 
