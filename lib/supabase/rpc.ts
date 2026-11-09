@@ -409,6 +409,40 @@ export async function createRun(supabase: Client, args: CreateRunArgs) {
   });
 }
 
+// BK-222 — submit a finished automated Run in one call (0121_automated_run_submission.sql).
+// Unlike `createRun`, pass the CALLER's impersonating client (`principal.db`), NOT
+// `createAdminClient()`: the SECURITY DEFINER RPC binds `auth.uid()` to
+// `p_actor_user_id` (ADR-0012), and the grant is `authenticated`/`service_role`.
+// The RPC also binds `p_token_id` to the actor (the token's owner, active,
+// run:execute, workspace-bound) and answers 404 for a missing or foreign Test.
+// Returns the composed Run json plus `replayed` (true = the per-workspace 24h
+// idempotency key hit an existing Run -> HTTP 200; false = created -> 201).
+export interface SubmitAutomatedRunArgs {
+  actorUserId: string
+  tokenId: string
+  testId: string
+  environmentName: string
+  verdict: string
+  durationSeconds: number
+  steps: { position: number, result: string }[]
+  evidenceUrls: string[]
+  idempotencyKey?: string
+}
+
+export async function submitAutomatedRun(supabase: Client, args: SubmitAutomatedRunArgs) {
+  return supabase.rpc('bunkai_submit_automated_run', {
+    p_actor_user_id: args.actorUserId,
+    p_token_id: args.tokenId,
+    p_test_id: args.testId,
+    p_environment_name: args.environmentName,
+    p_verdict: args.verdict,
+    p_duration_seconds: args.durationSeconds,
+    p_steps: args.steps,
+    p_evidence_urls: args.evidenceUrls,
+    p_idempotency_key: args.idempotencyKey,
+  });
+}
+
 // BK-34 — read-only expanded Run view (header + ordered run_atcs + run_steps).
 // Same explicit-actor contract; the SECURITY DEFINER RPC resolves the Run's
 // workspace and gates the actor's active membership (any role). Powers the

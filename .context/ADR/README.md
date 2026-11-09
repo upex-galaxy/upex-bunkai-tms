@@ -84,6 +84,7 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0023](./ADR-0023-atc-archive-own-versus-cascade.md) | ATC archive: an ATC is archived on its own when its `archived_at` differs from both parents' stamps; restore under an archived parent hands the ATC to that parent's cascade state, so readers keep filtering only `atcs.archived_at` | Proposed | — | — |
 | [ADR-0024](./ADR-0024-module-restore-archive-batch.md) | Module restore: each Module archive stamps its own batch, a restore is the exact inverse of one archive, and it is refused by name when the live tree can no longer hold the result | Proposed | — | — |
 | [ADR-0025](./ADR-0025-workspace-jira-credentials-in-vault.md) | Workspace Jira credentials: one connection per workspace, token in Supabase Vault behind `service_role`-only RPCs, no env fallback, owner/admin only, token write-only; narrows BK-43 D6 | Accepted | — | — |
+| [ADR-0026](./ADR-0026-automated-run-submission-idempotency.md) | Automated run submission: optional body field `idempotency_key` (1..64, per workspace, 24h) as a domain key inside the RPC, instead of the ADR-0002 header; narrows ADR-0002 for this endpoint | Accepted | — | — |
 
 > ADR-0016 is taken by other in-flight work not yet present in this branch — confirmed by the Conductor 2026-08-28/30. BK-214 took the next free number, 0017.
 

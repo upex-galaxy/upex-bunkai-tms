@@ -6,6 +6,7 @@ import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
 import { RunModeBadge } from '@components/runs/RunModeBadge';
+import { RunSubmissionProvenance } from '@components/runs/RunSubmissionProvenance';
 import { StepEvidence } from '@components/runs/StepEvidence';
 import { Button, buttonVariants } from '@components/ui/button';
 import { compareHref, shouldShowCompareControl } from '@lib/runs/compare-view';
@@ -90,6 +91,10 @@ export interface RunDetail {
   abort_reason: string | null
   executor_mode: string
   executor_user_id: string | null
+  // BK-222 — present on every composed Run (bunkai_run_json since 0121); optional here so
+  // fixtures built before it keep type-checking. Null / empty for runs started by hand.
+  executor_name?: string | null
+  evidence_urls?: string[]
   test_title: string
   version: number
   started_at: string | null
@@ -768,6 +773,9 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
           </div>
         </div>
       )}
+
+      {/* BK-222 — reporter + evidence links of a submitted (automated) run. */}
+      <RunSubmissionProvenance executorName={view.executor_name} evidenceUrls={view.evidence_urls} />
 
       {/* BK-212 Slice 2 — linked-bug banner: the run context a bug
           notification's deep link lands on (AC1 "clicking it takes her to
