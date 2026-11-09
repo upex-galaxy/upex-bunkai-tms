@@ -5630,6 +5630,7 @@
               "$ref": "#/components/schemas/RunSubmissionStep"
             },
             "minItems": 1,
+            "maxItems": 500,
             "description": "One result for EVERY chain position 1..N, each reported once."
           },
           "evidence_urls": {

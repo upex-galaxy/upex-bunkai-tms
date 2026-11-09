@@ -17,7 +17,7 @@ const SubmissionBodySchema = z
     environment: z.string().min(1).max(60).describe('The NAME of one of the Test\'s Project environments (case-insensitive). An unknown name is rejected and never created.'),
     verdict: z.enum(['passed', 'failed']).describe('`passed` requires every step to be `pass`; `failed` requires at least one `fail` or `block`. Contradictions are rejected, never corrected.'),
     duration_seconds: z.number().int().min(0).max(86400).describe('Whole seconds. The run finishes at submission time and starts that many seconds earlier.'),
-    steps: z.array(SubmissionStepSchema).min(1).describe('One result for EVERY chain position 1..N, each reported once.'),
+    steps: z.array(SubmissionStepSchema).min(1).max(500).describe('One result for EVERY chain position 1..N, each reported once.'),
     evidence_urls: z.array(z.string().max(2048)).max(20).optional().describe('Optional http or https links, stored as links only (never fetched).'),
     idempotency_key: z
       .string()
