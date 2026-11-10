@@ -2532,6 +2532,7 @@ export interface Database {
           p_executor_mode: string
           p_start_token: string
           p_test_id: string
+          p_token_id?: string
         }
         Returns: Json
       }
@@ -2697,6 +2698,7 @@ export interface Database {
           p_run_id: string
           p_run_step_id: string
           p_status: string
+          p_via?: string
         }
         Returns: Json
       }
@@ -2927,6 +2929,10 @@ export interface Database {
       }
       bunkai_sweep_abandoned_runs: {
         Args: { p_threshold_hours?: number }
+        Returns: Json
+      }
+      bunkai_sweep_inactive_agent_runs: {
+        Args: { p_threshold_minutes?: number }
         Returns: Json
       }
       bunkai_sweep_rate_limit_hits: { Args: never, Returns: number }

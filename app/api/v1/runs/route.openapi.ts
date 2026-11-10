@@ -43,7 +43,7 @@ const RunSchema = z
     abort_reason: z.string().nullable().describe('BK-36 — the reason captured when the run was aborted; null for non-aborted runs.'),
     executor_mode: z.enum(['human', 'agent', 'ci']),
     executor_user_id: z.string().uuid().nullable(),
-    executor_name: z.string().nullable().describe('BK-222 — the name of the access token that submitted the run; null for runs started by hand.'),
+    executor_name: z.string().nullable().describe('BK-222 — the name of the access token that started or submitted the run (snapshotted, so renaming the token later does not change it); null for runs started from a browser session. BK-223 — the run header reads "Agent — <token name>" for an agent or ci run.'),
     evidence_urls: z.array(z.string()).describe('BK-222 — http(s) evidence links reported with a submitted run (at most 20); empty for other runs.'),
     test_title: z.string().describe('Snapshot of the Test title at start.'),
     version: z.number().int(),
@@ -65,13 +65,13 @@ const CreateBodySchema = z
     executor_mode: z
       .enum(['human', 'agent', 'ci'])
       .optional()
-      .describe('Cookie sessions are always `human` (any supplied value is ignored). Bearer (PAT) callers may declare `agent` / `ci`; defaults to `human`.'),
+      .describe('Cookie sessions are always `human` (any supplied value is ignored). Bearer (PAT) callers may declare `agent` / `ci`; defaults to `human` (a start without it is a human run: it keeps the 4 hour inactivity limit and no "Agent" attribution).'),
     start_token: z
       .string()
       .min(1)
       .max(200)
       .optional()
-      .describe('Domain idempotency token (distinct from the Idempotency-Key header). A same (test_id, start_token) within 24h returns the existing Run (HTTP 200). Omit it to mint a fresh one server-side (always a new Run).'),
+      .describe('Domain idempotency token (distinct from the Idempotency-Key header). A same (test_id, start_token) within 24h returns the existing Run (HTTP 200). Omit it to mint a fresh one server-side (always a new Run). Gotcha: the same start_token inside 24h returns the existing Run even when it was closed (finished, aborted, or stale-aborted by the inactivity timeout), so restarting after a stale abort needs a NEW start_token.'),
   })
   .openapi('RunCreateBody');
 
@@ -89,7 +89,7 @@ registry.registerPath({
   path: '/api/v1/runs',
   tags: ['Runs'],
   summary: 'Start a manual Run of a Test in a chosen environment',
-  description: 'Bearer `run:execute` (or cookie session). Transactional create via one SECURITY DEFINER RPC: snapshots the Test\'s ATC chain into run_atcs/run_steps (each `pending`), validates the environment belongs to the Test\'s Project and that the Test has ≥1 executable step, and enforces a 24h same-token idempotency window. Cookie sessions run as `human`; PAT callers may declare `agent` / `ci`. Returns 201 on create, 200 when the 24h same-token window returned an existing Run.',
+  description: 'Bearer `run:execute` (or cookie session). Transactional create via one SECURITY DEFINER RPC: snapshots the Test\'s ATC chain into run_atcs/run_steps (each `pending`), validates the environment belongs to the Test\'s Project and that the Test has ≥1 executable step, and enforces a 24h same-token idempotency window. Cookie sessions run as `human`; PAT callers may declare `agent` / `ci`. Returns 201 on create, 200 when the 24h same-token window returned an existing Run.\n\nStreaming a run (BK-223): (1) POST /api/v1/runs with `executor_mode` `agent` or `ci` and read each step `id` from the response; (2) POST /api/v1/runs/{id}/steps/{stepId}/mark once per step as it executes (any order, any subset; statuses `passed`, `failed`, `blocked`); (3) POST /api/v1/runs/{id}/finish with verdict `passed` or `failed` (steps never reported are recorded as `skipped`, the duration is derived from the run timestamps), or POST /api/v1/runs/{id}/abort with a reason if the runner dies. Humans watching the run detail see each step flip within seconds. An `agent` or `ci` run with no step report for 60 minutes is aborted automatically with a reason starting "Inactivity timeout" and its reported steps are kept; human runs keep the 4 hour limit. A closed run accepts nothing (409): start a new run with a new `start_token`.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdempotencyKeyParam],
   request: { body: { required: true, content: { 'application/json': { schema: CreateBodySchema } } } },

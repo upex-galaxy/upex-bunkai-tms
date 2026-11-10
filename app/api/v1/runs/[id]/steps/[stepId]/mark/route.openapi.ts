@@ -42,14 +42,23 @@ const MarkBodySchema = z
   })
   .openapi('RunStepMarkBody');
 
+const OptionalIdempotencyKeyParam = {
+  name: 'Idempotency-Key',
+  in: 'header' as const,
+  required: false,
+  schema: { type: 'string' as const, pattern: '^[\\w-]{8,128}$' },
+  description:
+    'Optional (BK-223). 8-128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the byte-identical original response; the same key with a different payload returns 409 `conflict`. Not needed for safe retries: an identical re-report is already idempotent without it.',
+};
+
 registry.registerPath({
   method: 'post',
   path: '/api/v1/runs/{id}/steps/{stepId}/mark',
   tags: ['Runs'],
   summary: 'Mark a run step passed, failed, or blocked',
-  description: 'Bearer `run:execute` (or cookie session); member+ write access. Transactional mark via one SECURITY DEFINER RPC: UPDATEs the step in place (no history table — the most recent result stands, so re-marking a step is always last-write-wins) and recomputes the parent ATC verdict from its full current sibling step set (fail overrides everything, else blocked overrides passed, else passed; the verdict stays "pending" while ANY sibling step is still pending). Only a `running` Run accepts new step results — an already-closed Run (passed/failed/aborted) returns 409. Returns the composed Run, so the caller reads the updated step and the recomputed ATC verdict off the same response abort/finish already use.',
+  description: 'Bearer `run:execute` (or cookie session); member+ write access. Transactional mark via one SECURITY DEFINER RPC: UPDATEs the step in place (no history table). A cookie session re-marking a step is last-write-wins (a person correcting a mark). A bearer (API) caller re-reporting a step that already has a result gets retry-safe semantics (BK-223): an identical status, note and evidence returns 200 with the recorded result and changes nothing (`executed_at` does not move, so a retry never extends the life of the run); a different status, note or evidence returns 409 (`conflict`, reason `run_step_conflict`) and the stored result stands. Steps are addressed by the step `id` returned when the run was started, in any order and any subset and recomputes the parent ATC verdict from its full current sibling step set (fail overrides everything, else blocked overrides passed, else passed; the verdict stays "pending" while ANY sibling step is still pending). Only a `running` Run accepts new step results — an already-closed Run (passed/failed/aborted) returns 409. Returns the composed Run, so the caller reads the updated step and the recomputed ATC verdict off the same response abort/finish already use.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-  parameters: [IdParam, StepIdParam],
+  parameters: [IdParam, StepIdParam, OptionalIdempotencyKeyParam],
   request: { body: { required: true, content: { 'application/json': { schema: MarkBodySchema } } } },
   responses: {
     200: { description: 'Step marked. Returns the updated Run with the step\'s new status/note/evidence_url/executed_at and the recomputed parent ATC verdict.', content: { 'application/json': { schema: z.object({ run: RunSchema }) } } },
@@ -57,7 +66,7 @@ registry.registerPath({
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Run/step the caller cannot see).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Run step not found — missing, or belonging to a different run than {id} (non-disclosing). A member of a workspace the Owner has deleted gets `not_found` with reason `workspace_deleted` instead (BK-1129).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'The run is already closed and cannot accept new step results (`conflict`, reason `run_step_marking_closed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'The run is already closed and cannot accept new step results (`conflict`, reason `run_step_marking_closed`, includes a run aborted by the 60 minute inactivity timeout), or a bearer caller re-reported the step with a different result (`conflict`, reason `run_step_conflict`), or the Idempotency-Key was reused with a different payload.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not an http:// or https:// URL (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

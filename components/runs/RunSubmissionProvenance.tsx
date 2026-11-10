@@ -9,11 +9,17 @@ import { isHttpUrl } from '@lib/runs/evidence-url';
 interface RunSubmissionProvenanceProps {
   executorName: string | null | undefined
   evidenceUrls: string[] | null | undefined
+  // BK-223 — an agent run reads "Agent — <token name>", a CI run "CI — <name>".
+  executorMode?: string | null
+  // BK-223 — a streamed run that has not reported a step yet.
+  waitingForFirstResult?: boolean
 }
 
-export function RunSubmissionProvenance({ executorName, evidenceUrls }: RunSubmissionProvenanceProps) {
+const MODE_PREFIX: Record<string, string> = { agent: 'Agent — ', ci: 'CI — ' };
+
+export function RunSubmissionProvenance({ executorName, evidenceUrls, executorMode, waitingForFirstResult }: RunSubmissionProvenanceProps) {
   const links = (evidenceUrls ?? []).filter(isHttpUrl);
-  if (!executorName && links.length === 0) {
+  if (!executorName && links.length === 0 && !waitingForFirstResult) {
     return null;
   }
   return (
@@ -28,9 +34,14 @@ export function RunSubmissionProvenance({ executorName, evidenceUrls }: RunSubmi
               Reported by
             </span>
             <span data-testid="runner-reported-by" className="min-w-0 break-words text-xs font-medium text-fg-1">
-              {executorName}
+              {`${MODE_PREFIX[executorMode ?? ''] ?? ''}${executorName}`}
             </span>
           </div>
+        )}
+        {waitingForFirstResult && (
+          <p data-testid="runner-waiting-first-result" className="text-xs text-fg-3">
+            Waiting for first result
+          </p>
         )}
         {links.length > 0 && (
           <div className="flex items-baseline gap-2">

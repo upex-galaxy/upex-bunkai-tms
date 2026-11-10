@@ -25,7 +25,7 @@ registry.registerPath({
   path: '/api/v1/runs/{id}/finish',
   tags: ['Runs'],
   summary: 'Finish an in-progress Run with a final verdict',
-  description: 'Bearer `run:execute` (or cookie session); member+ write access. Transactional finish via one SECURITY DEFINER RPC: closes the Run with the chosen final verdict `passed` or `failed` (sets `finished_at`, bumps `version`), marks every not-yet-executed step `skipped`, and preserves already-recorded step results. Only a `running` Run can be finished — an already-closed Run (passed/failed/aborted) returns 409. A human, an AI Test Agent, and a CI pipeline are handled identically. Finish is first-wins: a concurrent double-submit (or a race with abort) serializes on a row lock and the loser gets 409.',
+  description: 'Bearer `run:execute` (or cookie session); member+ write access. Transactional finish via one SECURITY DEFINER RPC: closes the Run with the chosen final verdict `passed` or `failed` (sets `finished_at`, bumps `version`), marks every not-yet-executed step `skipped`, and preserves already-recorded step results. The run duration is derived from `started_at` and `finished_at`; a caller-supplied duration is ignored (BK-223). Only a `running` Run can be finished — an already-closed Run (passed/failed/aborted) returns 409. A human, an AI Test Agent, and a CI pipeline are handled identically. Finish is first-wins: a concurrent double-submit (or a race with abort) serializes on a row lock and the loser gets 409.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   request: { body: { required: true, content: { 'application/json': { schema: FinishBodySchema } } } },

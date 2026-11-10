@@ -4935,7 +4935,7 @@
           },
           "executor_name": {
             "type": ["string", "null"],
-            "description": "BK-222 — the name of the access token that submitted the run; null for runs started by hand."
+            "description": "BK-222 — the name of the access token that started or submitted the run (snapshotted, so renaming the token later does not change it); null for runs started from a browser session. BK-223 — the run header reads \"Agent — <token name>\" for an agent or ci run."
           },
           "evidence_urls": {
             "type": "array",
@@ -5111,13 +5111,13 @@
           "executor_mode": {
             "type": "string",
             "enum": ["human", "agent", "ci"],
-            "description": "Cookie sessions are always `human` (any supplied value is ignored). Bearer (PAT) callers may declare `agent` / `ci`; defaults to `human`."
+            "description": "Cookie sessions are always `human` (any supplied value is ignored). Bearer (PAT) callers may declare `agent` / `ci`; defaults to `human` (a start without it is a human run: it keeps the 4 hour inactivity limit and no \"Agent\" attribution)."
           },
           "start_token": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Domain idempotency token (distinct from the Idempotency-Key header). A same (test_id, start_token) within 24h returns the existing Run (HTTP 200). Omit it to mint a fresh one server-side (always a new Run)."
+            "description": "Domain idempotency token (distinct from the Idempotency-Key header). A same (test_id, start_token) within 24h returns the existing Run (HTTP 200). Omit it to mint a fresh one server-side (always a new Run). Gotcha: the same start_token inside 24h returns the existing Run even when it was closed (finished, aborted, or stale-aborted by the inactivity timeout), so restarting after a stale abort needs a NEW start_token."
           }
         },
         "required": ["test_id", "environment_id"]
@@ -14063,7 +14063,7 @@
       "post": {
         "tags": ["Runs"],
         "summary": "Start a manual Run of a Test in a chosen environment",
-        "description": "Bearer `run:execute` (or cookie session). Transactional create via one SECURITY DEFINER RPC: snapshots the Test's ATC chain into run_atcs/run_steps (each `pending`), validates the environment belongs to the Test's Project and that the Test has ≥1 executable step, and enforces a 24h same-token idempotency window. Cookie sessions run as `human`; PAT callers may declare `agent` / `ci`. Returns 201 on create, 200 when the 24h same-token window returned an existing Run.",
+        "description": "Bearer `run:execute` (or cookie session). Transactional create via one SECURITY DEFINER RPC: snapshots the Test's ATC chain into run_atcs/run_steps (each `pending`), validates the environment belongs to the Test's Project and that the Test has ≥1 executable step, and enforces a 24h same-token idempotency window. Cookie sessions run as `human`; PAT callers may declare `agent` / `ci`. Returns 201 on create, 200 when the 24h same-token window returned an existing Run.\n\nStreaming a run (BK-223): (1) POST /api/v1/runs with `executor_mode` `agent` or `ci` and read each step `id` from the response; (2) POST /api/v1/runs/{id}/steps/{stepId}/mark once per step as it executes (any order, any subset; statuses `passed`, `failed`, `blocked`); (3) POST /api/v1/runs/{id}/finish with verdict `passed` or `failed` (steps never reported are recorded as `skipped`, the duration is derived from the run timestamps), or POST /api/v1/runs/{id}/abort with a reason if the runner dies. Humans watching the run detail see each step flip within seconds. An `agent` or `ci` run with no step report for 60 minutes is aborted automatically with a reason starting \"Inactivity timeout\" and its reported steps are kept; human runs keep the 4 hour limit. A closed run accepts nothing (409): start a new run with a new `start_token`.",
         "security": [
           {
             "cookieAuth": []
@@ -14640,7 +14640,7 @@
       "post": {
         "tags": ["Runs"],
         "summary": "Finish an in-progress Run with a final verdict",
-        "description": "Bearer `run:execute` (or cookie session); member+ write access. Transactional finish via one SECURITY DEFINER RPC: closes the Run with the chosen final verdict `passed` or `failed` (sets `finished_at`, bumps `version`), marks every not-yet-executed step `skipped`, and preserves already-recorded step results. Only a `running` Run can be finished — an already-closed Run (passed/failed/aborted) returns 409. A human, an AI Test Agent, and a CI pipeline are handled identically. Finish is first-wins: a concurrent double-submit (or a race with abort) serializes on a row lock and the loser gets 409.",
+        "description": "Bearer `run:execute` (or cookie session); member+ write access. Transactional finish via one SECURITY DEFINER RPC: closes the Run with the chosen final verdict `passed` or `failed` (sets `finished_at`, bumps `version`), marks every not-yet-executed step `skipped`, and preserves already-recorded step results. The run duration is derived from `started_at` and `finished_at`; a caller-supplied duration is ignored (BK-223). Only a `running` Run can be finished — an already-closed Run (passed/failed/aborted) returns 409. A human, an AI Test Agent, and a CI pipeline are handled identically. Finish is first-wins: a concurrent double-submit (or a race with abort) serializes on a row lock and the loser gets 409.",
         "security": [
           {
             "cookieAuth": []
@@ -15178,7 +15178,7 @@
       "post": {
         "tags": ["Runs"],
         "summary": "Mark a run step passed, failed, or blocked",
-        "description": "Bearer `run:execute` (or cookie session); member+ write access. Transactional mark via one SECURITY DEFINER RPC: UPDATEs the step in place (no history table — the most recent result stands, so re-marking a step is always last-write-wins) and recomputes the parent ATC verdict from its full current sibling step set (fail overrides everything, else blocked overrides passed, else passed; the verdict stays \"pending\" while ANY sibling step is still pending). Only a `running` Run accepts new step results — an already-closed Run (passed/failed/aborted) returns 409. Returns the composed Run, so the caller reads the updated step and the recomputed ATC verdict off the same response abort/finish already use.",
+        "description": "Bearer `run:execute` (or cookie session); member+ write access. Transactional mark via one SECURITY DEFINER RPC: UPDATEs the step in place (no history table). A cookie session re-marking a step is last-write-wins (a person correcting a mark). A bearer (API) caller re-reporting a step that already has a result gets retry-safe semantics (BK-223): an identical status, note and evidence returns 200 with the recorded result and changes nothing (`executed_at` does not move, so a retry never extends the life of the run); a different status, note or evidence returns 409 (`conflict`, reason `run_step_conflict`) and the stored result stands. Steps are addressed by the step `id` returned when the run was started, in any order and any subset and recomputes the parent ATC verdict from its full current sibling step set (fail overrides everything, else blocked overrides passed, else passed; the verdict stays \"pending\" while ANY sibling step is still pending). Only a `running` Run accepts new step results — an already-closed Run (passed/failed/aborted) returns 409. Returns the composed Run, so the caller reads the updated step and the recomputed ATC verdict off the same response abort/finish already use.",
         "security": [
           {
             "cookieAuth": []
@@ -15205,6 +15205,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Optional (BK-223). 8-128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the byte-identical original response; the same key with a different payload returns 409 `conflict`. Not needed for safe retries: an identical re-report is already idempotent without it."
           }
         ],
         "requestBody": {
@@ -15275,7 +15285,7 @@
             }
           },
           "409": {
-            "description": "The run is already closed and cannot accept new step results (`conflict`, reason `run_step_marking_closed`).",
+            "description": "The run is already closed and cannot accept new step results (`conflict`, reason `run_step_marking_closed`, includes a run aborted by the 60 minute inactivity timeout), or a bearer caller re-reported the step with a different result (`conflict`, reason `run_step_conflict`), or the Idempotency-Key was reused with a different payload.",
             "content": {
               "application/json": {
                 "schema": {

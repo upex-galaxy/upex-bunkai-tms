@@ -83,4 +83,11 @@ describe('mapRunRpcError', () => {
     expect(err.status).toBe(500);
     expect(err.message).toBe('boom');
   });
+
+  test('45239 → conflict 409 (BK-223 conflicting step re-report)', () => {
+    const err = capture({ code: '45239', message: 'run_step_conflict' });
+    expect(err.code).toBe('conflict');
+    expect(err.status).toBe(409);
+    expect(err.details).toEqual({ reason: 'run_step_conflict' });
+  });
 });

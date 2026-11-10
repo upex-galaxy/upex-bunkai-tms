@@ -96,3 +96,19 @@ three functions (AC-5.2): `bunkai_assign_bug`
 `pg_policies`, so they were checked by reading them back: `workspace_members`
 keeps only `workspace_members_select_self_or_admin`, and `anon` and
 `authenticated` hold no INSERT, UPDATE, DELETE or TRUNCATE on it.
+
+### 2026-11-10 — BK-223: 0122 re-apply collapsed to one row
+
+`0122_streamed_run_step_results.sql` was applied, then amended in the same PR
+(a guarded `revoke` of `qa_inspector_ro` on the three volatile DEFINER
+functions it re-creates: the 0085 default privileges re-granted them when the
+drop and create reset the ACLs) and re-applied whole, minting a second row with
+the same name. The first row (`20261110122024`, the pre-amendment content) was
+deleted; the surviving row (`20261110122052`) holds the final file content. The
+live `md5(prosrc)` equals the file's function body for all three functions:
+`bunkai_mark_run_step` `bfe6d79d941ddf7eaf91dc3285681ff9`, `bunkai_create_run`
+`77f8eeb10c026b4c7085a08f074b072c`, `bunkai_sweep_inactive_agent_runs`
+`dba79de57ba0f1242ceae65dbf8acb67`. The ACLs read back as `postgres`,
+`authenticated` and `service_role` (the sweep: `postgres` and `service_role`
+only) plus `qa_inspector_rw`, and the pg_cron job `bunkai-sweep-inactive-agent-runs`
+is scheduled at `*/5 * * * *`.

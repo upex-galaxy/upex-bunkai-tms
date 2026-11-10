@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { beginIdempotentRequest, discardIdempotencyResult, recordIdempotencyResult } from '@lib/api/idempotency';
 import { refuseIfRunWorkspaceDeleted } from '@lib/runs/deleted-workspace';
 import { mapRunRpcError } from '@lib/runs/errors';
 import { RunStepMarkBodySchema } from '@lib/runs/validation';
@@ -15,9 +16,12 @@ import { markRunStep } from '@lib/supabase/rpc';
 // and the parent run_atcs verdict recompute); this handler does parsing and
 // error mapping only — same division of labor as abort/finish.
 //
-// Idempotency: no Idempotency-Key header is required — re-marking the SAME
-// step is a deliberate UPDATE-in-place (Q7, AC6 last-write-wins), not a
-// first-wins close like abort/finish, so a double-submit is not a conflict.
+// Re-reporting a step (BK-223). A cookie session keeps BK-35's UPDATE-in-place
+// (a human correcting a mark is a normal manual action). A bearer caller gets
+// retry-safe semantics from the RPC: an identical re-report answers 200 with the
+// recorded result and writes nothing, a different one is a 409 conflict. The
+// optional `Idempotency-Key` header (ADR-0002 guard) additionally replays the
+// byte-identical original response; without it the RPC rule above still holds.
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { runId, stepId } = extractIds(request);
   if (!isUuid(runId) || !isUuid(stepId)) {
@@ -35,6 +39,22 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   // (handler.ts) is fine — parse (not safeParse) and let it throw.
   const parsed = RunStepMarkBodySchema.parse(payload);
 
+  // Optional header: only engage the guard when the caller sent one (the guard
+  // itself treats a missing header as an error, which suits the endpoints where
+  // it is required).
+  const idempotency = request.headers.has('idempotency-key')
+    ? await beginIdempotentRequest({
+        headers: request.headers,
+        userId: principal.userId,
+        endpoint: 'POST /api/v1/runs/{id}/steps/{stepId}/mark',
+        workspaceId: principal.workspaceId ?? null,
+        requestPayload: { run_id: runId, step_id: stepId, ...parsed },
+      })
+    : null;
+  if (idempotency?.isReplay) {
+    return jsonResponse(idempotency.snapshot, { status: idempotency.status });
+  }
+
   const supabase = createAdminClient();
   const { data, error } = await markRunStep(supabase, {
     actorUserId: principal.userId,
@@ -43,15 +63,29 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     status: parsed.status,
     note: parsed.note,
     evidenceUrl: parsed.evidence_url,
+    via: principal.via,
   });
   if (error) {
+    if (idempotency) {
+      await discardIdempotencyResult(idempotency.token);
+    }
     // BK-1129 — a member of a soft-deleted workspace gets a not-found that
     // says so (BK-512 N3); everyone else keeps the RPC's own refusal.
     await refuseIfRunWorkspaceDeleted(supabase, { error, runId, userId: principal.userId });
     mapRunRpcError(error);
   }
 
-  return jsonResponse({ run: data }, { status: 200 });
+  const responseBody = { run: data };
+  if (idempotency) {
+    // A snapshot-store failure must not fail a request whose write committed.
+    try {
+      await recordIdempotencyResult(idempotency.token, responseBody, 200);
+    }
+    catch (recordError) {
+      console.error('idempotency snapshot store failed for step mark', recordError);
+    }
+  }
+  return jsonResponse(responseBody, { status: 200 });
 }, { auth: 'required', requires: ['run:execute'] });
 
 // The route is /api/v1/runs/{id}/steps/{stepId}/mark — two dynamic segments.
