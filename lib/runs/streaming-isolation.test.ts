@@ -135,13 +135,13 @@ async function call(
   return { status: response.status, text, json: JSON.parse(text) as Envelope };
 }
 
-async function start(token: string, mode: 'agent' | 'ci' | 'human' | undefined, startToken: string) {
+async function start(token: string, mode: 'agent' | 'ci' | 'human' | undefined, startToken: string, attempt = 1) {
   return call(startRoute as never, '/api/v1/runs', token, {
     test_id: testId,
     environment_id: anchor.environmentId,
     ...(mode ? { executor_mode: mode } : {}),
     start_token: startToken,
-  }, { 'idempotency-key': `${PREFIX}-start-${startToken}`.slice(0, 120) });
+  }, { 'idempotency-key': `${PREFIX}-start-${startToken}-${attempt}`.slice(0, 120) });
 }
 
 async function mark(token: string, runId: string, stepId: string, body: unknown, headers: Record<string, string> = {}) {
@@ -432,7 +432,8 @@ describeOrSkip('BK-223 — streaming step results (mark conflict rule, executor_
     expect(lateFinish.status).toBe(409);
 
     // The same start_token inside 24 h replays the aborted run; a new one starts fresh.
-    const sameToken = await start(agentToken, 'agent', `${PREFIX}-sweep-agent`);
+    // (a fresh Idempotency-Key: the HTTP guard would otherwise replay the stale 201 snapshot)
+    const sameToken = await start(agentToken, 'agent', `${PREFIX}-sweep-agent`, 2);
     expect(sameToken.json.run!.id).toBe(idleAgent.id);
     expect(sameToken.json.run!.status).toBe('aborted');
     const restarted = await start(agentToken, 'agent', `${PREFIX}-sweep-agent-2`);

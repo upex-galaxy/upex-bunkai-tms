@@ -518,6 +518,25 @@ revoke execute on function public.bunkai_sweep_inactive_agent_runs(int) from aut
 grant  execute on function public.bunkai_sweep_inactive_agent_runs(int) to service_role;
 
 -- ============================================================================
+-- 3b. qa_inspector_ro — revoke EXECUTE from the three volatile DEFINER functions
+-- ============================================================================
+--
+-- The 0085 default privileges grant EXECUTE on every new function to both QA
+-- inspector roles, and the drop + create above reset the ACLs the three
+-- functions had. These write, so qa_inspector_ro (read-only by contract, 0086)
+-- must not hold them; qa_inspector_rw keeps the grant like the other run RPCs.
+
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'qa_inspector_ro') then
+    revoke all on function public.bunkai_mark_run_step(uuid, uuid, uuid, text, text, text, text) from qa_inspector_ro;
+    revoke all on function public.bunkai_create_run(uuid, uuid, uuid, text, text, uuid) from qa_inspector_ro;
+    revoke all on function public.bunkai_sweep_inactive_agent_runs(int) from qa_inspector_ro;
+  end if;
+end
+$$;
+
+-- ============================================================================
 -- 4. Schedule — every 5 minutes, named (cron.schedule upserts by name)
 -- ============================================================================
 --
