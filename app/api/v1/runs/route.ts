@@ -110,6 +110,8 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
       environmentId: body.environment_id,
       executorMode,
       startToken,
+      // BK-223 — a bearer start snapshots the token name into executor_name.
+      tokenId: principal.via === 'bearer' ? principal.tokenId : null,
     });
     if (error) {
       mapRunRpcError(error);

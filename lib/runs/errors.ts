@@ -103,6 +103,14 @@ export function mapRunRpcError(error: { code?: string, message: string }): never
       throw new ApiError('validation_failed', 'Status must be one of passed, failed, or blocked.', {
         details: { reason: 'step_status_invalid' },
       });
+    case '45239':
+      // BK-223 — an API caller re-reported a step that already has a DIFFERENT
+      // result (status, note or evidence). An identical re-report is answered
+      // 200 by the RPC and never lands here. 409 conflict; the stored result
+      // is untouched.
+      throw new ApiError('conflict', 'This step already has a different result. Report the same result again to retry, or abort the run and start a new one.', {
+        details: { reason: 'run_step_conflict' },
+      });
     default:
       throw new ApiError('internal_error', error.message);
   }
