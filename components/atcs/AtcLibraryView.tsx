@@ -1,6 +1,7 @@
 'use client';
 
 import type { AtcLibraryRow } from '@lib/atcs/library';
+import { AtcLibraryNoMatch, AtcLibrarySearchField, useAtcLibraryHref, useAtcLibraryNarrowing } from '@components/atcs/AtcLibrarySearch';
 import { Button } from '@components/ui/button';
 import { resolveAtcLibraryViewState } from '@lib/atcs/library';
 import { cn } from '@lib/utils';
@@ -11,7 +12,9 @@ import { useTransition } from 'react';
 import { toast } from 'sonner';
 
 // BK-439 — global ATC Library (`/atcs`, master-design-plan §4.9). A
-// lookup-and-launch surface: no search, no filters, no in-place editor. The
+// lookup-and-launch surface: no in-place editor. BK-440 adds the name search
+// (toolbar field above the part Retry swaps, so text and focus survive); facet
+// filters ship in BK-441. The
 // rows are read server-side by `app/(app)/atcs/page.tsx`; Retry re-runs that
 // read through `router.refresh()`.
 
@@ -34,6 +37,8 @@ export function AtcLibraryView({ rows, error }: AtcLibraryViewProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  const { visible, active: searching, term } = useAtcLibraryNarrowing(rows);
+
   const retry = () => { startTransition(() => { router.refresh(); }); };
 
   const open = (row: AtcLibraryRow) => {
@@ -41,10 +46,22 @@ export function AtcLibraryView({ rows, error }: AtcLibraryViewProps) {
     router.push(`/projects/${row.projectSlug}/atcs/${row.id}`);
   };
 
-  if (pending) { return <AtcLibrarySkeleton />; }
+  if (pending) {
+    return (
+      <>
+        <AtcLibrarySearchField resultCount={null} />
+        <AtcLibrarySkeleton />
+      </>
+    );
+  }
 
   if (error !== null) {
-    return <AtcLibraryErrorBlock error={error} onRetry={retry} />;
+    return (
+      <>
+        <AtcLibrarySearchField resultCount={null} />
+        <AtcLibraryErrorBlock error={error} onRetry={retry} />
+      </>
+    );
   }
 
   if (resolveAtcLibraryViewState(rows.length) === 'empty') {
@@ -59,58 +76,70 @@ export function AtcLibraryView({ rows, error }: AtcLibraryViewProps) {
     );
   }
 
+  if (searching && visible.length === 0) {
+    return (
+      <>
+        <AtcLibrarySearchField resultCount={0} />
+        <AtcLibraryNoMatch term={term} />
+      </>
+    );
+  }
+
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
-      <table data-testid="atc-library-table" className="w-full border-collapse text-left">
-        <thead className="sticky top-0 z-10 bg-surface-1">
-          <tr className="border-b border-stroke-2 text-2xs font-semibold uppercase tracking-wider text-fg-3">
-            <th scope="col" className="px-6 py-2 font-semibold">ATC</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Name</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Project</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Module</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Layer</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Anchor</th>
-            <th scope="col" className="px-3 py-2 text-right font-semibold">Used in</th>
-            <th scope="col" className="px-6 py-2"><span className="sr-only">Open</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(row => (
-            <tr
-              key={row.id}
-              data-testid="atc-library-row"
-              className="border-b border-stroke-1 text-sm hover:bg-surface-2"
-            >
-              <td className="px-6 py-1.5 font-mono text-xs text-fg-0" title={row.slug}>{row.code}</td>
-              <td className="max-w-[320px] truncate px-3 py-1.5 text-fg-0" title={row.title}>{row.title}</td>
-              <td className="px-3 py-1.5 text-fg-1">{row.projectName}</td>
-              <td className="px-3 py-1.5 font-mono text-xs text-fg-2">{row.moduleName}</td>
-              <td className="px-3 py-1.5"><LayerChip layer={row.layer} /></td>
-              <td className="max-w-[240px] px-3 py-1.5 font-mono text-xs text-fg-2">
-                <span className="block truncate" title={row.storyLabel}>{row.storyLabel}</span>
-                <span className="block truncate text-fg-3" title={row.acLabel ?? undefined}>
-                  {row.acLabel ?? 'No criterion'}
-                </span>
-              </td>
-              <td className="whitespace-nowrap px-3 py-1.5 text-right font-mono text-xs text-fg-2">
-                {`used in ${row.usedInTests} ${row.usedInTests === 1 ? 'test' : 'tests'}`}
-              </td>
-              <td className="px-6 py-1.5 text-right">
-                <button
-                  type="button"
-                  onClick={() => { open(row); }}
-                  aria-label={`Open ${row.code} in ${row.projectName}`}
-                  className="inline-flex items-center gap-1 rounded-2 px-2 py-1 text-xs text-fg-2 hover:bg-surface-3 hover:text-accent"
-                >
-                  Open
-                  <ArrowUpRight size={11} aria-hidden />
-                </button>
-              </td>
+    <>
+      <AtcLibrarySearchField resultCount={visible.length} />
+      <div className="min-h-0 flex-1 overflow-auto">
+        <table data-testid="atc-library-table" className="w-full border-collapse text-left">
+          <thead className="sticky top-0 z-10 bg-surface-1">
+            <tr className="border-b border-stroke-2 text-2xs font-semibold uppercase tracking-wider text-fg-3">
+              <th scope="col" className="px-6 py-2 font-semibold">ATC</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Name</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Project</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Module</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Layer</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Anchor</th>
+              <th scope="col" className="px-3 py-2 text-right font-semibold">Used in</th>
+              <th scope="col" className="px-6 py-2"><span className="sr-only">Open</span></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {visible.map(row => (
+              <tr
+                key={row.id}
+                data-testid="atc-library-row"
+                className="border-b border-stroke-1 text-sm hover:bg-surface-2"
+              >
+                <td className="px-6 py-1.5 font-mono text-xs text-fg-0" title={row.slug}>{row.code}</td>
+                <td className="max-w-[320px] truncate px-3 py-1.5 text-fg-0" title={row.title}>{row.title}</td>
+                <td className="px-3 py-1.5 text-fg-1">{row.projectName}</td>
+                <td className="px-3 py-1.5 font-mono text-xs text-fg-2">{row.moduleName}</td>
+                <td className="px-3 py-1.5"><LayerChip layer={row.layer} /></td>
+                <td className="max-w-[240px] px-3 py-1.5 font-mono text-xs text-fg-2">
+                  <span className="block truncate" title={row.storyLabel}>{row.storyLabel}</span>
+                  <span className="block truncate text-fg-3" title={row.acLabel ?? undefined}>
+                    {row.acLabel ?? 'No criterion'}
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-3 py-1.5 text-right font-mono text-xs text-fg-2">
+                  {`used in ${row.usedInTests} ${row.usedInTests === 1 ? 'test' : 'tests'}`}
+                </td>
+                <td className="px-6 py-1.5 text-right">
+                  <button
+                    type="button"
+                    onClick={() => { open(row); }}
+                    aria-label={`Open ${row.code} in ${row.projectName}`}
+                    className="inline-flex items-center gap-1 rounded-2 px-2 py-1 text-xs text-fg-2 hover:bg-surface-3 hover:text-accent"
+                  >
+                    Open
+                    <ArrowUpRight size={11} aria-hidden />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -136,10 +165,12 @@ export function AtcLibraryErrorBlock({ error, onRetry }: { error: string, onRetr
 // BK-571 — Active / Archived. Two links, not a client filter: each view is its
 // own server read, so the address says which one you are on. Built from the
 // toggle group the Traceability filter bar already uses.
+// BK-440 — both links carry the live search term, so a switch keeps the search.
 export function AtcLibraryViewToggle({ active }: { active: 'active' | 'archived' }) {
+  const hrefFor = useAtcLibraryHref();
   const items = [
-    { key: 'active', label: 'Active', href: '/atcs' },
-    { key: 'archived', label: 'Archived', href: '/atcs?view=archived' },
+    { key: 'active', label: 'Active', href: hrefFor('active') },
+    { key: 'archived', label: 'Archived', href: hrefFor('archived') },
   ] as const;
   return (
     <div

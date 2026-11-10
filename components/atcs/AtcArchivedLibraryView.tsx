@@ -2,6 +2,7 @@
 
 import type { AtcArchivedRow } from '@lib/atcs/library';
 import { revalidateAfterArchiveChange } from '@app/(app)/atcs/actions';
+import { AtcLibraryNoMatch, AtcLibrarySearchField, useAtcLibraryNarrowing } from '@components/atcs/AtcLibrarySearch';
 import { AtcLibraryErrorBlock, LayerChip } from '@components/atcs/AtcLibraryView';
 import { Button } from '@components/ui/button';
 import { formatActivityTime } from '@lib/activity/view';
@@ -36,6 +37,8 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
   // A restored row stays until the refresh lands; it must not offer Restore again.
   const [restoredIds, setRestoredIds] = useState<ReadonlySet<string>>(new Set());
 
+  const { visible, active: searching, term } = useAtcLibraryNarrowing(rows);
+
   const refresh = () => { startTransition(() => { router.refresh(); }); };
 
   const restore = async (row: AtcArchivedRow) => {
@@ -56,7 +59,12 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
   };
 
   if (error !== null) {
-    return <AtcLibraryErrorBlock error={error} onRetry={refresh} />;
+    return (
+      <>
+        <AtcLibrarySearchField resultCount={null} />
+        <AtcLibraryErrorBlock error={error} onRetry={refresh} />
+      </>
+    );
   }
 
   if (rows.length === 0) {
@@ -69,88 +77,100 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
     );
   }
 
+  if (searching && visible.length === 0) {
+    return (
+      <>
+        <AtcLibrarySearchField resultCount={0} />
+        <AtcLibraryNoMatch term={term} />
+      </>
+    );
+  }
+
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
-      <table data-testid="atc-archived-table" className="w-full border-collapse text-left">
-        <thead className="sticky top-0 z-10 bg-surface-1">
-          <tr className="border-b border-stroke-2 text-2xs font-semibold uppercase tracking-wider text-fg-3">
-            <th scope="col" className="px-6 py-2 font-semibold">ATC</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Name</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Project</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Module</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Layer</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Anchor</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Archived</th>
-            <th scope="col" className="px-6 py-2"><span className="sr-only">Restore</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const failure = failures[row.id];
-            const restoring = restoringId === row.id;
-            return (
-              <tr
-                key={row.id}
-                data-testid="atc-archived-row"
-                className="border-b border-stroke-1 align-top text-sm hover:bg-surface-2"
-              >
-                <td className="px-6 py-1.5 font-mono text-xs text-fg-0" title={row.slug}>
-                  <span className="flex flex-col items-start gap-1">
-                    <span>{row.code}</span>
-                    <span className="status-chip" data-status="skipped" data-testid="atc-archived-badge">Archived</span>
-                  </span>
-                </td>
-                <td className="max-w-[320px] px-3 py-1.5 text-fg-0">
-                  <Link
-                    href={`/projects/${row.projectSlug}/atcs/${row.id}`}
-                    className="block truncate hover:text-accent"
-                    title={row.title}
-                  >
-                    {row.title}
-                  </Link>
-                  {row.notes.map(note => (
-                    <span key={note} data-testid="atc-archived-note" className="block text-xs text-fg-3">{note}</span>
-                  ))}
-                  {failure !== undefined && (
-                    <span role="alert" data-testid="atc-archived-restore-error" className="mt-1 block text-xs text-signal-fail">
-                      <span className="block font-semibold">{RESTORE_FAILURE_COPY}</span>
-                      <span className="block font-mono text-fg-3">{failure}</span>
+    <>
+      <AtcLibrarySearchField resultCount={visible.length} />
+      <div className="min-h-0 flex-1 overflow-auto">
+        <table data-testid="atc-archived-table" className="w-full border-collapse text-left">
+          <thead className="sticky top-0 z-10 bg-surface-1">
+            <tr className="border-b border-stroke-2 text-2xs font-semibold uppercase tracking-wider text-fg-3">
+              <th scope="col" className="px-6 py-2 font-semibold">ATC</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Name</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Project</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Module</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Layer</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Anchor</th>
+              <th scope="col" className="px-3 py-2 font-semibold">Archived</th>
+              <th scope="col" className="px-6 py-2"><span className="sr-only">Restore</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((row) => {
+              const failure = failures[row.id];
+              const restoring = restoringId === row.id;
+              return (
+                <tr
+                  key={row.id}
+                  data-testid="atc-archived-row"
+                  className="border-b border-stroke-1 align-top text-sm hover:bg-surface-2"
+                >
+                  <td className="px-6 py-1.5 font-mono text-xs text-fg-0" title={row.slug}>
+                    <span className="flex flex-col items-start gap-1">
+                      <span>{row.code}</span>
+                      <span className="status-chip" data-status="skipped" data-testid="atc-archived-badge">Archived</span>
                     </span>
-                  )}
-                </td>
-                <td className="px-3 py-1.5 text-fg-1">{row.projectName}</td>
-                <td className="px-3 py-1.5 font-mono text-xs text-fg-2">{row.moduleName}</td>
-                <td className="px-3 py-1.5"><LayerChip layer={row.layer} /></td>
-                <td className="max-w-[240px] px-3 py-1.5 font-mono text-xs text-fg-2">
-                  <span className="block truncate" title={row.storyLabel}>{row.storyLabel}</span>
-                  <span className="block truncate text-fg-3" title={row.acLabel ?? undefined}>
-                    {row.acLabel ?? 'No criterion'}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-xs text-fg-2">
-                  <span className="block text-fg-1" data-testid="atc-archived-by">{row.archivedByLabel}</span>
-                  <span className="block font-mono text-fg-3" data-testid="atc-archived-at">{formatActivityTime(row.archivedAt)}</span>
-                </td>
-                <td className="px-6 py-1.5 text-right">
-                  {canWrite && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      data-testid="atc-restore"
-                      aria-label={`${restoring ? 'Restoring' : failure !== undefined ? 'Retry restoring' : 'Restore'} ${row.title}`}
-                      disabled={restoringId !== null || restoredIds.has(row.id)}
-                      onClick={() => { void restore(row); }}
+                  </td>
+                  <td className="max-w-[320px] px-3 py-1.5 text-fg-0">
+                    <Link
+                      href={`/projects/${row.projectSlug}/atcs/${row.id}`}
+                      className="block truncate hover:text-accent"
+                      title={row.title}
                     >
-                      {failure !== undefined && !restoring ? <RefreshCw size={12} aria-hidden /> : <ArchiveRestore size={12} aria-hidden />}
-                      {restoring ? 'Restoring…' : failure !== undefined ? 'Retry' : 'Restore'}
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                      {row.title}
+                    </Link>
+                    {row.notes.map(note => (
+                      <span key={note} data-testid="atc-archived-note" className="block text-xs text-fg-3">{note}</span>
+                    ))}
+                    {failure !== undefined && (
+                      <span role="alert" data-testid="atc-archived-restore-error" className="mt-1 block text-xs text-signal-fail">
+                        <span className="block font-semibold">{RESTORE_FAILURE_COPY}</span>
+                        <span className="block font-mono text-fg-3">{failure}</span>
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 text-fg-1">{row.projectName}</td>
+                  <td className="px-3 py-1.5 font-mono text-xs text-fg-2">{row.moduleName}</td>
+                  <td className="px-3 py-1.5"><LayerChip layer={row.layer} /></td>
+                  <td className="max-w-[240px] px-3 py-1.5 font-mono text-xs text-fg-2">
+                    <span className="block truncate" title={row.storyLabel}>{row.storyLabel}</span>
+                    <span className="block truncate text-fg-3" title={row.acLabel ?? undefined}>
+                      {row.acLabel ?? 'No criterion'}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-1.5 text-xs text-fg-2">
+                    <span className="block text-fg-1" data-testid="atc-archived-by">{row.archivedByLabel}</span>
+                    <span className="block font-mono text-fg-3" data-testid="atc-archived-at">{formatActivityTime(row.archivedAt)}</span>
+                  </td>
+                  <td className="px-6 py-1.5 text-right">
+                    {canWrite && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        data-testid="atc-restore"
+                        aria-label={`${restoring ? 'Restoring' : failure !== undefined ? 'Retry restoring' : 'Restore'} ${row.title}`}
+                        disabled={restoringId !== null || restoredIds.has(row.id)}
+                        onClick={() => { void restore(row); }}
+                      >
+                        {failure !== undefined && !restoring ? <RefreshCw size={12} aria-hidden /> : <ArchiveRestore size={12} aria-hidden />}
+                        {restoring ? 'Restoring…' : failure !== undefined ? 'Retry' : 'Restore'}
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

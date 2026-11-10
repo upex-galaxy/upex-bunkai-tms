@@ -1,41 +1,46 @@
 import type { AtcArchivedRow, AtcLibraryRow } from '@lib/atcs/library';
 import { AtcArchivedLibraryView } from '@components/atcs/AtcArchivedLibraryView';
+import { AtcLibrarySearchProvider } from '@components/atcs/AtcLibrarySearch';
 import { AtcLibrarySkeleton, AtcLibraryView, AtcLibraryViewToggle } from '@components/atcs/AtcLibraryView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { fetchArchivedAtcs, fetchAtcLibrary } from '@lib/atcs/library';
+import { parseSearchParam } from '@lib/atcs/library-search';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 
 // BK-439 — workspace-wide ATC Library. Cross-project index, lookup-and-launch
-// only (search and facet filters ship in BK-440 / BK-441). BK-571 adds the
-// opt-in archived view (`?view=archived`); the active view is unchanged.
+// only. BK-440 adds the name search (`?q=`, narrowed in the browser over the
+// rows loaded here; facet filters ship in BK-441 and compose with `q`). BK-571
+// adds the opt-in archived view (`?view=archived`).
 interface AtcLibraryPageProps {
-  searchParams: Promise<{ view?: string | string[] }>
+  searchParams: Promise<{ view?: string | string[], q?: string | string[] }>
 }
 
 const ATC_ARCHIVED_VIEW_NOTE = 'ATCs archived with their Module or User Story are not listed here. They come back when that parent is restored.';
 
 export default async function AtcLibraryPage({ searchParams }: AtcLibraryPageProps) {
-  const { view } = await searchParams;
+  const { view, q } = await searchParams;
   const archived = view === 'archived';
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stroke-2 px-6 py-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-fg-0">ATC Library</h1>
-          <p className="text-sm text-fg-2">Every ATC across the projects in this workspace.</p>
-          {archived && (
-            <p data-testid="atc-archived-view-note" className="mt-1 text-xs text-fg-3">{ATC_ARCHIVED_VIEW_NOTE}</p>
-          )}
+    <AtcLibrarySearchProvider key={parseSearchParam(q)} initialTerm={parseSearchParam(q)}>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stroke-2 px-6 py-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-fg-0">ATC Library</h1>
+            <p className="text-sm text-fg-2">Every ATC across the projects in this workspace.</p>
+            {archived && (
+              <p data-testid="atc-archived-view-note" className="mt-1 text-xs text-fg-3">{ATC_ARCHIVED_VIEW_NOTE}</p>
+            )}
+          </div>
+          <AtcLibraryViewToggle active={archived ? 'archived' : 'active'} />
         </div>
-        <AtcLibraryViewToggle active={archived ? 'archived' : 'active'} />
+        <Suspense key={archived ? 'archived' : 'active'} fallback={<AtcLibrarySkeleton />}>
+          {archived ? <AtcArchivedLibrarySection /> : <AtcLibrarySection />}
+        </Suspense>
       </div>
-      <Suspense key={archived ? 'archived' : 'active'} fallback={<AtcLibrarySkeleton />}>
-        {archived ? <AtcArchivedLibrarySection /> : <AtcLibrarySection />}
-      </Suspense>
-    </div>
+    </AtcLibrarySearchProvider>
   );
 }
 
