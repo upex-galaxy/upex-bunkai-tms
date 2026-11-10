@@ -4,7 +4,7 @@ import { AtcLibrarySearchProvider } from '@components/atcs/AtcLibrarySearch';
 import { AtcLibrarySkeleton, AtcLibraryView, AtcLibraryViewToggle } from '@components/atcs/AtcLibraryView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { fetchArchivedAtcs, fetchAtcLibrary } from '@lib/atcs/library';
-import { parseSearchParam } from '@lib/atcs/library-search';
+import { parseQueryParams, queryKey } from '@lib/atcs/library-search';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -12,19 +12,21 @@ import { Suspense } from 'react';
 
 // BK-439 — workspace-wide ATC Library. Cross-project index, lookup-and-launch
 // only. BK-440 adds the name search (`?q=`, narrowed in the browser over the
-// rows loaded here; facet filters ship in BK-441 and compose with `q`). BK-571
+// rows loaded here). BK-441 adds the Project / Module / layer / anchor facets and
+// Clear all, one query with `q` (`?project=&module=&layer=&anchor=`). BK-571
 // adds the opt-in archived view (`?view=archived`).
 interface AtcLibraryPageProps {
-  searchParams: Promise<{ view?: string | string[], q?: string | string[] }>
+  searchParams: Promise<{ view?: string | string[], q?: string | string[], project?: string | string[], module?: string | string[], layer?: string | string[], anchor?: string | string[] }>
 }
 
 const ATC_ARCHIVED_VIEW_NOTE = 'ATCs archived with their Module or User Story are not listed here. They come back when that parent is restored.';
 
 export default async function AtcLibraryPage({ searchParams }: AtcLibraryPageProps) {
-  const { view, q } = await searchParams;
+  const { view, ...rawQuery } = await searchParams;
+  const query = parseQueryParams(rawQuery);
   const archived = view === 'archived';
   return (
-    <AtcLibrarySearchProvider key={parseSearchParam(q)} initialTerm={parseSearchParam(q)}>
+    <AtcLibrarySearchProvider key={queryKey(query)} initialQuery={query}>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stroke-2 px-6 py-4">
           <div>

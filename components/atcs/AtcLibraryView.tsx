@@ -13,9 +13,9 @@ import { toast } from 'sonner';
 
 // BK-439 — global ATC Library (`/atcs`, master-design-plan §4.9). A
 // lookup-and-launch surface: no in-place editor. BK-440 adds the name search
-// (toolbar field above the part Retry swaps, so text and focus survive); facet
-// filters ship in BK-441. The
-// rows are read server-side by `app/(app)/atcs/page.tsx`; Retry re-runs that
+// (toolbar field above the part Retry swaps, so text and focus survive); BK-441
+// adds the Project / Module / layer / anchor filters and Clear all to the same
+// toolbar. The rows are read server-side by `app/(app)/atcs/page.tsx`; Retry re-runs that
 // read through `router.refresh()`.
 
 interface AtcLibraryViewProps {
@@ -37,7 +37,7 @@ export function AtcLibraryView({ rows, error }: AtcLibraryViewProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const { visible, active: searching, term } = useAtcLibraryNarrowing(rows);
+  const { visible, active: searching, facets, term } = useAtcLibraryNarrowing(rows);
 
   const retry = () => { startTransition(() => { router.refresh(); }); };
 
@@ -79,15 +79,15 @@ export function AtcLibraryView({ rows, error }: AtcLibraryViewProps) {
   if (searching && visible.length === 0) {
     return (
       <>
-        <AtcLibrarySearchField resultCount={0} />
-        <AtcLibraryNoMatch term={term} />
+        <AtcLibrarySearchField resultCount={0} rows={rows} />
+        <AtcLibraryNoMatch term={term} facets={facets} />
       </>
     );
   }
 
   return (
     <>
-      <AtcLibrarySearchField resultCount={visible.length} />
+      <AtcLibrarySearchField resultCount={visible.length} rows={rows} />
       <div className="min-h-0 flex-1 overflow-auto">
         <table data-testid="atc-library-table" className="w-full border-collapse text-left">
           <thead className="sticky top-0 z-10 bg-surface-1">

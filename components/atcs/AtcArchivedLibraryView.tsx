@@ -37,7 +37,7 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
   // A restored row stays until the refresh lands; it must not offer Restore again.
   const [restoredIds, setRestoredIds] = useState<ReadonlySet<string>>(new Set());
 
-  const { visible, active: searching, term } = useAtcLibraryNarrowing(rows);
+  const { visible, active: searching, facets, term } = useAtcLibraryNarrowing(rows);
 
   const refresh = () => { startTransition(() => { router.refresh(); }); };
 
@@ -80,15 +80,15 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
   if (searching && visible.length === 0) {
     return (
       <>
-        <AtcLibrarySearchField resultCount={0} />
-        <AtcLibraryNoMatch term={term} />
+        <AtcLibrarySearchField resultCount={0} rows={rows} />
+        <AtcLibraryNoMatch term={term} facets={facets} />
       </>
     );
   }
 
   return (
     <>
-      <AtcLibrarySearchField resultCount={visible.length} />
+      <AtcLibrarySearchField resultCount={visible.length} rows={rows} />
       <div className="min-h-0 flex-1 overflow-auto">
         <table data-testid="atc-archived-table" className="w-full border-collapse text-left">
           <thead className="sticky top-0 z-10 bg-surface-1">
