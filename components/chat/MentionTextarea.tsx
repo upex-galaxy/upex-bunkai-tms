@@ -109,37 +109,36 @@ export function MentionTextarea({
     <div className="relative">
       {open && (
         <div
-          id={listId}
-          role="listbox"
-          aria-label="Mention a teammate"
           data-testid="chat_mention_popover"
           className="absolute inset-x-0 bottom-full z-30 mb-1 overflow-hidden rounded-3 border border-stroke-3 bg-surface-3 p-1 shadow-pop"
         >
-          {candidates.map((m, i) => (
-            <button
-              key={m.user_id}
-              id={`${listId}-${i}`}
-              type="button"
-              role="option"
-              aria-selected={i === active}
-              data-testid="chat_mention_option"
-              tabIndex={-1}
-              // Keep the textarea focused: a mousedown would blur it first.
-              onMouseDown={e => e.preventDefault()}
-              onMouseEnter={() => setActive(i)}
-              onClick={() => pick(m)}
-              className={cn('grid w-full grid-cols-[20px_1fr_auto] items-center gap-3 rounded-2 px-3 py-2 text-left', i === active ? 'bg-surface-5' : 'hover:bg-surface-4')}
-            >
-              <span aria-hidden="true" className="flex size-5 items-center justify-center rounded-2 border border-stroke-2 bg-surface-3 text-[9px] font-semibold text-fg-1">
-                {initialsOf(m.display_name)}
-              </span>
-              <span className="truncate text-[13px] font-medium text-fg-0">
-                {m.display_name}
-                {m.user_id === selfUserId && <span className="ml-1 font-normal text-fg-3">(you)</span>}
-              </span>
-              <span className="text-[10px] uppercase tracking-wide text-fg-3">{m.role}</span>
-            </button>
-          ))}
+          <div id={listId} role="listbox" aria-label="Mention a teammate">
+            {candidates.map((m, i) => (
+              <button
+                key={m.user_id}
+                id={`${listId}-${i}`}
+                type="button"
+                role="option"
+                aria-selected={i === active}
+                data-testid="chat_mention_option"
+                tabIndex={-1}
+                // Keep the textarea focused: a mousedown would blur it first.
+                onMouseDown={e => e.preventDefault()}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => pick(m)}
+                className={cn('grid w-full grid-cols-[20px_1fr_auto] items-center gap-3 rounded-2 px-3 py-2 text-left', i === active ? 'bg-surface-5' : 'hover:bg-surface-4')}
+              >
+                <span aria-hidden="true" className="flex size-5 items-center justify-center rounded-2 border border-stroke-2 bg-surface-3 text-[9px] font-semibold text-fg-1">
+                  {initialsOf(m.display_name)}
+                </span>
+                <span className="truncate text-[13px] font-medium text-fg-0">
+                  {m.display_name}
+                  {m.user_id === selfUserId && <span className="ml-1 font-normal text-fg-3">(you)</span>}
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-fg-3">{m.role}</span>
+              </button>
+            ))}
+          </div>
           <div className="border-t border-stroke-1 px-3 pb-1 pt-1.5 text-[11px] text-fg-3">↑↓ navigate · Enter pick · Esc dismiss</div>
         </div>
       )}
@@ -152,8 +151,6 @@ export function MentionTextarea({
         autoFocus={autoFocus}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        role="combobox"
-        aria-expanded={open}
         aria-controls={open ? listId : undefined}
         aria-autocomplete="list"
         aria-activedescendant={open ? `${listId}-${active}` : undefined}

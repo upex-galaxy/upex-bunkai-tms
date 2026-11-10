@@ -7048,7 +7048,7 @@
             "items": {
               "$ref": "#/components/schemas/ChatMention"
             },
-            "description": "Members mentioned in `body` (BK-217), empty on a tombstone. Each `name` is the text after the \"@\" in the body; \"Former member\" when the account no longer exists."
+            "description": "Members mentioned in `body` (BK-217), empty on a tombstone. Each `name` is the text after the \"@\" in the body, derived from the member's email (kept for a member who has since left the workspace)."
           }
         },
         "required": [

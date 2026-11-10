@@ -27,7 +27,7 @@ const ChatMessageSchema = z
     created_at: z.string().datetime({ offset: true }),
     edited_at: z.string().datetime({ offset: true }).nullable().optional().describe('Set once the author edited the message (BK-219).'),
     deleted_at: z.string().datetime({ offset: true }).nullable().optional().describe('Set on a tombstone; `body` is then empty. Author and moderator deletions are indistinguishable.'),
-    mentions: z.array(ChatMentionSchema).describe('Members mentioned in `body` (BK-217), empty on a tombstone. Each `name` is the text after the "@" in the body; "Former member" when the account no longer exists.'),
+    mentions: z.array(ChatMentionSchema).describe('Members mentioned in `body` (BK-217), empty on a tombstone. Each `name` is the text after the "@" in the body, derived from the member\'s email (kept for a member who has since left the workspace).'),
   })
   .openapi('ChatMessage');
 

@@ -567,6 +567,8 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
         const lookup = await apiJson<{ items: ChatItem[] }>(`${base}/messages?ids=${targetId}`);
         const target = lookup.ok ? lookup.data.items[0] : undefined;
         if (cancelled) { return; }
+        // A failed lookup (offline) is not "no longer available": do nothing.
+        if (!lookup.ok) { onFocusHandled?.(); return; }
         if (!target) { setFocusNote(true); onFocusHandled?.(); return; }
         for (let page = 0; page < 10; page++) {
           if (cancelled) { break; }
@@ -634,7 +636,9 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     setDraft('');
     setPicked([]);
     stickRef.current = true;
-    const merged = mergeMessages(messagesRef.current, [res.data]);
+    // The response carries the stored mentions; a Realtime echo that landed
+    // first has none and the merge keeps the held row, so set them explicitly.
+    const merged = mergeMessages(messagesRef.current, [res.data]).map(x => (x.id === res.data.id ? { ...x, mentions: res.data.mentions } : x));
     messagesRef.current = merged;
     setMessages(merged);
   };
@@ -672,7 +676,11 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     const res = await apiJson<ChatItem>(`${base}/messages/${m.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: check.body, mentions: activeMentionIds(check.body, editPicked) }),
+      // An unknown mention set (a Realtime row not hydrated yet) is omitted, so
+      // the RPC leaves the stored mentions untouched instead of clearing them.
+      body: JSON.stringify(m.mentions === undefined
+        ? { body: check.body }
+        : { body: check.body, mentions: activeMentionIds(check.body, editPicked) }),
     });
     setEditBusy(false);
     if (!res.ok) { setActionError(res.message); return; }

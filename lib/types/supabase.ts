@@ -2524,7 +2524,7 @@ export interface Database {
       }
       bunkai_chat_sync_mentions: {
         Args: { p_ids: string[], p_message_id: string }
-        Returns: string[]
+        Returns: undefined
       }
       bunkai_close_test_plan: {
         Args: { p_summary?: string, p_test_plan_id: string, p_verdict: string }

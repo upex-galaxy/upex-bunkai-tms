@@ -94,7 +94,7 @@ revoke insert, update, delete, truncate on table public.chat_message_mentions fr
 -- already asserted that the actor may write in the message's workspace.
 
 create or replace function public.bunkai_chat_sync_mentions(p_message_id uuid, p_ids uuid[])
-returns uuid[]
+returns void
 language plpgsql
 security definer
 set search_path = ''
@@ -110,7 +110,7 @@ declare
 begin
   select * into v_msg from public.chat_messages m where m.id = p_message_id;
   if not found then
-    return array[]::uuid[];
+    return;
   end if;
 
   -- Untrusted ids -> distinct, active members of THIS workspace, capped.
@@ -187,7 +187,6 @@ begin
     end if;
   end loop;
 
-  return v_keep;
 end;
 $$;
 

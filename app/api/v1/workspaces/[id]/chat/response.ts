@@ -47,6 +47,7 @@ export interface ListMessagesParams {
 }
 
 export const CHAT_MAX_IDS_PER_REQUEST = 20;
+const MENTION_LOOKUP_CHUNK = 50;
 const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
 const MESSAGE_COLUMNS = 'id, seq, channel_id, workspace_id, author_user_id, body, created_at, edited_at, deleted_at';
@@ -125,15 +126,20 @@ async function decorate(
     for (const r of live) { byMessage.set(r.id, knownMentions.get(r.id) ?? []); }
   }
   else if (live.length > 0) {
-    const { data, error } = await db
-      .from('chat_message_mentions')
-      .select('message_id, mentioned_user_id')
-      .in('message_id', live.map(r => r.id));
-    if (error) { throw new ApiError('internal_error', error.message); }
+    // Pills are decoration: ids go in chunks (the catch-up page can hold 200
+    // messages, past a safe URL length) and a failed lookup degrades to plain
+    // text instead of losing the page.
     const liveIds = new Set(live.map(r => r.id));
-    for (const m of data ?? []) {
-      if (!liveIds.has(m.message_id)) { continue; }
-      byMessage.set(m.message_id, [...(byMessage.get(m.message_id) ?? []), m.mentioned_user_id]);
+    for (let i = 0; i < live.length; i += MENTION_LOOKUP_CHUNK) {
+      const { data, error } = await db
+        .from('chat_message_mentions')
+        .select('message_id, mentioned_user_id')
+        .in('message_id', live.slice(i, i + MENTION_LOOKUP_CHUNK).map(r => r.id));
+      if (error) { continue; }
+      for (const m of data ?? []) {
+        if (!liveIds.has(m.message_id)) { continue; }
+        byMessage.set(m.message_id, [...(byMessage.get(m.message_id) ?? []), m.mentioned_user_id]);
+      }
     }
   }
   const ids = [...new Set([
