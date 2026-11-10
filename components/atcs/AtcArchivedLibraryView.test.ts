@@ -31,6 +31,11 @@ void mock.module('next/link', () => ({
 
 const { createRoot } = await import('react-dom/client');
 const { AtcArchivedLibraryView } = await import('@components/atcs/AtcArchivedLibraryView');
+const { AtcLibrarySearchProvider } = await import('@components/atcs/AtcLibrarySearch');
+const { Fragment } = await import('react');
+function withSearch(initialTerm: string, ...nodes: ReturnType<typeof createElement>[]) {
+  return createElement(AtcLibrarySearchProvider, { initialTerm, children: createElement(Fragment, null, ...nodes) });
+}
 
 const ROW = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -61,7 +66,7 @@ async function render(props: { canWrite: boolean, rows?: typeof ROW[] }) {
   document.body.appendChild(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(createElement(AtcArchivedLibraryView, { rows: props.rows ?? [ROW], error: null, canWrite: props.canWrite }));
+    root.render(withSearch('', createElement(AtcArchivedLibraryView, { rows: props.rows ?? [ROW], error: null, canWrite: props.canWrite })));
   });
   mounted.push({ container, root });
   return container;
