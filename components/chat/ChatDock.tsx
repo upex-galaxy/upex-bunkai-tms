@@ -9,7 +9,7 @@ import { useChat } from '@components/chat/ChatProvider';
 // BK-1557 — below `md` there is no room for a 380px column, so the open dock
 // covers the screen as a full-width overlay instead (D53).
 export function ChatDock({ workspaceId, userId, role }: { workspaceId: string, userId: string, role: ChatRole | null }) {
-  const { open, close, setUnread } = useChat();
+  const { open, close, setUnread, focusMessageId, clearFocus } = useChat();
   return (
     <aside
       data-testid="chat_dock"
@@ -25,6 +25,8 @@ export function ChatDock({ workspaceId, userId, role }: { workspaceId: string, u
         open={open}
         onClose={close}
         onUnreadChange={setUnread}
+        focusMessageId={focusMessageId}
+        onFocusHandled={clearFocus}
       />
     </aside>
   );

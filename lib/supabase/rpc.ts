@@ -1400,8 +1400,26 @@ export async function chatResolveAuthors(supabase: Client, args: { workspaceId: 
 
 // BK-219 — edit own message (author, live, within 15 min) / delete (author or
 // admin/owner). SECURITY DEFINER (migration 0105); coded errors in `message`.
-export async function chatEditMessage(supabase: Client, args: { messageId: string, body: string }) {
-  return supabase.rpc('bunkai_chat_edit_message', { p_message_id: args.messageId, p_body: args.body });
+// BK-217 (migration 0123): `mentionIds` is the COMPLETE mention set of the
+// edited message (diffed server-side: only added members are notified);
+// `undefined` leaves the stored mentions untouched.
+export async function chatEditMessage(supabase: Client, args: { messageId: string, body: string, mentionIds?: string[] }) {
+  return supabase.rpc('bunkai_chat_edit_message', {
+    p_message_id: args.messageId,
+    p_body: args.body,
+    ...(args.mentionIds === undefined ? {} : { p_mention_ids: args.mentionIds }),
+  });
+}
+
+// BK-217 — send a message and its mentions in one transaction (migration
+// 0123). SECURITY DEFINER bound to auth.uid(); invalid or non-member mention
+// ids are dropped server-side.
+export async function chatSendMessage(supabase: Client, args: { workspaceId: string, body: string, mentionIds?: string[] }) {
+  return supabase.rpc('bunkai_chat_send_message', {
+    p_workspace_id: args.workspaceId,
+    p_body: args.body,
+    p_mention_ids: args.mentionIds ?? [],
+  });
 }
 
 export async function chatDeleteMessage(supabase: Client, args: { messageId: string }) {

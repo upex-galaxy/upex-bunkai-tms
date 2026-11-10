@@ -108,3 +108,15 @@ export function resolveNotificationHref(notification: NotificationEntityRef): st
       return null;
   }
 }
+
+// BK-217 — a chat mention does not open a route: it opens the chat dock on the
+// workspace channel, scrolled to and highlighting the message. The target is
+// the message id, or null for any other notification (or an unavailable one).
+// A deleted message is still a valid target: the chat itself says "message no
+// longer available" instead of the inbox dead-ending.
+export function resolveNotificationChatTarget(notification: NotificationEntityRef): string | null {
+  if (notification.entity_type !== 'chat_message' || !notification.entity_available || notification.entity_id === null) {
+    return null;
+  }
+  return notification.entity_id;
+}

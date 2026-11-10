@@ -11,9 +11,14 @@ import { createContext, use, useCallback, useMemo, useState } from 'react';
 interface ChatContextValue {
   open: boolean
   unread: number
+  // BK-217: the message a mention notification asked the chat to show. The
+  // panel scrolls to it, highlights it briefly and then calls `clearFocus`.
+  focusMessageId: string | null
   toggle: () => void
   close: () => void
   setUnread: (n: number) => void
+  openOnMessage: (messageId: string) => void
+  clearFocus: () => void
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -21,9 +26,18 @@ const ChatContext = createContext<ChatContextValue | null>(null);
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [focusMessageId, setFocusMessageId] = useState<string | null>(null);
   const toggle = useCallback(() => setOpen(o => !o), []);
   const close = useCallback(() => setOpen(false), []);
-  const value = useMemo(() => ({ open, unread, toggle, close, setUnread }), [open, unread, toggle, close]);
+  const openOnMessage = useCallback((messageId: string) => {
+    setFocusMessageId(messageId);
+    setOpen(true);
+  }, []);
+  const clearFocus = useCallback(() => setFocusMessageId(null), []);
+  const value = useMemo(
+    () => ({ open, unread, focusMessageId, toggle, close, setUnread, openOnMessage, clearFocus }),
+    [open, unread, focusMessageId, toggle, close, openOnMessage, clearFocus],
+  );
   return <ChatContext value={value}>{children}</ChatContext>;
 }
 

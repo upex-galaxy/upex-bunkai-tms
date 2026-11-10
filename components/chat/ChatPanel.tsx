@@ -2,6 +2,7 @@
 
 import type { EntityCard as EntityCardData, EntitySearchItem } from '@lib/chat/entity-refs';
 import type { ChangesBindingStatus, ChatLiveState, RealtimeSystemPayload } from '@lib/chat/live-status';
+import type { ChatMention } from '@lib/chat/mentions';
 import type { ChatMember, ChatMessage, ChatRole } from '@lib/chat/messages';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import {
@@ -13,6 +14,7 @@ import {
   textWithoutRefs,
 } from '@lib/chat/entity-refs';
 import { bindingVerdictFromSystem, chatLiveState, isBindingUnavailable, shouldReconcileOnBindingVerdict } from '@lib/chat/live-status';
+import { activeMentionIds, mentionsAsPicked, splitMentions } from '@lib/chat/mentions';
 import {
   buildChatChannelConfig,
   canDeleteMessage,
@@ -36,10 +38,12 @@ import { createClient } from '@lib/supabase/client';
 import { subscribeWithUserAuth } from '@lib/supabase/realtime-auth';
 import { APP_URLS } from '@lib/urls';
 import { cn } from '@lib/utils';
-import { Hash, Link2, Loader2, Lock, Pencil, SendHorizontal, Trash2, Users, WifiOff, X } from 'lucide-react';
+import { Hash, Info, Link2, Loader2, Lock, Pencil, SendHorizontal, Trash2, Users, WifiOff, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { EntityCard } from './EntityCard';
 import { EntityPicker } from './EntityPicker';
+import { MentionPill } from './MentionPill';
+import { MentionTextarea } from './MentionTextarea';
 
 // BK-215 — Team Chat, workspace general channel (mockup:
 // bk-210-team-chat/chat-panel-workspace.html, master-design-plan §4.14).
@@ -61,6 +65,9 @@ interface ChatPanelProps {
   open: boolean
   onClose: () => void
   onUnreadChange: (count: number) => void
+  // BK-217: a mention notification asked the chat to show this message.
+  focusMessageId?: string | null
+  onFocusHandled?: () => void
 }
 
 const SCROLL_STICK_PX = 48;
@@ -98,7 +105,7 @@ async function apiJson<T>(input: string, init?: RequestInit): Promise<{ ok: true
   }
 }
 
-export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadChange }: ChatPanelProps) {
+export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadChange, focusMessageId = null, onFocusHandled }: ChatPanelProps) {
   const writable = canWriteChat(role);
   const [messages, setMessages] = useState<ChatItem[]>([]);
   const [members, setMembers] = useState<ChatMember[]>([]);
@@ -124,6 +131,13 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   const [cards, setCards] = useState<ReadonlyMap<string, EntityCardData>>(new Map());
   const [failedRefs, setFailedRefs] = useState<ReadonlySet<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
+  // BK-217: members picked from the autocomplete while composing / editing.
+  const [picked, setPicked] = useState<ChatMention[]>([]);
+  const [editPicked, setEditPicked] = useState<ChatMention[]>([]);
+  // BK-217: message a mention notification opened (brief highlight) and the
+  // note shown when that message no longer exists.
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [focusNote, setFocusNote] = useState(false);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const inFlightRefs = useRef<Set<string>>(new Set());
   // BK-219: inline edit, delete confirmation, and a clock that closes the
@@ -308,6 +322,21 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     }
   }, [catchUp]);
 
+  // BK-217: a Realtime row is the bare table row, without its mentions.
+  // Fetch them for the messages that can carry any (their body has an "@") and
+  // reload the roster when a mentioned member is not in it yet, so a fresh
+  // joiner is not shown as a former member.
+  const hydrateMentions = useCallback(async (ids: string[]) => {
+    const res = await apiJson<{ items: ChatItem[] }>(`${base}/messages?ids=${ids.join(',')}`);
+    if (unmountedRef.current || !res.ok) { return; }
+    const fresh = new Map(res.data.items.map(i => [i.id, i.mentions ?? []]));
+    const next = messagesRef.current.map(m => (fresh.has(m.id) && !m.deleted_at ? { ...m, mentions: fresh.get(m.id) } : m));
+    messagesRef.current = next;
+    setMessages(next);
+    const known = new Set(membersRef.current.map(m => m.user_id));
+    if ([...fresh.values()].flat().some(mn => !known.has(mn.user_id))) { void loadRoster(); }
+  }, [base, loadRoster]);
+
   // Newest page (default `limit`, 30). Merges into what is already held: a
   // realtime row that landed while the request was in flight must survive. A
   // failed page is retried once automatically after a short delay, so a parked
@@ -400,6 +429,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
         messagesRef.current = merged;
         setMessages(merged);
         if (isInsert && !stickRef.current && row.author_user_id !== userId) { setPendingBelow(n => n + 1); }
+        if (!row.deleted_at && row.body.includes('@')) { void hydrateMentions([row.id]); }
       },
     );
     // `system` is its own bindings key in realtime-js, so it does not shift the
@@ -435,7 +465,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       cancelJoin();
       void supabase.removeChannel(channel);
     };
-  }, [config, reconcile, loadRoster, userId]);
+  }, [config, reconcile, loadRoster, hydrateMentions, userId]);
 
   // Presence: who is online right now (client-side, no DB writes).
   useEffect(() => {
@@ -522,6 +552,64 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     if (el.scrollTop < 40 && hasMore && !loadingOlder) { void loadOlder(); }
   };
 
+  // BK-217: a mention notification opened the chat on a message. Scroll to it
+  // and highlight it briefly. History older than the loaded page is paged in
+  // (bounded) until the message is reached; a message that was deleted, or that
+  // cannot be found, shows the neutral "no longer available" note instead of
+  // failing.
+  useEffect(() => {
+    if (!focusMessageId || !open || loading || loadError) { return; }
+    const targetId = focusMessageId;
+    let cancelled = false;
+    void (async () => {
+      let found = messagesRef.current.find(m => m.id === targetId);
+      if (!found) {
+        const lookup = await apiJson<{ items: ChatItem[] }>(`${base}/messages?ids=${targetId}`);
+        const target = lookup.ok ? lookup.data.items[0] : undefined;
+        if (cancelled) { return; }
+        // A failed lookup (offline) is not "no longer available": do nothing.
+        if (!lookup.ok) { onFocusHandled?.(); return; }
+        if (!target) { setFocusNote(true); onFocusHandled?.(); return; }
+        for (let page = 0; page < 10; page++) {
+          if (cancelled) { break; }
+          const first = messagesRef.current[0];
+          if (!first || first.seq <= target.seq) { break; }
+          const older = await apiJson<{ items: ChatItem[], has_more: boolean }>(`${base}/messages?before_seq=${first.seq}&limit=100`);
+          if (cancelled || !older.ok || older.data.items.length === 0) { break; }
+          const merged = mergeMessages(messagesRef.current, older.data.items);
+          messagesRef.current = merged;
+          setMessages(merged);
+          setHasMore(older.data.has_more);
+        }
+        found = messagesRef.current.find(m => m.id === targetId);
+        if (cancelled) { return; }
+        if (!found) { setFocusNote(true); onFocusHandled?.(); return; }
+      }
+      if (isTombstone(found)) { setFocusNote(true); }
+      stickRef.current = false;
+      setHighlightId(targetId);
+      // Wait for the rows to paint before measuring.
+      requestAnimationFrame(() => {
+        listRef.current?.querySelector(`[data-message-id="${targetId}"]`)?.scrollIntoView({ block: 'center' });
+      });
+      onFocusHandled?.();
+    })();
+    return () => { cancelled = true; };
+  }, [focusMessageId, open, loading, loadError, base, onFocusHandled]);
+
+  // The highlight is brief.
+  useEffect(() => {
+    if (highlightId === null) { return; }
+    const t = window.setTimeout(() => setHighlightId(null), 3000);
+    return () => window.clearTimeout(t);
+  }, [highlightId]);
+
+  useEffect(() => {
+    if (!focusNote) { return; }
+    const t = window.setTimeout(() => setFocusNote(false), 8000);
+    return () => window.clearTimeout(t);
+  }, [focusNote]);
+
   const jumpToLatest = () => {
     const el = listRef.current;
     if (el) { el.scrollTop = el.scrollHeight; }
@@ -541,13 +629,16 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     const res = await apiJson<ChatItem>(`${base}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: check.body }),
+      body: JSON.stringify({ body: check.body, mentions: activeMentionIds(check.body, picked) }),
     });
     setSending(false);
     if (!res.ok) { setSendError(res.message); return; }
     setDraft('');
+    setPicked([]);
     stickRef.current = true;
-    const merged = mergeMessages(messagesRef.current, [res.data]);
+    // The response carries the stored mentions; a Realtime echo that landed
+    // first has none and the merge keeps the held row, so set them explicitly.
+    const merged = mergeMessages(messagesRef.current, [res.data]).map(x => (x.id === res.data.id ? { ...x, mentions: res.data.mentions } : x));
     messagesRef.current = merged;
     setMessages(merged);
   };
@@ -562,11 +653,13 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     setActionError(null);
     setEditingId(m.id);
     setEditDraft(m.body);
+    setEditPicked(mentionsAsPicked(m.mentions));
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditDraft('');
+    setEditPicked([]);
     setActionError(null);
   };
 
@@ -583,13 +676,18 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     const res = await apiJson<ChatItem>(`${base}/messages/${m.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: check.body }),
+      // An unknown mention set (a Realtime row not hydrated yet) is omitted, so
+      // the RPC leaves the stored mentions untouched instead of clearing them.
+      body: JSON.stringify(m.mentions === undefined
+        ? { body: check.body }
+        : { body: check.body, mentions: activeMentionIds(check.body, editPicked) }),
     });
     setEditBusy(false);
     if (!res.ok) { setActionError(res.message); return; }
     applyServerMessage(res.data);
     setEditingId(null);
     setEditDraft('');
+    setEditPicked([]);
   };
 
   const confirmDelete = async () => {
@@ -667,6 +765,13 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
         </div>
       )}
 
+      {focusNote && (
+        <div data-testid="chat_focus_note" role="status" className="flex items-center gap-2 border-b border-stroke-2 bg-surface-3 px-4 py-2 text-xs text-fg-2">
+          <Info size={12} className="shrink-0 text-fg-3" aria-hidden="true" />
+          This message is no longer available.
+        </div>
+      )}
+
       <div className="relative min-h-0 flex-1">
         <div ref={listRef} onScroll={onScroll} data-testid="chat_message_list" aria-live="polite" className="h-full overflow-y-auto py-2">
           {loadingOlder && (
@@ -726,7 +831,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                     <span className="h-px flex-1 bg-accent/60" />
                   </div>
                 )}
-                <article data-testid="chat_message" data-own={own} data-seq={m.seq} className={cn('group relative flex gap-3 px-4 hover:bg-surface-2/50 focus-within:bg-surface-2/50', cont ? 'py-0.5' : 'pb-0.5 pt-2')}>
+                <article data-testid="chat_message" data-message-id={m.id} data-own={own} data-seq={m.seq} data-highlighted={highlightId === m.id} className={cn('group relative flex gap-3 px-4 hover:bg-surface-2/50 focus-within:bg-surface-2/50', cont ? 'py-0.5' : 'pb-0.5 pt-2', highlightId === m.id && 'bg-accent-soft ring-1 ring-inset ring-accent/40')}>
                   {cont
                     ? <span className="w-7 shrink-0" aria-hidden="true" />
                     : (
@@ -753,14 +858,18 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                       : editing
                         ? (
                             <div data-testid="chat_edit_box" className="mt-1">
-                              <textarea
-                                data-testid="chat_edit_input"
-                                aria-label="Edit message"
+                              <MentionTextarea
+                                testId="chat_edit_input"
+                                ariaLabel="Edit message"
                                 value={editDraft}
                                 rows={2}
                                 autoFocus
                                 disabled={editBusy}
-                                onChange={(e) => { setEditDraft(e.target.value); setActionError(null); }}
+                                onValueChange={(v) => { setEditDraft(v); setActionError(null); }}
+                                picked={editPicked}
+                                onPickedChange={setEditPicked}
+                                members={members}
+                                selfUserId={userId}
                                 onKeyDown={e => onEditKeyDown(e, m)}
                                 className="w-full resize-none rounded-2 border border-stroke-2 bg-surface-2 px-3 py-2 text-[13px] text-fg-0 focus-visible:border-accent focus-visible:outline-none"
                               />
@@ -787,7 +896,21 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                             const text = refs.length > 0 ? textWithoutRefs(segments) : m.body;
                             return (
                               <>
-                                {text.length > 0 && <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-fg-1">{text}</p>}
+                                {text.length > 0 && (
+                                  <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-fg-1">
+                                    {splitMentions(text, m.mentions).map((part, partIdx) => (part.kind === 'text'
+                                      ? <span key={partIdx}>{part.text}</span>
+                                      : (
+                                          <MentionPill
+                                            key={partIdx}
+                                            text={part.text}
+                                            member={members.find(x => x.user_id === part.userId)}
+                                            isSelf={part.userId === userId}
+                                            online={online.has(part.userId)}
+                                          />
+                                        )))}
+                                  </p>
+                                )}
                                 {refs.map((sg, idx) => {
                                   const key = refKey(sg.ref);
                                   const card = cards.get(key);
@@ -854,20 +977,24 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                     onClose={() => { setPickerOpen(false); composerRef.current?.focus(); }}
                   />
                 )}
-                <textarea
-                  ref={composerRef}
-                  data-testid="chat_composer"
+                <MentionTextarea
+                  textareaRef={composerRef}
+                  testId="chat_composer"
                   value={draft}
                   rows={2}
                   disabled={sending}
-                  onChange={(e) => { setDraft(e.target.value); setSendError(null); }}
+                  onValueChange={(v) => { setDraft(v); setSendError(null); }}
+                  picked={picked}
+                  onPickedChange={setPicked}
+                  members={members}
+                  selfUserId={userId}
                   onKeyDown={onKeyDown}
                   placeholder="Message #general"
-                  aria-label="Message #general"
+                  ariaLabel="Message #general"
                   className="w-full resize-none rounded-2 border border-stroke-2 bg-surface-2 px-3 py-2 text-[13px] text-fg-0 placeholder:text-fg-3 focus-visible:border-accent focus-visible:outline-none"
                 />
                 <div className="mt-1.5 flex items-center gap-2 text-[11px] text-fg-3">
-                  <span>Enter to send · Shift+Enter for a new line</span>
+                  <span>Enter to send · Shift+Enter for a new line · @ to mention</span>
                   <button
                     type="button"
                     data-testid="chat_entity_picker_toggle"

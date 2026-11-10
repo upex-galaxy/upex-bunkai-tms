@@ -20,16 +20,15 @@ function row(seq: number, author: string | null = U1) {
 interface FakeOpts {
   channel?: { id: string } | null
   messages?: ReturnType<typeof row>[]
-  role?: string | null
-  insertError?: { code?: string, message: string } | null
   authors?: { user_id: string, email: string }[]
   roster?: { user_id: string, email: string, role: string }[]
   rosterError?: { code?: string, message: string } | null
   rpcError?: { message: string } | null
   rpcRow?: Record<string, unknown>
+  mentionRows?: { message_id: string, mentioned_user_id: string }[]
 }
 
-interface Rec { ops: string[], limit?: number, inserted?: unknown }
+interface Rec { ops: string[], limit?: number, rpc?: { fn: string, args: Record<string, unknown> }, ids?: string[] }
 
 function fakeDb(opts: FakeOpts, rec: Rec = { ops: [] }): SupabaseClient<Database> {
   const messagesQuery = () => {
@@ -45,16 +44,7 @@ function fakeDb(opts: FakeOpts, rec: Rec = { ops: [] }): SupabaseClient<Database
       const all = [...(opts.messages ?? [])].sort((a, b) => (asc ? a.seq - b.seq : b.seq - a.seq));
       return Promise.resolve({ data: all.slice(0, n), error: null });
     };
-    q.insert = (v: unknown) => {
-      rec.inserted = v;
-      return {
-        select: () => ({
-          single: async () => (opts.insertError
-            ? { data: null, error: opts.insertError }
-            : { data: row(99), error: null }),
-        }),
-      };
-    };
+    q.in = (c: string, v: string[]) => { if (c === 'id') { rec.ids = v; } return q; };
     return q;
   };
   return {
@@ -66,19 +56,19 @@ function fakeDb(opts: FakeOpts, rec: Rec = { ops: [] }): SupabaseClient<Database
         q.maybeSingle = async () => ({ data: opts.channel === undefined ? { id: CH } : opts.channel, error: null });
         return q;
       }
-      if (table === 'workspace_members') {
+      if (table === 'chat_message_mentions') {
         const q: Record<string, unknown> = {};
         q.select = () => q;
-        q.eq = () => q;
-        q.maybeSingle = async () => ({ data: opts.role === null ? null : { role: opts.role ?? 'member' }, error: null });
+        q.in = async () => ({ data: opts.mentionRows ?? [], error: null });
         return q;
       }
       return messagesQuery();
     },
-    rpc: async (fn: string) => {
+    rpc: async (fn: string, args: Record<string, unknown>) => {
+      if (fn !== 'bunkai_chat_resolve_authors' && fn !== 'bunkai_chat_roster') { rec.rpc = { fn, args }; }
       if (fn === 'bunkai_chat_resolve_authors') { return { data: opts.authors ?? [{ user_id: U1, email: 'elena.ruiz@x.io' }], error: null }; }
       if (fn === 'bunkai_chat_roster') { return { data: opts.roster ?? [], error: opts.rosterError ?? null }; }
-      if (fn === 'bunkai_chat_edit_message' || fn === 'bunkai_chat_delete_message') {
+      if (fn === 'bunkai_chat_send_message' || fn === 'bunkai_chat_edit_message' || fn === 'bunkai_chat_delete_message') {
         return opts.rpcError ? { data: null, error: opts.rpcError } : { data: [{ ...row(1), edited_at: null, deleted_at: null, ...opts.rpcRow }], error: null };
       }
       throw new Error(`unexpected rpc ${fn}`);
@@ -142,27 +132,93 @@ describe('fetchMessagesPage', () => {
 });
 
 describe('postMessage', () => {
-  it('inserts the trimmed body as the caller', async () => {
+  it('sends the trimmed body through the RPC as the caller', async () => {
     const rec: Rec = { ops: [] };
     const item = await postMessage(fakeDb({}, rec), { workspaceId: WS, userId: U1, rawBody: '  hello  ' });
-    expect(rec.inserted).toEqual({ channel_id: CH, workspace_id: WS, author_user_id: U1, body: 'hello' });
+    expect(rec.rpc).toEqual({ fn: 'bunkai_chat_send_message', args: { p_workspace_id: WS, p_body: 'hello', p_mention_ids: [] } });
     expect(item.author_name).toBe('Elena Ruiz');
+    expect(item.mentions).toEqual([]);
   });
-  it('rejects empty and over-long bodies with 422', async () => {
-    expect(await code(postMessage(fakeDb({}), { workspaceId: WS, userId: U1, rawBody: '   ' }))).toBe('validation_failed');
-    expect(await code(postMessage(fakeDb({}), { workspaceId: WS, userId: U1, rawBody: 'x'.repeat(4001) }))).toBe('validation_failed');
-  });
-  it('forbids viewers before touching the table', async () => {
+  it('rejects empty and over-long bodies with 422 before the RPC', async () => {
     const rec: Rec = { ops: [] };
-    expect(await code(postMessage(fakeDb({ role: 'viewer' }, rec), { workspaceId: WS, userId: U1, rawBody: 'hi' }))).toBe('forbidden');
-    expect(rec.inserted).toBeUndefined();
+    expect(await code(postMessage(fakeDb({}, rec), { workspaceId: WS, userId: U1, rawBody: '   ' }))).toBe('validation_failed');
+    expect(await code(postMessage(fakeDb({}, rec), { workspaceId: WS, userId: U1, rawBody: 'x'.repeat(4001) }))).toBe('validation_failed');
+    expect(rec.rpc).toBeUndefined();
   });
-  it('maps an RLS denial to forbidden and other errors to internal_error', async () => {
-    expect(await code(postMessage(fakeDb({ insertError: { code: '42501', message: 'rls' } }), { workspaceId: WS, userId: U1, rawBody: 'hi' }))).toBe('forbidden');
-    expect(await code(postMessage(fakeDb({ insertError: { message: 'boom' } }), { workspaceId: WS, userId: U1, rawBody: 'hi' }))).toBe('internal_error');
+  it('maps the RPC read-only denial to the viewer copy and other errors to internal_error', async () => {
+    const viewer = await postMessage(fakeDb({ rpcError: { message: 'read_only' } }), { workspaceId: WS, userId: U1, rawBody: 'hi' }).catch(e => e as ApiError);
+    expect((viewer as ApiError).code).toBe('forbidden');
+    expect((viewer as ApiError).details).toEqual({ reason: 'viewer_read_only' });
+    expect(await code(postMessage(fakeDb({ rpcError: { message: 'boom' } }), { workspaceId: WS, userId: U1, rawBody: 'hi' }))).toBe('internal_error');
   });
-  it('404s for a non-member (no visible channel)', async () => {
-    expect(await code(postMessage(fakeDb({ channel: null }), { workspaceId: WS, userId: U1, rawBody: 'hi' }))).toBe('not_found');
+  it('404s for a non-member (the RPC sees no workspace)', async () => {
+    expect(await code(postMessage(fakeDb({ rpcError: { message: 'workspace_not_found' } }), { workspaceId: WS, userId: U1, rawBody: 'hi' }))).toBe('not_found');
+  });
+});
+
+// BK-217 — mentions ride next to the body; the RPC owns validation, the API
+// owns the shape and the response.
+describe('mentions on send and edit (BK-217)', () => {
+  const ELENA = '55555555-5555-5555-5555-555555555555';
+  const MSG = '44444444-4444-4444-4444-444444444444';
+
+  it('forwards deduplicated, lower-cased ids and returns each mention with its name', async () => {
+    const rec: Rec = { ops: [] };
+    const item = await postMessage(
+      fakeDb({ rpcRow: { mention_user_ids: [ELENA] }, authors: [{ user_id: U1, email: 'sara.i@x.io' }, { user_id: ELENA, email: 'elena.vargas@x.io' }] }, rec),
+      { workspaceId: WS, userId: U1, rawBody: 'hi @Elena Vargas', rawMentions: [ELENA.toUpperCase(), ELENA] },
+    );
+    expect(rec.rpc?.args.p_mention_ids).toEqual([ELENA]);
+    expect(item.mentions).toEqual([{ user_id: ELENA, name: 'Elena Vargas' }]);
+  });
+
+  it('names a mention whose account no longer resolves "Former member"', async () => {
+    const item = await postMessage(fakeDb({ rpcRow: { mention_user_ids: [ELENA] } }), { workspaceId: WS, userId: U1, rawBody: 'hi', rawMentions: [ELENA] });
+    expect(item.mentions).toEqual([{ user_id: ELENA, name: 'Former member' }]);
+  });
+
+  it('rejects a malformed or oversized mentions field with mentions_invalid', async () => {
+    for (const bad of ['elena', [42], ['not-a-uuid'], Array.from({ length: 51 }, () => ELENA)]) {
+      const err = await postMessage(fakeDb({}), { workspaceId: WS, userId: U1, rawBody: 'hi', rawMentions: bad }).catch(e => e as ApiError);
+      expect((err as ApiError).code).toBe('validation_failed');
+      expect((err as ApiError).details).toEqual({ reason: 'mentions_invalid' });
+    }
+  });
+
+  it('edit passes the complete mention set, or leaves it untouched when omitted', async () => {
+    const withSet: Rec = { ops: [] };
+    await editMessage(fakeDb({}, withSet), { workspaceId: WS, messageId: MSG, rawBody: 'x', rawMentions: [ELENA] });
+    expect(withSet.rpc?.args).toEqual({ p_message_id: MSG, p_body: 'x', p_mention_ids: [ELENA] });
+    const omitted: Rec = { ops: [] };
+    await editMessage(fakeDb({}, omitted), { workspaceId: WS, messageId: MSG, rawBody: 'x' });
+    expect(omitted.rpc?.args).toEqual({ p_message_id: MSG, p_body: 'x' });
+  });
+
+  it('a delete response is a tombstone with no mentions', async () => {
+    const item = await deleteMessage(fakeDb({ rpcRow: { body: '', deleted_at: '2026-10-25T10:05:00Z' } }), { workspaceId: WS, messageId: MSG });
+    expect(item.mentions).toEqual([]);
+  });
+
+  it('the list attaches stored mentions per message and skips tombstones', async () => {
+    const messages = [row(1), { ...row(2), deleted_at: '2026-10-25T10:05:00Z', body: '' }];
+    const page = await fetchMessagesPage(
+      fakeDb({ messages, mentionRows: [{ message_id: 'id-1', mentioned_user_id: ELENA }, { message_id: 'id-2', mentioned_user_id: ELENA }], authors: [{ user_id: U1, email: 'sara.i@x.io' }, { user_id: ELENA, email: 'elena.vargas@x.io' }] }),
+      { workspaceId: WS, limit: 5 },
+    );
+    expect(page.items[0].mentions).toEqual([{ user_id: ELENA, name: 'Elena Vargas' }]);
+    expect(page.items[1].mentions).toEqual([]);
+  });
+
+  it('ids fetches exactly those messages and never mixes with the cursors', async () => {
+    const rec: Rec = { ops: [] };
+    const page = await fetchMessagesPage(fakeDb({ messages: [row(1)] }, rec), { workspaceId: WS, limit: 5, ids: ['id-1'] });
+    expect(rec.ids).toEqual(['id-1']);
+    expect(page.has_more).toBe(false);
+    const parsed = parseListParams(WS, new URLSearchParams(`ids=${ELENA.toUpperCase()},${ELENA},${MSG}`));
+    expect(parsed.ids).toEqual([ELENA, MSG]);
+    expect(await code(() => parseListParams(WS, new URLSearchParams(`ids=${ELENA}&after_seq=1`)))).toBe('validation_failed');
+    expect(await code(() => parseListParams(WS, new URLSearchParams('ids=nope')))).toBe('validation_failed');
+    expect(await code(() => parseListParams(WS, new URLSearchParams(`ids=${Array.from({ length: 21 }, (_, i) => `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`).join(',')}`)))).toBe('validation_failed');
   });
 });
 
@@ -221,11 +277,11 @@ describe('message length counts code points (BK-1282)', () => {
   it('postMessage stores a 4000-emoji body and rejects 4001 with message_too_long', async () => {
     const rec: Rec = { ops: [] };
     await postMessage(fakeDb({}, rec), { workspaceId: WS, userId: U1, rawBody: ` ${GRIN.repeat(4000)}\n` });
-    expect(rec.inserted).toEqual({ channel_id: CH, workspace_id: WS, author_user_id: U1, body: GRIN.repeat(4000) });
+    expect(rec.rpc?.args.p_body).toBe(GRIN.repeat(4000));
 
     const rejected: Rec = { ops: [] };
     expect(await rejection(postMessage(fakeDb({}, rejected), { workspaceId: WS, userId: U1, rawBody: GRIN.repeat(4001) }))).toEqual(TOO_LONG);
-    expect(rejected.inserted).toBeUndefined();
+    expect(rejected.rpc).toBeUndefined();
   });
 
   it('editMessage accepts a 4000-emoji body and rejects 4001 before the RPC', async () => {

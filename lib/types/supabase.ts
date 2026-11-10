@@ -594,6 +594,42 @@ export interface Database {
           },
         ]
       }
+      chat_message_mentions: {
+        Row: {
+          created_at: string
+          mentioned_user_id: string
+          message_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          mentioned_user_id: string
+          message_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          mentioned_user_id?: string
+          message_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'chat_message_mentions_message_id_fkey'
+            columns: ['message_id']
+            isOneToOne: false
+            referencedRelation: 'chat_messages'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'chat_message_mentions_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           author_user_id: string | null
@@ -2442,7 +2478,7 @@ export interface Database {
         }[]
       }
       bunkai_chat_edit_message: {
-        Args: { p_body: string, p_message_id: string }
+        Args: { p_body: string, p_mention_ids?: string[], p_message_id: string }
         Returns: {
           author_user_id: string
           body: string
@@ -2451,6 +2487,7 @@ export interface Database {
           deleted_at: string
           edited_at: string
           id: string
+          mention_user_ids: string[]
           seq: number
           workspace_id: string
         }[]
@@ -2469,6 +2506,25 @@ export interface Database {
           role: string
           user_id: string
         }[]
+      }
+      bunkai_chat_send_message: {
+        Args: { p_body: string, p_mention_ids?: string[], p_workspace_id: string }
+        Returns: {
+          author_user_id: string
+          body: string
+          channel_id: string
+          created_at: string
+          deleted_at: string
+          edited_at: string
+          id: string
+          mention_user_ids: string[]
+          seq: number
+          workspace_id: string
+        }[]
+      }
+      bunkai_chat_sync_mentions: {
+        Args: { p_ids: string[], p_message_id: string }
+        Returns: undefined
       }
       bunkai_close_test_plan: {
         Args: { p_summary?: string, p_test_plan_id: string, p_verdict: string }

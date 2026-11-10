@@ -363,6 +363,7 @@ BK-210 Team Chat:
   BK-217 Mentions ──> BK-215, BK-209       (cross-epic: Notifications inbox)
   BK-218 Rich entity links ──> BK-215  ··> epics BK-13/BK-24/BK-30
   BK-219 Edit/delete ──> BK-215            BK-220 Search ──> BK-215
+  BK-217 ✅ dev-done (2026-11-10) — feat/BK-217-chat-mentions: `chat_message_mentions` + `bunkai_chat_send_message` / `bunkai_chat_edit_message` RPCs (migration 0123), `mentions` on every chat message in OpenAPI, inbox event `mentions`. The project-channel branch (old AC 5) stays inactive until BK-216 ships.
 
 BK-224 Billing & Plans:  (epic ──> epic BK-1)
   BK-229 View plan/usage ──> BK-87 ✅ dev-done (2026-08-16) — merged to staging via PR #176, merge commit `18662df`, ancestor-verified.

@@ -2,6 +2,19 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 
 // BK-215 — workspace general channel: message list + send.
 
+const ChatMentionSchema = z
+  .object({
+    user_id: z.string().uuid(),
+    name: z.string().describe('Display name derived from the member\'s email, the text the pill reads.'),
+  })
+  .openapi('ChatMention');
+
+const MentionIdsField = z
+  .array(z.string().uuid())
+  .max(50)
+  .optional()
+  .describe('Member ids picked from the autocomplete (BK-217). Ids that are not ACTIVE members of the workspace and duplicates are dropped silently; mentioning yourself records the pill but sends no notification. Each mentioned member gets one inbox notification (event `mentions`).');
+
 const ChatMessageSchema = z
   .object({
     id: z.string().uuid(),
@@ -14,6 +27,7 @@ const ChatMessageSchema = z
     created_at: z.string().datetime({ offset: true }),
     edited_at: z.string().datetime({ offset: true }).nullable().optional().describe('Set once the author edited the message (BK-219).'),
     deleted_at: z.string().datetime({ offset: true }).nullable().optional().describe('Set on a tombstone; `body` is then empty. Author and moderator deletions are indistinguishable.'),
+    mentions: z.array(ChatMentionSchema).describe('Members mentioned in `body` (BK-217), empty on a tombstone. Each `name` is the text after the "@" in the body, derived from the member\'s email (kept for a member who has since left the workspace).'),
   })
   .openapi('ChatMessage');
 
@@ -26,7 +40,10 @@ const ChatMessagesPageSchema = z
   .openapi('ChatMessagesPage');
 
 const SendChatMessageBodySchema = z
-  .object({ body: z.string().describe('1..4000 characters after trimming; empty or whitespace-only is rejected.') })
+  .object({
+    body: z.string().describe('1..4000 characters after trimming; empty or whitespace-only is rejected. Mentions stay readable in the text as "@Name".'),
+    mentions: MentionIdsField,
+  })
   .openapi('SendChatMessageBody');
 
 const WorkspaceIdParam = {
@@ -48,13 +65,14 @@ registry.registerPath({
     { name: 'limit', in: 'query' as const, required: false, schema: { type: 'integer' as const, minimum: 1, maximum: 100, default: 30 } },
     { name: 'before_seq', in: 'query' as const, required: false, schema: { type: 'integer' as const, minimum: 1 } },
     { name: 'after_seq', in: 'query' as const, required: false, schema: { type: 'integer' as const, minimum: 0 } },
+    { name: 'ids', in: 'query' as const, required: false, description: 'Comma-separated message ids (max 20): returns exactly those messages with their mentions (BK-217). Exclusive with `before_seq` / `after_seq`.', schema: { type: 'string' as const } },
   ],
   responses: {
     200: { description: 'A page of messages.', content: { 'application/json': { schema: ChatMessagesPageSchema } } },
     400: { description: 'Workspace id not a UUID.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Workspace not found or caller is not an active member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Invalid `limit` / `before_seq` / `after_seq`.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Invalid `limit` / `before_seq` / `after_seq` / `ids`.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 
@@ -63,7 +81,7 @@ registry.registerPath({
   path: '/api/v1/workspaces/{id}/chat/messages',
   tags: ['Chat'],
   summary: 'Send a message to the workspace general channel',
-  description: 'Members, admins and owners can write; viewers are read-only (403, reason `viewer_read_only`). The body is trimmed and must be 1..4000 characters.',
+  description: 'Members, admins and owners can write; viewers are read-only (403, reason `viewer_read_only`). The body is trimmed and must be 1..4000 characters. `mentions` (BK-217) records the pills and notifies each mentioned active member once, in one transaction with the message.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [WorkspaceIdParam],
   request: { body: { required: true, content: { 'application/json': { schema: SendChatMessageBodySchema } } } },
@@ -73,12 +91,15 @@ registry.registerPath({
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Caller has the viewer role (`viewer_read_only`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Workspace not found or caller is not an active member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Empty (`message_empty`) or over-long (`message_too_long`) body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Empty (`message_empty`) or over-long (`message_too_long`) body, or a malformed `mentions` array (`mentions_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 
 const EditChatMessageBodySchema = z
-  .object({ body: z.string().describe('New text, 1..4000 characters after trimming.') })
+  .object({
+    body: z.string().describe('New text, 1..4000 characters after trimming.'),
+    mentions: MentionIdsField.describe('The COMPLETE new mention set (BK-217). Only members added by this edit are notified; removed mentions lose their pill and keep past notifications; omit the field to leave the mentions unchanged.'),
+  })
   .openapi('EditChatMessageBody');
 
 const MessageIdParam = {
@@ -104,7 +125,7 @@ registry.registerPath({
     403: { description: 'Not the author (`not_author`), read-only role (`viewer_read_only`) or window closed (`edit_window_closed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Message not found or caller is not an active member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'The message was already deleted (`message_deleted`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Empty or over-long body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Empty or over-long body, or a malformed `mentions` array (`mentions_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

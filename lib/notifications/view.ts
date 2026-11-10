@@ -47,6 +47,8 @@ export interface NotificationTitleView {
   text: string
   signal: { label: string, status: NotificationSignalStatus } | null
   reason: string | null
+  // BK-217: a chat mention shows a snippet of the message under its title.
+  snippet?: string | null
 }
 
 interface NotificationTitleInput {
@@ -120,6 +122,16 @@ export function resolveNotificationTitle(notification: NotificationTitleInput): 
     // never notifies on — see 0056's header): neutral label, mirrors the
     // "Run update"/"Test update" fallback shape above.
     return { text: 'Bug update', signal: null, reason: null };
+  }
+
+  // BK-217 — a chat mention. The producer (migration 0123,
+  // bunkai_chat_sync_mentions) always snapshots author, channel and a 140
+  // character snippet; every fallback below is defensive, not the expected path.
+  if (entityType === 'chat_message') {
+    const author = typeof payload.author_name === 'string' && payload.author_name.length > 0 ? payload.author_name : 'Someone';
+    const channel = typeof payload.channel_name === 'string' && payload.channel_name.length > 0 ? payload.channel_name : 'general';
+    const snippet = typeof payload.snippet === 'string' && payload.snippet.length > 0 ? payload.snippet : null;
+    return { text: `${author} mentioned you in #${channel}`, signal: null, reason: null, snippet };
   }
 
   // Any future entity_type: no vocabulary defined yet.

@@ -13,7 +13,7 @@ import { useAuth } from '@components/providers/auth-context';
 import { emailInitials } from '@lib/account/initials';
 import { NO_WORKSPACE_LABEL, roleLabel } from '@lib/account/role-label';
 import { activeProjectSection, isProjectsNavActive, projectSectionHref, resolveNavProjectSlug } from '@lib/navigation/shell-nav';
-import { resolveNotificationHref } from '@lib/notifications/entity-routes';
+import { resolveNotificationChatTarget, resolveNotificationHref } from '@lib/notifications/entity-routes';
 import { buildNotificationsChannelConfig } from '@lib/notifications/realtime-notifications-channel';
 import { formatUnreadBadgeCount, shouldResetNotificationsOnWorkspaceChange } from '@lib/notifications/view';
 import { createRefetchScheduler, shouldReconcileOnStatusChange } from '@lib/runs/realtime-run-channel';
@@ -419,6 +419,14 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
   const handleRowActivate = (notification: NotificationRpcRow) => {
     if (notification.read_at === null) {
       void markOneRead(notification);
+    }
+    // BK-217: a chat mention opens the chat dock on its message instead of a
+    // route. A message deleted since is still a valid target (the chat says so).
+    const chatTarget = resolveNotificationChatTarget(notification);
+    if (chatTarget !== null) {
+      setNotifOpen(false);
+      chat.openOnMessage(chatTarget);
+      return;
     }
     const href = resolveNotificationHref(notification);
     if (href !== null) {

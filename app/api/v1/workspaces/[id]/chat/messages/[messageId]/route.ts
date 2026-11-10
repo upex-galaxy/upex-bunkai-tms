@@ -5,7 +5,7 @@ import { deleteMessage, editMessage } from '../../response';
 
 // BK-219 — edit / delete one chat message.
 //
-//   PATCH  /api/v1/workspaces/{id}/chat/messages/{messageId}  { body } -> 200
+//   PATCH  /api/v1/workspaces/{id}/chat/messages/{messageId}  { body, mentions? } -> 200
 //   DELETE /api/v1/workspaces/{id}/chat/messages/{messageId}          -> 200 (tombstone)
 //
 // Ownership, role and the 15-minute edit window are enforced by the SECURITY
@@ -25,9 +25,9 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   catch {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   }
-  const rawBody = typeof json === 'object' && json !== null ? (json as { body?: unknown }).body : undefined;
+  const fields = typeof json === 'object' && json !== null ? (json as { body?: unknown, mentions?: unknown }) : {};
 
-  return jsonResponse(await editMessage(db, { workspaceId, messageId, rawBody }), { status: 200 });
+  return jsonResponse(await editMessage(db, { workspaceId, messageId, rawBody: fields.body, rawMentions: fields.mentions }), { status: 200 });
 }, {
   auth: 'authenticated',
   why: 'Chat is a membership-scoped surface: the edit RPC asserts authorship and the edit window, not a capability scope.',

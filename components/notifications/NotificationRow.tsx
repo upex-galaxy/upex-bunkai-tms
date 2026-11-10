@@ -1,7 +1,7 @@
 'use client';
 
 import type { NotificationRpcRow } from '@app/api/v1/workspaces/[id]/notifications/response';
-import { resolveNotificationHref } from '@lib/notifications/entity-routes';
+import { resolveNotificationChatTarget, resolveNotificationHref } from '@lib/notifications/entity-routes';
 import { formatRelativeTime } from '@lib/notifications/relative-time';
 import { resolveNotificationTitle, resolveNotificationUnavailable } from '@lib/notifications/view';
 import { Check, Info } from 'lucide-react';
@@ -33,7 +33,8 @@ export function NotificationRow({ notification, marking, onMarkRead, onOpen }: N
   // not available, not only after the user has already clicked through once.
   // A row is also unavailable when entity_available is true but no route
   // could be resolved (e.g. a standalone bug — see resolveNotificationUnavailable).
-  const unavailable = resolveNotificationUnavailable(notification.entity_available, href);
+  const chatTarget = resolveNotificationChatTarget(notification);
+  const unavailable = resolveNotificationUnavailable(notification.entity_available, href ?? chatTarget);
 
   const handleActivate = () => {
     onOpen();
@@ -44,7 +45,7 @@ export function NotificationRow({ notification, marking, onMarkRead, onOpen }: N
       data-testid="notificationRow"
       role="button"
       tabIndex={0}
-      aria-label={`${title.text}${href !== null ? '' : ', unavailable'}${unread ? ', unread' : ', read'}`}
+      aria-label={`${title.text}${unavailable ? ', unavailable' : ''}${unread ? ', unread' : ', read'}`}
       onClick={handleActivate}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -52,7 +53,7 @@ export function NotificationRow({ notification, marking, onMarkRead, onOpen }: N
           handleActivate();
         }
       }}
-      className={`grid grid-cols-[10px_1fr_auto] items-start gap-2.5 border-b border-stroke-1 px-4 py-3 outline-none last:border-b-0 focus-visible:bg-surface-2 ${href !== null ? 'cursor-pointer hover:bg-surface-2' : 'cursor-default'}`}
+      className={`grid grid-cols-[10px_1fr_auto] items-start gap-2.5 border-b border-stroke-1 px-4 py-3 outline-none last:border-b-0 focus-visible:bg-surface-2 ${unavailable ? 'cursor-default' : 'cursor-pointer hover:bg-surface-2'}`}
     >
       <span
         data-testid="notification_unread_dot"
@@ -67,6 +68,10 @@ export function NotificationRow({ notification, marking, onMarkRead, onOpen }: N
             <span className="status-chip" data-status={title.signal.status}>{title.signal.label}</span>
           )}
         </div>
+
+        {title.snippet && (
+          <p data-testid="notification_snippet" className="m-0 mt-0.5 line-clamp-2 break-words text-2xs text-fg-3">{title.snippet}</p>
+        )}
 
         {title.reason && (
           <p className="m-0 mt-0.5 text-2xs text-fg-3">

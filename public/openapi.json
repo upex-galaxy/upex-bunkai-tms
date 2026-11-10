@@ -7042,6 +7042,13 @@
             "type": ["string", "null"],
             "format": "date-time",
             "description": "Set on a tombstone; `body` is then empty. Author and moderator deletions are indistinguishable."
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMention"
+            },
+            "description": "Members mentioned in `body` (BK-217), empty on a tombstone. Each `name` is the text after the \"@\" in the body, derived from the member's email (kept for a member who has since left the workspace)."
           }
         },
         "required": [
@@ -7052,15 +7059,39 @@
           "author_user_id",
           "author_name",
           "body",
-          "created_at"
+          "created_at",
+          "mentions"
         ]
+      },
+      "ChatMention": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name derived from the member's email, the text the pill reads."
+          }
+        },
+        "required": ["user_id", "name"]
       },
       "SendChatMessageBody": {
         "type": "object",
         "properties": {
           "body": {
             "type": "string",
-            "description": "1..4000 characters after trimming; empty or whitespace-only is rejected."
+            "description": "1..4000 characters after trimming; empty or whitespace-only is rejected. Mentions stay readable in the text as \"@Name\"."
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 50,
+            "description": "Member ids picked from the autocomplete (BK-217). Ids that are not ACTIVE members of the workspace and duplicates are dropped silently; mentioning yourself records the pill but sends no notification. Each mentioned member gets one inbox notification (event `mentions`)."
           }
         },
         "required": ["body"]
@@ -7071,6 +7102,15 @@
           "body": {
             "type": "string",
             "description": "New text, 1..4000 characters after trimming."
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 50,
+            "description": "The COMPLETE new mention set (BK-217). Only members added by this edit are notified; removed mentions lose their pill and keep past notifications; omit the field to leave the mentions unchanged."
           }
         },
         "required": ["body"]
@@ -18570,6 +18610,15 @@
               "type": "integer",
               "minimum": 0
             }
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated message ids (max 20): returns exactly those messages with their mentions (BK-217). Exclusive with `before_seq` / `after_seq`.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -18614,7 +18663,7 @@
             }
           },
           "422": {
-            "description": "Invalid `limit` / `before_seq` / `after_seq`.",
+            "description": "Invalid `limit` / `before_seq` / `after_seq` / `ids`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -18628,7 +18677,7 @@
       "post": {
         "tags": ["Chat"],
         "summary": "Send a message to the workspace general channel",
-        "description": "Members, admins and owners can write; viewers are read-only (403, reason `viewer_read_only`). The body is trimmed and must be 1..4000 characters.",
+        "description": "Members, admins and owners can write; viewers are read-only (403, reason `viewer_read_only`). The body is trimmed and must be 1..4000 characters. `mentions` (BK-217) records the pills and notifies each mentioned active member once, in one transaction with the message.",
         "security": [
           {
             "cookieAuth": []
@@ -18710,7 +18759,7 @@
             }
           },
           "422": {
-            "description": "Empty (`message_empty`) or over-long (`message_too_long`) body.",
+            "description": "Empty (`message_empty`) or over-long (`message_too_long`) body, or a malformed `mentions` array (`mentions_invalid`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -18827,7 +18876,7 @@
             }
           },
           "422": {
-            "description": "Empty or over-long body.",
+            "description": "Empty or over-long body, or a malformed `mentions` array (`mentions_invalid`).",
             "content": {
               "application/json": {
                 "schema": {

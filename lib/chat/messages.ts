@@ -4,6 +4,8 @@
 // chat UI makes is unit-testable without a live socket (same split as
 // lib/runs/realtime-run-channel.ts, ADR-0010).
 
+import type { ChatMention } from './mentions';
+
 export const CHAT_MESSAGE_MAX_LENGTH = 4000;
 export const CHAT_PAGE_SIZE = 30;
 export const CHAT_MAX_PAGE_SIZE = 100;
@@ -24,6 +26,9 @@ export interface ChatMessage {
   // BK-219: set once the author edited the body / a tombstone replaced it.
   edited_at?: string | null
   deleted_at?: string | null
+  // BK-217: members mentioned in the body. Absent on a Realtime row (the
+  // postgres_changes payload is the table row), filled by the API responses.
+  mentions?: ChatMention[]
 }
 
 export interface ChatMember {
