@@ -10,11 +10,15 @@ import { fetchMessagesPage, parseListParams, postMessage } from '../response';
 //        ?before_seq=<n>              older page (scroll-up history)
 //        ?after_seq=<n>               everything newer, ascending (reconnect
 //                                     catch-up; capped at 200, `has_more`)
-//   POST /api/v1/workspaces/{id}/chat/messages   { body }  -> 201
+//        ?ids=<uuid,uuid,...>         exactly those messages (max 20); BK-217
+//                                     hydration of a Realtime row's mentions
+//   POST /api/v1/workspaces/{id}/chat/messages   { body, mentions? }  -> 201
 //
-// Auth: any authenticated principal; visibility = active membership and write =
-// member/admin/owner are enforced by RLS (migration 0104) on the CALLER'S own
-// client, never the admin client. A foreign workspace answers 404, same as a
+// Auth: any authenticated principal; visibility = active membership (RLS,
+// migration 0104) and write = member/admin/owner (asserted inside the
+// bunkai_chat_send_message RPC, migration 0123, which also records the
+// mentions and their inbox notifications), on the CALLER'S own client, never
+// the admin client. A foreign workspace answers 404, same as a
 // missing one.
 
 export const GET = withApiHandler(async (request: NextRequest, ctx) => {
@@ -38,9 +42,9 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   catch {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   }
-  const rawBody = typeof json === 'object' && json !== null ? (json as { body?: unknown }).body : undefined;
+  const fields = typeof json === 'object' && json !== null ? (json as { body?: unknown, mentions?: unknown }) : {};
 
-  const message = await postMessage(db, { workspaceId, userId: principal.userId, rawBody });
+  const message = await postMessage(db, { workspaceId, userId: principal.userId, rawBody: fields.body, rawMentions: fields.mentions });
   return jsonResponse(message, { status: 201 });
 }, {
   auth: 'authenticated',
