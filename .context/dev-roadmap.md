@@ -216,6 +216,7 @@ BK-221 Automation & CI Ingestion:
   BK-223 Stream step results ──> BK-222, BK-88, BK-34, BK-39  ··> BK-35
   BK-226 Upload CI file ──> BK-222, BK-88
   BK-222 ✅ dev-done (2026-11-09) — PR #332 (feat/BK-222-submit-automated-run): POST /api/v1/runs/submissions, migration 0121, ADR-0026. Unblocks BK-223 and BK-226.
+  BK-223 ✅ dev-done (2026-11-10) — feat/BK-223-stream-step-results: streaming contract on the live run lifecycle (bearer idempotent step re-report + 409 conflict, executor_name snapshot at start, 60 minute agent/ci inactivity sweep), migration 0122, OpenAPI streaming sequence.
   BK-228 Commit/branch links ──> BK-226
   BK-225 Mode filter ──> BK-38  ··> BK-222, BK-227
   BK-227 Automation status ──> BK-27
