@@ -14,7 +14,9 @@
 --     actor is auth.uid(), never a parameter. Mention ids are validated
 --     server-side: an id that is not an ACTIVE member of the message's
 --     workspace is dropped silently (no error, so membership never leaks),
---     duplicates collapse, and at most 50 ids are considered.
+--     duplicates collapse, and at most 50 ids are considered. An edit that keeps
+--     a mention of a member who has since left keeps its pill (D6); only active
+--     members are ever added or notified.
 --   * Self-mention: the author's own mention row is kept (the pill renders
 --     with the "self" style) but never produces a notification.
 --   * T3: one inbox notification per mentioned member per message, event_type
@@ -100,6 +102,7 @@ as $$
 declare
   v_msg          public.chat_messages%rowtype;
   v_valid        uuid[];
+  v_keep         uuid[];
   v_added        uuid;
   v_author_name  text;
   v_channel_name text;
@@ -126,9 +129,23 @@ begin
        limit 50
     ) x;
 
+  -- A mention already stored on this message survives an edit that keeps it,
+  -- even if that member has since left (D6: old pills of a former member keep
+  -- rendering). Only ACTIVE members are ever newly added or notified.
+  select coalesce(array_agg(distinct k.uid), array[]::uuid[])
+    into v_keep
+    from (
+      select unnest(v_valid) as uid
+      union
+      select cmm.mentioned_user_id
+        from public.chat_message_mentions cmm
+       where cmm.message_id = v_msg.id
+         and cmm.mentioned_user_id = any (coalesce(p_ids, array[]::uuid[]))
+    ) k;
+
   delete from public.chat_message_mentions cmm
    where cmm.message_id = v_msg.id
-     and not (cmm.mentioned_user_id = any (v_valid));
+     and not (cmm.mentioned_user_id = any (v_keep));
 
   select (
            select string_agg(upper(left(w, 1)) || substr(w, 2), ' ')
@@ -170,7 +187,7 @@ begin
     end if;
   end loop;
 
-  return v_valid;
+  return v_keep;
 end;
 $$;
 
