@@ -356,6 +356,7 @@ BK-13 ATC Library (addendum, 2026-08-13 — BK-267 ABORTED, split executed):
     "successor exists" as "successor is buildable," the same caution the BK-31 addendum above already
     states for its own cluster. `master-design-plan.md` §8 gained one row per successor under BK-13
     (BK-267 never had a §8 row — a genuine coverage gap, now closed, not a status refresh).
+  2026-11-10: BK-440 built (name search on /atcs, `?q=`, browser-side narrowing, no endpoint, no migration). BK-441 composes its filters next to `q`: `lib/atcs/library-search.ts` (`AtcLibraryQuery`) and `AtcLibrarySearchProvider` are the seam.
 
 BK-210 Team Chat:
   BK-215 Workspace channel ──> epic BK-1   (gate for the whole epic)
