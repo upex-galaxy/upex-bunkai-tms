@@ -397,6 +397,9 @@ export interface CreateRunArgs {
   environmentId: string
   executorMode: string
   startToken: string
+  // BK-223 — the access token that started the run (bearer callers only). The RPC
+  // binds it to the actor and snapshots its name into runs.executor_name.
+  tokenId?: string | null
 }
 
 export async function createRun(supabase: Client, args: CreateRunArgs) {
@@ -406,6 +409,7 @@ export async function createRun(supabase: Client, args: CreateRunArgs) {
     p_environment_id: args.environmentId,
     p_executor_mode: args.executorMode,
     p_start_token: args.startToken,
+    p_token_id: args.tokenId ?? undefined,
   });
 }
 
@@ -556,6 +560,10 @@ export async function markRunStep(
     status: 'passed' | 'failed' | 'blocked'
     note?: string | null
     evidenceUrl?: string | null
+    // BK-223 — the session kind. 'bearer' makes a re-report of an already
+    // reported step idempotent (identical) or a 45239 conflict (different);
+    // a cookie session keeps last-write-wins.
+    via?: string | null
   },
 ) {
   return supabase.rpc('bunkai_mark_run_step', {
@@ -569,6 +577,7 @@ export async function markRunStep(
     // p_if_match cast).
     p_note: (args.note ?? null) as string,
     p_evidence_url: (args.evidenceUrl ?? null) as string,
+    p_via: args.via ?? undefined,
   });
 }
 
