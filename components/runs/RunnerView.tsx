@@ -775,7 +775,12 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
       )}
 
       {/* BK-222 — reporter + evidence links of a submitted (automated) run. */}
-      <RunSubmissionProvenance executorName={view.executor_name} evidenceUrls={view.evidence_urls} />
+      <RunSubmissionProvenance
+        executorName={view.executor_name}
+        evidenceUrls={view.evidence_urls}
+        executorMode={view.executor_mode}
+        waitingForFirstResult={view.status === 'running' && view.executor_mode !== 'human' && done === 0}
+      />
 
       {/* BK-212 Slice 2 — linked-bug banner: the run context a bug
           notification's deep link lands on (AC1 "clicking it takes her to

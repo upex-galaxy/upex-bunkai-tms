@@ -39,4 +39,22 @@ describe('RunSubmissionProvenance', () => {
     expect(html).toContain('ci-bot');
     expect(html).not.toContain('Evidence');
   });
+
+  it('BK-223 — prefixes the token name with the executor mode', () => {
+    const agent = renderToStaticMarkup(<RunSubmissionProvenance executorName="karim" evidenceUrls={[]} executorMode="agent" />);
+    expect(agent).toContain('Agent — karim');
+    const ci = renderToStaticMarkup(<RunSubmissionProvenance executorName="pipeline" evidenceUrls={[]} executorMode="ci" />);
+    expect(ci).toContain('CI — pipeline');
+  });
+
+  it('BK-223 — shows the waiting state until the first step is reported', () => {
+    const waiting = renderToStaticMarkup(
+      <RunSubmissionProvenance executorName="karim" evidenceUrls={[]} executorMode="agent" waitingForFirstResult />,
+    );
+    expect(waiting).toContain('Waiting for first result');
+    const reported = renderToStaticMarkup(
+      <RunSubmissionProvenance executorName="karim" evidenceUrls={[]} executorMode="agent" waitingForFirstResult={false} />,
+    );
+    expect(reported).not.toContain('Waiting for first result');
+  });
 });
