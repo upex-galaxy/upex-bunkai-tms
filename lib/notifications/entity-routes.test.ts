@@ -1,4 +1,4 @@
-import { buildEntityHref, resolveNotificationHref } from '@lib/notifications/entity-routes';
+import { buildEntityHref, resolveNotificationChatTarget, resolveNotificationHref } from '@lib/notifications/entity-routes';
 import { describe, expect, test } from 'bun:test';
 
 describe('resolveNotificationHref', () => {
@@ -157,5 +157,24 @@ describe('buildEntityHref', () => {
     const maliciousId = '1&admin=true';
     const href = buildEntityHref('module', { projectSlug: 'checkout-platform', entityId: maliciousId });
     expect(href).toBe(`/projects/checkout-platform?module=${encodeURIComponent(maliciousId)}`);
+  });
+});
+
+// BK-217 — a chat mention opens the chat dock on its message, not a route.
+describe('resolveNotificationChatTarget', () => {
+  const base = { entity_type: 'chat_message', entity_id: 'msg-1', entity_available: true, payload: {} };
+
+  test('returns the message id for an available chat mention', () => {
+    expect(resolveNotificationChatTarget(base)).toBe('msg-1');
+  });
+
+  test('returns null for an unavailable message, a missing id or any other entity type', () => {
+    expect(resolveNotificationChatTarget({ ...base, entity_available: false })).toBeNull();
+    expect(resolveNotificationChatTarget({ ...base, entity_id: null })).toBeNull();
+    expect(resolveNotificationChatTarget({ ...base, entity_type: 'run' })).toBeNull();
+  });
+
+  test('a chat mention never resolves to a route href', () => {
+    expect(resolveNotificationHref({ ...base, payload: { project_slug: 'checkout' } })).toBeNull();
   });
 });

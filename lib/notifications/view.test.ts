@@ -204,3 +204,21 @@ describe('shouldResetNotificationsOnWorkspaceChange (BK-857)', () => {
     expect(shouldResetNotificationsOnWorkspaceChange('ws-1', null)).toBe(true);
   });
 });
+
+// BK-217 — the chat mention row: who mentioned me, where, and a snippet.
+describe('resolveNotificationTitle: chat mentions', () => {
+  const mention = (payload: Record<string, unknown>) => resolveNotificationTitle({ event_type: 'mentions', entity_type: 'chat_message', payload });
+
+  test('reads author, channel and snippet from the payload snapshot', () => {
+    expect(mention({ author_name: 'Sara Iglesias', channel_name: 'general', snippet: 'rerun when ready' })).toEqual({
+      text: 'Sara Iglesias mentioned you in #general',
+      signal: null,
+      reason: null,
+      snippet: 'rerun when ready',
+    });
+  });
+
+  test('falls back defensively when the snapshot is incomplete', () => {
+    expect(mention({})).toEqual({ text: 'Someone mentioned you in #general', signal: null, reason: null, snippet: null });
+  });
+});
