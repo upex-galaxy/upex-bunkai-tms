@@ -90,6 +90,17 @@ export function mapAtcRpcError(error: { code?: string, message: string }): never
       throw new ApiError('conflict', 'This ATC is archived. Restore it, or its archived Module or User Story, before changing it.', {
         details: { reason: 'atc_archived' },
       });
+    case '45026':
+      // BK-507 — the bulk edit's selection was empty, malformed or over the 200
+      // ceiling. The route's schema catches most of it first; this is the backstop
+      // for a caller that skips the route.
+      throw new ApiError('validation_failed', 'The selection must hold between 1 and 200 ATCs.', {
+        details: { reason: 'bulk_selection_invalid' },
+      });
+    case '45027':
+      throw new ApiError('validation_failed', 'The requested bulk change is not valid.', {
+        details: { reason: 'bulk_change_invalid' },
+      });
     case '45024':
       // BK-144 — RPC-layer backstop (migration 0053). The route's zod schema
       // (AtcWriteBodySchema.tags.max(MAX_ATC_TAGS)) already rejects this before

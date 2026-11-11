@@ -216,6 +216,34 @@ export async function restoreAtc(supabase: Client, args: { actorUserId: string, 
   });
 }
 
+// BK-507 — bulk-edit tags (add | remove), Module, layer or priority on up to 200
+// ATCs of one Project (ADR-0027). ONE field per call. Partial success is normal:
+// the result lists one outcome per ATC (changed | unchanged | refused + reason),
+// and a request-level failure (bad shape, bad destination, no write access)
+// raises with nothing written. `dryRun` runs the same evaluation without a lock,
+// a write or an event, so the confirmation can pre-report refusals. Execute is
+// granted to service_role only (migration 0124), so this runs through the API
+// route's admin client with the actor named explicitly.
+export interface BulkEditAtcsArgs {
+  actorUserId: string
+  projectId: string
+  items: Array<{ id: string, version: number | null }>
+  field: 'tags' | 'module' | 'layer' | 'priority'
+  change: Record<string, unknown>
+  dryRun?: boolean
+}
+
+export async function bulkEditAtcs(supabase: Client, args: BulkEditAtcsArgs) {
+  return supabase.rpc('bunkai_bulk_edit_atcs', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_items: args.items as unknown as Json,
+    p_field: args.field,
+    p_change: args.change as unknown as Json,
+    p_dry_run: args.dryRun ?? false,
+  });
+}
+
 // BK-23 — deep-copy an ATC (header + ordered steps/assertions + AC bindings)
 // into a new ATC with a fresh slug and version = 1. `title` is optional; when
 // omitted the RPC defaults the copy's title to `<source> (copy)`. Same
