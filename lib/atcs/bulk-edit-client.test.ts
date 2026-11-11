@@ -1,3 +1,5 @@
+import type { BulkEditReport } from '@lib/atcs/bulk-edit';
+import type { BulkEditRequest } from '@lib/atcs/bulk-edit-client';
 import { runBulkEdit } from '@lib/atcs/bulk-edit-client';
 import { afterEach, describe, expect, test } from 'bun:test';
 
@@ -17,13 +19,13 @@ function stub(handler: () => Response | Promise<Response>): void {
   }) as typeof fetch;
 }
 
-const REQUEST = {
+const REQUEST: BulkEditRequest = {
   projectId: 'p1',
   items: [{ id: 'a1', version: 3 }, { id: 'a2', version: null }],
-  change: { field: 'tags', op: 'add', tags: ['smoke'] } as const,
+  change: { field: 'tags', op: 'add', tags: ['smoke'] },
 };
 
-const REPORT = { dry_run: false, field: 'tags', requested: 2, changed: 2, unchanged: 0, refused: 0, outcomes: [] };
+const REPORT: BulkEditReport = { dry_run: false, field: 'tags', requested: 2, changed: 2, unchanged: 0, refused: 0, outcomes: [] };
 
 describe('runBulkEdit', () => {
   test('posts the project, field, wire change, versions and the dry-run flag', async () => {
