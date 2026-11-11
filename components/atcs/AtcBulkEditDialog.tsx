@@ -31,6 +31,9 @@ export interface AtcBulkEditDialogProps {
   onFinished: (report: BulkEditReport | null) => void
   onCancel: () => void
   onSubmittingChange?: (submitting: boolean) => void
+  // Called when the outcome report is on screen with refusals, so the overlay can
+  // treat Esc or a click outside like Done (the selection narrows to the refused).
+  onReportShown?: (report: BulkEditReport) => void
 }
 
 type Failure
@@ -67,6 +70,7 @@ export function AtcBulkEditDialog({
   onFinished,
   onCancel,
   onSubmittingChange,
+  onReportShown,
 }: AtcBulkEditDialogProps) {
   const [phase, setPhase] = useState<Phase>({ kind: 'previewing' });
   const applyingRef = useRef(false);
@@ -130,8 +134,9 @@ export function AtcBulkEditDialog({
       onFinished(report);
       return;
     }
+    onReportShown?.(report);
     setPhase({ kind: 'done', report });
-  }, [onFinished, onSubmittingChange]);
+  }, [onFinished, onSubmittingChange, onReportShown]);
 
   const changeText = describeBulkChange(change, moduleLabel);
 
@@ -340,14 +345,18 @@ function ReportBlock({ report, mode }: { report: BulkEditReport, mode: 'preview'
 // closes, panel stops propagation). `useModalDismiss` adds Escape and the focus
 // trap. While the write is in flight nothing dismisses it: it would read as
 // cancelled while the write completes (E5).
-export function AtcBulkEditOverlay(props: Omit<AtcBulkEditDialogProps, 'onSubmittingChange'>) {
-  const { onCancel } = props;
+export function AtcBulkEditOverlay(props: Omit<AtcBulkEditDialogProps, 'onSubmittingChange' | 'onReportShown'>) {
+  const { onCancel, onFinished } = props;
   const panelRef = useRef<HTMLDivElement>(null);
   const submittingRef = useRef(false);
+  // The report a partial failure left on screen: closing from outside is Done.
+  const reportRef = useRef<BulkEditReport | null>(null);
 
   const requestClose = useCallback(() => {
-    if (!submittingRef.current) { onCancel(); }
-  }, [onCancel]);
+    if (submittingRef.current) { return; }
+    if (reportRef.current) { onFinished(reportRef.current); }
+    else { onCancel(); }
+  }, [onCancel, onFinished]);
 
   useModalDismiss(true, requestClose, panelRef);
 
@@ -360,6 +369,7 @@ export function AtcBulkEditOverlay(props: Omit<AtcBulkEditDialogProps, 'onSubmit
   }, []);
 
   const onSubmittingChange = useCallback((submitting: boolean) => { submittingRef.current = submitting; }, []);
+  const onReportShown = useCallback((report: BulkEditReport) => { reportRef.current = report; }, []);
 
   return (
     <div
@@ -368,7 +378,7 @@ export function AtcBulkEditOverlay(props: Omit<AtcBulkEditDialogProps, 'onSubmit
       onClick={requestClose}
     >
       <div ref={panelRef} className="w-full max-w-[460px]" onClick={e => e.stopPropagation()}>
-        <AtcBulkEditDialog {...props} onSubmittingChange={onSubmittingChange} />
+        <AtcBulkEditDialog {...props} onSubmittingChange={onSubmittingChange} onReportShown={onReportShown} />
       </div>
     </div>
   );

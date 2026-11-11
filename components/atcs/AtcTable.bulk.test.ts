@@ -250,6 +250,22 @@ describe('the bulk bar and the confirmation', () => {
     expect(refreshes).toBe(1);
   });
 
+  test('Esc after a partial failure is Done: the selection still narrows to the refused ATCs', async () => {
+    respond = body => json(report([['atc-1', 'changed', null], ['atc-2', 'refused', 'stale_version']], body.dry_run === true));
+    const { container } = mount(FOUR);
+    click(all(container, 'atc-row-select')[0]);
+    click(all(container, 'atc-row-select')[1]);
+    choose(byId(container, 'atc-bulk-field'), 'layer');
+    choose(byId(container, 'atc-bulk-layer'), 'API');
+    click(byId(container, 'atc-bulk-review'));
+    await flush();
+    click(byId(container, 'atc-bulk-apply'));
+    await flush();
+    act(() => { document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+    expect(byId(container, 'atc-bulk-modal')).toBeNull();
+    expect(byId(container, 'atc-selection-count')?.textContent).toBe('1 selected');
+  });
+
   test('E10: a rejected write keeps the whole selection', async () => {
     respond = body => (body.dry_run === true
       ? json(report([['atc-1', 'changed', null], ['atc-2', 'changed', null]], true))
