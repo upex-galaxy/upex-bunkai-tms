@@ -163,7 +163,7 @@ Sin SRS (app existente cuyos product docs son los mapas de negocio): las mismas 
 1. **Lee `implementation-plan.md` completo**
    - Identifica TODOS los steps
    - Entiende dependencies
-   - Revisa estimated time
+   - Revisa el tamaño del cambio contra el Review Size Forecast del plan
 
 2. **Lee `story.md`**
    - Comprende cada Acceptance Criterion

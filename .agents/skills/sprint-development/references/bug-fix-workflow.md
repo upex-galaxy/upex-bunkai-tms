@@ -510,6 +510,8 @@ Use [ISSUE_TRACKER_TOOL] to transition issue:
   transition: {{jira.transition.bug.start_fixing}}
 ```
 
+**Parent Story in `blocked` (defect loop):** when QA filed this Defect from testing, the parent Story sits in `blocked` (QA fired `defect_reported`). Starting the fix also moves the **Story**: fire `fix_defect` (`blocked` to `in_progress`) on the parent Story, read its status back, and keep it there while the fix is built and reviewed. The Defect and the Story each have their own transitions; moving one never moves the other.
+
 ---
 
 ### Phase 4: Implementation of Fix
@@ -799,14 +801,14 @@ Use [ISSUE_TRACKER_TOOL] to transition issue:
   transition: {{jira.transition.bug.fixed_and_deployed}}  // from in_review; urgent hotfix with no review: hard_pushed
 ```
 
-**Step 4: Assign to QA (if known)**
+**Step 4: Assign to the QA (record, not a placeholder)**
 
-```
-Use [ISSUE_TRACKER_TOOL] to update issue:
-  issue_key: "[BUG_ID]"
-  fields:
-    assignee: "[qa-email@example.com]"
-```
+Read `{{jira.qa_assignee}}` from the synced Defect (QA fills it when filing). When it names a QA, move the native `assignee` to that QA and read it back (an `editJiraIssue` with the `accountId`; a raw accountId through the CLI can silently unassign). When it is empty, leave `assignee` as it is, never write a made-up or placeholder address, and say so in the fix comment.
+
+**Step 5: Re-deliver the parent Story and record the DTU cycle**
+
+- Parent Story in `blocked` (defect loop): once the fix is merged and deployed, re-deliver the **Story** to Ready For QA (`pushed` from `in_progress`, or `pull_request` then `deployed`), read its status back and move its `assignee` to the QA in `{{jira.qa_assignee}}`. The full loop is in `SKILL.md` Stage 4 "Defect loop".
+- DTU: write the next cycle per `SKILL.md` Stage 4 (read the current `{{jira.development_token_usage}}`, add this cycle's measured delta, never overwrite, one `DTU cycle N: +x K (total y K) source=<harness or human>` comment, or a stated N/A when no figure exists). Never an estimate.
 
 ---
 
@@ -1502,7 +1504,7 @@ Before presenting the final report, verify:
 - [ ] Root Cause custom fields updated
 - [ ] Fix documentation comment added
 - [ ] Issue transitioned to Ready For QA
-- [ ] Assignee updated to original reporter/tester
+- [ ] Assignee moved to the `{{jira.qa_assignee}}` QA (or left as is with the reason in the fix comment); parent Story in `blocked` re-delivered to Ready For QA; DTU cycle written or N/A
 
 **Code Changes:**
 

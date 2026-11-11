@@ -49,7 +49,7 @@ Jira numeric IDs (`customfield_NNNNN`) vary per workspace and DO NOT live in thi
 - `{{jira.mockup}}` — Figma URLs / wireframes / visual references.
 - `{{jira.workflow}}` — flow description from the persona's POV, not a code-walkthrough (see anti-pattern `I15`).
 - `{{jira.weblink}}` — app/feature URL. Populate ONLY when the domain is known with certainty; when in doubt, omit.
-- `{{jira.story_points}}` — **OPT-IN ONLY**. Leave EMPTY by default. Populate only when the user explicitly requests estimation in this session. PO/BA do not estimate; the team that will build it does (Design + Dev + Test). When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
+- `{{jira.ai_effort}}` — NEVER set by the PO. QA sets it in shift-left (Low, Medium or High); `High` only warns the dev; the PO MAY propose a split (optional, never a gate). See anti-pattern `I16`.
 
 **Operation → tool layer.** Every read/write against Jira is expressed as `[ISSUE_TRACKER_TOOL]` pseudo-code. The consuming skill (AI runtime) resolves the tool via the `.agents/instructions/agent-tool-resolution.md` §6 table (primary `/acli`, fallback Atlassian MCP, last resort REST). For the operation → tool-layer matrix, see `references/jira-operations.md`. For rich-text (ADF) publishing gotchas, see `references/jira-publishing-gotchas.md`.
 
@@ -118,7 +118,7 @@ Analyze a new idea/feature and decide how to efficiently add it to the existing 
 
 - An improvement/extension of existing functionality
 - Clearly fits into an existing epic
-- Can be completed in 1-8 story points
+- Fits in one story (QA's AI Effort in shift-left is expected to be Low or Medium, never High)
 - Does not require significant architectural changes
 - 1 user story is enough
 
@@ -201,10 +201,9 @@ Before classifying, ask yourself:
 **Justification:**
 [Explain why it belongs to this level]
 
-**Preliminary estimation:**
+**Preliminary sizing:**
 
 - User Stories: [estimated number]
-- Total Story Points: [estimate]
 - Epics needed: [number] - [names if applicable]
 
 **Existing epic (if applicable):** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name} or "N/A — requires a new epic"
@@ -255,7 +254,7 @@ Before classifying, ask yourself:
 | `{{jira.acceptance_criteria}}`     | Minimum 3 Given/When/Then scenarios (1 happy + 2 error/edge). Each scenario wrapped in a ```gherkin code-fence (anti-pattern `I17`). Persona-observable language; no endpoints, HTTP codes, table names, framework names (anti-pattern `I15`). |
 | `{{jira.scope}}`                           | In-scope only (bullet list). Bullets describe capabilities the persona gains, not endpoints / tables / services (anti-pattern `I15`). |
 | `{{jira.out_of_scope}}`                    | Explicit exclusions (complementary to `scope`, no cross-pollination), also in capability voice. |
-| `{{jira.story_points}}`                    | **OPT-IN ONLY**. Leave EMPTY unless the user explicitly requested estimation in this session. When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`. |
+| `{{jira.ai_effort}}`                       | **Never set by the PO.** QA sets it in shift-left; `High` only warns the dev; a split is an optional PO proposal. See anti-pattern `I16`. |
 | `{{jira.business_rules_specification}}`    | Business rules (optional). Domain rules (boundaries, role gates, retry/audit semantics) — NOT internal algorithms. |
 | `{{jira.mockup}}`                          | Figma URLs / designs (optional)                                                  |
 | `{{jira.workflow}}`                        | Persona-flow description when complex (optional). NO code-walkthrough.  |
@@ -355,8 +354,8 @@ If PROJECT_KEY = "MYM", the parent epic is "MYM-13", and Jira assigned issue num
 | **I**ndependent | The story can be developed without depending on others | Can it be completed in isolation?       |
 | **N**egotiable  | Details can be adjusted during development             | Is there flexibility in implementation? |
 | **V**aluable    | Delivers value to the user or the business             | Is the "so that" clear and valuable?    |
-| **E**stimable   | Effort can be estimated with the info given            | Can the team assign story points?       |
-| **S**mall       | Can be completed in a sprint (max 8 story points)      | Less than 8 SP? If not, split.          |
+| **E**stimable   | Enough detail for QA to size it in shift-left          | Can QA tell Low, Medium or High from it? |
+| **S**mall       | Small enough to verify on its own                      | AI Effort High? A split MAY be proposed (optional). |
 | **T**estable    | Acceptance criteria are verifiable                     | Are the scenarios clear and measurable? |
 
 **Synced `story.md` shape** (what the sync emits — for read-back reference only, NOT an authoring template):
@@ -369,7 +368,8 @@ If PROJECT_KEY = "MYM", the parent epic is "MYM-13", and Jira assigned issue num
 **Jira Key:** [real Jira key, e.g. MYM-45]
 **Epic:** [EPIC-{PROJECT_KEY}-{NUM}] ([Epic Title])
 **Priority:** [High | Medium | Low]
-**Story Points:** [1, 2, 3, 5, 8, 13]
+**AI Effort:** [Low | Medium | High | -]
+**Token usage (K):** DTU [n | -] | QTU [n | -]
 **Status:** [current status in Jira]
 **Assignee:** null
 **Type:** Feature Extension (Post-MVP)
@@ -539,12 +539,11 @@ The regenerated tree reflects the live Jira backlog graph (epics → child stori
 
 ## Identified User Stories
 
-1. As a [user], I want to [action], so that [benefit] - [X pts]
-2. As a [user], I want to [action], so that [benefit] - [X pts]
-3. As a [user], I want to [action], so that [benefit] - [X pts]
+1. As a [user], I want to [action], so that [benefit]
+2. As a [user], I want to [action], so that [benefit]
+3. As a [user], I want to [action], so that [benefit]
    ...
 
-**Total estimated:** [sum of story points]
 **Number of stories:** [number]
 ```
 
@@ -621,7 +620,7 @@ This emits the canonical `.context/PBI/epics/EPIC-{PROJECT_KEY}-{EPIC_NUM}-{slug
 | `{{jira.acceptance_criteria}}`     | Given/When/Then scenarios, wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`). Persona-observable language; no endpoints, HTTP codes, table names, framework names (anti-pattern `I15`). |
 | `{{jira.scope}}`                           | In-scope only. Capabilities, not endpoints (anti-pattern `I15`).                                 |
 | `{{jira.out_of_scope}}`                    | Explicit exclusions. Deferred capabilities, not deferred endpoints (anti-pattern `I15`).                    |
-| `{{jira.story_points}}`                    | **EMPTY by default** (anti-pattern `I16`) — only populate when the user explicitly asked for estimation. If opted-in: Fibonacci 1, 2, 3, 5, 8; 13+ → split. |
+| `{{jira.ai_effort}}`                       | **EMPTY** (anti-pattern `I16`): QA sets it in shift-left; `High` only warns the dev; a split is an optional PO proposal. |
 | `{{jira.business_rules_specification}}`    | Domain rules (boundaries, role gates, retry semantics, audit guarantees). NOT internal algorithms (anti-pattern `I15`). Optional. |
 | `{{jira.mockup}}`                          | Design URLs (optional)                                                          |
 | `{{jira.workflow}}`                        | User flow narrative (NOT code path walkthrough — anti-pattern `I15`). Optional.                  |
@@ -825,11 +824,10 @@ This feature requires **[number] epics** to implement correctly.
 
 ## Complexity Analysis
 
-**Estimated total scope:**
+**Total scope:**
 
 - Required epics: [number]
-- Estimated user stories: [total number]
-- Total story points: [estimate]
+- User stories: [total number]
 - Estimated duration: [Master Sprints]
 
 **Why multiple epics?**
@@ -846,7 +844,6 @@ This feature requires **[number] epics** to implement correctly.
 **Description:** [1-2 paragraphs]
 
 **Estimated user stories:** [number]
-**Story Points:** [total]
 
 **Scope:**
 
@@ -870,7 +867,6 @@ This feature requires **[number] epics** to implement correctly.
 **Description:** [1-2 paragraphs]
 
 **Estimated user stories:** [number]
-**Story Points:** [total]
 
 **Scope:**
 
@@ -1111,7 +1107,7 @@ STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
 - ✅ Are acceptance criteria in Gherkin format **wrapped in a ```gherkin code-fence** (anti-pattern `I17`)?
 - ✅ **Voice gate**: do AC / Scope / Out-of-Scope / Workflow describe persona-observable behavior, with no endpoints, HTTP status codes, table names, framework names, or internal algorithms (anti-pattern `I15`)? Exception: persona = API consumer.
 - ✅ **Persona grounding**: does the `As a` name a persona that exists in `.context/PRD/user-personas.md`, or on a business-maps project in the glossary / the data map's `access-control` roles (anti-pattern `I19`)?
-- ✅ **Story Points policy**: is `{{jira.story_points}}` left EMPTY unless the user explicitly requested estimation in this session (anti-pattern `I16`)?
+- ✅ **Effort fields policy**: are `{{jira.ai_effort}}`, `{{jira.development_token_usage}}` and `{{jira.quality_token_usage}}` left EMPTY for QA and the agents to fill (anti-pattern `I16`)?
 - ✅ **Active Dependency Discovery executed**: did the active pass run (Step 3.5 or 7.5), was global noise filtered out, and did the user confirm the matrix before any link (anti-pattern `I18`)?
 - ✅ Does the parent epic (when applicable) actually exist?
 - ✅ Was `description-custom-field-dedup.md` reviewed to avoid duplication?

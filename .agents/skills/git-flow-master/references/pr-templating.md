@@ -80,7 +80,7 @@ Do not pad sections. Empty sections invite skim-reads.
 
 ## Big PR body (Medium / Large changes)
 
-A story is always ONE PR, however large. When the forecast size is `Medium` or `Large` (`/sprint-development` `references/workload-forecast.md`), the body helps the reviewer read the PR commit by commit. Add these two sections between `## Changes` and `## Test Plan`:
+A story is always ONE PR, however large. When the forecast size is `Medium` or `Large` (`/sprint-development` `references/review-size-forecast.md`), the body helps the reviewer read the PR commit by commit. Add these two sections between `## Changes` and `## Test Plan`:
 
 ```markdown
 ## Commit list

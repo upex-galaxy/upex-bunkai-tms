@@ -42,17 +42,18 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
    | `{{jira.status.story.in_progress}}`                                                                                         | Active implementation      | In-Flight          |
    | `{{jira.status.story.in_review}}`                                                                                           | PR open, awaiting review   | In-Flight          |
    | `{{jira.status.story.ready_for_dev}}`                                                                                       | Queue head — pull next     | Queue              |
-   | `{{jira.status.story.ready_for_qa}}` / `{{jira.status.story.qa_approved}}` / `{{jira.status.story.deployed_to_production}}` | Done from dev's POV        | Done — This Sprint |
+   | `{{jira.status.story.ready_for_qa}}` / `{{jira.status.story.in_test}}` / `{{jira.status.story.qa_approved}}` / `{{jira.status.story.ready_for_release}}` / `{{jira.status.story.deployed_to_production}}` | Done from dev's POV        | Done — This Sprint |
    | `{{jira.status.story.blocked}}`                                                                                             | Blocking issue (monitor)   | Blocked            |
-   | `{{jira.status.story.backlog}}` / `estimation` / `shift_left_qa`                                                            | Not pulled into sprint yet | Pipeline           |
+   | `{{jira.status.story.backlog}}` / `shift_left_qa`                                                                       | Not pulled into sprint yet | Pipeline           |
    | `{{jira.status.story.aborted}}`                                                                                             | Cancelled (terminal)       | Cancelled          |
 
    If the project's substrate lacks a slug (e.g. no `blocked` status), drop that row gracefully and continue.
 
 3. **Detect carryovers** if `previous_sprint_file` was provided. Scan it for tickets whose status is NOT `PROD_DEPLOYED` / `ABORTED`. For each, check whether it appears in the current sprint; if yes, mark as carryover with prior context; if no, note as "dropped from sprint" and inform the user.
 4. **Build Board Summary** counts (Ready For Dev / In Progress / In Review / Ready For QA / Deployed to Prod / Blocked / Total).
-5. **Build In-Flight table** with the 11-column shape below (`#`, Ticket, Type, Title, Priority, Owner, Impl Plan, PR, Delivery Strategy, Forecast Size, Status). Status column is the canonical state machine value, not the Jira label.
-6. **Populate Stats** section from the counts (in-flight, merged, staging-deployed, prod-deployed, blocked, cancelled, carryovers, estimated total LOC from implementation-plan forecasts).
+5. **Build In-Flight table** with the 11-column shape below (`#`, Ticket, Type, Title, Priority, Owner, Impl Plan, PR, Delivery Strategy, Review Size, Status). Status column is the canonical state machine value, not the Jira label.
+6. **Populate Stats** section from the counts (in-flight, merged, staging-deployed, prod-deployed, blocked, cancelled, carryovers, total lines delivered from the merged PRs (measured, not forecast), and the token usage of the previous sprint).
+   The sprint has no capacity plan (people own that): the report states what is done and what the previous sprint measurably cost in tokens.
 7. **Write the file** using the framework structure below.
 8. **Append Session Log entry** for the setup pass — date, totals, in-flight IDs, assigned/unassigned counts, carryover IDs, "Created SPRINT-{N}-DEVELOPMENT.md tracker".
 9. **Report** a short board summary back to the user: totals, in-flight count, carryovers.
@@ -83,7 +84,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 
 > Tickets currently in `In Progress` or `In Review`.
 
-| #   | Ticket | Type               | Title   | Priority   | Owner | Impl Plan | PR        | Delivery Strategy                   | Forecast Size    | Status                                |
+| #   | Ticket | Type               | Title   | Priority   | Owner | Impl Plan | PR        | Delivery Strategy                   | Review Size      | Status                                |
 | --- | ------ | ------------------ | ------- | ---------- | ----- | --------- | --------- | ----------------------------------- | ---------------- | ------------------------------------- |
 | 1   | {ID}   | {Story\|Bug\|Task} | {title} | {priority} | {dev} | {link\|-} | {#NNN\|-} | {single-pr\|split-into-stories} | {Small\|Med\|Large} | {IN_PROGRESS\|IN_REVIEW\|MERGED\|...} |
 
@@ -102,7 +103,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 
 ### Pipeline — Pending Refinement
 
-> Backlog / Estimation / Shift-Left-QA — not yet pulled into the sprint.
+> Backlog / Shift-Left-QA — not yet pulled into the sprint.
 
 ### Done — This Sprint
 
@@ -137,7 +138,9 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 | Blocked                             | {count}                        |
 | Cancelled                           | {count}                        |
 | Carryovers from Sprint {N-1}        | {count or 0}                   |
-| Estimated total LOC delivered       | {sum from implementation-plan forecasts} |
+| Total lines delivered               | {sum of the additions and deletions of the merged PRs, measured} |
+| Previous sprint DTU (K tokens)      | {sum and average of `{{jira.development_token_usage}}` as measured, or N/A} |
+| Previous sprint QTU (K tokens)      | {sum and average of `{{jira.quality_token_usage}}` as measured, or N/A} |
 
 ## Session Log
 
@@ -158,7 +161,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 
 1. **Dates**: ISO 8601 (`YYYY-MM-DD`). Last Updated is bumped on every write.
 2. **Status column** (In-Flight table): one of `PENDING` / `IN_PROGRESS` / `IN_REVIEW` / `MERGED` / `STAGING_DEPLOYED` / `PROD_DEPLOYED` / `BLOCKED` / `ABORTED`. State machine details below.
-3. **Impl Plan / PR / Delivery Strategy / Forecast Size columns**: initialized as `-`; filled at the matching stage (see Part 2). Never delete the row even when the ticket becomes irrelevant — move it to `Done — This Sprint` or `Cancelled (Aborted)` instead.
+3. **Impl Plan / PR / Delivery Strategy / Review Size columns**: initialized as `-`; filled at the matching stage (see Part 2). Never delete the row even when the ticket becomes irrelevant — move it to `Done — This Sprint` or `Cancelled (Aborted)` instead.
 4. **Priority order** inside In-Flight: the `#` column drives queue ordering — pick the lowest-numbered non-terminal ticket when the user asks "next".
 5. **Session Log**: every state-changing event appends an entry. Entries are NEVER deleted on regenerate (append-only). The Roadmap Generator only adds new entries; it never rewrites historical ones.
 
@@ -175,8 +178,8 @@ Triggered when sprint-dev transitions Jira `Ready For Dev → In Progress`.
 - **Status**: `PENDING` → `IN_PROGRESS`.
 - **Owner**: fill with the dev driving the ticket (defaults to `git config user.name`).
 - **Impl Plan**: link to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (synced from the Jira `spec_implementation_plan` field; or topic key `pbi/{ticket}/implementation-plan`).
-- **Forecast Size**: `Small` / `Medium` / `Large`, read from the Workload Forecast block in the implementation plan.
-- **Session Log**: append `### {date} — {ticket} IN_PROGRESS` with a one-line note (forecast size + any salient context).
+- **Review Size**: `Small` / `Medium` / `Large`, read from the Review Size Forecast block in the implementation plan.
+- **Session Log**: append `### {date} — {ticket} IN_PROGRESS` with a one-line note (review size + any salient context).
 
 ### Stage 3 — Code Review (PR open)
 

@@ -16,7 +16,7 @@
 # Project `.codex/` config loads only in a repository Codex trusts.
 #
 # LOADER: every stdio block that needs `.env` values starts through the same
-# `.env` loader the committed configs use on all three hosts:
+# `.env` loader the committed configs use on every host:
 #   bunx -p varlock@1.20.0 varlock run --no-redact-stdout --inject vars --filter A,B -- <real command>
 # (`MCP_ENV_LOADER_*` in cli/lib/agent-compatibility-contracts.ts, ADR-0012).
 # It reads `.env` / `.env.local` (or the secret manager the schema names)
@@ -144,7 +144,7 @@ args = [
 ]
 
 # Atlassian through mcp-remote: OAuth in the browser, no token in .env, so it
-# launches bare (same block on the three hosts).
+# launches bare (same block on every host).
 # Opt-in only: acli is the default Jira / Confluence path (`.agents/instructions/agent-tool-resolution.md` section 6).
 [mcp_servers.atlassian]
 command = "npx"

@@ -2,7 +2,7 @@
 name: project-context
 description: "Generate or refresh the canonical project-context artifacts for development: the business data, feature and API maps (HTML maps inside business-data-context, business-feature-context and business-api-context), the master implementation plan and the dev roadmap. Use for business-data-map, business-feature-map, business-api-map, master-implementation-plan, dev-roadmap, roadmap de desarrollo, mapear el dominio, inventario de features, cómo funciona el API, plan maestro de implementación, qué historia sigue, refresh project context, refresh all context. Also scaffolds a project-owned <aspect>-context skill for any aspect the business maps do not cover (context-skill mode: context skill, scaffold a context skill, judgment layer over X). Routes exactly one mode at a time unless refresh-all is explicit. UPDATE regenerates only stale map sections and always shows a diff and waits for approval before writing."
 license: MIT
-compatibility: [claude-code, codex, opencode]
+compatibility: [claude-code, codex, opencode, pi]
 complementary_categories: [backend-db, issue-tracker, meta-skill]
 metadata:
   kind: workflow

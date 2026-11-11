@@ -86,6 +86,26 @@ describe('eslintIsolation', () => {
     expect(e).toEqual({ path: 'eslint.config.mjs', kind: 'flat', missing: ['cli/**', 'scripts/**', '.agents/**', '.opencode/**', 'eslint.config.base.js', 'eslint.config.tooling.mjs'] });
   });
 
+  test('the Pi adapter is wanted only where Pi is in use, and named alone', () => {
+    const base = { 'eslint.config.mjs': 'export default [];\n' };
+    expect(eslintIsolation(tempRoot(base))?.missing).not.toContain('.pi/extensions/agentic-dev.js');
+    expect(eslintIsolation(tempRoot({ ...base, '.pi/extensions/mine.js': '' }))?.missing.some(p => p.startsWith('.pi'))).toBe(false);
+    expect(eslintIsolation(tempRoot({ ...base, '.pi/extensions/agentic-dev.js': '' }))?.missing).toContain('.pi/extensions/agentic-dev.js');
+    expect(eslintIsolation(tempRoot({ ...base, '.agents/project.yaml': 'harnesses: [claude, pi]\n' }))?.missing).toContain('.pi/extensions/agentic-dev.js');
+    expect(eslintIsolation(tempRoot({ ...base, '.agents/project.yaml': 'harnesses: [claude]\n' }))?.missing).not.toContain('.pi/extensions/agentic-dev.js');
+    expect(eslintIsolation(tempRoot({ '.eslintrc.json': '{}', '.pi/extensions/agentic-dev.js': '' }))?.missing).not.toContain('.pi/extensions/agentic-dev.js');
+  });
+
+  test('the Pi adapter counts as ignored under its own name or a directory above it', () => {
+    const pi = { '.pi/extensions/agentic-dev.js': '' };
+    for (const ignore of ['\'.pi/extensions/agentic-dev.js\'', '\'.pi/**\'', '\'.pi/extensions/**\'', '\'./.pi/\'']) {
+      const root = tempRoot({ ...pi, 'eslint.config.mjs': `export default [{ ignores: [${ignore}] }];\n` });
+      expect(eslintIsolation(root)?.missing).not.toContain('.pi/extensions/agentic-dev.js');
+    }
+    const other = tempRoot({ ...pi, 'eslint.config.mjs': 'export default [{ ignores: [\'.pi/extensions/mine.js\'] }];\n' });
+    expect(eslintIsolation(other)?.missing).toContain('.pi/extensions/agentic-dev.js');
+  });
+
   test('quoted literals in the config or lines of .eslintignore count; prose and comments do not', () => {
     const root = tempRoot({
       'eslint.config.mjs': '// cli/** is ignored below? no\nexport default [{ ignores: [\'cli/**\', "./scripts/", \'.agents/**\', \'.opencode\', \'eslint.config.base.js\'] }];\n',

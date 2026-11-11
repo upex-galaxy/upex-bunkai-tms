@@ -45,7 +45,7 @@ Slugs written by this workflow:
 - `{{jira.mockup}}` — design references (Figma URLs etc.).
 - `{{jira.workflow}}` — narrative description of a non-trivial flow, written from the persona's POV (not a code-walkthrough). See anti-pattern `I15`.
 - `{{jira.weblink}}` — app URL for the story (conditional — only when known with certainty).
-- `{{jira.story_points}}` — **OPT-IN ONLY**. Leave EMPTY by default. Populate only when the user explicitly requested estimation in this session. PO/BA do not estimate; the building team does (Design + Dev + Test). When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
+- `{{jira.ai_effort}}` — NEVER set by the PO. QA sets it in shift-left (Low, Medium or High); `High` only warns the dev; the PO MAY propose a split (optional, never a gate). See anti-pattern `I16`.
 
 Field reads/writes route through `[ISSUE_TRACKER_TOOL]`; the owning tool skill resolves the slug → numeric ID before issuing the call. See `references/jira-operations.md` for the routing decision table.
 
@@ -278,8 +278,8 @@ Phase 2 — Core features (Master Sprint 2):
 | **I**ndependent  | Can this story complete without depending on others?           |
 | **N**egotiable   | Is there flexibility in the implementation?                    |
 | **V**aluable     | Does the "so that" clause carry clear user / business value?   |
-| **E**stimable    | Can the team assign story points with the info available?      |
-| **S**mall        | Is it ≤ 8 SP? If not, split before creating.                   |
+| **E**stimable    | Can QA tell Low, Medium or High from the story as written?     |
+| **S**mall        | AI Effort `High`? Optionally propose a split before creating (a warning, not a gate).    |
 | **T**estable     | Are the acceptance criteria observable and verifiable?         |
 
 If any criterion fails, split or rewrite the story before creating it. Never push an INVEST-failing story to Jira just to keep the count up.
@@ -297,13 +297,13 @@ If any criterion fails, split or rewrite the story before creating it. Never pus
   - `{{jira.acceptance_criteria}}` — minimum 3 Gherkin scenarios (1 happy path + 2 edge / error cases), each wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`). Persona-observable language only; no endpoint paths, HTTP status codes, table names, or framework names (anti-pattern `I15`).
   - `{{jira.scope}}` — in-scope bullets only. Bullets describe capabilities the persona gains, not endpoints / DB tables / services (anti-pattern `I15`).
   - `{{jira.out_of_scope}}` — explicit exclusions, also in persona-capability voice.
-  - `{{jira.story_points}}` — **OPT-IN ONLY**. Leave EMPTY unless the user explicitly requested estimation in this session. When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
+  - `{{jira.ai_effort}}` — NEVER set by the PO. QA sets it in shift-left (Low, Medium or High); `High` only warns the dev; the PO MAY propose a split (optional, never a gate). See anti-pattern `I16`.
   - `{{jira.business_rules_specification}}` — optional. Domain rules (boundaries, role gates, retry semantics, audit guarantees) — NOT internal algorithms.
   - `{{jira.mockup}}` — optional.
   - `{{jira.workflow}}` — optional. Narrates the persona's flow, not the code's flow.
   - `{{jira.weblink}}` — conditional; only when the app URL is known with certainty (from `.agents/project.yaml` or explicit user input). When in doubt, leave empty.
 
-**Rich-text caveat**: every custom field above is an ADF rich-text field except `{{jira.story_points}}` (number) and `{{jira.weblink}}` (URL string). Apply `references/jira-publishing-gotchas.md` rules — split the update into one call per ADF field if your tool layer requires it.
+**Rich-text caveat**: every custom field above is an ADF rich-text field except `{{jira.weblink}}` (URL string). Apply `references/jira-publishing-gotchas.md` rules — split the update into one call per ADF field if your tool layer requires it.
 
 **No-invent rule**: AC, Scope, Out-of-Scope, and Business Rules must derive from observable evidence (PRD, SRS, business maps, user journeys, explicit user input). If a field has no source, mark the gap in working memory and leave the slug empty rather than fabricating content.
 
@@ -440,7 +440,7 @@ When the seed completes, verify in order:
 - [ ] **Voice gate** — every AC, Scope bullet, Out-of-Scope bullet, and Workflow narrative is in persona-observable language. No endpoint paths, HTTP status codes, DB table/column names, framework names, or internal algorithms appear (anti-pattern `I15`). Exception: API-consumer persona.
 - [ ] **Gherkin code-fence** — every scenario in `{{jira.acceptance_criteria}}` is wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`).
 - [ ] **Persona grounding** — every `As a` line names a persona that exists in `.context/PRD/user-personas.md` (anti-pattern `I19`).
-- [ ] **Story Points policy** — `{{jira.story_points}}` is EMPTY by default; populated only when the user explicitly requested estimation in this session (anti-pattern `I16`).
+- [ ] **Effort fields policy**: `{{jira.ai_effort}}`, `{{jira.development_token_usage}}` and `{{jira.quality_token_usage}}` are EMPTY: QA and the agents fill them (anti-pattern `I16`).
 - [ ] **Active Dependency Discovery ran** — Phase 3.0 produced a candidate matrix, global/infrastructural noise was filtered, user confirmed before any link was written (anti-pattern `I18`).
 - [ ] Every synced folder maps to a real Jira key 1:1 (the materialized `epic.md` child-story lists carry real keys — no `TBD` placeholders, which only exist in the transient Phase 1 planning draft).
 - [ ] Cross-story Scope overlap check ran for every epic; any overlaps were resolved by user decision.

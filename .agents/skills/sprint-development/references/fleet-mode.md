@@ -79,7 +79,7 @@ A worker:
 - runs **single-ticket** mode on the key in its prompt, in the mode (Orchestrated or Solo) its brief names;
 - **runs to completion without returning to its prompt.** Stage boundaries are not checkpoints: the run ends when the done-report is sent (§9). A worker that parks at its prompt after Stage 1 looks exactly like a crashed one to the conductor's liveness sweep;
 - runs **without human checkpoints**: §8 "EXPLAIN STORY" and "WAIT FOR CONFIRMATION" of `AGENTS.md` become report content, because nobody is watching its terminal. The story explanation and every stage summary go into its report; anything that genuinely needs a decision goes out as an `ask` (§9), never as a user-question prompt nobody will see;
-- **never skips a gate**: the design gate on a UI story, the workload forecast gate, the automation-identity gate, the capability probes. A gate that would have stopped for a human becomes a blocking `ask` or a `BLOCKED:` report, never a guess;
+- **never skips a gate**: the design gate on a UI story, the review size forecast gate, the automation-identity gate, the capability probes. A gate that would have stopped for a human becomes a blocking `ask` or a `BLOCKED:` report, never a guess;
 - runs Stages 1-3 and **stops at an open PR**: it pushes its own branch and opens its own PR, transitions its own ticket per `agentic-dev-core/references/artifact-lifecycle.md`, and never merges, never deploys, never applies a migration to the shared database (§2.1);
 - creates **no sprint-altitude state**: no sprint report row, no bulk sync. Its session scope is `<<PRIMARY_ROOT>>/.session/sprint-development/<KEY>/`, exactly as in N=1;
 - reports **once** when done, plus `ask` / `escalation` as needed, and then stops. No heartbeats: periodic "still alive" messages wake the conductor for nothing and are prohibited by the worker contract (`orca-orchestration/references/worker-contract.md`), which overrides any generic preamble the launcher injects.
@@ -106,6 +106,7 @@ sprint scope (absolute path): <<PRIMARY_ROOT>>/.session/sprint-development/sprin
 worktree: <abs path> · branch: <feature/KEY-slug> · base: <integration branch, or production when it is null>
 environment: <env> · web: <url> · api: <url>
 execution mode: Orchestrated | Solo
+ai effort: <low | medium | high | unset> (a warning only; the worker works the ticket either way)
 automation identity: <slot name from testing.automation_identity, or "none: no live-UI validation in this round">
 
 ## The ticket
@@ -140,6 +141,8 @@ Run: <run id — ONLY when this worker was launched without a supervised dispatc
 - run every stage without returning to the prompt until the done-report is sent; stage boundaries are not checkpoints
 - no sprint-report writes, no bulk sync, no registry regeneration
 - no heartbeats; report once at the end
+- AI Effort `high` only WARNS: note it in the plan and the PR description, split your own work into stacked small PRs if useful (about 200 changed lines and 2 to 5 files per PR), and work the ticket; never skip or stop it, never `ask` about it
+- tokens: append your measured tokens to your `progress.md` (`tokens: <n> K, source=<harness|human|unknown>`) and report them under `## Tokens`; never estimate, `unknown` is valid
 - if your own measurement contradicts an instruction in this brief or a later message, STOP and `ask` with both readings and your evidence — never comply silently and never deviate silently
 - your name is `<KEY>--<handle>` (session, tab, roster, `Session:` trailer): your first action is renaming your own TAB (`orca terminal rename --terminal "$ORCA_TERMINAL_HANDLE" --title "<KEY>--$ORCA_TERMINAL_HANDLE" --json </dev/null`); your SESSION name is set for you (the identity hook on Claude Code, a conductor-typed `/rename <KEY>--<handle>` elsewhere): never try to rename your session
 - errors, blockers and decisions go to the conductor, never to the human: no question tool, no `mkd` deck, no sweep (`orca-orchestration/references/worker-contract.md` rule 16)
@@ -243,7 +246,7 @@ The conductor talks to workers through the orchestration mailbox: `[ORCHESTRATIO
 
 ### The report
 
-Before its done message, a worker writes `<<PRIMARY_ROOT>>/.session/sprint-development/sprint-<N>/reports/<label>.md`: `## Summary` (the story explanation and the stage summaries a human would have been told), `## Files changed`, `## Commits`, `## PR` (number, base, checks), `## Decisions taken`, `## Verification` (commands + exit codes), `## Left open` (including any edit outside its ownership it wanted to make).
+Before its done message, a worker writes `<<PRIMARY_ROOT>>/.session/sprint-development/sprint-<N>/reports/<label>.md`: `## Summary` (the story explanation and the stage summaries a human would have been told), `## Files changed`, `## Commits`, `## PR` (number, base, checks), `## Decisions taken`, `## Verification` (commands + exit codes), `## Left open` (including any edit outside its ownership it wanted to make), and optionally `## Tokens` (the measured tokens this worker spent, K = input plus output with cache reads apart, plus the source; `unknown` when the harness shows none, never an estimate). The conductor sums every worker's `## Tokens` plus its own into the DTU cycle at Stage 4 (`SKILL.md` Stage 4); a missing `## Tokens` makes that DTU line N/A or partial, stated, never a failure.
 
 ---
 
@@ -267,7 +270,7 @@ Before its done message, a worker writes `<<PRIMARY_ROOT>>/.session/sprint-devel
 - [ ] Mode is batch-sprint AND (user asked OR `orchestration.max_workers` > 1) AND every ticket in the round is unblocked per git AND the gate was evaluated
 - [ ] Gate failed → `launch.txt` written, user told to paste N lines, orchestration layer never named
 - [ ] `roster.md` written: one row per worker (label · ticket · session label · handles · worktree · state)
-- [ ] One `brief.md` per ticket, with ACs **verbatim**, absolute paths, ownership, claims, siblings, and the no-heartbeat / no-checkpoint / stop-at-PR / measurement-contradiction rules
+- [ ] One `brief.md` per ticket, with ACs **verbatim**, absolute paths, ownership, claims, siblings, the `ai effort` line, and the no-heartbeat / no-checkpoint / stop-at-PR / measurement-contradiction / AI-Effort-warns / tokens rules
 - [ ] `launch.txt` regenerated whole for this round; merged tickets dropped; every line syntax-checked
 - [ ] Every worker prompt opens with `/sprint-development <KEY> fleet worker` and its brief path
 - [ ] Round size ≤ cap; no two tickets on one module; no two migrations; no two live-UI workers on one identity

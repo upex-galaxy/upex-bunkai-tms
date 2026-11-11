@@ -20,7 +20,7 @@ The directory has two roles:
 | `jira-workflows.json` | Auto-generated catalog of work-type workflows, statuses, and transitions resolved against your Jira workspace. Companion to `jira-fields.json` for the work_types substrate.     | Generated only — **do not edit by hand** | `bun run jira:sync-workflows`                                                |
 | `jira-link-types.json` | Auto-generated catalog of every issue link type in your Jira workspace (e.g. `blocks`, `relates`, `is caused by`), keyed by canonical slug. Each entry has `id`, `name`, `outward`, `inward`, `exists_in_workspace`. | Generated only — **do not edit by hand** | `bun run jira:sync-link-types`                                               |
 | `jira-required.yaml`  | Declarative manifest of the custom fields the methodology requires (with expected types, option lists, and consumers). The contract between skills/commands and the user's Jira. | Methodology maintainers                  | Updated when a skill or command adds or drops a `{{jira.<slug>}}` reference. |
-| `project.schema.yaml` | GENERATED template of `project.yaml`: every identity value blanked to `null`, methodology defaults kept, `git_strategy` answers replaced by safe defaults. A new project is seeded from it; `bun sync` and `bun run setup:doctor` compare a project's `project.yaml` against it. Synced by `bun sync`, never generated downstream. | Generated only — **do not edit by hand** | `bun run agents:schema` (boilerplate only; `agents:schema:check` gates it)     |
+| `project.schema.yaml` | The documented TEMPLATE of `project.yaml`, and the one file that explains every key: `project.yaml` itself carries values only, because Claude Code loads it into every session (ADR-0021). Every identity value `null`, methodology defaults kept, `git_strategy` answers replaced by safe defaults. A new project is seeded from it with the comments stripped; `bun sync` and `bun run setup:doctor` compare a project's `project.yaml` against it. Synced by `bun sync`, never regenerated downstream. | Upstream maintainers: comments by hand, values synced from `project.yaml` by `bun run agents:schema`. Downstream: read it, never edit it | `bun run agents:schema` (boilerplate only; `agents:schema:check` gates it)     |
 | `README.md`           | This file.                                                                                                                                                                       | Methodology maintainers                  | —                                                                            |
 
 ## `git_strategy` (block inside `project.yaml`)
@@ -156,7 +156,7 @@ Default settings for **supervised multi-session worker fleets**: one conductor s
 ```yaml
 orchestration:
   max_workers: 3        # concurrent workers per round (example value)
-  default_agent: claude # claude | codex | opencode
+  default_agent: claude # claude | codex | opencode | pi
   default_model: claude-opus-5-5   # worker model: full provider model id, never an alias
   default_effort: high             # harness effort level when supported
   conductor_model: claude-opus-5-5 # conductor model: full provider model id
@@ -172,7 +172,7 @@ orchestration:
 | Field | `{{VAR}}` name | Description |
 |---|---|---|
 | `max_workers` | `{{MAX_WORKERS}}` | Ceiling on concurrent workers per round (a concurrency group; see `orca-orchestration/references/topologies.md` §5). Merge and staging deploy stay serialized through the conductor whatever the cap. |
-| `default_agent` | `{{DEFAULT_AGENT}}` | Which harness launches a worker when the user doesn't say: `claude` \| `codex` \| `opencode`. |
+| `default_agent` | `{{DEFAULT_AGENT}}` | Which harness launches a worker when the user doesn't say: `claude` \| `codex` \| `opencode` \| `pi`. |
 | `default_model` | `{{DEFAULT_MODEL}}` | The WORKER model: full provider model id passed to the launch, never an alias (an alias moves between rounds, gotcha G29 in `orca-orchestration/references/gotchas.md`). Empty `''` is allowed only when the conductor reads the model off the worker's screen at readiness and records it in the roster. |
 | `default_effort` | `{{DEFAULT_EFFORT}}` | Effort level passed to the worker launch, when the harness supports one. |
 | `conductor_model` | `{{CONDUCTOR_MODEL}}` | The CONDUCTOR model, same rule as `default_model`: a full provider model id. |
@@ -291,7 +291,7 @@ When you clone this boilerplate into a new project:
 1. Copy `.env.example` to `.env` and fill in:
    - `QA_E2E_USER_EMAIL` / `QA_E2E_USER_PASSWORD` — the automation identity (dedicated non-production account; see §"`testing.automation_identity`").
    - `ATLASSIAN_EMAIL` / `ATLASSIAN_API_TOKEN` (get a token at <https://id.atlassian.com/manage-profile/security/api-tokens>). The Atlassian **site URL** does not go here — see step 2.
-2. Edit `.agents/project.yaml` by hand. Replace every `null` with the real value (the inline `# TODO:` comment shows the expected format). Make sure `testing.default_env` matches one of the keys under `environments:`. `issue_tracker.atlassian_url` is the **source of truth** for the Atlassian host — it is not in `.env` at all, because a stale copy there silently shadowed the real value and pointed `jira:sync-*` at a dead instance. Confirm it resolves with `bun run --silent jira:url`.
+2. Edit `.agents/project.yaml` by hand. Replace every `null` with the real value (the `# TODO:` comment on the same key in `.agents/project.schema.yaml` shows the expected format; the yaml itself is values only). Make sure `testing.default_env` matches one of the keys under `environments:`. `issue_tracker.atlassian_url` is the **source of truth** for the Atlassian host — it is not in `.env` at all, because a stale copy there silently shadowed the real value and pointed `jira:sync-*` at a dead instance. Confirm it resolves with `bun run --silent jira:url`.
 3. Run `bun run jira:sync-fields` to discover your Jira workspace's custom fields. Writes `.agents/jira-fields.json` (~100-150 fields typical). Resolves slug collisions deterministically — see `--allow-collisions` if you hit one.
 4. Run `bun run jira:check` to validate your Jira against the methodology's required-fields **and** required-`work_types` manifest. Address any output:
    - **❌ MISSING** — for a custom field: create the field in Jira admin (Settings → Issues → Custom fields) with the suggested name, type, and options. Re-run `bun run jira:sync-fields --force` then `bun run jira:check`. For a `work_type` / status / transition: amend the workflow in Jira admin so it exposes the required status / transition, then re-run `bun run jira:sync-workflows --force` then `bun run jira:check`.
@@ -307,7 +307,7 @@ You're now ready to invoke any skill or command without setup friction.
 
 When you add or edit a skill or command that references project values or Jira fields:
 
-- **Project values** (paths, URLs, project keys, etc.) — use `{{VAR_NAME}}`. Add the variable to `.agents/project.yaml` with `null` plus a `# TODO:` comment so a new user knows what to fill in.
+- **Project values** (paths, URLs, project keys, etc.) — use `{{VAR_NAME}}`. Document the variable in `.agents/project.schema.yaml` (`null` plus a `# TODO:` comment with an example, so a new user knows what to fill in), and add it to `.agents/project.yaml` as a value only, no comment (ADR-0021); `bun run agents:schema:check` fails while one side lacks it.
 
 - **Session values** (computed at runtime) — use `<<VAR_NAME>>`. No declaration needed; it's a documentation marker for the consumer.
 

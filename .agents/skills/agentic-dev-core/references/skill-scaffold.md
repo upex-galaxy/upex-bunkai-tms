@@ -12,7 +12,7 @@
 name: <slug>                                   # equals the directory name
 description: "<trigger phrases + what it does + what it is NOT for>"
 license: MIT
-compatibility: [claude-code, codex, opencode]
+compatibility: [claude-code, codex, opencode, pi]
 complementary_categories: [<from strategy §4.1>] # optional, audited when present
 compact_rules: |                               # authoritative registry block (skill-resolver.md)
   - DO: <binding rule>
@@ -76,7 +76,7 @@ Judgment vs fact inside a context skill: would two competent sessions write it d
 name: <aspect>-context
 description: "Trigger: <aspect> questions, <domain words>. Judgment layer over <the source it sits over>. NOT the source itself."
 license: MIT
-compatibility: [claude-code, codex, opencode]
+compatibility: [claude-code, codex, opencode, pi]
 compact_rules: |
   - DO: <the one reading rule a subagent must not miss>
 metadata:

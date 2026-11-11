@@ -204,12 +204,13 @@ record, a design divergence, and a three-slice chain, with no moment where anyon
 
 Defer to a human-present session, and log it as such, when a candidate shows any of:
 
-- A high point estimate relative to the batch's median.
 - A user-interface story with no mockup where the design plan expects one.
 - Acceptance criteria that imply an architectural decision not already recorded.
 - More than one migration, or any migration touching an existing live object.
 - A new authorization, tenancy, session, or identity path.
 - A dependency edge the roadmap does not have, discovered during selection.
+
+`{{jira.ai_effort}}` `High` is NOT one of these signals. It is a size note for the plan and the PR description (the story may be large and may be split into stacked small PRs), read at selection and never a reason to skip, defer or escalate the story. Unset AI Effort is noted the same way.
 
 Deferring is cheap. Discovering it three thousand lines in, with the budget gone, is not.
 

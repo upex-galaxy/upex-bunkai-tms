@@ -160,26 +160,24 @@ const dbhubOpencode = `// OpenCode → opencode.jsonc   (el loader del .env le p
   "enabled": true
 }`;
 
-const openapiClaude = `// Claude Code → .mcp.json   (--tools dynamic es OBLIGATORIO; sin él da 400)
+const openapiClaude = `// Claude Code → .mcp.json   (--tools dynamic es OBLIGATORIO; sin él da 400. El MCP solo lee el esquema: no lleva token)
 "openapi": {
   "command": "bunx",
-  "args": ["-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-  "env": {
-    "API_BASE_URL": "\${API_BASE_URL}",
-    "OPENAPI_SPEC_PATH": "\${OPENAPI_SPEC_PATH}",
-    "API_HEADERS": "Authorization:Bearer \${API_TOKEN}"
-  }
+  "args": [
+    "-p", "varlock@1.20.0", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
+    "--filter", "API_BASE_URL,OPENAPI_SPEC_PATH",
+    "--", "bunx", "-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"
+  ]
 }`;
 
-const openapiOpencode = `// OpenCode → opencode.jsonc   (env key = "environment", sintaxis {env:VAR})
+const openapiOpencode = `// OpenCode → opencode.jsonc   (el loader del .env le pasa solo API_BASE_URL y OPENAPI_SPEC_PATH; sin token)
 "openapi": {
   "type": "local",
-  "command": ["bunx", "-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-  "environment": {
-    "API_BASE_URL": "{env:API_BASE_URL}",
-    "OPENAPI_SPEC_PATH": "{env:OPENAPI_SPEC_PATH}",
-    "API_HEADERS": "Authorization:Bearer {env:API_TOKEN}"
-  },
+  "command": [
+    "bunx", "-p", "varlock@1.20.0", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
+    "--filter", "API_BASE_URL,OPENAPI_SPEC_PATH",
+    "--", "bunx", "-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"
+  ],
   "enabled": true
 }`;
 
@@ -726,7 +724,6 @@ export const qaConfig: QaConfig = {
       'DBHUB_PASSWORD',
       'API_BASE_URL',
       'OPENAPI_SPEC_PATH',
-      'API_TOKEN',
       'POSTMAN_API_KEY',
     ],
   },

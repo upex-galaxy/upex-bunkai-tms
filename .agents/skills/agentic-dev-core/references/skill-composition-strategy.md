@@ -255,7 +255,7 @@ Every sub-agent / skill prompt MUST include:
 | Decision        | When                    | How                                                                       |
 | --------------- | ----------------------- | ------------------------------------------------------------------------- |
 | Skill load (T4) | First match per session | Ask user once per skill per session. Cache decision.                      |
-| Workload size   | Stage 1 forecast        | Sprint-dev `references/workload-forecast.md` owns the size indicator and commit plan (informational, no gate). |
+| Review size     | Stage 1 forecast        | Sprint-dev `references/review-size-forecast.md` owns the size indicator and commit plan (informational, no gate). |
 
 ---
 

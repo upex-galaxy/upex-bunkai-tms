@@ -131,8 +131,13 @@ Bucket the issues by **status**, ordered by development urgency:
 2. **In Progress** — active development
 3. **In Review** — PR open
 4. **Ready For Dev** — refined and waiting to start
-5. **To Do / Backlog** — not yet pulled in
-6. **Done** — completed in this sprint
+5. **Shift-Left QA** — QA refining the story before dev
+6. **Ready For QA** — delivered by dev, waiting for QA
+7. **In Test** — QA testing
+8. **QA Approved** — verified by QA
+9. **Ready For Release** — queued for the release window
+10. **To Do / Backlog** — not yet pulled in
+11. **Done** — completed in this sprint (includes released stories)
 
 **Type icons** (use these consistently in the output tables):
 
@@ -227,6 +232,11 @@ Render the report in this exact structure (omit sections with zero items unless 
 | In Progress   | {n}     | {n}          | {n}     | {total}           |
 | In Review     | {n}     | {n}          | {n}     | {total}           |
 | Ready For Dev | {n}     | {n}          | {n}     | {total}           |
+| Shift-Left QA | {n}     | {n}          | {n}     | {total}           |
+| Ready For QA  | {n}     | {n}          | {n}     | {total}           |
+| In Test       | {n}     | {n}          | {n}     | {total}           |
+| QA Approved   | {n}     | {n}          | {n}     | {total}           |
+| Ready For Release | {n} | {n}          | {n}     | {total}           |
 | Backlog       | {n}     | {n}          | {n}     | {total}           |
 | Done          | {n}     | {n}          | {n}     | {total}           |
 | **Total**     | **{n}** | **{n}**      | **{n}** | **{grand_total}** |

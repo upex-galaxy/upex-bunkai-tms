@@ -2,7 +2,7 @@
 name: agentic-dev-onboard
 description: "Walks new users through this repo's dev flow — which entry path the repo took (new project scaffolded by /project-bootstrap, or an existing app adopted with `create-agentic-dev --adopt` + /project-adoption), the app's real stack as the `stack:` block of `.agents/project.yaml` declares it, Jira workflow (Ready For Dev → In Progress → In Review → Ready For QA), /sprint-development for ticket-driven work, MCP capabilities (library docs, web search at harness level, DB, automation flows), critical env vars, Critical Rule #10 (READ package.json DIRECTLY). Triggers on: `onboard me`, `explain this repo`, `first time using this`, `primer vez en este repo`, `we just adopted our app, now what`, `acabamos de adoptar la app`, `/agentic-dev-onboard`. Do NOT use for: feature implementation (use /sprint-development), test design (use /unit-testing), backlog refinement (use /product-management)."
 license: MIT
-compatibility: [claude-code, codex, opencode]
+compatibility: [claude-code, codex, opencode, pi]
 phase: foundation
 complementary_categories: []
 # compact_rules is consumed VERBATIM by scripts/build-skill-registry.ts (frontmatter-first,
@@ -87,7 +87,7 @@ Read the app's stack from `.agents/project.yaml` → `stack:` and present it as 
 | Tests           | `stack.test_runner` + `stack.scripts.test` (the app's own runner; `/unit-testing` never adds a second one). This repo's own tooling suite runs on Bun's test runner |
 | Hosting / CI    | `stack.hosting`, `stack.ci`                                               |
 | Language        | TypeScript                                                                |
-| AI agent        | Claude Code, OpenCode, Codex (CLI + Desktop): one instruction set (always-on `AGENTS.md` + sections under `.agents/instructions/`), one skill store (`.agents/instructions/agent-harnesses.md` §5.5) |
+| AI agent        | Claude Code, OpenCode, Codex (CLI + Desktop), Pi: one instruction set (always-on `AGENTS.md` + sections under `.agents/instructions/`), one skill store (`.agents/instructions/agent-harnesses.md` §5.5) |
 
 The skills support the set named by `V1_SUPPORTED` in `cli/lib/stack-descriptor.ts`: Next.js (App Router or Pages) on the Postgres family, with bun, one app per repo. A stack outside it stops at the adoption preflight or at `/project-adoption`'s analysis with the field and the value that failed; this skill says so plainly instead of touring workflows that would not fit.
 
@@ -105,7 +105,7 @@ This bootstraps `.agents/`, records the harnesses you pick in `.agents/project.y
 
 After setup, fill `.env` with the credentials the rest of the workflow expects (see "Critical env vars" below).
 
-**Open the agent with its own binary** in the project folder (`claude`, `opencode` or `codex`) or with its desktop app. No wrapper: the agent process holds no `.env` value (ADR-0016). MCP servers get their credentials from the `.env` loader they start through (`varlock run --filter <its vars>`), and a command that needs a `.env` value runs through `bunx varlock run -- sh -c '...'`; after a `.env` change, restart the agent session. A second working tree (`git worktree add`) needs `bun run worktree:provision` before its first session (`/git-flow-master`, `references/worktrees.md`).
+**Open the agent with its own binary** in the project folder (`claude`, `opencode`, `codex` or `pi`) or with its desktop app. No wrapper: the agent process holds no `.env` value (ADR-0016). MCP servers get their credentials from the `.env` loader they start through (`varlock run --filter <its vars>`), and a command that needs a `.env` value runs through `bunx varlock run -- sh -c '...'`; after a `.env` change, restart the agent session. A second working tree (`git worktree add`) needs `bun run worktree:provision` before its first session (`/git-flow-master`, `references/worktrees.md`).
 
 > **Critical Rule #10** (AGENTS.md §1): for build/test/lint commands, **READ `package.json` DIRECTLY** — never trust a hardcoded list in a doc. Scripts drift; `package.json` is canonical.
 
@@ -195,7 +195,7 @@ Place these in `.env` before running anything that talks to a real environment:
 | `SUPABASE_ACCESS_TOKEN`                        | Supabase MCP (personal access token), same condition |
 | `N8N_API_URL` / `N8N_API_KEY`                  | n8n MCP (`automation-flows`)           |
 
-`.mcp.json` is **committed**, like `opencode.jsonc` and `.codex/config.toml`: on all three hosts every server that needs `.env` values starts through the `.env` loader (`bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter <its vars> -- <server>`), which hands it only the variables it names. The actual secret values live in `.env` (gitignored). Never inline a real token in `.mcp.json`.
+`.mcp.json` is **committed**, like `opencode.jsonc`, `.codex/config.toml` and `.pi/mcp.json`: on every host every server that needs `.env` values starts through the `.env` loader (`bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter <its vars> -- <server>`), which hands it only the variables it names. The actual secret values live in `.env` (gitignored). Never inline a real token in `.mcp.json`.
 
 Verify which variables are set with `bun run setup:doctor` (or `bunx varlock load --agent`, redacted); `bun run vars:check` validates template-variable references, not `.env`. Always check `package.json` for the canonical script name — Critical Rule #10.
 
@@ -205,7 +205,7 @@ Verify which variables are set with `bun run setup:doctor` (or `bunx varlock loa
 
 The committed skill catalog is `.agents/skills/REGISTRY.md` (generated by `bun run skills:registry`) and the table in `.agents/instructions/agent-skills-and-mcps.md` §5: read the list there, never from a copy. Repo skills live in `.agents/skills/`. **Policy**: community stack skills (`frontend-design`, `shadcn`, `supabase`, `deploy-to-vercel`, …) install at PROJECT level, into the SAME store, through `bun setup` (the list is `PROJECT_LEVEL_SKILLS` in `cli/install.ts`); only the repo-agnostic ones (`playwright-cli`, `find-skills`, …, `USER_LEVEL_SKILLS` there) stay user-level and harness-specific (`.agents/instructions/agent-skills-and-mcps.md` §5 layout note). Workflow steps that write in a stack domain name and load their stack skills at that step (`agentic-dev-core/references/skill-composition-strategy.md` §3.5); a missing one is reported once with its install path, never skipped silently.
 
-Invocation: on Claude Code `/<skill> <mode>`; on OpenCode and Codex name the skill and the mode in prose ("load `project-context`, mode `data`").
+Invocation: on Claude Code `/<skill> <mode>`; on Pi `/skill:<skill> <mode>`; on OpenCode and Codex name the skill and the mode in prose ("load `project-context`, mode `data`").
 
 Every workflow skill has a deck on the docs hub, at `https://upex-galaxy.github.io/agentic-dev-boilerplate/decks/<skill>/how-it-works.es.html`, unless the row below says otherwise. Point the user to the deck of the skill you hand them off to:
 
@@ -218,7 +218,7 @@ Every workflow skill has a deck on the docs hub, at `https://upex-galaxy.github.
 | `decks/agentic-dev-core/capa-comportamental.es.html` | how the agent writes back (AGENTS.md §2) |
 | `decks/agentic-dev-core/pbi-jira-cache.es.html`    | `.context/PBI/` as a Jira cache (`.agents/instructions/agent-local-context-pbi.md` §9) |
 | `decks/progressive-disclosure/how-it-works.es.html` | how the instructions load: always-on `AGENTS.md`, routed sections, the hook's `ROUTE:` line, budgets (ADR-0009) |
-| `harnesses.es.html`                                | the three hosts (`.agents/instructions/agent-harnesses.md` §5.5) |
+| `harnesses.es.html`                                | the supported hosts (`.agents/instructions/agent-harnesses.md` §5.5) |
 
 This skill has no deck of its own: the hub and its start-here page are its surface.
 
@@ -257,7 +257,7 @@ The AI persistent-memory file at the repo root (`AGENTS.md`, always loaded) carr
 - **§1 CRITICAL RULES** (binding sentences in `AGENTS.md`, full text in `.agents/instructions/agent-critical-rules.md`) — the rules that override defaults (credentials, plan-before-coding, no AI attribution + forensic trailers, MCP credential failure protocol, `READ package.json DIRECTLY`, UI fidelity contract, verify at the destination, committed prose names the source of truth).
 - **§4 CONTEXT LOADING MAP** (`.agents/instructions/agent-context-map.md`) — task → trigger phrase → skill → context files → primary tool.
 - **§5 SKILLS + MODES + MCPs REGISTRY** (`.agents/instructions/agent-skills-and-mcps.md`) — full T1/T3/T4 skill model, skill modes, MCP capabilities.
-- **§5.5 MULTI-HARNESS** (`.agents/instructions/agent-harnesses.md`) — one source, three hosts: what is generated, the hook, MCP parity, launch gotchas.
+- **§5.5 MULTI-HARNESS** (`.agents/instructions/agent-harnesses.md`) — one source, every host: what is generated, the hook, MCP parity, launch gotchas.
 - **§12 PROACTIVE MEMORY TRIGGERS** — when to call `mem_save` without being asked.
 
 ---
@@ -269,7 +269,7 @@ Run through this checklist before you reach for your first ticket:
 - [ ] Adopted app only: is the adoption committed, and does `/project-adoption check` report every signal `ADOPTED`?
 - [ ] Did you run the setup script (`bun setup` — verify name in `package.json`)?
 - [ ] Did you fill `.env` with your own credentials (`LOCAL_*`, `STAGING_*`, `ATLASSIAN_*`, `SUPABASE_*`, `N8N_*`)? Did you connect a web-search provider at harness level (`bun run setup:doctor`)?
-- [ ] Did you open the agent in the project folder (`claude`, `opencode`, `codex`, or the desktop app), and do its MCP servers show as connected (they read `.env` through the loader)?
+- [ ] Did you open the agent in the project folder (`claude`, `opencode`, `codex`, `pi`, or the desktop app; Pi: `/trust` the folder first), and do its MCP servers show as connected (they read `.env` through the loader)?
 - [ ] Does the agents linter (`bun run vars:check` per `package.json`) exit clean (0 errors)?
 - [ ] Does Engram appear in the active MCP list (restart your agent if not)?
 - [ ] Did you open the docs hub (`https://upex-galaxy.github.io/agentic-dev-boilerplate/`) and the deck of the skill you are about to use?

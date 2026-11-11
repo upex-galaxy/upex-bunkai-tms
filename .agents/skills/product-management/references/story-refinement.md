@@ -41,7 +41,7 @@ Optional inputs (present in mature projects, may be missing at seed time): busin
 
 ## What Makes a Good Story?
 
-A good user story is small enough to ship in one sprint, written in the user's voice, and unambiguous about "done." It tells one story (one outcome), is testable as a black box, and has dependencies declared up front. If two engineers read it and picture different things, it is not refined yet.
+A good user story is small enough to verify on its own, written in the user's voice, and unambiguous about "done." It tells one story (one outcome), is testable as a black box, and has dependencies declared up front. If two engineers read it and picture different things, it is not refined yet.
 
 This guide gets a story from "exists in Jira" to "anyone on the team could pull it into a sprint." The deep AC and edge-case work happens in the companion references after this pass.
 
@@ -55,7 +55,7 @@ A piece of work is a single **story** when:
 
 - It is a refinement or extension of existing functionality
 - It clearly fits inside one existing epic
-- It can complete in 1-8 story points
+- It fits in one story (QA's AI Effort in shift-left is expected to be Low or Medium; High only warns and a split is an optional PO proposal)
 - It does not require architectural changes
 - One user story is enough to express it
 
@@ -80,8 +80,8 @@ Every refined story must pass INVEST. This is the gate between "exists" and "rea
 | **I**ndependent | Can be developed without depending on other stories       | Can it be completed in isolation?       |
 | **N**egotiable  | Implementation details can be adjusted during development | Is there flexibility in implementation? |
 | **V**aluable    | Delivers value to the user or the business                | Is the "so that…" clear and valuable?   |
-| **E**stimable   | Effort can be estimated with the info given               | Can the team assign story points?       |
-| **S**mall       | Can complete in one sprint (max 8 story points)           | Under 8 SP? If not, split.              |
+| **E**stimable   | Enough detail for QA to size it in shift-left             | Can QA tell Low, Medium or High?        |
+| **S**mall       | Small enough to verify on its own                         | AI Effort High? A split MAY be proposed (optional). |
 | **T**estable    | Acceptance criteria are verifiable                        | Are the Scenarios clear and measurable? |
 
 > **Voice check** (complements INVEST; applies to `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}`, `{{jira.workflow}}`): does each criterion stay true after a stack swap? If endpoint paths, HTTP status codes, table/column names, framework or library names, error-code identifiers, or transaction/locking patterns appear, the criterion is implementation, not behavior — rewrite from the persona's POV. **Exception**: persona is an API consumer (DevEx, integration agent, headless client) — API surface IS their UX. See anti-pattern `I15` in `SKILL.md`. The Voice check is a hard gate alongside INVEST; failing it blocks Ready-for-Development.
@@ -169,7 +169,7 @@ A 3-amigos session aligns Product, Engineering, and QA on a story before it ente
 
 **Trigger criteria — run a 3-amigos session if any apply:**
 
-- Estimated > 5 SP (story is on the edge of "small")
+- AI Effort `High` (story is on the edge of "small")
 - Integration-heavy (touches an external API, multiple services, or a shared module)
 - New user-facing flow (no precedent in the product)
 - Ambiguity in ACs raised by anyone on the team
@@ -196,7 +196,7 @@ A 3-amigos session aligns Product, Engineering, and QA on a story before it ente
 - [ ] Edge cases discussed and either covered, deferred (with story link), or out-of-scope
 - [ ] Dependencies (Blocked By / Blocks) named
 - [ ] Tech approach has no major unknowns (or a spike is split out)
-- [ ] Size fits one sprint (Story Points only when the user asked for estimation, anti-pattern `I16`)
+- [ ] Small enough to verify on its own (QA's AI Effort is Low or Medium; for High, a split was optionally proposed, anti-pattern `I16`)
 
 If any item is unchecked at the end of the session, schedule a follow-up — do not mark Ready.
 
@@ -217,13 +217,13 @@ A story is Ready when **all** of these are true:
 - [ ] **Voice gate passed** — AC / Scope / Out-of-Scope / Workflow describe persona-observable behavior; no endpoint paths, HTTP status codes, table/column names, framework names, or internal algorithms appear (anti-pattern `I15`). Exception: API-consumer persona.
 - [ ] **Persona grounded** — `As a` line names a persona that exists in `.context/PRD/user-personas.md` (or, with no PRD, in the glossary / the data map's `access-control` roles); no generic "user" / "system" actors (anti-pattern `I19`).
 - [ ] **Deduplication audit passed** — run the dedup audit per `references/description-custom-field-dedup.md`. Confirm the description body excludes AC / Scope / OOS H2 sections and that those contents live in `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}` respectively. If a duplicate is found, strip from the description and keep the custom field as canonical.
-- [ ] **Story Points** — leave `{{jira.story_points}}` EMPTY by default. Populate ONLY if the user explicitly requested estimation in this session. Estimation belongs to the team that will build the story (Design + Dev + Test), not to the PO/BA. When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
+- [ ] **Effort fields**: leave `{{jira.ai_effort}}`, `{{jira.development_token_usage}}` and `{{jira.quality_token_usage}}` EMPTY. QA sets AI Effort in shift-left (`High` only warns the dev and a split is an optional PO proposal); the agents write the token fields from measured usage. See anti-pattern `I16`.
 - [ ] **Dependency Discovery executed** — active pass over the current backlog graph (epic-tree + Jira link graph + the data map in `business-data-context`) ran BEFORE creation/edit. Candidate `(from, to, source)` matrix surfaced to the user; global/infrastructural noise filtered out; only feature-level explicit dependencies kept. See anti-pattern `I18`.
 - [ ] **Dependencies named** — Blocked By / Blocks / Related confirmed with the user from the discovery matrix (they live as Jira issue links; the sync renders them into `story.md`)
 - [ ] **Dependencies published to Jira** — see the "Dependency-link verification" step below
 - [ ] **UI touch flagged** — a UI-touching story says so and, where a master design plan exists, has its §8 US→Screen row (SKILL.md). No mockup is required to be Ready: screens come later from `/sprint-development`'s design gate
 - [ ] **Technical notes** include any non-obvious implementation considerations
-- [ ] **3-amigos done** if triggered (>5 SP or integration-heavy)
+- [ ] **3-amigos done** if triggered (AI Effort High or integration-heavy)
 - [ ] **Definition of Done** present and project-standard
 - [ ] **Status transitioned** to `{{jira.statuses.story_default}}` (literal default `Shift-Left QA`) — see the "Status transition" step below
 
@@ -255,11 +255,11 @@ When a story is too big (>8 SP), slice it. Some patterns work; some are anti-pat
 
 Slice by **user-visible outcome**. Each slice is itself a thin, end-to-end story that delivers value on its own.
 
-Example — "User can pay for an order" (originally 13 SP):
+Example — "User can pay for an order" (originally AI Effort High):
 
-- Story A — "User can pay with a saved card" (5 SP) — happy path, single payment method
-- Story B — "User can add a new card during checkout" (3 SP) — extends A
-- Story C — "User sees clear errors on declined payments" (3 SP) — error handling
+- Story A — "User can pay with a saved card" — happy path, single payment method
+- Story B — "User can add a new card during checkout" — extends A
+- Story C — "User sees clear errors on declined payments" — error handling
 
 Each slice is shippable on its own, even if the rest never ships. That is the test for a vertical slice.
 
@@ -271,9 +271,9 @@ Slicing by **technical layer** — "do the database first, the API next, the UI 
 
 When a flow is genuinely large but the edges are well-understood:
 
-- Story A — "User completes the happy path of [flow]" (5 SP) — main scenario only
-- Story B — "User gets correct error handling on [flow]" (3 SP) — covers all error scenarios
-- Story C — "[Flow] handles edge cases X, Y, Z" (3 SP) — boundaries
+- Story A — "User completes the happy path of [flow]" — main scenario only
+- Story B — "User gets correct error handling on [flow]" — covers all error scenarios
+- Story C — "[Flow] handles edge cases X, Y, Z" — boundaries
 
 Only valid if Story A is **shippable behind a flag** (i.e., not exposed to real users until B and C ship). Otherwise it becomes horizontal slicing in disguise.
 
@@ -372,7 +372,7 @@ Scenario: Discount code applies before tax calculation
 - **Implementation in the title** — "Add Stripe SDK" is a task, not a story. Stories are user-facing.
 - **No real "so that"** — "so I can do X" where X is a feature, not a benefit.
 - **Conjunctions in the action** — "I want to log in **and** see my dashboard" — two stories.
-- **Hidden epics** — story estimated 13+ SP. Split it.
+- **Hidden epics** — a story whose AI Effort is High with several outcomes inside. Consider splitting it.
 - **Only happy-path ACs** — at minimum 3 scenarios (happy + error + edge).
 - **Skipping INVEST when in a hurry** — every skipped check shows up as rework mid-sprint.
 - **Missing Out of Scope** — invites scope creep during development.

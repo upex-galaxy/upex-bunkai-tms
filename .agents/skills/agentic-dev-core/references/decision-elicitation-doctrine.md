@@ -213,6 +213,7 @@ ask again. Write the answers down where `./decision-protocol.md` §6 says.
 | Claude Code | `AskUserQuestion` | headless runs; Agent-tool subagents (unreliable) |
 | Codex | `request_user_input` | exec mode; outside Plan mode unless the feature flag `default_mode_request_user_input` is on |
 | OpenCode | `question` | `opencode run`; disabled by its permission key `question` |
+| Pi | none built in | always, unless a package adds one: the fallback below |
 | Gemini CLI | `ask_user` | non-interactive runs |
 | any other | its own question tool, if its tool list shows one | otherwise the fallback below |
 

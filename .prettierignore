@@ -97,3 +97,12 @@ packages/decks/
 # ----- 2026-08-18 (sync) -----
 .scratch/
 .session/
+
+# ----- 2026-11-09 (sync) -----
+.pi/*
+!.pi/mcp.json
+!.pi/settings.json
+!.pi/extensions/
+!.pi/skills/
+!.pi/prompts/
+!.pi/themes/

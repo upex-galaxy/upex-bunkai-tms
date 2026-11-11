@@ -464,6 +464,17 @@ Envía staging URL al equipo de QA y comunica la versión desplegada.
 
 _QA verification on staging is out of scope here._
 
+**Asignación al QA.** Cuando la story llega a `{{jira.status.story.ready_for_qa}}` (lee el estado de vuelta, no confíes en que la automatización disparó), mueve el `assignee` nativo al QA que figura en `{{jira.qa_assignee}}`, el registro del QA que siguió la story desde shift-left. Léelo, nunca lo sobrescribas. Si `qa_assignee` está vacío, deja el `assignee` como está y dilo en el comentario de notificación a QA. Verifica leyendo el `assignee` después.
+
+**Development Token Usage (ayuda de auditoría, opcional y acumulativo).** Ligado al estado `ready_for_qa` verificado, no al hecho de que la automatización `deployed` haya corrido. Se escribe al llegar a Ready For QA y de nuevo después de cada ciclo de corrección:
+
+1. Lee el valor actual de `{{jira.development_token_usage}}`.
+2. Suma los tokens MEDIDOS de este ciclo, tomados de las entradas de `progress.md` (cada sesión agrega su cifra medida). K = tokens de entrada más salida; las lecturas de caché se reportan aparte.
+3. Escribe valor actual más delta, nunca sobrescribas. Si el valor actual está vacío, escribe solo el delta.
+4. Publica un comentario corto `DTU cycle N: +x K (total y K) source=<harness o human>`. Si el campo no existe en `.agents/jira-fields.json`, el comentario lleva la cifra.
+
+Si el harness no muestra tokens y ninguna persona los ingresa, deja el campo vacío y el verificador dice N/A con ese motivo; vacío es válido y nunca es un fallo. Nunca estimes ni inventes el número. Un item que no llega a Ready For QA (un tech item que pasa directo a `completed`) dice N/A con ese motivo.
+
 ---
 
 ## 📊 Deployment Summary:
@@ -509,6 +520,8 @@ Lista para QA y exploratory testing.
 
 - [ ] URL compartida con QA
 - [ ] Next steps comunicados
+- [ ] `assignee` movido al QA de `{{jira.qa_assignee}}` y leído de vuelta, o dejado como está con el motivo dicho en el comentario a QA
+- [ ] Ciclo DTU: `DTU cycle N: +x K (total y K) source=<...>` publicado y el campo acumulado, o N/A con motivo
 
 ---
 

@@ -242,6 +242,7 @@ const MCP_HOST_FILE: Record<string, string> = {
   claude: '.mcp.json',
   opencode: 'opencode.jsonc',
   codex: '.codex/config.toml',
+  pi: '.pi/mcp.json',
 };
 
 /** Order of the surfaces in every table. */
@@ -273,9 +274,10 @@ const SURFACE_LABEL_ES: Record<ParitySurface, string> = {
   gates: 'Verificación',
 };
 
-/** The other two MCP registries a host's project-only server must be declared in. */
-function otherMcpHostFiles(host: string): string {
-  return Object.entries(MCP_HOST_FILE).filter(([id]) => id !== host).map(([, file]) => file).join(' and ');
+/** The other MCP registries in use where a host's project-only server must be declared. */
+function otherMcpHostFiles(host: string, root: string): string {
+  const inUse: readonly string[] = declaredHarnesses(root).harnesses;
+  return Object.entries(MCP_HOST_FILE).filter(([id]) => id !== host && inUse.includes(id)).map(([, file]) => file).join(' and ');
 }
 
 const MAX_NAMES = 3;
@@ -891,7 +893,7 @@ export function structuralEvidence(filePath: string, project: string, upstream: 
   return `informational: upstream added ${added.length} ${unit}${added.length === 1 ? '' : 's'}: ${listNames(added)}; merge = add the new ${unit}s, values are project identity and never compared`;
 }
 
-/** Registry keys of the three MCP host files (`.mcp.json`, `opencode.jsonc`, `.codex/config.toml`). */
+/** Registry keys of the MCP host files, one per harness (`mcpServers` covers `.mcp.json` and `.pi/mcp.json`). */
 const MCP_REGISTRY_KEYS = ['mcpServers', 'mcp', 'mcp_servers'];
 
 /** Server ids among `ids` the project file declares and the upstream copy no longer does. */
@@ -922,8 +924,8 @@ export function harnessLevelMcpNote(filePath: string, project: string, upstream:
     note: [
       `Upstream no longer commits ${listNames(ids)}: a remote MCP server whose only project-side content is an API key is the harness's business, and the skills resolve it by capability whatever the server prefix (ADR-0005; .agents/skills/agentic-dev-core/references/mcp-capabilities.md).`,
       'Two valid answers for this project:',
-      `  - keep project: the server stays a project-only entry in ${filePath} and in the other two host files, and its key stays in your .env, which no sync touches (the synced .env.example and the variable manifest no longer list ${listNames(vars)}, so document it wherever this project keeps its own keys).`,
-      `  - remove it here (and from the other two host files) and connect it at user level: Claude Code \`claude mcp add --scope user\` or a claude.ai connector; OpenCode ~/.config/opencode/opencode.json; Codex \`codex mcp add\`. Then drop ${listNames(vars)} from .env.`,
+      `  - keep project: the server stays a project-only entry in ${filePath} and in the other host files, and its key stays in your .env, which no sync touches (the synced .env.example and the variable manifest no longer list ${listNames(vars)}, so document it wherever this project keeps its own keys).`,
+      `  - remove it here (and from the other host files) and connect it at user level: Claude Code \`claude mcp add --scope user\` or a claude.ai connector; OpenCode ~/.config/opencode/opencode.json; Codex \`codex mcp add\`; Pi \`pi mcp add\`. Then drop ${listNames(vars)} from .env.`,
       'bun run setup:doctor reports which of these servers your user-level configs already declare.',
     ].join('\n'),
   };
@@ -938,7 +940,7 @@ export function harnessLevelMcpNote(filePath: string, project: string, upstream:
  * and never deletes a project's copy: the launcher is in the updater's
  * `excludePaths`, so not even `--force` removes it. One informational row each.
  */
-export const RETIRED_HARNESS_SCRIPTS = ['claude', 'codex', 'opencode'] as const;
+export const RETIRED_HARNESS_SCRIPTS = ['claude', 'codex', 'opencode', 'pi'] as const;
 export const RETIRED_HARNESS_LAUNCHER = 'scripts/launch.ts';
 
 /** A script that starts its harness with the env files loaded: the launcher, varlock, dotenv, or a sourced `.env`. */
@@ -983,8 +985,8 @@ export function retiredMcpNote(filePath: string, project: string, upstream: stri
     note: [
       ...retired.map(id => `Upstream no longer commits ${listNames([id])}: ${RETIRED_MCPS[id]}.`),
       'Two valid answers for this project:',
-      `  - keep project: the server stays a project-only entry in ${filePath} (and in the other two host files); agents:compat:check still compares it across hosts, just without a pinned shape.`,
-      '  - remove it from all three host files.',
+      `  - keep project: the server stays a project-only entry in ${filePath} (and in the other host files); agents:compat:check still compares it across hosts, just without a pinned shape.`,
+      '  - remove it from every host file.',
     ].join('\n'),
   };
 }
@@ -1106,7 +1108,7 @@ export function compatErrorSuggestion(message: string): ParitySuggestion {
 function compatErrorPath(message: string): string {
   const m = /(?:^|\s|:)((?:\.[\w-]+|[\w-]+)(?:\/[\w.-]+)+\.\w+)/.exec(message);
   if (m) { return m[1]; }
-  const host = /(claude|opencode|codex)\b/i.exec(message);
+  const host = /\b(claude|opencode|codex|pi)\b/i.exec(message);
   if (host && /MCP/.test(message)) { return MCP_HOST_FILE[host[1].toLowerCase()]; }
   if (/skills alias|\.claude\/skills/.test(message)) { return '.claude/skills'; }
   const eslint = /^(eslint\.config(?:\.tooling)?\.m?js) /.exec(message);
@@ -1230,7 +1232,7 @@ function readIfExists(filePath: string): string | null {
 }
 
 function watchedSurface(filePath: string, source: 'upstream' | 'project' = 'upstream'): ParitySurface {
-  if (filePath === '.mcp.json' || filePath === 'opencode.jsonc' || filePath === '.codex/config.toml') { return 'mcp'; }
+  if (filePath === '.mcp.json' || filePath === 'opencode.jsonc' || filePath === '.codex/config.toml' || filePath === '.pi/mcp.json') { return 'mcp'; }
   if (filePath === '.claude/settings.json') { return 'hooks'; }
   if (filePath.startsWith('.agents/skills/')) { return 'skills'; }
   // Synced component files kept as the project's own (.husky hooks, a declared path).
@@ -1422,7 +1424,7 @@ export function collectParityFindings(input: ParityInput): ParityFinding[] {
     // Servers only this host has are the project's integrations: the fix is to
     // declare them everywhere or drop them deliberately, never to overwrite
     // the file with upstream's copy.
-    if (sets.extra.length > 0) { parts.push(`only here: ${sets.extra.join(', ')} (not in .mcp.json): declare them in ${otherMcpHostFiles(host)}, or remove them`); }
+    if (sets.extra.length > 0) { parts.push(`only here: ${sets.extra.join(', ')} (not in .mcp.json): declare them in ${otherMcpHostFiles(host, input.root)}, or remove them`); }
     pushCompat({
       surface: 'mcp',
       path: MCP_HOST_FILE[host] ?? host,

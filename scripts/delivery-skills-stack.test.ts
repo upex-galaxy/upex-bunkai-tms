@@ -14,7 +14,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
-import { generateSchema, isMaintainerCopy, isSchemaOwner, SCHEMA_SOURCE } from '../cli/lib/agents-schema.ts';
+import { generateSchema, isMaintainerCopy, isSchemaOwner, SCHEMA_FILE, SCHEMA_SOURCE } from '../cli/lib/agents-schema.ts';
 import { readStack, STACK_FIELDS } from '../cli/lib/stack-descriptor.ts';
 
 const REPO_ROOT = join(import.meta.dir, '..');
@@ -46,7 +46,7 @@ function hits(re: RegExp): string[] {
   return docs.flatMap(doc => doc.lines.flatMap((text, i) => (re.test(text) ? [`${doc.path}:${i + 1}: ${text.trim()}`] : [])));
 }
 
-const greenfield = readStack(generateSchema(readFileSync(join(REPO_ROOT, SCHEMA_SOURCE), 'utf8')).schema).values;
+const greenfield = readStack(generateSchema(readFileSync(join(REPO_ROOT, SCHEMA_SOURCE), 'utf8'), readFileSync(join(REPO_ROOT, SCHEMA_FILE), 'utf8')).schema).values;
 
 /** Resolves every `{{stack.<path>}}` in `text` against `values`; an unknown path stays visible. */
 function resolve(text: string, values: Record<string, string | null>): string {

@@ -26,6 +26,7 @@ import type { ParityFinding } from './updater-parity';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { declaredHarnesses, HARNESS_FILES } from './harness-selection.ts';
 import { detectHookManager, FRAMEWORK_GATES_FILE, gatesWired, hookWiringSnippet } from './hook-manager.ts';
 import { readUpstreamOwned } from './tooling-scope.ts';
 
@@ -39,6 +40,20 @@ export const TOOLING_DIRS = ['cli', 'scripts'] as const;
  * wildcards never enter them, so they are an ESLint concern only.
  */
 export const TOOLING_DOT_DIRS = ['.agents', '.opencode'] as const;
+
+/**
+ * The Pi adapter, a plain-JS file of the same kind as `.opencode/plugins/`.
+ * Named alone, never `.pi/**`: a project without Pi needs no ignore line, and
+ * `.pi/extensions/` may hold the project's own extensions, which its lint keeps.
+ */
+export const PI_ADAPTER_FILE = HARNESS_FILES.pi.find(file => file.startsWith('.pi/extensions/'))!;
+
+/** Pi is in use: its adapter is on disk, or `harnesses:` names it. */
+function usesPi(root: string): boolean {
+  if (existsSync(join(root, PI_ADAPTER_FILE))) { return true; }
+  const selection = declaredHarnesses(root, { schemaOwner: false });
+  return selection.source === 'declared' && selection.harnesses.includes('pi');
+}
 
 /** Root-level tooling config files an app's own ESLint would otherwise lint. */
 export const TOOLING_ROOT_FILES = ['eslint.config.base.js', 'eslint.config.tooling.mjs'] as const;
@@ -263,18 +278,24 @@ export function eslintIsolation(root: string, owned: UpstreamOwned | null = read
     ...(sharedScripts && !configText.includes(OWNED_SCRIPTS_TOKEN) ? ownedScriptFiles(owned) : []),
     // Legacy `.eslintrc` ESLint skips dot-directories by itself.
     ...(config.kind === 'flat' ? TOOLING_DOT_DIRS.map(d => `${d}/**`) : []),
+    ...(config.kind === 'flat' && usesPi(root) ? [PI_ADAPTER_FILE] : []),
     ...TOOLING_ROOT_FILES,
   ];
   // A path counts as ignored under any of its usual spellings (`cli`, `cli/`,
   // `cli/**`, `./cli/**`): as a quoted literal in the config, or as a line of
   // `.eslintignore`. Quotes are required in the config, so prose and
   // identifiers never count.
-  const ignored = (pattern: string): boolean => {
+  const ignoredItself = (pattern: string): boolean => {
     const stem = pattern.replace(/\/\*\*$/, '');
     const spellings = [stem, `${stem}/`, `${stem}/**`, `${stem}/**/*`];
     if (ignoreLines.some(l => spellings.includes(l))) { return true; }
     const escaped = stem.replace(/\./g, '\\.');
     return new RegExp(`['"\`](?:\\./)?${escaped}(?:/|/\\*\\*|/\\*\\*/\\*)?['"\`]`).test(configText);
+  };
+  // A file also counts as ignored when one of its directories is (`.pi/**`).
+  const ignored = (pattern: string): boolean => {
+    const parts = pattern.replace(/\/\*\*$/, '').split('/');
+    return parts.some((_, i) => ignoredItself(i === parts.length - 1 ? pattern : `${parts.slice(0, i + 1).join('/')}/**`));
   };
   const missing = wanted.filter(p => !ignored(p));
   return missing.length === 0 ? null : { path: config.path, kind: config.kind, missing, ...(sharedScripts ? { sharedScripts } : {}) };

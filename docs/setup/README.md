@@ -10,7 +10,7 @@
 | Documento                                    | Descripción                                                                                       |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | [Jira (lado dev)](#jira-lado-dev)            | Conectar el repo a tu sitio de Jira: host, credenciales, catálogos, caché local                   |
-| [mcp/README.md](./mcp/README.md)             | MCP: conceptos, transportes, capacidades y la matriz de configs por harness (Claude Code, OpenCode, Codex) |
+| [mcp/README.md](./mcp/README.md)             | MCP: conceptos, transportes, capacidades y la matriz de configs por harness (Claude Code, OpenCode, Codex, Pi) |
 | [mcp/claude-code.md](./mcp/claude-code.md)   | MCP en Claude Code (`.mcp.json`, el binario `claude`, el loader de `.env`)                        |
 | [mcp/codex.md](./mcp/codex.md)               | Codex CLI + Desktop: `AGENTS.md`, `.agents/skills/`, `.codex/config.toml`, trust, loader de `.env` |
 
@@ -21,6 +21,7 @@
 1. **Vas a conectar el repo a Jira?** → [Jira (lado dev)](#jira-lado-dev)
 2. **Vas a usar Codex CLI o Codex Desktop?** → [mcp/codex.md](./mcp/codex.md)
 3. **Querés entender cómo se reparten los MCPs entre harnesses?** → [mcp/README.md](./mcp/README.md)
+4. **Vas a usar Pi?** → [mcp/README.md](./mcp/README.md#pi) (`.pi/mcp.json`, `/trust`, `pi mcp add`)
 
 ---
 
@@ -42,4 +43,4 @@ Para operar tickets desde el agente: skill `/acli`. Para administrar el proyecto
 
 - `docs/architectures/` - Configuración específica por arquitectura
 - `docs/mcp/` - Templates MCP opt-in y guía de sintaxis por host
-- `.agents/instructions/agent-harnesses.md` §5.5 - Un solo origen, tres harnesses (qué se genera y qué se versiona)
+- `.agents/instructions/agent-harnesses.md` §5.5 - Un solo origen, todos los harnesses (qué se genera y qué se versiona)

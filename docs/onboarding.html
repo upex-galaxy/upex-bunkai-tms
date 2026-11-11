@@ -706,7 +706,7 @@
           qué piezas existen, cómo se invocan y dónde termina el trabajo del dev y empieza el de QA.
         </p>
         <div class="chips">
-          <span class="chip"><span class="dot"></span> Claude Code · OpenCode · Codex</span>
+          <span class="chip"><span class="dot"></span> Claude Code · OpenCode · Codex · Pi</span>
           <span class="chip agent"
             ><span class="dot"></span> una skill se invoca por nombre + modo</span
           >
@@ -786,12 +786,12 @@
         <!-- 01 -->
         <section id="idea">
           <div class="eyebrow"><span class="num">01</span> la idea</div>
-          <h2>Una sola copia de cada instrucción, leída por tres harnesses</h2>
+          <h2>Una sola copia de cada instrucción, leída por cada harness</h2>
           <div class="prose">
             <p>
               El repo tiene una única fuente de reglas, <code>AGENTS.md</code> con sus secciones en
               <code>.agents/instructions/</code>, y una única carpeta de workflows,
-              <code>.agents/skills/</code>. Claude Code, OpenCode y Codex leen las dos.
+              <code>.agents/skills/</code>. Claude Code, OpenCode, Codex y Pi leen las dos.
               <code>AGENTS.md</code> es el núcleo que carga en cada sesión; cada sección se lee
               cuando el pedido la necesita. Claude Code entra por <code>CLAUDE.md</code>, que es
               solo un import de una línea (<code>@AGENTS.md</code>), y por
@@ -806,10 +806,9 @@
           </div>
           <div class="callout">
             <p>
-              El detalle de cómo una fuente alimenta a los tres harnesses está en la página
-              publicada
+              El detalle de cómo una fuente alimenta a cada harness está en la página publicada
               <a href="https://upex-galaxy.github.io/agentic-dev-boilerplate/harnesses.es.html"
-                >Una fuente, tres harnesses</a
+                >Una fuente, todos los harnesses</a
               >.
             </p>
           </div>
@@ -868,10 +867,10 @@
               log completo, y <code>bun setup --headless</code> deja todo en la terminal. Si algo
               queda a medias, <code>bun run setup:doctor</code> te dice qué falta y dónde se
               arregla. Para abrir el agente corré su propio binario en la carpeta del proyecto
-              (<code>claude</code>, <code>opencode</code> o <code>codex</code>) o usá su app de
-              escritorio. No hay script envoltorio: nada carga el <code>.env</code> en el proceso
-              del agente, así que ningún secreto llega al shell de la IA. Cada servidor MCP lo lee
-              por su cuenta con el loader de <code>.env</code>.
+              (<code>claude</code>, <code>opencode</code>, <code>codex</code> o <code>pi</code>) o
+              usá su app de escritorio. No hay script envoltorio: nada carga el <code>.env</code> en
+              el proceso del agente, así que ningún secreto llega al shell de la IA. Cada servidor
+              MCP lo lee por su cuenta con el loader de <code>.env</code>.
             </p>
             <p>
               Un proyecto creado desde el boilerplate se mantiene al día con
@@ -885,7 +884,7 @@
           <div class="callout sig">
             <p>
               Antes del primer <code>bun setup</code> necesitás Bun y al menos uno de Claude Code,
-              OpenCode o Codex. El resto, el instalador te lo señala cuando lo necesita. Guía de
+              OpenCode, Codex o Pi. El resto, el instalador te lo señala cuando lo necesita. Guía de
               problemas del instalador:
               <a
                 href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/INSTALLER.md"
@@ -939,6 +938,10 @@
                 <tr>
                   <td>Claude Code</td>
                   <td><code>/project-context data</code></td>
+                </tr>
+                <tr>
+                  <td>Pi</td>
+                  <td><code>/skill:project-context data</code></td>
                 </tr>
                 <tr>
                   <td>OpenCode, Codex</td>
@@ -1314,8 +1317,9 @@
               <code>automation-flows</code>, <code>diagrams</code>) y el agente la resuelve por el
               sufijo del nombre de la herramienta, con el prefijo que sea. Los servidores
               comprometidos en el repo son los que declara <code>.mcp.json</code>, con su
-              equivalente en <code>opencode.jsonc</code> y <code>.codex/config.toml</code>. La
-              búsqueda web se conecta a nivel del harness, nunca en esos archivos.
+              equivalente en <code>opencode.jsonc</code>, <code>.codex/config.toml</code> y
+              <code>.pi/mcp.json</code>. La búsqueda web se conecta a nivel del harness, nunca en
+              esos archivos.
             </p>
           </div>
           <div class="callout sig">

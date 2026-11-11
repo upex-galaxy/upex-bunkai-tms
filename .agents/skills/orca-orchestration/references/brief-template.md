@@ -103,9 +103,9 @@ a system temp directory (it triggers a permission prompt on some harnesses).
    one value the session, the tab, the roster's `Name` column and the commit trailer all key off. The
    brief tells the worker to rename its own TAB as its first action (the exact command is in
    `references/worker-contract.md` §Session naming). On the supervised path there is no name flag:
-   on Claude Code the identity hook composes the session name from the prompt's
-   `/<workflow-skill> <label> fleet worker` opening plus `ORCA_TERMINAL_HANDLE`, and on Codex,
-   OpenCode v2.2 and Pi the conductor types the rename verb. The brief never asks the worker to
+   on Claude Code the identity hook, and on Pi the adapter, composes the session name from the prompt's
+   `/<workflow-skill> <label> fleet worker` opening plus `ORCA_TERMINAL_HANDLE`, and on Codex and
+   OpenCode v2.2 the conductor types the rename verb. The brief never asks the worker to
    rename its own SESSION: `/rename` is user input, and a model cannot run it. Where the harness
    cannot be renamed (OpenCode v1), the brief gives the roster name the trailer carries. Detail:
    `references/session-identity.md` §2b.
@@ -162,7 +162,7 @@ Anything else: do not touch it. Put the exact edit you wanted in your report.
 
 ## Report
 Write <ABS>/.session/orchestration/<slug>/reports/<label>.md with:
-## Summary · ## Files changed · ## Commits · ## Decisions taken · ## Verification · ## Left open
+## Summary · ## Files changed · ## Commits · ## Decisions taken · ## Verification · ## Left open · ## Tokens (optional: measured, or `unknown`, never estimated)
 Then send worker_done exactly once, outcome succeeded|failed, with --files-modified and
 --report-path. Then stop.
 

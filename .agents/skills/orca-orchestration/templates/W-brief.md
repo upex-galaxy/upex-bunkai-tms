@@ -14,7 +14,7 @@ Read `<ABS>/.session/orchestration/<slug>/COMMON.md` first, then this file.
 | Task | `task_…` |
 | Dispatch | `dispatch_…` (omit if launched without one) |
 | Run | `run_…` — **ONLY** when launched WITHOUT a dispatch; with an active dispatch the recipient defaults to the owning Run, so this line invites an error |
-| Name | `<label>--<handle>`, where `<label>` is `[<KEY>-]<slug>`, the token your prompt opens with, and `<handle>` is your own `ORCA_TERMINAL_HANDLE`. **First action: rename your own tab** with `orca terminal rename --terminal "$ORCA_TERMINAL_HANDLE" --title "<label>--$ORCA_TERMINAL_HANDLE" --json </dev/null`. Your SESSION name is set for you (Claude Code: the identity hook; Codex, OpenCode v2.2, Pi: the conductor types the rename verb); never rename your own session. Your `Session:` trailer carries this full name (the `session=` value of your `AGENT IDENTITY` line)<; on a harness that cannot be renamed, mark this row `roster only`: your trailer carries this roster name> |
+| Name | `<label>--<handle>`, where `<label>` is `[<KEY>-]<slug>`, the token your prompt opens with, and `<handle>` is your own `ORCA_TERMINAL_HANDLE`. **First action: rename your own tab** with `orca terminal rename --terminal "$ORCA_TERMINAL_HANDLE" --title "<label>--$ORCA_TERMINAL_HANDLE" --json </dev/null`. Your SESSION name is set for you (Claude Code: the identity hook; Pi: the adapter; Codex, OpenCode v2.2: the conductor types the rename verb); never rename your own session. Your `Session:` trailer carries this full name (the `session=` value of your `AGENT IDENTITY` line)<; on a harness that cannot be renamed, mark this row `roster only`: your trailer carries this roster name> |
 | Worktree | <primary \| name> — the first commit-trailer value |
 | Agent / model / effort | <agent> / <full model id> / <effort> — from `orchestration.default_agent` / `default_model` / `default_effort`, unless an `orchestration.model_overrides` entry matches this brief's topics or the user said otherwise |
 | Report path | `<ABS>/.session/orchestration/<slug>/reports/<label>.md` |
@@ -84,7 +84,9 @@ in your final report. That is the whole reason this table is in your brief.
 ## Report
 
 Write your report to the path above, with: `## Summary`, `## Files changed`, `## Commits`,
-`## Decisions taken`, `## Verification` (commands + exit codes), `## Left open`.
+`## Decisions taken`, `## Verification` (commands + exit codes), `## Left open`, and optionally
+`## Tokens` (the tokens you measurably spent, K = input plus output with cache reads apart, plus the
+source `harness` or `human`; `unknown` when the harness shows none; never an estimate).
 Then send `worker_done` exactly once — explicit outcome, modified files, report path. Then stop.
 
 ## Rules

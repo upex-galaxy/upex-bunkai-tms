@@ -55,7 +55,7 @@
    the workflow skill declares, always by absolute path: a report written inside your worktree dies
    with it).
    Sections: `## Summary`, `## Files changed`, `## Commits` (sha + subject), `## Decisions taken`
-   (and why), `## Verification` (commands + exit codes), `## Left open`. The message body is a
+   (and why), `## Verification` (commands + exit codes), `## Left open`, and optionally `## Tokens` (measured K, input plus output, or `unknown`; never estimated). The message body is a
    summary; the file is the record.
 
 8. **Launched without a dispatch?** Then your brief carries a `Run: <run_id>` line, and you report
@@ -176,7 +176,8 @@ Your SESSION name is set for you, never by you:
 
 - **Claude Code**: the repo's identity hook composes `<label>--<handle>` from your first prompt's
   `/<workflow-skill> <label> fleet worker` opening plus `ORCA_TERMINAL_HANDLE`. Nothing to do.
-- **Codex, OpenCode v2.2, Pi**: the conductor types the rename verb into your terminal once you are
+- **Pi**: the repo's adapter does the same from the same opening. Nothing to do.
+- **Codex, OpenCode v2.2**: the conductor types the rename verb into your terminal once you are
   ready. Nothing to do either.
 - **OpenCode v1, or any harness that cannot be renamed**: the roster maps your name to your handle.
 
