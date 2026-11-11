@@ -1,4 +1,4 @@
-import type { AtcLayer, AtcPriority } from '@lib/types';
+import type { AtcLayer, AtcPriority, ModuleTreeNode } from '@lib/types';
 import { MAX_ATC_TAGS } from '@lib/atcs/validation';
 
 // BK-507 — the shared vocabulary of the ATC bulk edit (ADR-0027): the change a
@@ -178,4 +178,25 @@ export function toWireChange(change: BulkEditChange): Record<string, unknown> {
     case 'layer': return { layer: change.layer };
     case 'priority': return { priority: change.priority };
   }
+}
+
+export interface BulkModuleOption {
+  id: string
+  path: string
+}
+
+// The live Modules a bulk move can target, flattened from the explorer's tree and
+// sorted by path. Archived Modules are left out: the server refuses them anyway.
+export function flattenModuleOptions(tree: readonly ModuleTreeNode[]): BulkModuleOption[] {
+  const options: BulkModuleOption[] = [];
+  const walk = (nodes: readonly ModuleTreeNode[]): void => {
+    for (const node of nodes) {
+      if (node.archived_at === null || node.archived_at === undefined) {
+        options.push({ id: node.id, path: node.path });
+        walk(node.children);
+      }
+    }
+  };
+  walk(tree);
+  return options.sort((a, b) => a.path.localeCompare(b.path));
 }

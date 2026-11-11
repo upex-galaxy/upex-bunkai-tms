@@ -6,6 +6,7 @@ import {
   bulkSelectionProblem,
   bulkTagsProblem,
   describeBulkChange,
+  flattenModuleOptions,
   groupRefusals,
   normalizeBulkTag,
   parseBulkTagInput,
@@ -108,5 +109,23 @@ describe('reading a report', () => {
     }
     expect(bulkReasonLabel(null)).toBe(bulkReasonLabel('write_failed'));
     expect(bulkReasonLabel('nope')).toBe(bulkReasonLabel('write_failed'));
+  });
+});
+
+describe('module options', () => {
+  const node = (id: string, path: string, archived: string | null, children: unknown[] = []) => (
+    { id, path, archived_at: archived, children } as never
+  );
+
+  test('flattens the live tree sorted by path and leaves archived Modules (and their subtree) out', () => {
+    const tree = [
+      node('r', 'root', null, [node('l', 'root/leaf', null), node('g', 'root/gone', '2026-01-01', [node('gg', 'root/gone/deep', null)])]),
+      node('a', 'alpha', null),
+    ];
+    expect(flattenModuleOptions(tree)).toEqual([
+      { id: 'a', path: 'alpha' },
+      { id: 'r', path: 'root' },
+      { id: 'l', path: 'root/leaf' },
+    ]);
   });
 });
