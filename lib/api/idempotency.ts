@@ -7,6 +7,10 @@ import { createAdminClient } from '@lib/supabase/admin';
 //   1. Handler calls `beginIdempotentRequest({ headers, userId, endpoint,
 //      requestPayload })`. The middleware computes a SHA-256 of the payload
 //      and looks up `(user_id, endpoint, key)`.
+//      - row found but past `expires_at` → treated as no row (ADR-0002: the
+//        replay window is the row's TTL; a replay outside it is a NEW request).
+//        The expired row is deleted with a compare-and-set, then the normal
+//        insert path runs; a concurrent racer loses on the unique constraint.
 //      - row found + same hash + succeeded → returns `isReplay=true` with the
 //        stored response snapshot. Handler short-circuits.
 //      - row found + different hash → 409 conflict (same key used for two
@@ -63,9 +67,9 @@ export async function beginIdempotentRequest(
   const requestHash = await sha256Hex(stableStringify(args.requestPayload));
   const admin = createAdminClient();
 
-  const { data: existing, error: lookupError } = await admin
+  const { data: found, error: lookupError } = await admin
     .from('idempotency_keys')
-    .select('id, request_hash, status, response_snapshot, response_status')
+    .select('id, request_hash, status, response_snapshot, response_status, expires_at')
     .eq('user_id', args.userId)
     .eq('endpoint', args.endpoint)
     .eq('key', key)
@@ -73,6 +77,23 @@ export async function beginIdempotentRequest(
 
   if (lookupError) {
     throw new ApiError('internal_error', 'Idempotency lookup failed.');
+  }
+
+  let existing = found;
+  if (existing && Date.parse(existing.expires_at) <= Date.now()) {
+    // BK-1724: an expired row is no row. Remove it (compare-and-set on id +
+    // expiry so a row refreshed by someone else is never deleted) and fall
+    // through to the insert path. If a concurrent request already replaced
+    // it, our insert loses on the unique constraint (23505 → 409) as usual.
+    const { error: expireError } = await admin
+      .from('idempotency_keys')
+      .delete()
+      .eq('id', existing.id)
+      .lte('expires_at', new Date().toISOString());
+    if (expireError) {
+      throw new ApiError('internal_error', 'Idempotency expiry cleanup failed.');
+    }
+    existing = null;
   }
 
   if (existing) {

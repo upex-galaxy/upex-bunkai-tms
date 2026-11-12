@@ -232,6 +232,37 @@ describeOrSkip('beginIdempotentRequest (BK-248)', () => {
     expect(retry.isReplay).toBe(false);
   }, 15000);
 
+  it('BK-1724: a succeeded row past expires_at is NOT replayed; the same key creates a new row', async () => {
+    if (!fixture) { return warn(); }
+    const { beginIdempotentRequest, recordIdempotencyResult } = await import('./idempotency');
+    const headers = new Headers({ 'idempotency-key': `${PREFIX}-expired` });
+    const payload = { title: 'aged past the window' };
+
+    const first = await beginIdempotentRequest({
+      headers,
+      userId: fixture.userId,
+      endpoint: ENDPOINT,
+      workspaceId: fixture.workspaceId,
+      requestPayload: payload,
+    });
+    if (first.isReplay) { throw new Error('expected first call to be a fresh insert'); }
+    await recordIdempotencyResult(first.token, { test: { id: 'old' } }, 201);
+    await service()
+      .from('idempotency_keys')
+      .update({ expires_at: new Date(Date.now() - 60_000).toISOString() })
+      .eq('id', first.token.rowId);
+
+    const second = await beginIdempotentRequest({
+      headers,
+      userId: fixture.userId,
+      endpoint: ENDPOINT,
+      workspaceId: fixture.workspaceId,
+      requestPayload: payload,
+    });
+    expect(second.isReplay).toBe(false);
+    expect(second.token.rowId).not.toBe(first.token.rowId);
+  }, 15000);
+
   it('a nonexistent user_id still surfaces as internal_error (the fix is scoped to workspace_id, not every FK)', async () => {
     const { beginIdempotentRequest } = await import('./idempotency');
     const headers = new Headers({ 'idempotency-key': `${PREFIX}-bad-user` });
