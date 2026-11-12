@@ -1,7 +1,10 @@
 'use client';
 
+import type { PlanLimitDetails } from '@lib/billing/plan-limit';
+import { PlanLimitModal } from '@components/billing/PlanLimitModal';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
+import { parsePlanLimitDetails } from '@lib/billing/plan-limit';
 import { slugifyWithFallback } from '@lib/utils/slug';
 import { ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -72,6 +75,10 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
   // only after a refusal so a corrected retry is not a payload mismatch.
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
+  // BK-232 — set when the plan's project cap refuses the creation. The modal
+  // explains it by role; the form and its values stay exactly as typed.
+  const [limitDetails, setLimitDetails] = useState<PlanLimitDetails | null>(null);
+  const [limitOpen, setLimitOpen] = useState(false);
 
   // Live slug preview uses the SAME helper (and prefix/minLength) the server
   // derives the slug with, so what the user sees is what gets stored — CJK or
@@ -99,7 +106,16 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-        setError(friendlyError(body));
+        const limit = body.error?.code === 'project_limit_reached'
+          ? parsePlanLimitDetails(body.error.details)
+          : null;
+        if (limit) {
+          setLimitDetails(limit);
+          setLimitOpen(true);
+        }
+        else {
+          setError(friendlyError(body));
+        }
         setIdempotencyKey(crypto.randomUUID());
         setSubmitting(false);
         return;
@@ -205,6 +221,10 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
         {submitting ? 'Creating…' : 'Create project'}
         <ArrowRight size={14} />
       </Button>
+
+      {limitDetails && (
+        <PlanLimitModal open={limitOpen} onOpenChange={setLimitOpen} details={limitDetails} />
+      )}
     </form>
   );
 }

@@ -1,5 +1,6 @@
 import type { MemberRole } from '@lib/types';
 import type { ReactNode } from 'react';
+import { PlanLimitBanner } from '@components/billing/PlanLimitBanner';
 import { ChatDock } from '@components/chat/ChatDock';
 import { ChatProvider } from '@components/chat/ChatProvider';
 import { AppShell } from '@components/layout/AppShell';
@@ -8,6 +9,7 @@ import { WorkspaceDeletedNotice } from '@components/layout/WorkspaceDeletedNotic
 import { AuthProvider } from '@components/providers/auth-context';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { countAtcsInWorkspace } from '@lib/atcs/library';
+import { loadEffectiveProjectPlan, loadOwnership, planLimitView } from '@lib/billing/plan-limit';
 import { listNotifications } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -17,6 +19,13 @@ import { Suspense } from 'react';
 // Resolves the global-shell data server-side (workspaces, active workspace,
 // its projects, signed-in email) so the AppSidebar renders without a client
 // fetch waterfall. RLS narrows every select to what the caller can see.
+type PlanLimitBannerData = Omit<ReturnType<typeof planLimitView>, 'state' | 'limit'> & {
+  state: 'warning' | 'limit-reached'
+  limit: number
+  isOwner: boolean
+  owners: Awaited<ReturnType<typeof loadOwnership>>['owners']
+};
+
 async function getShellData() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -70,7 +79,27 @@ async function getShellData() {
     atcCount = await countAtcsInWorkspace(supabase, activeWorkspaceId);
   }
 
-  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userId: user?.id ?? null, userRole, unreadCount, atcCount };
+  // BK-232 — approaching/at the project cap. Viewers cannot create anything, so
+  // they get no banner. Read through the caller's client (member-readable rows);
+  // a failed read simply shows no banner, never an error in the shell.
+  let planLimit: PlanLimitBannerData | null = null;
+  if (activeWorkspaceId && userRole && userRole !== 'viewer') {
+    try {
+      const effective = await loadEffectiveProjectPlan(supabase, activeWorkspaceId);
+      if (effective) {
+        const view = planLimitView('projects', effective.plan, projects.length, effective.limit);
+        if ((view.state === 'warning' || view.state === 'limit-reached') && view.limit !== null) {
+          const ownership = await loadOwnership(supabase, activeWorkspaceId);
+          planLimit = { ...view, state: view.state, limit: view.limit, isOwner: ownership.isOwner, owners: ownership.owners };
+        }
+      }
+    }
+    catch {
+      planLimit = null;
+    }
+  }
+
+  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userId: user?.id ?? null, userRole, unreadCount, atcCount, planLimit };
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -102,6 +131,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             ? <ChatDock workspaceId={shell.activeWorkspaceId} userId={shell.userId} role={shell.userRole} />
             : null}
         >
+          {shell.planLimit && shell.activeWorkspaceId && (
+            <PlanLimitBanner
+              workspaceId={shell.activeWorkspaceId}
+              resource={shell.planLimit.resource}
+              state={shell.planLimit.state}
+              used={shell.planLimit.used}
+              limit={shell.planLimit.limit}
+              planName={shell.planLimit.planName}
+              isOwner={shell.planLimit.isOwner}
+              owners={shell.planLimit.owners}
+            />
+          )}
           {children}
         </AppShell>
       </ChatProvider>
