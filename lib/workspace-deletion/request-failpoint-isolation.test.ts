@@ -197,6 +197,12 @@ describeOrSkip('bunkai_request_workspace_deletion: the BK-1736 failpoint (real d
       await clients[persona]?.auth.signOut();
     }
     if (workspaceIds.length > 0) {
+      // Counted BEFORE any delete: the workspace delete cascades to the failpoint
+      // rows, so a count after it could never fail. Every test clears its own.
+      const { count: failpointsLeft } = await db.from('bunkai_test_failpoints').select('name', { count: 'exact', head: true }).in('workspace_id', workspaceIds);
+      if ((failpointsLeft ?? 0) !== 0) {
+        failures.push(`${failpointsLeft} failpoints were left armed by the tests`);
+      }
       await db.from('bunkai_test_failpoints').delete().in('workspace_id', workspaceIds);
       // The tombstone has no FK to the workspace and its requested_by restricts
       // the user delete, so it goes first.
@@ -223,12 +229,6 @@ describeOrSkip('bunkai_request_workspace_deletion: the BK-1736 failpoint (real d
     const { count: tombstonesLeft } = await db.from('workspace_deletions').select('id', { count: 'exact', head: true }).like('workspace_slug', `${PREFIX}%`);
     if ((tombstonesLeft ?? 0) !== 0) {
       failures.push(`${tombstonesLeft} ${PREFIX} tombstones remain`);
-    }
-    if (workspaceIds.length > 0) {
-      const { count: failpointsLeft } = await db.from('bunkai_test_failpoints').select('name', { count: 'exact', head: true }).in('workspace_id', workspaceIds);
-      if ((failpointsLeft ?? 0) !== 0) {
-        failures.push(`${failpointsLeft} failpoints remain`);
-      }
     }
     for (const persona of PERSONAS) {
       if (!users[persona].id) {
@@ -294,13 +294,36 @@ describeOrSkip('bunkai_request_workspace_deletion: the BK-1736 failpoint (real d
     expectDeleted(await snapshot(seed));
   }, 60_000);
 
-  it('no user session can read or arm a failpoint', async () => {
+  it('no user session can read or arm a failpoint, not even the Owner of the armed workspace', async () => {
     const seed = await seedWorkspace('acl');
+    await arm(seed.workspaceId);
+    try {
+      const read = await clients.owner.from('bunkai_test_failpoints').select('name').eq('workspace_id', seed.workspaceId);
+      expect(read.error?.code).toBe('42501');
+      const removed = await clients.owner.from('bunkai_test_failpoints').delete().eq('workspace_id', seed.workspaceId);
+      expect(removed.error?.code).toBe('42501');
+    }
+    finally {
+      await clear(seed.workspaceId);
+    }
     const armedByOwner = await clients.owner.from('bunkai_test_failpoints').insert({ name: FAILPOINT, workspace_id: seed.workspaceId });
-    expect(armedByOwner.error).not.toBeNull();
-    const read = await clients.owner.from('bunkai_test_failpoints').select('name');
-    expect(read.data ?? []).toEqual([]);
+    expect(armedByOwner.error?.code).toBe('42501');
     const { count } = await service().from('bunkai_test_failpoints').select('name', { count: 'exact', head: true }).eq('workspace_id', seed.workspaceId);
     expect(count).toBe(0);
   }, 60_000);
+});
+
+// Static, needs no database: the armed test alone would also pass with the
+// failpoint as the first statement, so pin that it reads after the last write.
+describe('migration 0126: where the failpoint sits', () => {
+  it('reads workspace_delete.before_return after the tombstone insert and before the recipients read', async () => {
+    const sql = await Bun.file(new URL('../../supabase/migrations/0126_workspace_deletion_failpoint.sql', import.meta.url)).text();
+    const body = sql.slice(sql.indexOf('as $$'), sql.lastIndexOf('$$;'));
+    const tombstone = body.indexOf('insert into public.workspace_deletions');
+    const failpoint = body.indexOf(`f.name = '${FAILPOINT}'`);
+    const recipients = body.indexOf('into v_recipients');
+    expect(tombstone).toBeGreaterThan(0);
+    expect(failpoint).toBeGreaterThan(tombstone);
+    expect(recipients).toBeGreaterThan(failpoint);
+  });
 });

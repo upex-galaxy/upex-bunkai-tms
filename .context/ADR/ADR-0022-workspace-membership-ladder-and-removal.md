@@ -34,7 +34,7 @@ Decided by the BK-1589 AI Product Owner ruling of 2026-11-05 and implemented in 
 
 ## Addendum (2026-11-12, BK-1736)
 
-Point 5's table now has more readers than the removal RPC. Decided by the BK-1736 AI Tech Lead decision on the ticket. The rule stands for every reader: armed only by the service role, only per Workspace, read inside a SECURITY DEFINER function after its other writes, raising `test_failpoint` (`P0001`) so the whole transaction rolls back. The route answers that as a 500 `internal_error`, never as a refusal.
+Point 5's table now has more readers than the removal RPC. Decided by the BK-1736 AI Tech Lead decision on the ticket. For every reader the failpoint is armed only by the service role and only per Workspace, and is read inside a SECURITY DEFINER function after the writes its test must see rolled back, raising `test_failpoint` (`P0001`). Every reader except bulk edit lets that error propagate, so the whole transaction rolls back and the route answers a 500 `internal_error`, never a refusal. Bulk edit catches it per ATC (see its row).
 
 | Failpoint name | Read by | Migration | Fires |
 |---|---|---|---|
@@ -42,7 +42,7 @@ Point 5's table now has more readers than the removal RPC. Decided by the BK-173
 | `atc_archive.before_event` | `bunkai_archive_atc` | `0116_atc_archive_restore.sql` | before the archive activity insert |
 | `atc_restore.before_event` | `bunkai_restore_atc` | `0116_atc_archive_restore.sql` | before the restore activity insert |
 | `module_restore.before_event` | `bunkai_restore_module_subtree` | `0117_module_restore.sql` | before the restore activity insert |
-| `atc_bulk_edit.before_event` | `bunkai_bulk_edit_atcs` | `0124_atc_bulk_edit.sql` | inside the per-ATC loop, before its activity insert |
+| `atc_bulk_edit.before_event` | `bunkai_bulk_edit_atcs` | `0124_atc_bulk_edit.sql` | inside the per-ATC loop, before its activity insert; the loop's exception block catches it, rolls back only that ATC and reports it `refused` / `write_failed`, and the call still succeeds |
 | `workspace_delete.before_return` | `bunkai_request_workspace_deletion` | `0126_workspace_deletion_failpoint.sql` | after every write, the `workspace_deletions` tombstone included, before the return (this RPC writes no activity event, hence the name) |
 
 The last row is what BK-512 TC48 runs on staging: the service role arms the row for the QA's Workspace, the QA presses Delete and sees the request fail with the Workspace, its content and its members unchanged, and the service role clears the row.

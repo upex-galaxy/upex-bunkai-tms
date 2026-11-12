@@ -8,8 +8,9 @@
 -- read by 0114, 0116, 0117 and 0124).
 --
 -- WHAT CHANGES. One block, and only that. The body below is the 0084
--- definition byte for byte (no later migration redefines this function; the
--- live prosrc matched 0084 before this apply), plus a read of
+-- definition byte for byte (no later migration redefines this function), so
+-- its comments point at 0084's header (the "cheap invariant" note is
+-- explained at 0084 section 5), plus a read of
 -- public.bunkai_test_failpoints for the name 'workspace_delete.before_return'
 -- scoped to p_workspace_id. It sits after every write of the request (the
 -- deleted_at stamp, the PAT and pending-invite revocations, and the
