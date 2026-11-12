@@ -89,4 +89,15 @@ describe('mapDeleteWorkspaceError (BK-512)', () => {
       expect((err as ApiError).status).toBe(500);
     }
   });
+
+  it('maps the armed test failpoint (P0001 test_failpoint, migration 0126) to 500 internal_error, never a refusal (BK-1736)', () => {
+    try {
+      mapDeleteWorkspaceError({ code: 'P0001', message: 'test_failpoint' });
+      throw new Error('expected to throw');
+    }
+    catch (err) {
+      expect((err as ApiError).code).toBe('internal_error');
+      expect((err as ApiError).status).toBe(500);
+    }
+  });
 });
