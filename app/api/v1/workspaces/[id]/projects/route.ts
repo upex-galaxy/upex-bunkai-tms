@@ -5,7 +5,7 @@ import { runIdempotentCreate } from '@lib/api/idempotent-create';
 import { isReservedProjectSlug } from '@lib/projects/validation';
 import { hasAlphanumeric, slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
-import { assertCanCreateProject, mapCreateProjectError } from './response';
+import { assertCanCreateProject, mapCreateProjectError, projectLimitReached } from './response';
 
 // POST /api/v1/workspaces/{id}/projects — a workspace member (role >= member)
 // creates a project. The slug is auto-derived from the name and is unique per
@@ -95,6 +95,9 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
         .single();
 
       if (error) {
+        if (error.code === '45700') {
+          throw await projectLimitReached(db, workspaceId);
+        }
         mapCreateProjectError(error);
       }
 
