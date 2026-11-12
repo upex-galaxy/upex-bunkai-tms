@@ -21039,7 +21039,7 @@
             }
           },
           "409": {
-            "description": "The workspace is not currently deleted (`not_deleted`).",
+            "description": "The workspace is not currently deleted (`not_deleted`), or its 30-day restore window has closed (`restore_window_closed`, BK-1735).",
             "content": {
               "application/json": {
                 "schema": {

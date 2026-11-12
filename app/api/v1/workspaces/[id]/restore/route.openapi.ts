@@ -31,6 +31,6 @@ registry.registerPath({
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Caller authenticated via a Personal Access Token, or is an active member but not the workspace Owner.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Workspace not found, already purged, or caller is not an active member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'The workspace is not currently deleted (`not_deleted`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'The workspace is not currently deleted (`not_deleted`), or its 30-day restore window has closed (`restore_window_closed`, BK-1735).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

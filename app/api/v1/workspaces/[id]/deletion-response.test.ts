@@ -66,6 +66,19 @@ describe('mapDeleteWorkspaceError (BK-512)', () => {
     }
   });
 
+  it('maps restore_window_closed (45903) to 409 conflict with its own reason (BK-1735)', () => {
+    try {
+      mapDeleteWorkspaceError({ code: '45903', message: 'restore_window_closed' });
+      throw new Error('expected to throw');
+    }
+    catch (err) {
+      expect((err as ApiError).code).toBe('conflict');
+      expect((err as ApiError).status).toBe(409);
+      expect((err as ApiError).details).toEqual({ reason: 'restore_window_closed' });
+      expect((err as ApiError).message).toContain('30-day restore window');
+    }
+  });
+
   it('maps an unrecognized error code to 500 internal_error', () => {
     try {
       mapDeleteWorkspaceError({ code: '99999', message: 'boom' });
