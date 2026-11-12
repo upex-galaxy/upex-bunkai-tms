@@ -5,7 +5,8 @@ import { ApiError } from '@lib/api/error-envelope';
 // `not_a_member` reuses the established not-found/non-disclosure P0002
 // convention (see `membership/response.ts`'s `mapLeaveWorkspaceError`);
 // `owner_only`/`already_deleted`/`not_deleted` are this story's three new
-// `459xx` codes.
+// `459xx` codes; `restore_window_closed` (45903, migration 0125, BK-1735) is
+// the restore refusal once the 30-day deadline has passed.
 //
 // Scenario N5 (double-submit) — Option B, chosen 25/25 on the ticket over a
 // 409 Conflict (17/25): the shipped `DELETE /api/v1/tokens/[id]` precedent
@@ -30,6 +31,11 @@ export function mapDeleteWorkspaceError(error: { code?: string, message: string 
   if (error.code === '45902') {
     throw new ApiError('conflict', 'This workspace is not currently deleted.', {
       details: { reason: 'not_deleted' },
+    });
+  }
+  if (error.code === '45903') {
+    throw new ApiError('conflict', 'The 30-day restore window for this workspace has closed, so it can no longer be restored.', {
+      details: { reason: 'restore_window_closed' },
     });
   }
   throw new ApiError('internal_error', error.message);
