@@ -177,11 +177,13 @@ describeOrSkip('BK-507: POST /api/v1/atcs/bulk-edit', () => {
     expect(await layerOf(s.atcIds[1])).toBe('API');
   });
 
-  it('refuses a token without atc:write (403) and no token (401)', async () => {
+  it('refuses a token without atc:write (403) and an unknown token (401)', async () => {
     const s = need();
     const body = { project_id: s.projectId, field: 'layer', change: { layer: 'UI' }, items: [{ id: s.atcIds[0] }] };
     expect((await POST(call(s.readToken, body))).status).toBe(403);
-    expect((await POST(call(null, body))).status).toBe(401);
+    // A header-less call would fall back to the cookie session, and `cookies()` only exists
+    // inside a real Next request, so the 401 is asserted with a token that matches no PAT.
+    expect((await POST(call('bk-unknown-token', body))).status).toBe(401);
   });
 
   it('answers 422 for an unknown field and for an empty selection, with nothing written', async () => {
