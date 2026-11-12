@@ -77,6 +77,8 @@ You are a conductor. The exact grammar comes from the binary when you use it: `o
 4. A worker's question: answer it yourself (you are the PO and the tech lead). Only an owner-reserved call goes to the channel.
 5. On `worker_done`: verify the result yourself (git ancestry, Jira state, the PR), release the worker and remove its worktree **in the same turn**, drop it from `active_runs`, write the journal line.
 
+**Delegating to the cloud.** When the machine is the constraint (disk, memory, CPU), the heavy worker can be a Claude Code cloud session instead of an Orca worker: the method, the launch and wake-up scripts, the brief template and the measured traps are `autonomous-delivery/references/cloud-execution.md` (read it the first time in a session). You stay local and keep everything that needs an authentication: Jira, the migration apply, the review, the tests that need a secret kept out of the cloud, the merge. The cloud environment id lives in `$JUNGLA_STATE_DIR/cloud-pilot/bunkai-env.id` and is passed per launch, never through `/remote-env`. You wait on the PR comments with `autonomous-delivery/scripts/cloud/watch-pr.sh` in the background, and register the session in `active_runs` with its URL.
+
 Small things you do yourself in the main checkout: one or two files, a Jira transition, a SQL read, a bridge file. Before touching a file: `git fetch` and, if the tree is clean, `git merge --ff-only origin/staging`; if it is dirty with someone else's work, do not touch those paths and do not commit them.
 
 ## Files
