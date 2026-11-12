@@ -54,7 +54,7 @@ registry.registerPath({
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope, or caller is not a member of the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: `A project with this slug already exists in the workspace, or: ${IDEMPOTENCY_409}`, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed (including names that map to a reserved slug).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed (including names that map to a reserved slug), or the workspace\'s effective plan has no project room left (`code = project_limit_reached`). The limit refusal carries `details = { reason, resource, plan, limit, used, is_owner, owners[{ user_id, email }] }`, read live on every attempt (so a retry after an upgrade succeeds), and a message that names the owner for a non-owner. Existing projects are never touched.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

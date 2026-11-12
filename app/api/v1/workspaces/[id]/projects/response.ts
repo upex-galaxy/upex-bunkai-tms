@@ -1,6 +1,7 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError } from '@lib/api/error-envelope';
+import { buildProjectLimitDetails, projectLimitMessage } from '@lib/billing/plan-limit';
 
 // BK-992 — DB-parametrized logic for POST /api/v1/workspaces/{id}/projects,
 // split out of `route.ts` so the access gate and the insert-error mapping are
@@ -47,6 +48,12 @@ export async function assertCanCreateProject(
   }
 }
 
+function plainLimitError(): ApiError {
+  return new ApiError('project_limit_reached', 'This workspace has reached its plan\'s project limit.', {
+    details: { reason: 'project_limit_reached' },
+  });
+}
+
 // Maps a Postgrest error from the `projects` insert to the house envelope.
 export function mapCreateProjectError(error: { code?: string, message: string }): never {
   // SQLSTATE 23505 = unique_violation on projects(workspace_id, slug).
@@ -63,11 +70,28 @@ export function mapCreateProjectError(error: { code?: string, message: string })
   // the workspace's Billing Plan project cap is already at or over its
   // limit. See lib/billing/plan-tiers.ts for the ladder (Community 3,
   // Cloud 50, Enterprise unlimited). Only reachable by writers, because
-  // `assertCanCreateProject` runs first.
+  // `assertCanCreateProject` runs first. The route enriches this refusal with
+  // `projectLimitReached` (BK-232); this branch is the context-free fallback.
   if (error.code === '45700') {
-    throw new ApiError('project_limit_reached', 'This workspace has reached its Billing Plan\'s project limit. Upgrade to create more projects.', {
-      details: { reason: 'project_limit_reached' },
-    });
+    throw plainLimitError();
   }
   throw new ApiError('internal_error', error.message);
+}
+
+// BK-232 — the 422 for a refused creation, enriched so the UI can explain it
+// without a second round trip: the effective plan, the cap, the live count and
+// who the owner is. The message is role-aware (owner: upgrade; anyone else:
+// ask the owner). If the context cannot be read the plain 422 still goes out:
+// a refused creation must never turn into a 500 because of the explanation.
+export async function projectLimitReached(
+  db: SupabaseClient<Database>,
+  workspaceId: string,
+): Promise<ApiError> {
+  try {
+    const details = await buildProjectLimitDetails(db, workspaceId);
+    return new ApiError('project_limit_reached', projectLimitMessage(details), { details });
+  }
+  catch {
+    return plainLimitError();
+  }
 }
