@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-10-31T05:12:44.509Z`
+> Generated: `2026-11-12T04:44:44.714Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.agents/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -108,6 +108,7 @@ Skills indexed: 39
 - **Decide technical calls yourself, after searching the record.** Follow `agentic-dev-core/references/decision-protocol.md`: search -> follow if settled -> scored judge panel if genuinely novel -> escalate ONLY product, novel security posture, irreversible, and whatever the operator reserved. Record every autonomous decision where the NEXT run's Phase 1 will find it.
 - **Whether a PRODUCT call escalates is per-project config, not a constant.** Read `decision_authority.product` in `.agents/project.yaml`. `escalate` (default, and the correct default) means it stops the run. `decide` means there is no human PO: dispatch a scored decision subagent, publish the ruling to the ticket under a heading naming the deciding profile, resync, and continue — never style it as human sign-off. Categories 2-4 escalate under both settings. Method: `decision-protocol.md` §5.1.
 - **Capabilities** (`metadata.requires_capabilities`): resolve each by tool-name suffix, any prefix; none available at the step that needs it → STOP per `agentic-dev-core/references/mcp-capabilities.md` §4, never a silent substitute (built-in `WebSearch` / `WebFetch` only when the user chooses it).
+- **A cloud worker writes code only; the conductor keeps everything that needs an authentication.** A worker in a Claude Code cloud session has no tracker, no Slack, no orchestration runtime and no database access token: it reports through PR comments (`STATUS`, `MIGRATION-READY`, `DONE`, `BLOCKED`), never merges, never applies a migration, and never keeps throwaway data. The conductor applies the migration only after the file is on `origin` and its SHA-256 equals the declared one, re-reads the live definition, runs the tests the cloud could not (a secret kept out of the environment), recounts the shared database, merges with a merge commit and walks the tracker with a read-back. The cloud environment is chosen per launch (`--settings`), never by rewriting the owner's account-wide default. Method, scripts and measured traps: `references/cloud-execution.md`.
 
 **Read full SKILL.md when**: you are running any phase of a scheduled run, a gate fires, or the briefing tells you to load the full skill.
 
