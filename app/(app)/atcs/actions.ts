@@ -11,3 +11,11 @@ import { revalidatePath } from 'next/cache';
 export async function revalidateAfterArchiveChange(): Promise<void> {
   revalidatePath('/', 'layout');
 }
+
+// BK-507 — the bulk edit goes through the API too, so the same reasoning applies:
+// a plain router.refresh() would not drop the cached Project layout that holds the
+// tree and the ATC table (versions, tags, Modules). Called after a write attempt
+// and after one whose answer was lost, because that write may have happened.
+export async function revalidateAfterAtcBulkEdit(): Promise<void> {
+  revalidatePath('/', 'layout');
+}

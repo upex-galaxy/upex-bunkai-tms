@@ -75,6 +75,11 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/atcs/bulk-edit/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
     "file": "app/api/v1/atcs/route.ts",
     "method": "POST",
     "posture": "required:atc:write"

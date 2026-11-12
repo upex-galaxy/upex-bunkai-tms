@@ -25,6 +25,15 @@ describe('mapAtcRpcError', () => {
     expect(err.details).toEqual({ reason: 'atc_archived' });
   });
 
+  test('45026 and 45027 bulk-edit request failures → 422 validation_failed with a named reason (BK-507)', () => {
+    const selection = caught(() => mapAtcRpcError({ code: '45026', message: 'bulk_selection_invalid' }));
+    expect(selection.status).toBe(422);
+    expect(selection.details).toEqual({ reason: 'bulk_selection_invalid' });
+    const change = caught(() => mapAtcRpcError({ code: '45027', message: 'bulk_change_invalid' }));
+    expect(change.status).toBe(422);
+    expect(change.details).toEqual({ reason: 'bulk_change_invalid' });
+  });
+
   test('45022 version skew → 409 conflict with parsed current_version', () => {
     const err = caught(() => mapAtcRpcError({ code: '45022', message: 'version_conflict:4' }));
     expect(err.code).toBe('conflict');

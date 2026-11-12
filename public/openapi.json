@@ -2012,6 +2012,285 @@
         },
         "required": ["test_id", "title", "positions"]
       },
+      "AtcBulkEditReport": {
+        "type": "object",
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "field": {
+            "type": "string",
+            "enum": ["tags", "module", "layer", "priority"]
+          },
+          "requested": {
+            "type": "integer",
+            "description": "Distinct ATCs processed (a repeated id counts once)."
+          },
+          "changed": {
+            "type": "integer",
+            "description": "With `dry_run`, how many WOULD change."
+          },
+          "unchanged": {
+            "type": "integer",
+            "description": "Already held the target value: a success, no version bump, no event."
+          },
+          "refused": {
+            "type": "integer"
+          },
+          "outcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AtcBulkEditOutcome"
+            }
+          }
+        },
+        "required": ["dry_run", "field", "requested", "changed", "unchanged", "refused", "outcomes"]
+      },
+      "AtcBulkEditOutcome": {
+        "type": "object",
+        "properties": {
+          "atc_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": ["string", "null"],
+            "description": "The ATC's ID after the call. A Module move regenerates the module segment and keeps the suffix."
+          },
+          "title": {
+            "type": ["string", "null"]
+          },
+          "outcome": {
+            "type": "string",
+            "enum": ["changed", "unchanged", "refused"]
+          },
+          "reason": {
+            "type": ["string", "null"],
+            "enum": [
+              "stale_version",
+              "archived",
+              "tags_limit_exceeded",
+              "module_outside_story_subtree",
+              "slug_conflict",
+              "not_found",
+              "write_failed",
+              null
+            ],
+            "description": "Set only when `outcome` is `refused`."
+          },
+          "version": {
+            "type": ["integer", "null"],
+            "description": "The ATC's version after the call (unchanged when it was not written)."
+          }
+        },
+        "required": ["atc_id", "slug", "title", "outcome", "reason", "version"]
+      },
+      "AtcBulkEditRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "project_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "version": {
+                      "type": ["integer", "null"],
+                      "minimum": 1,
+                      "default": null
+                    }
+                  },
+                  "required": ["id"]
+                },
+                "minItems": 1,
+                "maxItems": 200
+              },
+              "dry_run": {
+                "type": "boolean",
+                "default": false
+              },
+              "field": {
+                "type": "string",
+                "enum": ["tags"]
+              },
+              "change": {
+                "type": "object",
+                "properties": {
+                  "op": {
+                    "type": "string",
+                    "enum": ["add", "remove"]
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 50
+                    },
+                    "minItems": 1,
+                    "maxItems": 10
+                  }
+                },
+                "required": ["op", "tags"]
+              }
+            },
+            "required": ["project_id", "items", "field", "change"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "project_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "version": {
+                      "type": ["integer", "null"],
+                      "minimum": 1,
+                      "default": null
+                    }
+                  },
+                  "required": ["id"]
+                },
+                "minItems": 1,
+                "maxItems": 200
+              },
+              "dry_run": {
+                "type": "boolean",
+                "default": false
+              },
+              "field": {
+                "type": "string",
+                "enum": ["module"]
+              },
+              "change": {
+                "type": "object",
+                "properties": {
+                  "module_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": ["module_id"]
+              }
+            },
+            "required": ["project_id", "items", "field", "change"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "project_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "version": {
+                      "type": ["integer", "null"],
+                      "minimum": 1,
+                      "default": null
+                    }
+                  },
+                  "required": ["id"]
+                },
+                "minItems": 1,
+                "maxItems": 200
+              },
+              "dry_run": {
+                "type": "boolean",
+                "default": false
+              },
+              "field": {
+                "type": "string",
+                "enum": ["layer"]
+              },
+              "change": {
+                "type": "object",
+                "properties": {
+                  "layer": {
+                    "type": "string",
+                    "enum": ["UI", "API", "Unit"]
+                  }
+                },
+                "required": ["layer"]
+              }
+            },
+            "required": ["project_id", "items", "field", "change"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "project_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "version": {
+                      "type": ["integer", "null"],
+                      "minimum": 1,
+                      "default": null
+                    }
+                  },
+                  "required": ["id"]
+                },
+                "minItems": 1,
+                "maxItems": 200
+              },
+              "dry_run": {
+                "type": "boolean",
+                "default": false
+              },
+              "field": {
+                "type": "string",
+                "enum": ["priority"]
+              },
+              "change": {
+                "type": "object",
+                "properties": {
+                  "priority": {
+                    "type": ["string", "null"],
+                    "enum": ["Critical", "High", "Medium", "Low", null]
+                  }
+                },
+                "required": ["priority"]
+              }
+            },
+            "required": ["project_id", "items", "field", "change"]
+          }
+        ]
+      },
       "AtcSearchResult": {
         "type": "object",
         "properties": {
@@ -9412,6 +9691,93 @@
           },
           "404": {
             "description": "ATC not found (also returned for an ATC outside the caller's workspaces — no existence leak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/atcs/bulk-edit": {
+      "post": {
+        "tags": ["ATCs"],
+        "summary": "Bulk-edit tags, Module, layer or priority on up to 200 ATCs",
+        "description": "Bearer `atc:write` (or cookie session). Changes ONE field on up to 200 ATCs of one Project: `tags` (`op` `add` or `remove`, tags normalised like the editor), `module` (validated per ATC against its own User Story's Module subtree, inclusive; the slug's module segment is regenerated and its suffix kept), `layer` or `priority` (`null` clears it). `status` is an Execution Status set by Runs and is not editable. Each ATC is processed on its own: partial success is the normal shape, a refused ATC never rolls back the others, and the report lists one outcome per ATC. An ATC already holding the target value is `unchanged` (no version bump, no event), checked before the stale check, so repeating a request is safe. `version` per item refuses an ATC edited since the caller loaded it (`stale_version`) instead of overwriting it. Each changed ATC emits its own `atc.updated` event with the distinct chaining Test ids. `dry_run: true` runs the same evaluation with no write and no event.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtcBulkEditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-ATC report (possibly with refusals).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtcBulkEditReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body is not valid JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or not a writer of the Project's workspace (a viewer).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or destination Module not found, archived or in another Project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed: empty selection, more than 200 ATCs, unknown field, bad value. Nothing was written.",
             "content": {
               "application/json": {
                 "schema": {

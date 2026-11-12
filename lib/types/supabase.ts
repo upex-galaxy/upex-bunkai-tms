@@ -2461,6 +2461,17 @@ export interface Database {
         Returns: string
       }
       bunkai_bug_json: { Args: { p_bug_id: string }, Returns: Json }
+      bunkai_bulk_edit_atcs: {
+        Args: {
+          p_actor_user_id: string
+          p_change: Json
+          p_dry_run?: boolean
+          p_field: string
+          p_items: Json
+          p_project_id: string
+        }
+        Returns: Json
+      }
       bunkai_caller_workspace_rank: { Args: { ws_id: string }, Returns: number }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
       bunkai_chat_delete_message: {

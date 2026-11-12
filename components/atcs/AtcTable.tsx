@@ -1,12 +1,16 @@
 'use client';
 
+import type { BulkEditChange } from '@lib/atcs/bulk-edit';
 import type { AtcFacetValue } from '@lib/atcs/list-filters';
 import type { Atc, AtcLayer, AtcPriority, AtcTechnique } from '@lib/types';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { ArchiveAtcOverlay } from '@components/atcs/ArchiveAtcDialog';
+import { AtcBulkEditBar } from '@components/atcs/AtcBulkEditBar';
+import { AtcBulkEditOverlay } from '@components/atcs/AtcBulkEditDialog';
 import { Button, buttonVariants } from '@components/ui/button';
 import { Select } from '@components/ui/select';
+import { flattenModuleOptions, refusedAtcIds } from '@lib/atcs/bulk-edit';
 import {
   ATC_FILTER_UNSPECIFIED,
   ATC_UNSPECIFIED_LABEL,
@@ -15,6 +19,7 @@ import {
   resolveAtcListViewState,
 } from '@lib/atcs/list-filters';
 import { ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
+import { useRowSelection } from '@lib/hooks/use-row-selection';
 import { cn, shortSlug } from '@lib/utils';
 import {
   flexRender,
@@ -25,7 +30,7 @@ import {
 import { Archive, ArrowDown, ArrowUp, ArrowUpRight, Inbox, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface AtcTableRow extends Atc {
   module_path: string
@@ -70,7 +75,8 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string, title: string } | null>(null);
-  const { atcFilters, setAtcFilters, resetAtcFilters, canCreate } = useWorkbench();
+  const [bulkReview, setBulkReview] = useState<{ change: BulkEditChange, moduleLabel?: string } | null>(null);
+  const { atcFilters, setAtcFilters, resetAtcFilters, canCreate, projectId, tree } = useWorkbench();
 
   // Client-side over the rows the workbench already loaded (master-design-plan
   // §5 D41 / AI Tech Lead T3). This is what makes `Not specified` filterable
@@ -80,6 +86,18 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
     [atcs, atcFilters],
   );
   const filtersActive = atcListFiltersActive(atcFilters);
+
+  // BK-507 — selection over ids, so it outlives a filter change (E6). Writers only:
+  // a viewer gets no checkbox column and no bar.
+  const allIds = useMemo(() => atcs.map(row => row.id), [atcs]);
+  const visibleIds = useMemo(() => visibleAtcs.map(row => row.id), [visibleAtcs]);
+  const selection = useRowSelection(allIds, visibleIds);
+  const moduleOptions = useMemo(() => flattenModuleOptions(tree), [tree]);
+  const { isSelected, toggle: toggleSelected } = selection;
+  const selectedItems = useMemo(
+    () => atcs.filter(row => selection.selected.has(row.id)).map(row => ({ id: row.id, version: row.version })),
+    [atcs, selection.selected],
+  );
   const viewState = resolveAtcListViewState({
     totalCount: atcs.length,
     visibleCount: visibleAtcs.length,
@@ -87,6 +105,26 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
   });
 
   const columns = useMemo<ColumnDef<AtcTableRow>[]>(() => [
+    // BK-507 — row selection for the bulk edit. Absent (not disabled) for a
+    // read-only member, like the archive column below. The header cell is drawn
+    // by `SelectAllCheckbox` in the <th> (a checkbox cannot sit in the sort button).
+    ...(canCreate
+      ? [{
+        id: 'select',
+        header: () => null,
+        enableSorting: false,
+        cell: ({ row }: { row: { original: AtcTableRow } }) => (
+          <input
+            type="checkbox"
+            data-testid="atc-row-select"
+            aria-label={`Select ${row.original.title}`}
+            checked={isSelected(row.original.id)}
+            onChange={() => toggleSelected(row.original.id)}
+            className="size-3.5 cursor-pointer accent-accent"
+          />
+        ),
+      } satisfies ColumnDef<AtcTableRow>]
+      : []),
     {
       accessorKey: 'slug',
       header: 'ID',
@@ -174,7 +212,7 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
         ),
       } satisfies ColumnDef<AtcTableRow>]
       : []),
-  ], [projectSlug, canCreate]);
+  ], [projectSlug, canCreate, isSelected, toggleSelected]);
 
   const table = useReactTable({
     data: visibleAtcs,
@@ -195,6 +233,17 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
           <span className="text-fg-2">
             {filtersActive ? `of ${atcs.length} ATCs match` : 'ATCs in project'}
           </span>
+          {/* BK-507 — the live selection count. Always mounted for writers so a
+              screen reader hears it change. */}
+          {canCreate && (
+            <span
+              data-testid="atc-selection-count"
+              aria-live="polite"
+              className="ml-3 font-mono text-xs text-fg-2"
+            >
+              {selection.count > 0 ? `${selection.count} selected` : ''}
+            </span>
+          )}
         </div>
         <div className="text-xs text-fg-3">
           {atcs.length > 0
@@ -301,6 +350,15 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
           </div>
         </div>
       </div>
+      {canCreate && selection.count > 0 && (
+        <AtcBulkEditBar
+          count={selection.count}
+          hiddenCount={selection.hiddenCount}
+          modules={moduleOptions}
+          onClear={selection.clear}
+          onReview={(change, moduleLabel) => setBulkReview({ change, moduleLabel })}
+        />
+      )}
       <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -309,6 +367,17 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
                 {hg.headers.map((h) => {
                   const canSort = h.column.getCanSort();
                   const sortDir = h.column.getIsSorted();
+                  if (h.column.id === 'select') {
+                    return (
+                      <th key={h.id} className="w-8 border-b border-stroke-1 px-3 py-2 text-left">
+                        <SelectAllCheckbox
+                          state={selection.headerState}
+                          disabled={visibleAtcs.length === 0}
+                          onToggle={selection.toggleVisible}
+                        />
+                      </th>
+                    );
+                  }
                   return (
                     <th
                       key={h.id}
@@ -402,6 +471,27 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
           </tbody>
         </table>
       </div>
+      {bulkReview && (
+        <AtcBulkEditOverlay
+          projectId={projectId}
+          items={selectedItems}
+          change={bulkReview.change}
+          moduleLabel={bulkReview.moduleLabel}
+          hiddenCount={selection.hiddenCount}
+          onCancel={() => setBulkReview(null)}
+          onFinished={(report) => {
+            setBulkReview(null);
+            if (report) {
+              // The refused ATCs stay selected so a retry is one click; with no
+              // refusal there is nothing left to retry.
+              const refused = refusedAtcIds(report);
+              if (refused.length > 0) { selection.replace(refused); }
+              else { selection.clear(); }
+            }
+            router.refresh();
+          }}
+        />
+      )}
       {archiveTarget && (
         <ArchiveAtcOverlay
           atc={archiveTarget}
@@ -413,5 +503,26 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
         />
       )}
     </div>
+  );
+}
+
+// BK-507 — the header checkbox: checked when every visible row is selected,
+// indeterminate when some are. It speaks about the VISIBLE rows (E6 keeps the rest).
+function SelectAllCheckbox({ state, disabled, onToggle }: { state: 'none' | 'some' | 'all', disabled: boolean, onToggle: () => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) { ref.current.indeterminate = state === 'some'; }
+  }, [state]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      data-testid="atc-select-all"
+      aria-label="Select all ATCs shown"
+      checked={state === 'all'}
+      disabled={disabled}
+      onChange={onToggle}
+      className="size-3.5 cursor-pointer accent-accent"
+    />
   );
 }
