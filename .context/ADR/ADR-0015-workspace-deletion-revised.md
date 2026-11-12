@@ -65,7 +65,7 @@ Concretely:
 7. **Physical purge after 30 days**, by a `bunkai_purge_deleted_workspaces()` DEFINER granted only to `service_role` and scheduled with `cron.schedule` on the `0075` template. The existing cascade edges do the physical delete.
 8. **A `workspace_deletions` tombstone table, outside the cascade** — workspace id, name, actor, `requested_at`, `purged_at`, and a per-table row-count digest. This is the only structure that survives the purge, and it is what makes **AC-17 satisfiable**. AC-17 is amended from "recorded in that workspace's Activity Stream" to "recorded in the deletion audit record".
 9. **At confirm time, email the owner and every active member** a receipt naming the workspace, the actor and the restore deadline. The email is what makes restore discoverable; a Settings tab that a panicking user has never visited is not a recovery path.
-10. Restore during the grace period is `deleted_at = null` — no data movement.
+10. Restore during the grace period is `deleted_at = null` — no data movement. The grace period ends at the deadline, not at the purge: once `deleted_at <= now() - interval '30 days'` (the purge's own predicate), restore is refused with `restore_window_closed` even if the daily purge has not run yet (BK-1735, migration `0125_workspace_restore_deadline.sql`).
 
 **BK-512's acceptance criteria are amended by this ADR** on three points: AC-03's "immediately and cannot be undone" becomes "immediately, and is permanently erased after 30 days"; AC-07's confirm-time cascade moves to purge time; AC-17 records to the tombstone. AC-04 (typed-name gate), AC-06 (export first), AC-08 through AC-16 stand unchanged.
 
