@@ -3,7 +3,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
-import { webUrl } from '@lib/urls';
+import { isSafeInternalPath, safeInternalPath, webUrl } from '@lib/urls';
 import { z } from 'zod';
 
 // RFC 5321 §4.5.3.1.3 — local-part 64 + "@" + domain 255 = max 320. The
@@ -13,13 +13,13 @@ const EMAIL_MAX_LENGTH = 254;
 
 const BodySchema = z.object({
   email: z.string().email().max(EMAIL_MAX_LENGTH),
-  // Root-relative path the user should land on after the OTP exchange.
-  // Validated again in `/auth/callback` (open-redirect guard) so we can keep
-  // this check loose.
+  // Root-relative path the user should land on after the OTP exchange. Same
+  // open-redirect guard as `/auth/callback` (BK-1827), applied here too so a
+  // crafted value is refused up front instead of being mailed in the link.
   next: z
     .string()
     .min(1)
-    .refine(value => value.startsWith('/') && !value.startsWith('//'), {
+    .refine(isSafeInternalPath, {
       message: 'next must be a root-relative path (e.g. /projects).',
     })
     .optional(),
@@ -31,7 +31,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   });
 
   const { email, next = '/projects' } = BodySchema.parse(body);
-  const redirect = `${webUrl('/auth/callback')}?next=${encodeURIComponent(next)}`;
+  const redirect = `${webUrl('/auth/callback')}?next=${encodeURIComponent(safeInternalPath(next))}`;
 
   // BK-400 (staged): this still sends through the SSR client, which
   // `@supabase/ssr` hard-codes to `flowType: 'pkce'` — so the emailed link is

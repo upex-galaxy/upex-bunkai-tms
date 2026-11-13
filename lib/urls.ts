@@ -43,14 +43,40 @@ export function apiUrl(path: string = ''): string {
   return `${getBaseUrl()}/api${normalisePath(path)}`;
 }
 
-// Open-redirect guard. Returns `raw` only when it is an in-app, root-relative
-// path (`/foo`), rejecting absolute URLs (`https://evil.com`) and
-// protocol-relative URLs (`//evil.com`) that would redirect cross-origin after
-// auth. Shared by the login form, the OTP callback, and the magic-link route so
-// the guard cannot drift between consumers.
+// Sentinel origin used only to resolve a candidate path; it is never emitted.
+const SAFE_PATH_BASE = 'https://bunkai.invalid';
+// Backslash, ASCII control characters (tab, CR, LF, ...) and DEL. Browsers
+// rewrite `\` to `/` and strip tab/newline in special-scheme URLs, so
+// `/\evil.com` and `/<TAB>/evil.com` both become `//evil.com` (BK-1827).
+// eslint-disable-next-line no-control-regex
+const UNSAFE_PATH_CHARS = /[\\\u0000-\u001F\u007F]/;
+
+// Open-redirect guard. Returns an in-app, root-relative path, or `fallback`.
+// The candidate is parsed with the WHATWG URL parser against a sentinel origin
+// and accepted only when it still resolves to that origin; what comes back is
+// the NORMALISED `pathname + search + hash`, never the raw input, so a browser
+// can not reinterpret it as another host. Shared by the login form, the OAuth
+// start + callback routes, and the magic-link form + route so the guard can not
+// drift between consumers.
 export function safeInternalPath(raw: string | null | undefined, fallback = '/projects'): string {
-  if (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) {
-    return raw;
+  if (typeof raw !== 'string' || !raw.startsWith('/') || raw.startsWith('//') || UNSAFE_PATH_CHARS.test(raw)) {
+    return fallback;
   }
-  return fallback;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw, SAFE_PATH_BASE);
+  }
+  catch {
+    return fallback;
+  }
+  // Dot segments can collapse into a protocol-relative path (`/.//evil.com`
+  // parses to pathname `//evil.com`), which `router.push` would follow off-site.
+  if (parsed.origin !== SAFE_PATH_BASE || parsed.pathname.startsWith('//')) {
+    return fallback;
+  }
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+export function isSafeInternalPath(raw: string): boolean {
+  return safeInternalPath(raw, '') !== '';
 }
