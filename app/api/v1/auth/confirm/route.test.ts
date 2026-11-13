@@ -149,4 +149,12 @@ describe('BK-1828 — POST /api/v1/auth/confirm brute-force throttle', () => {
     expect(response.status).toBe(502);
     expect(verifyCalls).toHaveLength(0);
   });
+
+  it('refuses workspace:admin with 403 BEFORE the code is checked, so the code is not consumed (BK-1832)', async () => {
+    const response = await POST(confirmRequest({ email: 'pending@x.com', token: '123456', pat_scopes: ['workspace:admin'] }));
+    expect(response.status).toBe(403);
+    const body = (await response.json()) as ErrorBody;
+    expect(body.error?.code).toBe('forbidden');
+    expect(verifyCalls).toHaveLength(0);
+  });
 });

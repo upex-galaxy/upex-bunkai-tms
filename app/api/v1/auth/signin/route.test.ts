@@ -160,4 +160,12 @@ describe('BK-1828 — POST /api/v1/auth/signin brute-force throttle', () => {
     expect(response.status).toBe(502);
     expect(signInCalls).toHaveLength(0);
   });
+
+  it('refuses workspace:admin with 403 BEFORE the password is checked, so no session is created (BK-1832)', async () => {
+    const response = await POST(signinRequest({ email: 'a@x.com', password: 'whatever-password', pat_scopes: ['workspace:admin'] }));
+    expect(response.status).toBe(403);
+    const body = (await response.json()) as ErrorBody;
+    expect(body.error?.code).toBe('forbidden');
+    expect(signInCalls).toHaveLength(0);
+  });
 });

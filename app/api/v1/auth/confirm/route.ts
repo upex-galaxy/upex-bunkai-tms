@@ -39,6 +39,14 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { email, token, pat_name, pat_scopes, pat_expires_in_days } = BodySchema.parse(payload);
+  // Headless rail: default to least-privilege scopes and reject any attempt to
+  // mint a global workspace:admin token here. Mirrors signin exactly — an
+  // admin-scoped token must be minted explicitly via POST /api/v1/tokens
+  // against a specific workspace. See ADR-0005 / ADR-0007.
+  // BK-1832: asserted BEFORE `verifyOtp`, which consumes the one-time code and
+  // confirms the account; a request refused for scope policy has no side effect.
+  const scopes = pat_scopes ?? [...DEFAULT_PAT_SCOPES];
+  assertNoGlobalAdminScope(scopes);
   await enforceAccountRateLimit(email, 'confirm');
 
   const supabase = await createClient();
@@ -55,13 +63,6 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     // Uniform 401 — never distinguish "no such pending signup" from "wrong code".
     throw new ApiError('unauthorized', 'Invalid or expired verification code.');
   }
-
-  // Headless rail: default to least-privilege scopes and reject any attempt to
-  // mint a global workspace:admin token here. Mirrors signin exactly — an
-  // admin-scoped token must be minted explicitly via POST /api/v1/tokens
-  // against a specific workspace. See ADR-0005 / ADR-0007.
-  const scopes = pat_scopes ?? [...DEFAULT_PAT_SCOPES];
-  assertNoGlobalAdminScope(scopes);
 
   const admin = createAdminClient();
   const pat = await mintPat({
