@@ -2,7 +2,10 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 
 const BodySchema = z
   .object({
-    email: z.string().email().max(254).openapi({ example: 'qa.user@example.com' }),
+    email: z.string().email().max(253).openapi({
+      example: 'qa.user@example.com',
+      description: 'At most 253 characters, one below the other auth routes: the mail provider refuses 254-character recipients, so the verification code could not be delivered. A longer value is refused with 422 `validation_failed` (issue code `too_big`, maximum 253).',
+    }),
     password: z.string().min(8).max(72).openapi({
       description: 'At least 8 characters and at most 72 bytes in UTF-8 (the bcrypt input limit): 72 characters for plain ASCII, fewer when the password carries accents or symbols. A longer value is refused with 422 `validation_failed` (issue code `too_big`, maximum 72).',
     }),
