@@ -33,6 +33,10 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { email, password, pat_name, pat_scopes, pat_expires_in_days } = BodySchema.parse(payload);
+  // BK-1832: asserted BEFORE `signInWithPassword`, which writes the session cookies; a
+  // request refused for scope policy has no side effect.
+  const scopes = pat_scopes ?? [...DEFAULT_PAT_SCOPES];
+  assertNoGlobalAdminScope(scopes);
   await enforceAccountRateLimit(email, 'signin');
 
   const supabase = await createClient();
@@ -41,9 +45,6 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     // Uniform 401 — never leak whether the email exists vs the password is wrong.
     throw new ApiError('unauthorized', 'Invalid email or password.');
   }
-
-  const scopes = pat_scopes ?? [...DEFAULT_PAT_SCOPES];
-  assertNoGlobalAdminScope(scopes);
 
   const admin = createAdminClient();
   const pat = await mintPat({

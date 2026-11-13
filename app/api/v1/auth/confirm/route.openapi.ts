@@ -56,7 +56,7 @@ registry.registerPath({
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },
     },
     403: {
-      description: '`pat_scopes` contained `workspace:admin`. The scope is schema-valid but rejected after parsing: headless auth has no `workspace_id` to bind an admin token to. Use `POST /api/v1/tokens` instead. See ADR-0005.',
+      description: '`pat_scopes` contained `workspace:admin`. The scope is schema-valid but rejected after parsing: headless auth has no `workspace_id` to bind an admin token to. Use `POST /api/v1/tokens` instead. It is refused before the code is checked, so the code stays valid and the account stays pending. See ADR-0005.',
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },
     },
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
