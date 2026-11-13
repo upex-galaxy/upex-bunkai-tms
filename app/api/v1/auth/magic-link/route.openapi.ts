@@ -3,6 +3,7 @@
 // handler parses; keep them in sync when the request body changes.
 
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
+import { isSafeInternalPath } from '@lib/urls';
 
 export const MagicLinkBodySchema = z
   .object({
@@ -10,7 +11,7 @@ export const MagicLinkBodySchema = z
     next: z
       .string()
       .min(1)
-      .refine(value => value.startsWith('/') && !value.startsWith('//'), {
+      .refine(isSafeInternalPath, {
         message: 'next must be a root-relative path (e.g. /projects).',
       })
       .optional()

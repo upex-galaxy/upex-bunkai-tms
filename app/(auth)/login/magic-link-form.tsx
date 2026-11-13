@@ -2,6 +2,7 @@
 
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
+import { safeInternalPath } from '@lib/urls';
 import { ArrowRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -17,7 +18,7 @@ interface MagicLinkApiError { error?: { message?: string } }
 // boundary" error.
 export function MagicLinkForm() {
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') ?? '/projects';
+  const next = safeInternalPath(searchParams.get('next'));
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);

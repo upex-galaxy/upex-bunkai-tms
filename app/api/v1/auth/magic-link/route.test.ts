@@ -98,3 +98,20 @@ describeOrSkip('BK-175 — POST /api/v1/auth/magic-link', () => {
     expect(body.error?.code).toBe('validation_failed');
   });
 });
+
+// BK-1827 — the same open-redirect guard as `/auth/callback`. These requests are
+// refused by the Zod schema, before any Supabase call, so they need no env.
+describe('BK-1827 — POST /api/v1/auth/magic-link refuses an off-site next', () => {
+  it.each([
+    ['/\\example.com'],
+    ['/\t/example.com'],
+    ['/\\/example.com'],
+    ['/.//example.com'],
+    ['//example.com'],
+  ])('answers 422 for next=%p', async (next) => {
+    const response = await POST(magicLinkRequest({ email: 'someone@example.test', next }));
+    expect(response.status).toBe(422);
+    const body = (await response.json()) as ErrorBody;
+    expect(body.error?.code).toBe('validation_failed');
+  });
+});
