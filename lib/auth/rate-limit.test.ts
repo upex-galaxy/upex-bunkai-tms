@@ -17,7 +17,7 @@ afterAll(() => {
   }
 });
 
-const { digestSource, rateLimitKey, sourceFromHeaders } = await import('./rate-limit');
+const { digestAccount, digestSource, rateLimitKey, sourceFromHeaders } = await import('./rate-limit');
 
 describe('rate-limit helpers (BK-743)', () => {
   it('builds scope:identifier:step keys', () => {
@@ -36,5 +36,14 @@ describe('rate-limit helpers (BK-743)', () => {
     expect(sourceFromHeaders(new Headers({ 'x-vercel-forwarded-for': '1.1.1.1, 2.2.2.2' }))).toBe('1.1.1.1');
     expect(sourceFromHeaders(new Headers({ 'x-real-ip': '3.3.3.3' }))).toBe('3.3.3.3');
     expect(sourceFromHeaders(new Headers({ 'x-forwarded-for': '9.9.9.9' }))).toBe('unknown');
+  });
+
+  it('digests the account email: normalised, salted, distinct from a source digest (BK-1828)', () => {
+    const d = digestAccount('User@X.com', 'secret-a');
+    expect(d).toBe(digestAccount('  user@x.com ', 'secret-a'));
+    expect(d).not.toContain('user@x.com');
+    expect(d).not.toBe(digestAccount('user@x.com', 'secret-b'));
+    expect(d).not.toBe(digestSource('user@x.com', 'secret-a'));
+    expect(d).toMatch(/^[0-9a-f]{64}$/);
   });
 });

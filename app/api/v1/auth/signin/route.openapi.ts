@@ -57,5 +57,7 @@ registry.registerPath({
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },
     },
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    429: { description: 'Rate limited (brute-force throttle): more than 10 attempts per 60 s or 60 per hour from one network source, or more than 10 attempts per 15 min on one account. Every attempt counts, successful or not. Carries a `Retry-After` header (seconds) and `error.details.retry_after_seconds`; identical for every submitted address.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    502: { description: 'The rate-limit store could not be reached (fails closed).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
 import { assertNoGlobalAdminScope, DEFAULT_PAT_SCOPES, mintPat } from '@lib/api/pat';
+import { enforceAccountRateLimit, enforceSourceRateLimit } from '@lib/auth/rate-limit';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
@@ -25,10 +26,14 @@ const BodySchema = z.object({
 });
 
 export const POST = withApiHandler(async (request: NextRequest) => {
+  // BK-1828 (AC8): brute-force throttle, per network source and per account.
+  // See `@lib/auth/rate-limit` for the budgets.
+  await enforceSourceRateLimit(request.headers, 'signin');
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { email, password, pat_name, pat_scopes, pat_expires_in_days } = BodySchema.parse(payload);
+  await enforceAccountRateLimit(email, 'signin');
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });

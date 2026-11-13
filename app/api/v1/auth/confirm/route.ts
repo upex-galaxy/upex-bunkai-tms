@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
 import { assertNoGlobalAdminScope, DEFAULT_PAT_SCOPES, mintPat } from '@lib/api/pat';
+import { enforceAccountRateLimit, enforceSourceRateLimit } from '@lib/auth/rate-limit';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
@@ -27,17 +28,28 @@ const BodySchema = z.object({
   pat_expires_in_days: z.number().int().positive().max(365).optional(),
 });
 
+// Wait hint sent when GoTrue itself throttles the code check (it gives none).
+const UPSTREAM_RETRY_AFTER_SECONDS = 60;
+
 export const POST = withApiHandler(async (request: NextRequest) => {
+  // BK-1828 (AC8): brute-force throttle on code guessing, per network source
+  // and per account, before GoTrue is asked. See `@lib/auth/rate-limit`.
+  await enforceSourceRateLimit(request.headers, 'confirm');
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { email, token, pat_name, pat_scopes, pat_expires_in_days } = BodySchema.parse(payload);
+  await enforceAccountRateLimit(email, 'confirm');
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
 
   if (error?.status === 429) {
-    throw new ApiError('rate_limited', error.message, { status: 429 });
+    throw new ApiError('rate_limited', 'Too many attempts. Please wait and try again.', {
+      status: 429,
+      details: { retry_after_seconds: UPSTREAM_RETRY_AFTER_SECONDS },
+      headers: { 'Retry-After': String(UPSTREAM_RETRY_AFTER_SECONDS) },
+    });
   }
   if (error || !data.user || !data.session) {
     // Uniform 401 — never distinguish "no such pending signup" from "wrong code".
