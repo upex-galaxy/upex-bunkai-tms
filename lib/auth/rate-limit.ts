@@ -32,6 +32,17 @@ export const CHECK_EMAIL_WINDOWS: RateLimitWindow[] = [
   { windowSeconds: 3600, max: 60 },
 ];
 
+// BK-1828: the credential endpoints (password sign-in, sign-up code confirm).
+// Per network source: same shape as check-email. Per account: caps guessing on
+// one address even when the attempts come from many sources.
+export const CREDENTIAL_SOURCE_WINDOWS: RateLimitWindow[] = [
+  { windowSeconds: 60, max: 10 },
+  { windowSeconds: 3600, max: 60 },
+];
+export const CREDENTIAL_ACCOUNT_WINDOWS: RateLimitWindow[] = [
+  { windowSeconds: 900, max: 10 },
+];
+
 export function rateLimitKey(parts: { scope: string, identifier: string, step: string }): string {
   return `${parts.scope}:${parts.identifier}:${parts.step}`;
 }
@@ -53,6 +64,12 @@ export function digestSource(source: string, secret: string = env.SUPABASE_SERVI
   return createHmac('sha256', secret).update(`rate-limit-source:${source}`).digest('hex');
 }
 
+// BK-1828: same rule for an account identifier. The email is normalised the way
+// GoTrue stores it, so `User@X.com` and `user@x.com` share one budget.
+export function digestAccount(email: string, secret: string = env.SUPABASE_SERVICE_ROLE_KEY): string {
+  return createHmac('sha256', secret).update(`rate-limit-account:${email.trim().toLowerCase()}`).digest('hex');
+}
+
 interface ConsumeRow { allowed: boolean, retry_after_seconds?: number }
 
 export const postgresRateLimitStore: RateLimitStore = {
@@ -69,7 +86,7 @@ export const postgresRateLimitStore: RateLimitStore = {
     });
     // BR-9: fail closed — never skip the budget so the request can proceed.
     if (error || !data) {
-      throw new ApiError('upstream_error', 'Could not check this email.', { status: 502 });
+      throw new ApiError('upstream_error', 'This service is temporarily unavailable. Please try again.', { status: 502 });
     }
     return data.allowed
       ? { allowed: true }
@@ -91,4 +108,23 @@ export async function enforceRateLimit(args: {
       headers: { 'Retry-After': String(decision.retryAfterSeconds) },
     });
   }
+}
+
+// BK-1828: the two credential budgets. The source budget runs before the body is
+// parsed (malformed submissions spend it too); the account budget runs once the
+// email is known, before Supabase is called.
+export async function enforceSourceRateLimit(headers: Headers, step: string, store?: RateLimitStore): Promise<void> {
+  await enforceRateLimit({
+    key: rateLimitKey({ scope: 'source', identifier: digestSource(sourceFromHeaders(headers)), step }),
+    windows: CREDENTIAL_SOURCE_WINDOWS,
+    store,
+  });
+}
+
+export async function enforceAccountRateLimit(email: string, step: string, store?: RateLimitStore): Promise<void> {
+  await enforceRateLimit({
+    key: rateLimitKey({ scope: 'account', identifier: digestAccount(email), step }),
+    windows: CREDENTIAL_ACCOUNT_WINDOWS,
+    store,
+  });
 }
