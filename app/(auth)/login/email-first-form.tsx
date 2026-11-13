@@ -14,7 +14,7 @@ const MIN_PASSWORD_LENGTH = 8;
 
 type Step = 'email' | 'password' | 'create' | 'verify';
 
-interface AuthApiError { error?: { message?: string } }
+interface AuthApiError { error?: { message?: string, details?: Array<{ message?: string }> } }
 
 // Lives in its own file so the parent page can wrap it in `<Suspense>` —
 // `useSearchParams()` triggers a static-render bailout otherwise, and Next 15
@@ -160,7 +160,9 @@ export function EmailFirstForm() {
         return;
       }
       const body = (await response.json().catch(() => null)) as AuthApiError | null;
-      setError(body?.error?.message ?? `Sign-up failed (${response.status}).`);
+      // A 422 names the broken rule in its first issue (e.g. the 72-byte
+      // password limit, BK-1829); the envelope message alone is generic.
+      setError(body?.error?.details?.[0]?.message ?? body?.error?.message ?? `Sign-up failed (${response.status}).`);
     }
     catch (err) {
       setError(err instanceof Error ? err.message : 'Unexpected error creating account.');
@@ -364,7 +366,7 @@ export function EmailFirstForm() {
             autoFocus
           />
           <span className="mt-1.5 block text-2xs text-fg-4">
-            Use at least 8 characters.
+            Use 8 to 72 characters.
           </span>
         </label>
         {errorBanner}

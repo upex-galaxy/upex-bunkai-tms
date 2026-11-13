@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { NewPasswordSchema } from '@lib/auth/password-policy';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
@@ -18,8 +19,8 @@ import { z } from 'zod';
 const BodySchema = z.object({
   email: z.string().email().max(254),
   // New accounts enforce a stronger minimum than legacy sign-in (see signin's
-  // min(6) note). Sign-up + confirm both require min 8.
-  password: z.string().min(8).max(128),
+  // min(6) note), and at most 72 bytes, the bcrypt input limit (BK-1829).
+  password: NewPasswordSchema,
 });
 
 export const POST = withApiHandler(async (request: NextRequest) => {

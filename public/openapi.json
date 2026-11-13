@@ -2630,7 +2630,8 @@
           "password": {
             "type": "string",
             "minLength": 8,
-            "maxLength": 128
+            "maxLength": 72,
+            "description": "At least 8 characters and at most 72 bytes in UTF-8 (the bcrypt input limit): 72 characters for plain ASCII, fewer when the password carries accents or symbols. A longer value is refused with 422 `validation_failed` (issue code `too_big`, maximum 72)."
           }
         },
         "required": ["email", "password"]
