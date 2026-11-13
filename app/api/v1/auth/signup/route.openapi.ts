@@ -34,7 +34,7 @@ registry.registerPath({
   },
   responses: {
     202: {
-      description: 'Sign-up accepted; verification code emailed.',
+      description: 'Sign-up accepted; verification code emailed. A concurrent duplicate request for the same address gets the same answer while the account is pending (BK-1831).',
       content: { 'application/json': { schema: ResponseSchema } },
     },
     409: { description: 'Email already exists.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },

@@ -1,7 +1,10 @@
+import type { EmailStatus } from '@lib/auth/signup-duplicate';
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
 import { NewPasswordSchema } from '@lib/auth/password-policy';
+import { resolveDuplicateSignup } from '@lib/auth/signup-duplicate';
+import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
@@ -46,6 +49,16 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
+    // BK-1831: a concurrent duplicate sign-up fails upstream (5xx or the
+    // per-address cooldown) although the account it asked for now exists.
+    // Answer like the request that won the race.
+    const duplicate = await resolveDuplicateSignup(error, async () => lookupEmailStatus(email));
+    if (duplicate === 'pending') {
+      return jsonResponse({ status: 'pending_confirmation', email }, { status: 202 });
+    }
+    if (duplicate === 'confirmed') {
+      throw new ApiError('conflict', 'An account with that email already exists.');
+    }
     const status = error.status ?? 502;
     const message = error.message.toLowerCase();
     if (status === 429) {
@@ -82,3 +95,17 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   return jsonResponse({ status: 'pending_confirmation', email }, { status: 202 });
 }, { auth: 'public' });
+
+// Same service-role lookup as POST /auth/check-email (`auth_email_status`
+// RPC). GoTrue stores emails lowercased, so normalise first. null = the
+// directory could not answer; the caller then keeps the normal error mapping.
+async function lookupEmailStatus(email: string): Promise<EmailStatus | null> {
+  const { data, error } = await createAdminClient().rpc('auth_email_status', {
+    p_email: email.trim().toLowerCase(),
+  });
+  const row = data?.[0];
+  if (error || !row) {
+    return null;
+  }
+  return { exists: row.email_exists, confirmed: row.email_confirmed };
+}
