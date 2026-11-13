@@ -16,8 +16,21 @@ import { z } from 'zod';
 // Idempotency: if the email already exists, returns 409 conflict. The caller
 // should treat that as "use signin (or confirm) instead".
 
+// BK-1830: sign-up is the one auth route that must MAIL a new address before
+// the account can exist, and the SMTP provider refuses 254-character
+// recipients (`501 Bad recipient address syntax`; GoTrue then rolls the user
+// back and answers 500). Cap sign-up one character lower so the caller gets a
+// 422 that names the limit instead of a 502. The other auth routes keep 254:
+// they never create an account, and accounts that long already exist.
+const SIGNUP_EMAIL_MAX_LENGTH = 253;
+
 const BodySchema = z.object({
-  email: z.string().email().max(254),
+  email: z
+    .string()
+    .email()
+    .max(SIGNUP_EMAIL_MAX_LENGTH, {
+      message: `Email must be at most ${SIGNUP_EMAIL_MAX_LENGTH} characters so the verification code can be delivered.`,
+    }),
   // New accounts enforce a stronger minimum than legacy sign-in (see signin's
   // min(6) note), and at most 72 bytes, the bcrypt input limit (BK-1829).
   password: NewPasswordSchema,

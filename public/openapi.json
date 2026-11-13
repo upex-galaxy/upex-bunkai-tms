@@ -2623,9 +2623,10 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 254,
+            "maxLength": 253,
             "format": "email",
-            "example": "qa.user@example.com"
+            "example": "qa.user@example.com",
+            "description": "At most 253 characters, one below the other auth routes: the mail provider refuses 254-character recipients, so the verification code could not be delivered. A longer value is refused with 422 `validation_failed` (issue code `too_big`, maximum 253)."
           },
           "password": {
             "type": "string",

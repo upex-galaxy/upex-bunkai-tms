@@ -31,3 +31,30 @@ describe('BK-1829 — POST /api/v1/auth/signup password limit', () => {
     expect(body.error?.details?.[0]?.path).toEqual(['password']);
   });
 });
+
+// A local part of 64 plus domain labels under `.example.test`, padded to `length`.
+function emailOfLength(length: number): string {
+  const local = 'l'.repeat(64);
+  const tail = '.example.test';
+  let domain = '';
+  while (local.length + 1 + domain.length + tail.length < length) {
+    const room = length - (local.length + 1 + domain.length + tail.length);
+    const label = 'm'.repeat(Math.min(63, domain ? room - 1 : room));
+    domain = domain ? `${domain}.${label}` : label;
+  }
+  const email = `${local}@${domain}${tail}`;
+  expect(email.length).toBe(length);
+  return email;
+}
+
+describe('BK-1830 — POST /api/v1/auth/signup email limit', () => {
+  it.each([254, 255])('answers 422 too_big (maximum 253) for a %i-character email', async (n) => {
+    const response = await POST(signupRequest({ email: emailOfLength(n), password: 'a-valid-password' }));
+    expect(response.status).toBe(422);
+    const body = (await response.json()) as ErrorBody;
+    expect(body.error?.code).toBe('validation_failed');
+    expect(body.error?.details?.[0]?.code).toBe('too_big');
+    expect(body.error?.details?.[0]?.maximum).toBe(253);
+    expect(body.error?.details?.[0]?.path).toEqual(['email']);
+  });
+});
