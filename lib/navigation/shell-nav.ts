@@ -47,3 +47,12 @@ export function isProjectsNavActive(pathname: string): boolean {
   const inProjects = pathname === '/projects' || pathname.startsWith('/projects/');
   return inProjects && activeProjectSection(pathname) === null;
 }
+
+// BK-513 — "Test Runs" opens the workspace-wide index at `/runs` (§5 D66) and
+// stays current on a Project's own run screens (`/projects/{slug}/runs` and
+// `/runs/{runId}`), so opening a row from the index keeps the same entry lit.
+// "Projects" already yields on those routes (above), so the two never
+// highlight together.
+export function isRunsNavActive(pathname: string): boolean {
+  return pathname === '/runs' || pathname.startsWith('/runs/') || activeProjectSection(pathname) === 'runs';
+}

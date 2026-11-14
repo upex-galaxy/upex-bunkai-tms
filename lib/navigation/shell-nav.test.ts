@@ -1,6 +1,7 @@
 import {
   activeProjectSection,
   isProjectsNavActive,
+  isRunsNavActive,
   projectSectionHref,
   resolveNavProjectSlug,
 } from '@lib/navigation/shell-nav';
@@ -75,5 +76,28 @@ describe('isProjectsNavActive', () => {
   test('is not current elsewhere', () => {
     expect(isProjectsNavActive('/home')).toBe(false);
     expect(isProjectsNavActive('/projects-archive')).toBe(false);
+  });
+});
+
+describe('isRunsNavActive', () => {
+  test('is current on the workspace Runs index', () => {
+    expect(isRunsNavActive('/runs')).toBe(true);
+  });
+
+  test('stays current on a Project\'s run screens, so opening a row keeps it lit', () => {
+    expect(isRunsNavActive('/projects/checkout/runs')).toBe(true);
+    expect(isRunsNavActive('/projects/checkout/runs/abc')).toBe(true);
+  });
+
+  test('a Test\'s own run history stays under Projects, and other routes are not Test Runs', () => {
+    expect(isRunsNavActive('/projects/checkout/tests/t1/runs')).toBe(false);
+    expect(isRunsNavActive('/runsheet')).toBe(false);
+    expect(isRunsNavActive('/projects/checkout/bugs')).toBe(false);
+  });
+
+  test('never highlights together with Projects', () => {
+    for (const path of ['/runs', '/projects/checkout/runs', '/projects/checkout/runs/abc']) {
+      expect(isRunsNavActive(path) && isProjectsNavActive(path)).toBe(false);
+    }
   });
 });

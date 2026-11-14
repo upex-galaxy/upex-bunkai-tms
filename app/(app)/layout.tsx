@@ -10,6 +10,7 @@ import { AuthProvider } from '@components/providers/auth-context';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { countAtcsInWorkspace } from '@lib/atcs/library';
 import { loadEffectiveProjectPlan, loadOwnership, planLimitView } from '@lib/billing/plan-limit';
+import { countWorkspaceRuns } from '@lib/runs/workspace-runs';
 import { listNotifications } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -50,6 +51,7 @@ async function getShellData() {
   // AppSidebar the first time the panel opens.
   let unreadCount = 0;
   let atcCount: number | null = null;
+  let runCount: number | null = null;
   if (activeWorkspaceId) {
     const { data } = await supabase
       .from('projects')
@@ -76,7 +78,11 @@ async function getShellData() {
     unreadCount = page?.unread_count ?? 0;
 
     // BK-439 — ATC Library badge, read once per navigation (layout re-render).
-    atcCount = await countAtcsInWorkspace(supabase, activeWorkspaceId);
+    // BK-513 — Test Runs badge: the same count the `/runs` index pages through.
+    [atcCount, runCount] = await Promise.all([
+      countAtcsInWorkspace(supabase, activeWorkspaceId),
+      countWorkspaceRuns(supabase, activeWorkspaceId),
+    ]);
   }
 
   // BK-232 — approaching/at the project cap. Viewers cannot create anything, so
@@ -99,7 +105,7 @@ async function getShellData() {
     }
   }
 
-  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userId: user?.id ?? null, userRole, unreadCount, atcCount, planLimit };
+  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userId: user?.id ?? null, userRole, unreadCount, atcCount, runCount, planLimit };
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -125,6 +131,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               userRole={shell.userRole}
               initialUnreadCount={shell.unreadCount}
               atcCount={shell.atcCount}
+              runCount={shell.runCount}
             />
           )}
           dock={shell.activeWorkspaceId && shell.userId
