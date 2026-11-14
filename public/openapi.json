@@ -6738,7 +6738,7 @@
             "items": {
               "$ref": "#/components/schemas/ActiveRun"
             },
-            "description": "Ordered by `last_activity_at` descending (id descending as the tie-break), so the first entry is the run to resume. At most `limit` entries. NOTE the two-stage boundary: `started_at` descending decides WHICH runs make the page (that is what the database can order cheaply), and `last_activity_at` orders the page. A run old enough to fall outside `limit` by start date is not pulled back in by recent step activity. When `active_count` exceeds this array's length the remainder is NOT reachable from here — there is no cursor and no workspace-wide runs index; read the missing runs from each project's own run report."
+            "description": "Ordered by `last_activity_at` descending (id descending as the tie-break), so the first entry is the run to resume. At most `limit` entries. NOTE the two-stage boundary: `started_at` descending decides WHICH runs make the page (that is what the database can order cheaply), and `last_activity_at` orders the page. A run old enough to fall outside `limit` by start date is not pulled back in by recent step activity. When `active_count` exceeds this array's length the remainder is NOT reachable from here (there is no cursor); every run, running ones included, is reachable from the paginated workspace runs index, `GET /api/v1/workspaces/{id}/runs`."
           }
         },
         "required": ["active_count", "runs"]
@@ -8194,6 +8194,107 @@
           "wasActiveWorkspace",
           "newActiveWorkspaceId",
           "newActiveWorkspaceName"
+        ]
+      },
+      "WorkspaceRuns": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceRun"
+            },
+            "description": "At most `limit` Runs, newest first."
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "description": "Opaque token for the next (older) page with the same filters, or `null` when this page holds the oldest matching Run. Paging until `null` reaches every Run: there is no cap."
+          },
+          "workspace_run_count": {
+            "type": "integer",
+            "description": "Every Run of the workspace the caller can see, unfiltered and exact. Not affected by any filter or by `limit`. The sidebar's \"Test Runs\" badge shows the same number."
+          }
+        },
+        "required": ["items", "next_cursor", "workspace_run_count"]
+      },
+      "WorkspaceRun": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The Run's id. The Run opens at `/projects/{project_slug}/runs/{id}`."
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_slug": {
+            "type": ["string", "null"],
+            "description": "URL slug of the Run's Project, unique per workspace."
+          },
+          "project_name": {
+            "type": ["string", "null"]
+          },
+          "test_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "test_title": {
+            "type": "string",
+            "description": "The Test title as snapshotted when the Run started, not as it reads today."
+          },
+          "environment_name": {
+            "type": ["string", "null"],
+            "description": "The Project environment the Run targeted."
+          },
+          "executor_mode": {
+            "type": "string",
+            "enum": ["human", "agent", "ci"],
+            "description": "`human` is a Manual Run; `agent` and `ci` are Automated."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "passed", "failed", "aborted"],
+            "description": "The Run's outcome, or `running` while it is in progress."
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The ordering key: newest first, id descending as the tie-break."
+          },
+          "finished_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "`null` while the Run is running."
+          },
+          "passed_steps": {
+            "type": "integer",
+            "description": "Exact count of this Run's passed steps."
+          },
+          "failed_steps": {
+            "type": "integer"
+          },
+          "blocked_steps": {
+            "type": "integer",
+            "description": "Pending and skipped steps are deliberately not reported."
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "project_slug",
+          "project_name",
+          "test_id",
+          "test_title",
+          "environment_name",
+          "executor_mode",
+          "status",
+          "started_at",
+          "finished_at",
+          "passed_steps",
+          "failed_steps",
+          "blocked_steps"
         ]
       }
     },
@@ -21423,6 +21524,161 @@
           },
           "404": {
             "description": "Workspace not found, caller is not an active member, or the workspace was already deleted by a concurrent request (Scenario N5 — a double-submit's losing call is refused as not_found, matching the shipped `DELETE /api/v1/tokens/{id}` precedent, not a 409).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/runs": {
+      "get": {
+        "tags": ["Workspaces"],
+        "summary": "List every Run of a workspace, newest first, with its step counts",
+        "description": "Bearer `atc:read` (or cookie session), the floor the sibling `/active-runs` read uses. One row per Run across every Project of the workspace, keyset paginated on `(started_at desc, id desc)`. Filters AND-compose and travel with the cursor. Runs entirely under the caller's own RLS (the read function is SECURITY INVOKER), so a foreign, nonexistent, or lost-membership workspace id returns the SAME empty `200` an empty workspace does, never an existence echo. A read that FAILS answers 500, never an empty list.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Only Runs of this Project."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["passed", "failed"]
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "description": "Repeatable. `running` and `aborted` are not filter options; such Runs still appear unfiltered."
+          },
+          {
+            "name": "environment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": "Environment name, matched case-insensitively across Projects."
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["manual", "automated"]
+            },
+            "description": "`manual` = executor `human`; `automated` = executor `agent` or `ci`."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 50
+            },
+            "description": "Page size, 1..50. Out of range is rejected with 422, never clamped. Does not affect `workspace_run_count`."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The `next_cursor` of a previous response. A malformed token is 400, never a silent first page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the workspace's Runs (possibly empty) and the unfiltered count.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceRuns"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The workspace id is not a UUID, or the cursor is malformed (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A filter value or `limit` is invalid (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The Runs could not be read (`internal_error`). Deliberately not collapsed into an empty list.",
             "content": {
               "application/json": {
                 "schema": {

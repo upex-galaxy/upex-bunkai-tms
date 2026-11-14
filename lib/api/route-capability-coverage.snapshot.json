@@ -754,6 +754,11 @@
     "posture": "required:workspace:admin"
   },
   {
+    "file": "app/api/v1/workspaces/[id]/runs/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
     "file": "app/api/v1/workspaces/route.ts",
     "method": "GET",
     "posture": "required:atc:read"
