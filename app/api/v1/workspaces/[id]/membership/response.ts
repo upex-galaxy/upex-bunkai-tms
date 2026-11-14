@@ -56,8 +56,8 @@ export interface ResolveNewActiveWorkspaceResult {
 // when the workspace the caller just left was their active one. Otherwise
 // short-circuits with both fields null and never queries `db` (asserted in
 // tests via a throwing fake client). The RPC's own last_membership guard
-// already guarantees at least one active membership survives a successful
-// leave, so `newActiveWorkspaceId` should never resolve to null when
+// already guarantees at least one membership in a live workspace survives a
+// successful leave (migration 0128, BK-1901), so `newActiveWorkspaceId` should never resolve to null when
 // `currentActiveId === leftWorkspaceId` in practice — the null branch here is
 // a defensive backstop, not a normally-reachable path.
 export async function resolveNewActiveWorkspace(
@@ -70,13 +70,21 @@ export async function resolveNewActiveWorkspace(
 
   // Fresh query against the caller's REMAINING active memberships, oldest
   // first (BR-1) — the just-deleted row is already gone, so the left
-  // workspace cannot reappear here. Mirrors the query shape already used by
-  // `settings/account/page.tsx`'s `WorkspacesSection`.
+  // workspace cannot reappear here.
+  //
+  // BK-1903: only memberships in LIVE workspaces count. A soft-deleted
+  // workspace (BK-512, ADR-0015) keeps its member rows `active` so a restore
+  // inside the grace moves no data, and the cookie must never rotate to it.
+  // The `workspace_members` SELECT policy (0084a) already hides those rows
+  // from this session client; the inner embed states the rule here instead of
+  // depending on a clause in another table's policy. Same shape as
+  // `lib/home/open-bugs.ts`.
   const { data: memberships, error: membershipsError } = await db
     .from('workspace_members')
-    .select('workspace_id')
+    .select('workspace_id, workspaces!inner(deleted_at)')
     .eq('user_id', params.userId)
     .eq('status', 'active')
+    .is('workspaces.deleted_at', null)
     .order('joined_at', { ascending: true });
   if (membershipsError) {
     throw new ApiError('internal_error', membershipsError.message);
