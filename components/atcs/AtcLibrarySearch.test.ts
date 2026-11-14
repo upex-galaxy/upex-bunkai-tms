@@ -208,6 +208,23 @@ describe('BK-440 — the address', () => {
     expect(rowTitles(c)).toHaveLength(4);
   });
 
+  // BK-1905 — a shared link with a junk term opens clean, with no Back stop.
+  test('a whitespace-only term in the opening address is removed from it', async () => {
+    window.history.replaceState(null, '', '/atcs?view=archived&q=%20%20%20');
+    const before = window.history.length;
+    const c = await renderActive({ initialTerm: '' });
+    expect(window.location.search).toBe('?view=archived');
+    expect(window.history.length).toBe(before);
+    expect(field(c).value).toBe('');
+    expect(rowTitles(c)).toHaveLength(4);
+  });
+
+  test('a clean opening address is not rewritten', async () => {
+    window.history.replaceState(null, '', '/atcs?q=log%20in');
+    await renderActive({ initialTerm: 'log in' });
+    expect(window.location.search).toBe('?q=log%20in');
+  });
+
   test('a server term fills the field and the list at first render (reload, shared link)', async () => {
     const c = await renderActive({ initialTerm: 'logout' });
     expect(field(c).value).toBe('logout');

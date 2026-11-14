@@ -202,6 +202,29 @@ export function withQuery(search: string, query: AtcLibraryQuery): string {
   return params.toString();
 }
 
+const QUERY_PARAMS = [
+  [ATC_LIBRARY_SEARCH_PARAM, 'q'],
+  [ATC_LIBRARY_PROJECT_PARAM, 'project'],
+  [ATC_LIBRARY_MODULE_PARAM, 'module'],
+  [ATC_LIBRARY_LAYER_PARAM, 'layer'],
+  [ATC_LIBRARY_ANCHOR_PARAM, 'anchor'],
+] as const satisfies readonly (readonly [string, keyof AtcLibraryQuery])[];
+
+// BK-1905 — the address a page opened with, rewritten to the query it actually
+// carries, or null when it already reads that way. A value that cleans to
+// something else (empty, only spaces, surrounding spaces, a malformed encoding,
+// a repeated parameter) is dropped or replaced, so a shared link never keeps the
+// junk; foreign parameters and an already clean address are left untouched.
+export function cleanedAddress(search: string): string | null {
+  const params = new URLSearchParams(search);
+  const query = readQueryFromAddress(search);
+  const dirty = QUERY_PARAMS.some(([name, key]) => {
+    const values = params.getAll(name);
+    return values.length > 1 || (values.length === 1 && (values[0] === '' || values[0] !== query[key]));
+  });
+  return dirty ? withQuery(search, query) : null;
+}
+
 // Merge the term alone (BK-440 contract, kept).
 export function withSearchTerm(search: string, term: string): string {
   return withQuery(search, { ...readQueryFromAddress(search), q: term });

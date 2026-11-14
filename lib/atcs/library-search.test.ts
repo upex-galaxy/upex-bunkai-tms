@@ -2,6 +2,7 @@ import type { AtcLibraryQuery } from './library-search';
 import { describe, expect, test } from 'bun:test';
 import {
   applyQueryChange,
+  cleanedAddress,
   cleanSearchTerm,
   deriveFacetOptions,
   EMPTY_ATC_LIBRARY_QUERY,
@@ -90,6 +91,22 @@ describe('url contract', () => {
     expect(readSearchFromAddress('?q=caf%C3%A9')).toBe('café');
     expect(readSearchFromAddress('?q=100%25')).toBe('100%');
     expect(readSearchFromAddress('?q=%ZZ')).toBe('%ZZ');
+  });
+  // BK-1905 — the address is rewritten to the query it carries, only when needed.
+  test('an address whose term reads as empty or different is cleaned, keeping foreign params', () => {
+    expect(cleanedAddress('?q=%20%20%20')).toBe('');
+    expect(cleanedAddress('?view=archived&q=%20%20%20')).toBe('view=archived');
+    expect(cleanedAddress('?q=%E0%A4%A')).toBe('');
+    expect(cleanedAddress('?q=')).toBe('');
+    expect(cleanedAddress('?q=%20log%20')).toBe('q=log');
+    expect(cleanedAddress('?q=a&q=b')).toBe('q=a');
+    expect(cleanedAddress('?layer=api&anchor=%20')).toBe('layer=API');
+  });
+  test('a clean address is left exactly as it is', () => {
+    expect(cleanedAddress('')).toBeNull();
+    expect(cleanedAddress('?view=archived')).toBeNull();
+    expect(cleanedAddress('?q=log%20in')).toBeNull();
+    expect(cleanedAddress('?q=log+in&project=p1&module=M%201&layer=UI&anchor=BK-50&view=archived')).toBeNull();
   });
   test('withSearchTerm keeps foreign params and drops q when empty', () => {
     expect(withSearchTerm('view=archived', 'log')).toBe('view=archived&q=log');
