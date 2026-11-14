@@ -3,8 +3,8 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 const BodySchema = z
   .object({
     email: z.string().email().max(253).openapi({
-      example: 'qa.user@example.com',
-      description: 'At most 253 characters, one below the other auth routes: the mail provider refuses 254-character recipients, so the verification code could not be delivered. A longer value is refused with 422 `validation_failed` (issue code `too_big`, maximum 253).',
+      example: 'qa.user@delgri.resend.app',
+      description: 'At most 253 characters, one below the other auth routes: the mail provider refuses 254-character recipients, so the verification code could not be delivered. A longer value is refused with 422 `validation_failed` (issue code `too_big`, maximum 253). A reserved domain that can never receive the code is refused with 422 `validation_failed` (issue code `custom` on `email`): `example.com`, `example.net`, `example.org` and their subdomains, and any address under the TLDs `.example`, `.test`, `.invalid`, `.localhost` or `.local`. Sign-up only: the other auth routes accept these addresses.',
     }),
     password: z.string().min(8).max(72).openapi({
       description: 'At least 8 characters and at most 72 bytes in UTF-8 (the bcrypt input limit): 72 characters for plain ASCII, fewer when the password carries accents or symbols. A longer value is refused with 422 `validation_failed` (issue code `too_big`, maximum 72).',
@@ -38,7 +38,7 @@ registry.registerPath({
       content: { 'application/json': { schema: ResponseSchema } },
     },
     409: { description: 'Email already exists.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed: an email over 253 characters, an email on a reserved domain (BK-1877), or a password outside the policy.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     429: { description: 'Rate limited.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

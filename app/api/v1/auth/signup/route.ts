@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
 import { NewPasswordSchema } from '@lib/auth/password-policy';
+import { isReservedEmailDomain, RESERVED_EMAIL_DOMAIN_MESSAGE } from '@lib/auth/reserved-email-domain';
 import { resolveDuplicateSignup } from '@lib/auth/signup-duplicate';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
@@ -33,7 +34,11 @@ const BodySchema = z.object({
     .email()
     .max(SIGNUP_EMAIL_MAX_LENGTH, {
       message: `Email must be at most ${SIGNUP_EMAIL_MAX_LENGTH} characters so the verification code can be delivered.`,
-    }),
+    })
+    // BK-1877: a reserved domain (example.com, .test, ...) can never receive
+    // the code; the mail provider refuses it and GoTrue answers 500. Same rule
+    // scope as the 253 cap above: sign-up only.
+    .refine(email => !isReservedEmailDomain(email), { message: RESERVED_EMAIL_DOMAIN_MESSAGE }),
   // New accounts enforce a stronger minimum than legacy sign-in (see signin's
   // min(6) note), and at most 72 bytes, the bcrypt input limit (BK-1829).
   password: NewPasswordSchema,
