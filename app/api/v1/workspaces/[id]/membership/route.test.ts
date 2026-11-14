@@ -28,13 +28,16 @@ interface MembershipsResult { data: { workspace_id: string }[] | null, error: { 
 interface WorkspaceNameResult { data: { name: string } | null, error: { message: string } | null }
 
 // Minimal stand-in for the two chains resolveNewActiveWorkspace calls:
-//   db.from('workspace_members').select().eq().eq().order()
+//   db.from('workspace_members').select().eq().eq().is().order()
 //   db.from('workspaces').select().eq().maybeSingle()
-function fakeDb(memberships: MembershipsResult, workspaceName?: WorkspaceNameResult): SupabaseClient<Database> {
+// `calls`, when given, records every step of the memberships chain so a test
+// can assert the query shape (BK-1903: the live-workspace filter).
+function fakeDb(memberships: MembershipsResult, workspaceName?: WorkspaceNameResult, calls?: unknown[][]): SupabaseClient<Database> {
   const membershipsChain = {
-    select: () => membershipsChain,
-    eq: () => membershipsChain,
-    order: async () => memberships,
+    select: (...args: unknown[]) => { calls?.push(['select', ...args]); return membershipsChain; },
+    eq: (...args: unknown[]) => { calls?.push(['eq', ...args]); return membershipsChain; },
+    is: (...args: unknown[]) => { calls?.push(['is', ...args]); return membershipsChain; },
+    order: async (...args: unknown[]) => { calls?.push(['order', ...args]); return memberships; },
   };
   const workspaceChain = {
     select: () => workspaceChain,
@@ -139,6 +142,29 @@ describe('resolveNewActiveWorkspace (BK-90 — Integration/BR-1)', () => {
     expect(result).toEqual({ newActiveWorkspaceId: OTHER_WS, newActiveWorkspaceName: 'Beta Co' });
   });
 
+  it('BK-1903: re-resolves only against memberships in LIVE workspaces (inner join on workspaces, deleted_at is null)', async () => {
+    const calls: unknown[][] = [];
+    const db = fakeDb(
+      { data: [{ workspace_id: OTHER_WS }], error: null },
+      { data: { name: 'Beta Co' }, error: null },
+      calls,
+    );
+
+    await resolveNewActiveWorkspace(db, {
+      userId: USER,
+      leftWorkspaceId: LEFT_WS,
+      currentActiveId: LEFT_WS,
+    });
+
+    expect(calls).toEqual([
+      ['select', 'workspace_id, workspaces!inner(deleted_at)'],
+      ['eq', 'user_id', USER],
+      ['eq', 'status', 'active'],
+      ['is', 'workspaces.deleted_at', null],
+      ['order', 'joined_at', { ascending: true }],
+    ]);
+  });
+
   it('orders the re-resolution oldest-membership-first, matching resolveActiveWorkspaceId (BR-1)', async () => {
     const OLDEST_WS = '44444444-4444-4444-4444-444444444444';
     // The fake `order()` already returns rows in the order the "query" would
@@ -158,7 +184,7 @@ describe('resolveNewActiveWorkspace (BK-90 — Integration/BR-1)', () => {
     expect(result.newActiveWorkspaceId).toBe(OLDEST_WS);
   });
 
-  it('defensive backstop: returns nulls when no active memberships remain (should not occur — the RPC blocks a last_membership leave)', async () => {
+  it('defensive backstop: returns nulls when no live memberships remain (should not occur — the RPC blocks a last_membership leave)', async () => {
     const db = fakeDb({ data: [], error: null });
 
     const result = await resolveNewActiveWorkspace(db, {
