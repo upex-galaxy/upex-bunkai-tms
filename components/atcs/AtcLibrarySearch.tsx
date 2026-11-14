@@ -10,6 +10,7 @@ import {
   ATC_LIBRARY_LAYERS,
   ATC_LIBRARY_SEARCH_DEBOUNCE_MS,
   ATC_LIBRARY_SEARCH_MAX,
+  cleanedAddress,
   cleanSearchTerm,
   deriveFacetOptions,
   EMPTY_ATC_LIBRARY_QUERY,
@@ -96,12 +97,15 @@ export function AtcLibrarySearchProvider({ initialQuery, initialTerm, children }
   // Back after opening a row re-mounts from the server props its history entry
   // was rendered with, while `replaceState` left the typed address in place:
   // reconcile with the address once. Mount-only by design.
+  // BK-1905 — an address whose term or facets read as something else (`?q=%20`)
+  // is rewritten to what the page shows, in place, with no Back stop.
   useEffect(() => {
     const fromAddress = readQueryFromAddress(window.location.search);
     if (!sameQuery(latest.current, fromAddress)) {
       latest.current = fromAddress;
       setQueryState(fromAddress);
     }
+    if (cleanedAddress(window.location.search) !== null) { writeAddress(fromAddress); }
     return cancelWrite;
   }, []);
 
