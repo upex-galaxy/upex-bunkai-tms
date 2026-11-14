@@ -77,6 +77,20 @@ describe('url contract', () => {
     expect(readSearchFromAddress('?q=a&q=b')).toBe('a');
     expect(typeof readSearchFromAddress('?q=%E0%A4%A')).toBe('string');
   });
+  // BK-1906 — the server page and the browser decode a broken sequence to
+  // different text ("\uFFFD" vs "\uFFFD%A"); both must read it as empty.
+  test('a broken percent-encoding reads as empty on the server and in the browser', () => {
+    expect(readSearchFromAddress('?q=%E0%A4%A')).toBe('');
+    expect(readQueryFromAddress('?q=%E0%A4%A&view=archived')).toEqual(EMPTY_ATC_LIBRARY_QUERY);
+    expect(parseSearchParam('\uFFFD')).toBe('');
+    expect(parseSearchParam(['\uFFFD%A', 'log'])).toBe('');
+    expect(parseQueryParams({ q: '\uFFFD', anchor: 'BK-\uFFFD' })).toEqual(EMPTY_ATC_LIBRARY_QUERY);
+  });
+  test('a valid term and a literal percent sign are still read as typed', () => {
+    expect(readSearchFromAddress('?q=caf%C3%A9')).toBe('café');
+    expect(readSearchFromAddress('?q=100%25')).toBe('100%');
+    expect(readSearchFromAddress('?q=%ZZ')).toBe('%ZZ');
+  });
   test('withSearchTerm keeps foreign params and drops q when empty', () => {
     expect(withSearchTerm('view=archived', 'log')).toBe('view=archived&q=log');
     expect(withSearchTerm('view=archived&q=log', '  ')).toBe('view=archived');
@@ -172,7 +186,7 @@ describe('BK-441 — facet filters', () => {
   test('an invalid layer or a bad percent-encoding reads as empty, a lower-case layer is accepted (E2)', () => {
     expect(readQueryFromAddress('?layer=E2E').layer).toBe('');
     expect(readQueryFromAddress('?layer=api').layer).toBe('API');
-    expect(readQueryFromAddress('?project=%E0%A4%A&module=%').module).toBe('%');
+    expect(readQueryFromAddress('?project=%E0%A4%A&module=%')).toEqual(q({ module: '%' }));
     expect(parseQueryParams({ layer: ['Unit', 'UI'], project: undefined, anchor: ' x ' })).toEqual(q({ layer: 'Unit', anchor: 'x' }));
   });
 
