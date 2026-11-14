@@ -281,6 +281,45 @@ export async function QaShell({ config }: { config: QaConfig }) {
               <p>{config.db.poolerNote}</p>
             </Callout>
 
+            <div data-testid="qa-db-ca" className="space-y-3">
+              <Callout hue="emerald" title="Certificado CA de la base (TLS)">
+                <div className="space-y-2">
+                  <p>{config.db.tlsCa.purpose}</p>
+                  <p>{config.db.tlsCa.access}</p>
+                </div>
+              </Callout>
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  href={config.db.tlsCa.href}
+                  download={config.db.tlsCa.fileName}
+                  data-testid="qa-db-ca-download"
+                  className={buttonVariants({ variant: 'default' })}
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  Descargar
+                  {' '}
+                  {config.db.tlsCa.fileName}
+                </a>
+                <span data-testid="qa-db-ca-meta" className="text-xs text-fg-2">
+                  {config.db.tlsCa.issuer}
+                  {' '}
+                  · válido hasta
+                  {' '}
+                  {config.db.tlsCa.validUntil}
+                  {' '}
+                  · SHA-256
+                  {' '}
+                  <code className="break-all rounded bg-surface-2 px-1 text-fg-1">{config.db.tlsCa.sha256}</code>
+                </span>
+              </div>
+              <p data-testid="qa-db-ca-verified" className="text-sm text-fg-2">{config.db.tlsCa.verified}</p>
+              <CodeBlock language="bash" code={config.db.tlsCa.nodeEnv} title="NODE_EXTRA_CA_CERTS" />
+              <CodeBlock language="ts" code={config.db.tlsCa.pgClient} title="cliente pg" />
+              <Callout hue="amber" title="Último recurso: rejectUnauthorized: false">
+                <p data-testid="qa-db-ca-last-resort">{config.db.tlsCa.lastResort}</p>
+              </Callout>
+            </div>
+
             <Callout hue="emerald" title="Funciones RPC — qué podés llamar">
               <p>{config.db.rpcAccess}</p>
             </Callout>
