@@ -19,6 +19,7 @@ import {
   hasActiveQuery,
   libraryHref,
   noMatchTitle,
+  queryKey,
   readQueryFromAddress,
   sanitizeQuery,
   withQuery,
@@ -135,7 +136,9 @@ export function useAtcLibraryNarrowing<T extends AtcLibraryFacetRow>(rows: reado
   const visible = useMemo(() => filterByQuery(rows, effective), [rows, effective]);
   const facets = hasActiveFacets(effective);
   const term = cleanSearchTerm(effective.q);
-  return { visible, active: term !== '' || facets, facets, term };
+  // `resetKey` changes with the narrowing in force, so a bounded table can start
+  // again from its first step (BK-1904).
+  return { visible, active: term !== '' || facets, facets, term, resetKey: queryKey(effective) };
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {

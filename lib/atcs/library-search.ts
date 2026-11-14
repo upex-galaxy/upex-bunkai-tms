@@ -11,6 +11,11 @@
 export const ATC_LIBRARY_SEARCH_PARAM = 'q';
 export const ATC_LIBRARY_SEARCH_MAX = 200;
 export const ATC_LIBRARY_SEARCH_DEBOUNCE_MS = 250;
+// BK-1904 — rows the Active table draws per step. The search and filters still
+// run over every loaded row; only the drawing is bounded, so a key costs the
+// same at 8,000 ATCs as at 100. "Show more" adds the next step, and any change
+// to the term or a filter starts again from the first one.
+export const ATC_LIBRARY_PAGE_SIZE = 100;
 
 export type AtcLibraryViewKey = 'active' | 'archived';
 
