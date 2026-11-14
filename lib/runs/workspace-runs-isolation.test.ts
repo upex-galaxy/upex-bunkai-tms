@@ -61,8 +61,6 @@ interface Fixture {
   outWorkspaceId: string
   in: Seeded
   out: Seeded
-  grantedMembership: boolean
-  userId: string
 }
 
 function service() {
@@ -72,6 +70,8 @@ function service() {
 let fixture: Fixture | null = null;
 let caller: SupabaseClient | null = null;
 let skipReason: string | null = null;
+// Recorded as soon as it happens, so cleanup runs even when seeding fails halfway.
+let grantedMembership: { workspaceId: string, userId: string } | null = null;
 
 // Runs of one throwaway Project, newest first by construction:
 //   0: passed, human, env "Staging"   (2 passed, 1 failed, 1 blocked, 1 pending, 1 skipped steps)
@@ -119,6 +119,8 @@ async function seedWorkspace(db: SupabaseClient, workspaceId: string, userId: st
       status: shape.status,
       executor_mode: shape.executor_mode,
       start_token: `${PREFIX}-${tag}-${i}`,
+      // runs_abort_reason_chk (0036): an aborted Run carries a reason, any other has none.
+      abort_reason: shape.status === 'aborted' ? `${PREFIX} aborted` : null,
       started_at: new Date(base - i * 60_000).toISOString(),
       finished_at: shape.status === 'running' ? null : new Date(base - i * 60_000 + 30_000).toISOString(),
     })))
@@ -181,7 +183,6 @@ describeOrSkip('BK-513 — bunkai_list_workspace_runs (real session, RLS as the 
 
     const out = ids.find(id => !anyMembership.has(id));
     let inWs = ids.find(id => memberOf.has(id));
-    let grantedMembership = false;
     if (!out) {
       skipReason = 'need a live workspace the QA identity does not belong to (seed state).';
       return;
@@ -199,7 +200,7 @@ describeOrSkip('BK-513 — bunkai_list_workspace_runs (real session, RLS as the 
         skipReason = `could not grant a temporary membership (${grantError.message}).`;
         return;
       }
-      grantedMembership = true;
+      grantedMembership = { workspaceId: inWs, userId };
     }
 
     fixture = {
@@ -207,21 +208,22 @@ describeOrSkip('BK-513 — bunkai_list_workspace_runs (real session, RLS as the 
       outWorkspaceId: out,
       in: await seedWorkspace(db, inWs, userId, 'in'),
       out: await seedWorkspace(db, out, userId, 'out'),
-      grantedMembership,
-      userId,
     };
     caller = anon;
   });
 
+  // Cleans by PREFIX, not by the fixture object, so a seed that failed halfway
+  // leaves nothing behind either.
   afterAll(async () => {
-    if (!fixture) { return; }
+    if (!hasEnv) { return; }
     const db = service();
-    // Runs first (runs.test_id is ON DELETE RESTRICT); run_atcs/run_steps cascade.
+    // Runs first (runs.test_id is ON DELETE RESTRICT); run_atcs/run_steps cascade,
+    // and a Project delete cascades its environments.
     await db.from('runs').delete().like('start_token', `${PREFIX}%`);
-    await db.from('projects').delete().in('id', [fixture.in.projectId, fixture.out.projectId]);
-    await db.from('tests').delete().in('id', [fixture.in.testId, fixture.out.testId]);
-    if (fixture.grantedMembership) {
-      await db.from('workspace_members').delete().eq('workspace_id', fixture.inWorkspaceId).eq('user_id', fixture.userId);
+    await db.from('projects').delete().like('slug', `${PREFIX}%`);
+    await db.from('tests').delete().like('title', `${PREFIX}%`);
+    if (grantedMembership) {
+      await db.from('workspace_members').delete().eq('workspace_id', grantedMembership.workspaceId).eq('user_id', grantedMembership.userId);
     }
   });
 
