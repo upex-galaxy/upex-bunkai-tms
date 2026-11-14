@@ -680,6 +680,36 @@ export async function reportProjectRuns(supabase: Client, args: ReportProjectRun
   });
 }
 
+// BK-513 — one page of a workspace's Runs, newest first, with each Run's
+// passed / failed / blocked step counts. SECURITY INVOKER with NO actor
+// parameter (0127, ADR-0012's preferred form): the caller's own RLS scopes
+// every row, so pass the caller's client, never the admin client.
+// `workspaceId` pins the page to the active workspace. Returns
+// `{ items, next_cursor }` — the route owns the opaque cursor encoding.
+export interface ListWorkspaceRunsArgs {
+  workspaceId: string
+  projectId?: string | null
+  status?: string[] | null
+  environmentName?: string | null
+  mode?: string | null
+  limit?: number
+  cursorStartedAt?: string | null
+  cursorId?: string | null
+}
+
+export async function listWorkspaceRunsRpc(supabase: Client, args: ListWorkspaceRunsArgs) {
+  return supabase.rpc('bunkai_list_workspace_runs', {
+    p_workspace_id: args.workspaceId,
+    p_project_id: args.projectId ?? undefined,
+    p_status: args.status ?? undefined,
+    p_environment_name: args.environmentName ?? undefined,
+    p_mode: args.mode ?? undefined,
+    p_limit: args.limit ?? undefined,
+    p_cursor_started_at: args.cursorStartedAt ?? undefined,
+    p_cursor_id: args.cursorId ?? undefined,
+  });
+}
+
 // BK-46 — whole-project coverage rollup (untested ACs / not-run filter /
 // fully-covered modules). Same explicit-actor contract; the SECURITY DEFINER
 // RPC resolves the Project's workspace and gates the actor's active

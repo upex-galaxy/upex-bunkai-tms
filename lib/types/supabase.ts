@@ -2757,6 +2757,19 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_list_workspace_runs: {
+        Args: {
+          p_cursor_id?: string
+          p_cursor_started_at?: string
+          p_environment_name?: string
+          p_limit?: number
+          p_mode?: string
+          p_project_id?: string
+          p_status?: string[]
+          p_workspace_id: string
+        }
+        Returns: Json
+      }
       bunkai_mark_run_step: {
         Args: {
           p_actor_user_id: string
