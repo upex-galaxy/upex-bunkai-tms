@@ -369,3 +369,60 @@ describe('BK-440 — the Archived view', () => {
     expect(byId(c, 'atc-library-search')).toBeNull();
   });
 });
+
+// BK-1904 — at about 8,000 ATCs every key re-drew every row. The table now draws
+// one step of rows; the search, the count and "Show more" still cover them all.
+describe('BK-1904 — a bounded table', () => {
+  // 250 rows: two full steps and a partial one. Every 10th title is a "Login".
+  const MANY = Array.from({ length: 250 }, (_, i) => row(`m${i}`, i % 10 === 0 ? `Login case ${i}` : `Export case ${i}`, `atc-${i}`));
+  const status = (c: HTMLElement) => byId(c, 'atc-library-search-status')?.textContent;
+  const showMore = (c: HTMLElement) => byId(c, 'atc-library-show-more') as HTMLButtonElement | null;
+
+  test('draws the first 100 rows and says how many are not drawn yet', async () => {
+    const c = await renderActive({ rows: MANY });
+    expect(rowTitles(c)).toHaveLength(100);
+    expect(byId(c, 'atc-library-foot')?.textContent).toBe('Showing 100 of 250 ATCs');
+    expect(showMore(c)?.textContent).toBe('Show 100 more');
+  });
+
+  test('"Show more" adds the next step until every row is drawn', async () => {
+    const c = await renderActive({ rows: MANY });
+    await act(async () => { showMore(c)?.click(); });
+    expect(rowTitles(c)).toHaveLength(200);
+    expect(showMore(c)?.textContent).toBe('Show 50 more');
+    await act(async () => { showMore(c)?.click(); });
+    expect(rowTitles(c)).toHaveLength(250);
+    expect(showMore(c)).toBeNull();
+    expect(byId(c, 'atc-library-foot')?.textContent).toBe('250 ATCs · end of list');
+  });
+
+  test('the search covers every row and the count is the full match count', async () => {
+    const c = await renderActive({ rows: MANY });
+    await type(c, 'export');
+    expect(rowTitles(c)).toHaveLength(100);
+    expect(status(c)).toBe('225 ATCs match');
+    await type(c, 'login');
+    expect(rowTitles(c)).toHaveLength(25);
+    expect(rowTitles(c).at(-1)).toBe('Login case 240');
+    expect(byId(c, 'atc-library-foot')).toBeNull();
+  });
+
+  test('a new term, and clearing it, start again from the first step', async () => {
+    const c = await renderActive({ rows: MANY });
+    await act(async () => { showMore(c)?.click(); });
+    await act(async () => { showMore(c)?.click(); });
+    expect(rowTitles(c)).toHaveLength(250);
+    await type(c, 'case');
+    expect(rowTitles(c)).toHaveLength(100);
+    await type(c, '');
+    expect(rowTitles(c)).toHaveLength(100);
+    expect(byId(c, 'atc-library-foot')?.textContent).toBe('Showing 100 of 250 ATCs');
+  });
+
+  test('a list of one step draws every row with no footer', async () => {
+    const c = await renderActive();
+    expect(rowTitles(c)).toHaveLength(4);
+    expect(showMore(c)).toBeNull();
+    expect(byId(c, 'atc-library-foot')).toBeNull();
+  });
+});

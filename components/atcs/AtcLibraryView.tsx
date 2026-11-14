@@ -4,11 +4,12 @@ import type { AtcLibraryRow } from '@lib/atcs/library';
 import { AtcLibraryNoMatch, AtcLibrarySearchField, useAtcLibraryHref, useAtcLibraryNarrowing } from '@components/atcs/AtcLibrarySearch';
 import { Button } from '@components/ui/button';
 import { resolveAtcLibraryViewState } from '@lib/atcs/library';
+import { ATC_LIBRARY_PAGE_SIZE } from '@lib/atcs/library-search';
 import { cn } from '@lib/utils';
-import { AlertTriangle, ArrowUpRight, Library, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUpRight, Library, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
 // BK-439 — global ATC Library (`/atcs`, master-design-plan §4.9). A
@@ -37,7 +38,7 @@ export function AtcLibraryView({ rows, error }: AtcLibraryViewProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const { visible, active: searching, facets, term } = useAtcLibraryNarrowing(rows);
+  const { visible, active: searching, facets, term, resetKey } = useAtcLibraryNarrowing(rows);
 
   const retry = () => { startTransition(() => { router.refresh(); }); };
 
@@ -88,58 +89,91 @@ export function AtcLibraryView({ rows, error }: AtcLibraryViewProps) {
   return (
     <>
       <AtcLibrarySearchField resultCount={visible.length} rows={rows} />
-      <div className="min-h-0 flex-1 overflow-auto">
-        <table data-testid="atc-library-table" className="w-full border-collapse text-left">
-          <thead className="sticky top-0 z-10 bg-surface-1">
-            <tr className="border-b border-stroke-2 text-2xs font-semibold uppercase tracking-wider text-fg-3">
-              <th scope="col" className="px-6 py-2 font-semibold">ATC</th>
-              <th scope="col" className="px-3 py-2 font-semibold">Name</th>
-              <th scope="col" className="px-3 py-2 font-semibold">Project</th>
-              <th scope="col" className="px-3 py-2 font-semibold">Module</th>
-              <th scope="col" className="px-3 py-2 font-semibold">Layer</th>
-              <th scope="col" className="px-3 py-2 font-semibold">Anchor</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold">Used in</th>
-              <th scope="col" className="px-6 py-2"><span className="sr-only">Open</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map(row => (
-              <tr
-                key={row.id}
-                data-testid="atc-library-row"
-                className="border-b border-stroke-1 text-sm hover:bg-surface-2"
-              >
-                <td className="px-6 py-1.5 font-mono text-xs text-fg-0" title={row.slug}>{row.code}</td>
-                <td className="max-w-[320px] truncate px-3 py-1.5 text-fg-0" title={row.title}>{row.title}</td>
-                <td className="px-3 py-1.5 text-fg-1">{row.projectName}</td>
-                <td className="px-3 py-1.5 font-mono text-xs text-fg-2">{row.moduleName}</td>
-                <td className="px-3 py-1.5"><LayerChip layer={row.layer} /></td>
-                <td className="max-w-[240px] px-3 py-1.5 font-mono text-xs text-fg-2">
-                  <span className="block truncate" title={row.storyLabel}>{row.storyLabel}</span>
-                  <span className="block truncate text-fg-3" title={row.acLabel ?? undefined}>
-                    {row.acLabel ?? 'No criterion'}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-right font-mono text-xs text-fg-2">
-                  {`used in ${row.usedInTests} ${row.usedInTests === 1 ? 'test' : 'tests'}`}
-                </td>
-                <td className="px-6 py-1.5 text-right">
-                  <button
-                    type="button"
-                    onClick={() => { open(row); }}
-                    aria-label={`Open ${row.code} in ${row.projectName}`}
-                    className="inline-flex items-center gap-1 rounded-2 px-2 py-1 text-xs text-fg-2 hover:bg-surface-3 hover:text-accent"
-                  >
-                    Open
-                    <ArrowUpRight size={11} aria-hidden />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <AtcLibraryTable key={resetKey} rows={visible} onOpen={open} />
     </>
+  );
+}
+
+// BK-1904 — the table draws at most `ATC_LIBRARY_PAGE_SIZE` rows per step: at
+// about 8,000 ATCs, mounting every row cost seconds of layout per key. Every
+// match stays reachable through "Show more", and the footer says how many are
+// not drawn yet, so nothing is capped silently (BK-439 AC-02). Keyed by the
+// narrowing, so a new term or filter starts again from the first step. The
+// footer reuses the bugs list's "Load more" grammar (D67).
+function AtcLibraryTable({ rows, onOpen }: { rows: readonly AtcLibraryRow[], onOpen: (row: AtcLibraryRow) => void }) {
+  const [limit, setLimit] = useState(ATC_LIBRARY_PAGE_SIZE);
+  const shown = rows.length > limit ? rows.slice(0, limit) : rows;
+  const hidden = rows.length - shown.length;
+  return (
+    <div className="min-h-0 flex-1 overflow-auto">
+      <table data-testid="atc-library-table" className="w-full border-collapse text-left">
+        <thead className="sticky top-0 z-10 bg-surface-1">
+          <tr className="border-b border-stroke-2 text-2xs font-semibold uppercase tracking-wider text-fg-3">
+            <th scope="col" className="px-6 py-2 font-semibold">ATC</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Name</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Project</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Module</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Layer</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Anchor</th>
+            <th scope="col" className="px-3 py-2 text-right font-semibold">Used in</th>
+            <th scope="col" className="px-6 py-2"><span className="sr-only">Open</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map(row => (
+            <tr
+              key={row.id}
+              data-testid="atc-library-row"
+              className="border-b border-stroke-1 text-sm hover:bg-surface-2"
+            >
+              <td className="px-6 py-1.5 font-mono text-xs text-fg-0" title={row.slug}>{row.code}</td>
+              <td className="max-w-[320px] truncate px-3 py-1.5 text-fg-0" title={row.title}>{row.title}</td>
+              <td className="px-3 py-1.5 text-fg-1">{row.projectName}</td>
+              <td className="px-3 py-1.5 font-mono text-xs text-fg-2">{row.moduleName}</td>
+              <td className="px-3 py-1.5"><LayerChip layer={row.layer} /></td>
+              <td className="max-w-[240px] px-3 py-1.5 font-mono text-xs text-fg-2">
+                <span className="block truncate" title={row.storyLabel}>{row.storyLabel}</span>
+                <span className="block truncate text-fg-3" title={row.acLabel ?? undefined}>
+                  {row.acLabel ?? 'No criterion'}
+                </span>
+              </td>
+              <td className="whitespace-nowrap px-3 py-1.5 text-right font-mono text-xs text-fg-2">
+                {`used in ${row.usedInTests} ${row.usedInTests === 1 ? 'test' : 'tests'}`}
+              </td>
+              <td className="px-6 py-1.5 text-right">
+                <button
+                  type="button"
+                  onClick={() => { onOpen(row); }}
+                  aria-label={`Open ${row.code} in ${row.projectName}`}
+                  className="inline-flex items-center gap-1 rounded-2 px-2 py-1 text-xs text-fg-2 hover:bg-surface-3 hover:text-accent"
+                >
+                  Open
+                  <ArrowUpRight size={11} aria-hidden />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {hidden > 0 && (
+        <div className="flex flex-col items-center gap-2 border-t border-stroke-2 bg-surface-1 px-3 py-2">
+          <Button
+            type="button"
+            size="sm"
+            data-testid="atc-library-show-more"
+            onClick={() => { setLimit(current => current + ATC_LIBRARY_PAGE_SIZE); }}
+          >
+            <ArrowDown size={12} aria-hidden />
+            {`Show ${Math.min(hidden, ATC_LIBRARY_PAGE_SIZE)} more`}
+          </Button>
+        </div>
+      )}
+      {rows.length > ATC_LIBRARY_PAGE_SIZE && (
+        <div data-testid="atc-library-foot" className="flex items-center gap-2 border-t border-stroke-2 bg-surface-1 px-6 py-2 font-mono text-xs text-fg-3">
+          {hidden > 0 ? `Showing ${shown.length} of ${rows.length} ATCs` : `${rows.length} ATCs · end of list`}
+        </div>
+      )}
+    </div>
   );
 }
 
