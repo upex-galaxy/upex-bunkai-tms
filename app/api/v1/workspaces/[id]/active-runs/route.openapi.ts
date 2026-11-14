@@ -31,7 +31,7 @@ const ActiveRunsSchema = z
       .describe('How many runs are in progress across the WHOLE workspace. Exact, and deliberately NOT capped by `limit` — a workspace with eight running runs reports 8 while returning at most `limit` rows. This is the same predicate (`runs.status = \'running\'`) the Home welcome banner counts, so the two numbers on that screen agree by construction.'),
     runs: z
       .array(ActiveRunSchema)
-      .describe('Ordered by `last_activity_at` descending (id descending as the tie-break), so the first entry is the run to resume. At most `limit` entries. NOTE the two-stage boundary: `started_at` descending decides WHICH runs make the page (that is what the database can order cheaply), and `last_activity_at` orders the page. A run old enough to fall outside `limit` by start date is not pulled back in by recent step activity. When `active_count` exceeds this array\'s length the remainder is NOT reachable from here — there is no cursor and no workspace-wide runs index; read the missing runs from each project\'s own run report.'),
+      .describe('Ordered by `last_activity_at` descending (id descending as the tie-break), so the first entry is the run to resume. At most `limit` entries. NOTE the two-stage boundary: `started_at` descending decides WHICH runs make the page (that is what the database can order cheaply), and `last_activity_at` orders the page. A run old enough to fall outside `limit` by start date is not pulled back in by recent step activity. When `active_count` exceeds this array\'s length the remainder is NOT reachable from here (there is no cursor); every run, running ones included, is reachable from the paginated workspace runs index, `GET /api/v1/workspaces/{id}/runs`.'),
   })
   .openapi('ActiveRuns');
 
