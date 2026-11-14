@@ -55,12 +55,22 @@ export function foldForSearch(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
+// BK-1906 — a broken percent-encoding (`%E0%A4%A`) never throws: it decodes to
+// U+FFFD, the replacement character every UTF-8 decoder emits, but not to the
+// same text everywhere (the server page read "\uFFFD" where the browser read
+// "\uFFFD%A"). A value holding it is malformed and reads as empty on both sides,
+// so the server render and the browser agree on the full list.
+const DECODE_REPLACEMENT_CHAR = '\uFFFD';
+
+function cleanParam(raw: string | null | undefined): string {
+  if (typeof raw !== 'string' || raw.includes(DECODE_REPLACEMENT_CHAR)) { return ''; }
+  return cleanSearchTerm(raw);
+}
+
 // `?q=` as the server page reads it: first value wins, malformed or absent is
 // empty (a bad percent-encoding never reaches here as an error).
 export function parseSearchParam(raw: string | string[] | undefined): string {
-  const first = Array.isArray(raw) ? raw[0] : raw;
-  if (typeof first !== 'string') { return ''; }
-  return cleanSearchTerm(first);
+  return cleanParam(Array.isArray(raw) ? raw[0] : raw);
 }
 
 export function readSearchFromAddress(search: string): string {
@@ -68,12 +78,8 @@ export function readSearchFromAddress(search: string): string {
   return parseSearchParam(params.get(ATC_LIBRARY_SEARCH_PARAM) ?? undefined);
 }
 
-function cleanText(raw: string | null | undefined): string {
-  return typeof raw === 'string' ? cleanSearchTerm(raw) : '';
-}
-
 function parseLayer(raw: string | null | undefined): '' | AtcLibraryLayer {
-  const wanted = cleanText(raw).toLowerCase();
+  const wanted = cleanParam(raw).toLowerCase();
   return ATC_LIBRARY_LAYERS.find(layer => layer.toLowerCase() === wanted) ?? '';
 }
 
@@ -81,11 +87,11 @@ function parseLayer(raw: string | null | undefined): '' | AtcLibraryLayer {
 export function readQueryFromAddress(search: string): AtcLibraryQuery {
   const params = new URLSearchParams(search);
   return {
-    q: cleanText(params.get(ATC_LIBRARY_SEARCH_PARAM)),
-    project: cleanText(params.get(ATC_LIBRARY_PROJECT_PARAM)),
-    module: cleanText(params.get(ATC_LIBRARY_MODULE_PARAM)),
+    q: cleanParam(params.get(ATC_LIBRARY_SEARCH_PARAM)),
+    project: cleanParam(params.get(ATC_LIBRARY_PROJECT_PARAM)),
+    module: cleanParam(params.get(ATC_LIBRARY_MODULE_PARAM)),
     layer: parseLayer(params.get(ATC_LIBRARY_LAYER_PARAM)),
-    anchor: cleanText(params.get(ATC_LIBRARY_ANCHOR_PARAM)),
+    anchor: cleanParam(params.get(ATC_LIBRARY_ANCHOR_PARAM)),
   };
 }
 
@@ -96,11 +102,11 @@ type RawParam = string | string[] | undefined;
 export function parseQueryParams(raw: Partial<Record<'q' | 'project' | 'module' | 'layer' | 'anchor', RawParam>>): AtcLibraryQuery {
   const first = (value: RawParam) => (Array.isArray(value) ? value[0] : value);
   return {
-    q: cleanText(first(raw.q)),
-    project: cleanText(first(raw.project)),
-    module: cleanText(first(raw.module)),
+    q: cleanParam(first(raw.q)),
+    project: cleanParam(first(raw.project)),
+    module: cleanParam(first(raw.module)),
     layer: parseLayer(first(raw.layer)),
-    anchor: cleanText(first(raw.anchor)),
+    anchor: cleanParam(first(raw.anchor)),
   };
 }
 
