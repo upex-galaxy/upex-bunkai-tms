@@ -52,6 +52,22 @@ export interface DbRole {
   access: string
 }
 
+// Public CA certificate for verifying the database's TLS (BK-49). Every field
+// is plain text: the file itself lives in public/qa and carries no secret.
+export interface DbTlsCa {
+  fileName: string
+  href: string
+  issuer: string
+  validUntil: string
+  sha256: string
+  purpose: string
+  verified: string
+  nodeEnv: string
+  pgClient: string
+  lastResort: string
+  access: string
+}
+
 export interface QaConfig {
   lang: 'es' | 'en'
   project: {
@@ -106,6 +122,9 @@ export interface QaConfig {
     roles: DbRole[]
     revokedSecretTables: string[]
     poolerNote: string
+    // Public CA that signs the database's TLS certificate (BK-49 Stage 5: Node
+    // clients fail with SELF_SIGNED_CERT_IN_CHAIN without it). Not a secret.
+    tlsCa: DbTlsCa
     rpcAccess: string
     rlsProbe: string
   }
@@ -706,6 +725,31 @@ export const qaConfig: QaConfig = {
     // aislamiento es a nivel TABLA, no a nivel columna.
     revokedSecretTables: ['access_token_secrets', 'magic_link_token_secrets', 'workspace_invite_secrets'],
     poolerNote: 'Conectá por el Session Pooler en el puerto 5432 (transacciones largas OK). NO uses el 6543 (transaction pooler, sin prepared statements). El usuario del pooler es punteado: <DBHUB_USER>.<project-ref> — host, user y ref viven en el .env (DBHUB_HOST, DBHUB_USER), nunca en esta página.',
+    tlsCa: {
+      fileName: 'supabase-root-2021-ca.crt',
+      href: '/qa/supabase-root-2021-ca.crt',
+      issuer: 'Supabase Root 2021 CA',
+      validUntil: '2031-04-26',
+      sha256: '80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA',
+      purpose: 'La base habla TLS y la cadena de su certificado termina en una CA propia de Supabase que el almacén de confianza de Node no trae. Un cliente Node, Playwright o un driver de Postgres sin ese certificado falla con SELF_SIGNED_CERT_IN_CHAIN; con el .crt verifica la conexión de verdad. DBHub y las extensiones SQL de VSCode no siempre lo necesitan: usalo si te da ese error.',
+      verified: 'Verificado contra el Session Pooler del proyecto (puerto 5432): sin el archivo la conexión falla con SELF_SIGNED_CERT_IN_CHAIN, y con él la cadena queda verificada y termina en Supabase Root 2021 CA con el fingerprint de abajo. El certificado es público, no un secreto.',
+      nodeEnv: `# Opción 1: variable de entorno al lanzar el proceso (Node, Playwright, scripts)
+NODE_EXTRA_CA_CERTS=/ruta/a/supabase-root-2021-ca.crt node tu-script.js`,
+      pgClient: `// Opción 2: cliente pg (node-postgres): la CA va en la opción ssl
+import fs from 'node:fs'
+import pg from 'pg'
+
+const client = new pg.Client({
+  host: process.env.DBHUB_HOST,
+  port: Number(process.env.DBHUB_PORT),
+  database: process.env.DBHUB_DATABASE,
+  user: process.env.DBHUB_USER,
+  password: process.env.DBHUB_PASSWORD,
+  ssl: { ca: fs.readFileSync('/ruta/a/supabase-root-2021-ca.crt', 'utf8') },
+})`,
+      lastResort: 'Último recurso, solo para destrabarte un rato: ssl: { rejectUnauthorized: false }. Eso APAGA la verificación del certificado, así que ya no sabés con quién estás hablando. No lo dejes en un script que commiteás.',
+      access: 'El acceso a la base es con el usuario SQL de solo lectura cuyas credenciales están en la épica BK-29. No es acceso al panel de Supabase: el certificado es lo único que necesitás de ese lado.',
+    },
     rpcAccess: 'qa_inspector_rw puede ejecutar prácticamente todos los RPC de public: los de SECURITY INVOKER desde la migración 0085 y los de SECURITY DEFINER desde la 0086. Quedan fuera, con REVOKE explícito, las cinco funciones que leen auth.users (auth_email_status, bunkai_user_id_by_email, bunkai_resolve_activity_actors, bunkai_notification_digest_candidates, bunkai_request_workspace_deletion): auth guarda hashes de password y sesiones, y ese límite no se cruza. qa_inspector_ro recibe solo los DEFINER que no escriben (STABLE/IMMUTABLE), porque un DEFINER corre como postgres y saltearía su contrato de solo-lectura. Ojo con los RPC de mantenimiento: bunkai_sweep_abandoned_runs no está scopeado por workspace y aborta runs inactivos de TODOS los tenants — usá un threshold alto para acotar el radio.',
     rlsProbe: 'Ojo: estas credenciales NO sirven para probar aislamiento multi-tenant — BYPASSRLS hace que vean todos los workspaces a la vez. La sonda cross-tenant va con una sesión authenticated real (JWT): logueate como usuario B e intentá SELECT en projects con un workspace_id del usuario A → esperá 0 filas. RLS está activo en cada tabla; auth.uid() maneja la membresía vía la familia bunkai_is_workspace_member.',
   },
