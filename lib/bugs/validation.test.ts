@@ -236,3 +236,63 @@ describe('BugCorrectionBodySchema', () => {
     expect(BugCorrectionBodySchema.safeParse({ expected_version: 1 }).success).toBe(false);
   });
 });
+
+// BK-594 — one budget of ten for links and uploaded images (AC-02, AC-19).
+describe('BugCreateBodySchema — shared evidence budget (BK-594)', () => {
+  const ids = (n: number) => Array.from({ length: n }, (_, i) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, '0')}`);
+  const links = (n: number) => Array.from({ length: n }, (_, i) => `https://example.com/${i}`);
+
+  test.each([
+    ['4 links + 7 uploads', 4, 7],
+    ['10 links + 1 upload', 10, 1],
+    ['0 links + 11 uploads', 0, 11],
+  ])('refuses eleven items in mixed kinds: %s', (_label, l, u) => {
+    const result = BugCreateBodySchema.safeParse(standaloneBody({ evidence_urls: links(l), evidence_attachment_ids: ids(u) }));
+    expect(result.success).toBe(false);
+  });
+
+  test.each([
+    ['6 links + 4 uploads', 6, 4],
+    ['0 links + 10 uploads', 0, 10],
+    ['10 links + 0 uploads', 10, 0],
+  ])('accepts ten items in total: %s', (_label, l, u) => {
+    const result = BugCreateBodySchema.safeParse(standaloneBody({ evidence_urls: links(l), evidence_attachment_ids: ids(u) }));
+    expect(result.success).toBe(true);
+  });
+
+  test('refuses the same upload listed twice', () => {
+    const [a] = ids(1);
+    expect(BugCreateBodySchema.safeParse(standaloneBody({ evidence_attachment_ids: [a, a] })).success).toBe(false);
+  });
+
+  test('accepts an order that places every upload once inside the list', () => {
+    const result = BugCreateBodySchema.safeParse(standaloneBody({ evidence_urls: links(1), evidence_attachment_ids: ids(2), evidence_order: [0, 2] }));
+    expect(result.success).toBe(true);
+  });
+
+  test.each([
+    ['too short', [0]],
+    ['duplicate positions', [1, 1]],
+    ['outside the list', [0, 3]],
+  ])('refuses an invalid evidence_order: %s', (_label, order) => {
+    const result = BugCreateBodySchema.safeParse(standaloneBody({ evidence_urls: links(1), evidence_attachment_ids: ids(2), evidence_order: order }));
+    expect(result.success).toBe(false);
+  });
+
+  test('a run-linked body carries uploads the same way', () => {
+    const result = BugCreateBodySchema.safeParse({ run_step_id: RUN_STEP_ID, title: 'A perfectly reasonable bug title', severity: 'P2', evidence_attachment_ids: ids(1) });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(isRunLinkedBugBody(result.data)).toBe(true);
+      expect(result.data.evidence_attachment_ids).toHaveLength(1);
+    }
+  });
+
+  test('a links-only body is unchanged (AC-08)', () => {
+    const result = BugCreateBodySchema.safeParse(standaloneBody({ evidence_urls: ['https://example.com/video.mp4'] }));
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.evidence_attachment_ids).toBeUndefined();
+    }
+  });
+});

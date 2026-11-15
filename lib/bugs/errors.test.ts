@@ -15,7 +15,7 @@ import { describe, expect, test } from 'bun:test';
 // `mapBugRpcError` always throws; capture the ApiError so each case can assert
 // code/status/message/details.
 function capture(
-  error: { code?: string, message: string },
+  error: { code?: string, message: string, hint?: string | null },
   opts?: { notFoundEntity?: 'project_or_module' | 'bug', currentStatus?: string },
 ): ApiError {
   try {
@@ -139,6 +139,26 @@ describe('mapBugRpcError', () => {
     expect(err.code).toBe('validation_failed');
     expect(err.status).toBe(422);
     expect(err.details).toEqual({ reason: 'evidence_limit_exceeded' });
+  });
+
+  test('45303 with hint count/bytes names the shared limit (BK-594, AC-03/AC-05/AC-19)', () => {
+    const count = capture({ code: '45303', message: 'bug_evidence_limit_exceeded', hint: 'count' });
+    expect([count.status, count.message]).toEqual([422, 'This defect already holds the maximum evidence (10 items).']);
+    expect(count.details).toEqual({ reason: 'evidence_limit_exceeded', limit: 'count' });
+    const bytes = capture({ code: '45303', message: 'bug_evidence_limit_exceeded', hint: 'bytes' });
+    expect([bytes.status, bytes.message]).toEqual([422, 'This defect already holds the maximum evidence (10 items or 50 MiB).']);
+  });
+
+  test('45315 → not_found 404, non-disclosing (BK-594, AC-24)', () => {
+    const err = capture({ code: '45315', message: 'bug_evidence_unavailable' });
+    expect([err.code, err.status]).toEqual(['not_found', 404]);
+    expect(err.details).toEqual({ reason: 'evidence_not_found' });
+  });
+
+  test('45316 → validation_failed 422 (BK-594)', () => {
+    const err = capture({ code: '45316', message: 'bug_evidence_order_invalid' });
+    expect([err.code, err.status]).toEqual(['validation_failed', 422]);
+    expect(err.details).toEqual({ reason: 'evidence_order_invalid' });
   });
 
   test('unknown code → internal_error 500', () => {

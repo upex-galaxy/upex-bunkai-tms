@@ -1,4 +1,4 @@
-import { BUG_EVIDENCE_MAX, BUG_SEVERITY_VALUES, BUG_STATUS_VALUES, BUG_TITLE_MAX, BUG_TITLE_MIN } from '@lib/bugs/constants';
+import { BUG_EVIDENCE_MAX, BUG_EVIDENCE_MESSAGES, BUG_SEVERITY_VALUES, BUG_STATUS_VALUES, BUG_TITLE_MAX, BUG_TITLE_MIN } from '@lib/bugs/constants';
 import { z } from 'zod';
 
 // BK-40 — file-a-bug request validation. Mirrors the `bunkai_create_bug` RPC
@@ -45,13 +45,52 @@ const evidenceUrlsSchema = z
   .max(BUG_EVIDENCE_MAX)
   .optional();
 
+// BK-594 — uploaded images to claim (the caller's own committed uploads,
+// POST /projects/{id}/bug-evidence) and, optionally, the position of each one
+// in the combined evidence list. `bunkai_create_bug` is the enforcement point
+// of record (45303 / 45315 / 45316); this layer refuses the obvious cases
+// first.
+const evidenceAttachmentIdsSchema = z.array(z.string().uuid()).max(BUG_EVIDENCE_MAX).optional();
+const evidenceOrderSchema = z.array(z.number().int().min(0).max(BUG_EVIDENCE_MAX - 1)).max(BUG_EVIDENCE_MAX).optional();
+
 const BugCreateSharedFieldsSchema = {
   title: titleSchema,
   severity: severitySchema,
   description: z.string().trim().optional(),
   steps_to_reproduce: z.string().optional(),
   evidence_urls: evidenceUrlsSchema,
+  evidence_attachment_ids: evidenceAttachmentIdsSchema,
+  evidence_order: evidenceOrderSchema,
 };
+
+interface EvidenceFields {
+  evidence_urls?: string[]
+  evidence_attachment_ids?: string[]
+  evidence_order?: number[]
+}
+
+// One budget of ten for links and images together (AC-02, AC-19), and an
+// order that names every image exactly once inside the combined list.
+function checkEvidenceBudget(body: EvidenceFields, ctx: z.RefinementCtx): void {
+  const links = body.evidence_urls?.length ?? 0;
+  const ids = body.evidence_attachment_ids ?? [];
+  const total = links + ids.length;
+  if (total > BUG_EVIDENCE_MAX) {
+    ctx.addIssue({ code: 'custom', path: ['evidence_attachment_ids'], message: BUG_EVIDENCE_MESSAGES.count });
+  }
+  if (new Set(ids).size !== ids.length) {
+    ctx.addIssue({ code: 'custom', path: ['evidence_attachment_ids'], message: 'An image can be listed only once.' });
+  }
+  const order = body.evidence_order;
+  if (order !== undefined) {
+    const valid = order.length === ids.length
+      && new Set(order).size === order.length
+      && order.every(position => position < total);
+    if (!valid) {
+      ctx.addIssue({ code: 'custom', path: ['evidence_order'], message: 'evidence_order must give each uploaded image a distinct position inside the evidence list.' });
+    }
+  }
+}
 
 export const BugRunLinkedCreateBodySchema = z.object({
   run_step_id: z.string().uuid(),
@@ -67,7 +106,7 @@ export const BugStandaloneCreateBodySchema = z.object({
 export const BugCreateBodySchema = z.union([
   BugRunLinkedCreateBodySchema,
   BugStandaloneCreateBodySchema,
-]);
+]).superRefine(checkEvidenceBudget);
 
 export type BugRunLinkedCreateBody = z.infer<typeof BugRunLinkedCreateBodySchema>;
 export type BugStandaloneCreateBody = z.infer<typeof BugStandaloneCreateBodySchema>;

@@ -21,6 +21,20 @@ export const BUG_SEVERITY_LABEL: Record<BugSeverity, string> = {
 
 export const BUG_EVIDENCE_MAX = 10;
 
+// BK-594 — one budget per defect: at most BUG_EVIDENCE_MAX items (pasted links
+// and uploaded images together) and BUG_EVIDENCE_MAX_BYTES of images (links
+// weigh 0 bytes). Mirrors 0131_bug_evidence_attachments.sql (45303).
+export const BUG_EVIDENCE_MAX_BYTES = 50 * 1024 * 1024;
+
+// BK-594 AI Product Owner decision P2: the refusal copy, chosen by the reason.
+export const BUG_EVIDENCE_MESSAGES = {
+  count: `This defect already holds the maximum evidence (${BUG_EVIDENCE_MAX} items).`,
+  bytes: `This defect already holds the maximum evidence (${BUG_EVIDENCE_MAX} items or 50 MiB).`,
+  unavailable: 'An attached image is no longer available. Remove it and attach it again.',
+  frozen: 'Evidence on a filed defect cannot be changed.',
+  expired: 'This upload expired. Attach the image again.',
+} as const;
+
 // BK-40 Slice 3 — mirrors the `bugs.status` CHECK (0046_bugs.sql). BK-40 only
 // ever writes 'open' (Technical Decision 5); the full enum is needed now
 // because the standalone list (Slice 3) renders whatever status a bug is

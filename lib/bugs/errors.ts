@@ -1,5 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
-import { BUG_STATUS_VALUES } from '@lib/bugs/constants';
+import { BUG_EVIDENCE_MESSAGES, BUG_STATUS_VALUES } from '@lib/bugs/constants';
 
 // BK-40 — map a bunkai_create_bug / bunkai_list_project_bugs RPC error
 // (Postgres SQLSTATE) to the canonical API envelope. The RPCs raise the bugs-
@@ -18,7 +18,7 @@ import { BUG_STATUS_VALUES } from '@lib/bugs/constants';
 // it defaults to 'project_or_module' so the existing POST /api/v1/bugs call
 // site (`mapBugRpcError(error)`, no options) keeps its exact prior behavior.
 export function mapBugRpcError(
-  error: { code?: string, message: string },
+  error: { code?: string, message: string, hint?: string | null },
   opts: { notFoundEntity?: 'project_or_module' | 'bug', currentStatus?: string } = {},
 ): never {
   switch (error.code) {
@@ -119,8 +119,26 @@ export function mapBugRpcError(
         details: { reason: 'severity_invalid' },
       });
     case '45303':
-      throw new ApiError('validation_failed', 'Evidence links cannot exceed 10.', {
-        details: { reason: 'evidence_limit_exceeded' },
+      // BK-594 — one budget for links and uploaded images together. The
+      // HINT names the limit that was hit (count | bytes); no hint is the
+      // pre-0131 links-only backstop.
+      throw new ApiError('validation_failed', error.hint === 'bytes'
+        ? BUG_EVIDENCE_MESSAGES.bytes
+        : error.hint === 'count'
+          ? BUG_EVIDENCE_MESSAGES.count
+          : 'Evidence links cannot exceed 10.', {
+        details: error.hint ? { reason: 'evidence_limit_exceeded', limit: error.hint } : { reason: 'evidence_limit_exceeded' },
+      });
+    case '45315':
+      // BK-594 — a referenced upload is not the actor's own committed,
+      // unclaimed, unexpired upload in this project. Non-disclosing: missing,
+      // foreign, pending, claimed and expired are the same 404.
+      throw new ApiError('not_found', BUG_EVIDENCE_MESSAGES.unavailable, {
+        details: { reason: 'evidence_not_found' },
+      });
+    case '45316':
+      throw new ApiError('validation_failed', 'evidence_order must place every uploaded image exactly once inside the evidence list.', {
+        details: { reason: 'evidence_order_invalid' },
       });
     default:
       throw new ApiError('internal_error', error.message);

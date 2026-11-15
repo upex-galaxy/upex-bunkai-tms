@@ -74,12 +74,23 @@ const BugSchema = z
 // list_project_bugs` inline their OWN module object with no `archived_at`
 // and carry no `origin` at all (Tech Lead TQ2 — the composer is not shared
 // with the lists, extending it does not propagate to them).
+const BugEvidenceAttachmentSchema = z
+  .object({
+    id: z.string().uuid(),
+    position: z.number().int().min(0).max(9).describe('Place in the combined evidence list (links and images together), 0-based.'),
+    filename: z.string().describe('Display only.'),
+    content_type: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+    byte_size: z.number().int(),
+  })
+  .openapi('BugEvidenceAttachment');
+
 const BugDetailSchema = BugSchema
   .omit({ module: true })
   .extend({
     module: BugDetailModuleSchema,
     content_version: z.number().int().min(1).describe('BK-1835 — the content version, bumped only by an effective correction (PATCH /api/v1/bugs/{id}). Send it back as `expected_version` when correcting; a status or assignee change never bumps it.'),
     origin: BugOriginSchema.nullable().describe('Provenance for a run-linked defect (originating Run + failed step position + ATC), or null for a standalone one — the page reads null as "Filed manually" (PO ruling).'),
+    evidence_attachments: z.array(BugEvidenceAttachmentSchema).describe('BK-594 — images filed as evidence, ordered by `position` in the combined evidence list. `evidence_urls` fill the remaining positions in their own order. Open one with GET /api/v1/bugs/{id}/evidence/{attachmentId}/content.'),
   })
   .openapi('BugDetail');
 
@@ -115,6 +126,12 @@ const RunLinkedCreateBodySchema = z
     evidence_urls: z.array(z.string().url()).max(10).optional().openapi({
       description: 'Up to 10 evidence links. Each entry must use the `http://` or `https://` scheme — the validator is protocol-restricted, so `ftp://`, `data:`, `file://` and any other scheme are rejected with 422 `validation_failed` even though the value is a well-formed URL.',
     }),
+    evidence_attachment_ids: z.array(z.string().uuid()).max(10).optional().openapi({
+      description: 'BK-594 — images to attach: the caller\'s own committed, never-filed uploads in this Project (POST /api/v1/projects/{id}/bug-evidence). Links and images share ONE budget of 10 items, and images 50 MiB in total. Each upload can be filed once; any other id answers 404 `not_found` (reason `evidence_not_found`).',
+    }),
+    evidence_order: z.array(z.number().int().min(0).max(9)).max(10).optional().openapi({
+      description: 'BK-594 — the 0-based position of each `evidence_attachment_ids` entry in the combined evidence list; the links fill the remaining positions in their own order. Omitted, the images follow the links.',
+    }),
   })
   .openapi('BugRunLinkedCreateBody');
 
@@ -128,6 +145,12 @@ const StandaloneCreateBodySchema = z
     steps_to_reproduce: z.string().optional(),
     evidence_urls: z.array(z.string().url()).max(10).optional().openapi({
       description: 'Up to 10 evidence links. Each entry must use the `http://` or `https://` scheme — the validator is protocol-restricted, so `ftp://`, `data:`, `file://` and any other scheme are rejected with 422 `validation_failed` even though the value is a well-formed URL.',
+    }),
+    evidence_attachment_ids: z.array(z.string().uuid()).max(10).optional().openapi({
+      description: 'BK-594 — images to attach: the caller\'s own committed, never-filed uploads in this Project (POST /api/v1/projects/{id}/bug-evidence). Links and images share ONE budget of 10 items, and images 50 MiB in total. Each upload can be filed once; any other id answers 404 `not_found` (reason `evidence_not_found`).',
+    }),
+    evidence_order: z.array(z.number().int().min(0).max(9)).max(10).optional().openapi({
+      description: 'BK-594 — the 0-based position of each `evidence_attachment_ids` entry in the combined evidence list; the links fill the remaining positions in their own order. Omitted, the images follow the links.',
     }),
   })
   .openapi('BugStandaloneCreateBody');
@@ -156,8 +179,8 @@ registry.registerPath({
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: IDEMPOTENCY_409, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member with write access.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    404: { description: 'Project, module, or run step not found (non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed (title 5–200 chars, severity P1–P4, evidence links ≤10, module outside project, or the run-linked step is not `failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'Project, module, run step or an evidence upload not found (non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed (title 5–200 chars, severity P1–P4, more than 10 evidence items or 50 MiB of images in total, an invalid `evidence_order`, module outside project, or the run-linked step is not `failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

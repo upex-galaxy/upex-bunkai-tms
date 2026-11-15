@@ -199,6 +199,8 @@ async function createBugFromBody(
     runId,
     runStepId,
     atcId,
+    evidenceAttachmentIds: body.evidence_attachment_ids ?? [],
+    evidenceOrder: body.evidence_order ?? null,
   });
   if (error) {
     mapBugRpcError(error);
