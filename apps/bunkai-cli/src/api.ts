@@ -75,6 +75,9 @@ export class ApiClient {
         method: options.method ?? 'GET',
         headers,
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        // Never follow a redirect: it would resend the password (sign-in) or
+        // the PAT (every other call) to wherever the Location header points.
+        redirect: 'manual',
         signal: AbortSignal.timeout(this.timeoutMs),
       });
     }
@@ -83,6 +86,10 @@ export class ApiClient {
       throw new CliError(timedOut
         ? `Bunkai at ${this.baseUrl} did not answer within ${Math.round(this.timeoutMs / 1000)} s. Check your connection and try again.`
         : `Could not reach Bunkai at ${this.baseUrl}. Check your connection and try again.`);
+    }
+
+    if (response.status >= 300 && response.status < 400) {
+      throw new CliError(`Bunkai at ${this.baseUrl} answered with a redirect (${response.status}). Nothing was sent on; pass the final address with --api-url or BUNKAI_API_URL.`);
     }
 
     const text = await response.text().catch(() => '');
