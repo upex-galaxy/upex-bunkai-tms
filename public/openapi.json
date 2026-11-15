@@ -113,6 +113,78 @@
         "required": ["error"],
         "description": "Canonical error envelope returned by every `/api/v1` route on failure."
       },
+      "BugEvidenceUpload": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "draft_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The draft (one open filing form) this upload is counted against."
+          },
+          "bug_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Null until a filing claims the upload."
+          },
+          "position": {
+            "type": ["integer", "null"]
+          },
+          "filename": {
+            "type": "string",
+            "description": "Display only: never used to decide the type or build a path."
+          },
+          "content_type": {
+            "type": "string",
+            "enum": ["image/png", "image/jpeg", "image/webp"]
+          },
+          "byte_size": {
+            "type": "integer",
+            "description": "Declared size while `pending`; the size measured in Storage once `committed`."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "committed"]
+          },
+          "created_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "committed_at": {
+            "type": ["string", "null"]
+          },
+          "expires_at": {
+            "type": ["string", "null"],
+            "description": "An upload that no filing claims by this time is discarded (3 hours after init)."
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "draft_id",
+          "bug_id",
+          "position",
+          "filename",
+          "content_type",
+          "byte_size",
+          "status",
+          "created_by",
+          "created_at",
+          "committed_at",
+          "expires_at"
+        ],
+        "description": "One image uploaded for a defect that is being filed. Never carries a storage path or a URL, and nobody can read it until a filing claims it."
+      },
       "RunStepAttachment": {
         "type": "object",
         "properties": {
@@ -1774,6 +1846,10 @@
             "type": "integer",
             "description": "Pending uploads whose window lapsed, deleted this run (their objects are queued)."
           },
+          "expired_bug_evidence": {
+            "type": "integer",
+            "description": "BK-594 - defect evidence uploads no filing claimed within 3 hours, deleted this run (their objects are queued)."
+          },
           "deleted": {
             "type": "integer",
             "description": "Queued objects removed from Storage this run."
@@ -1791,7 +1867,14 @@
             "description": "Outbox rows parked after 10 failed attempts. Anything above zero needs a human."
           }
         },
-        "required": ["expired_pending", "deleted", "failed", "purged", "stuck"]
+        "required": [
+          "expired_pending",
+          "expired_bug_evidence",
+          "deleted",
+          "failed",
+          "purged",
+          "stuck"
+        ]
       },
       "Atc": {
         "type": "object",
@@ -2931,6 +3014,13 @@
           },
           "origin": {
             "$ref": "#/components/schemas/BugOrigin"
+          },
+          "evidence_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BugEvidenceAttachment"
+            },
+            "description": "BK-594 — images filed as evidence, ordered by `position` in the combined evidence list. `evidence_urls` fill the remaining positions in their own order. Open one with GET /api/v1/bugs/{id}/evidence/{attachmentId}/content."
           }
         },
         "required": [
@@ -2953,7 +3043,8 @@
           "updated_at",
           "module",
           "content_version",
-          "origin"
+          "origin",
+          "evidence_attachments"
         ]
       },
       "BugDetailModule": {
@@ -3015,6 +3106,33 @@
         "required": ["run_id", "run_step_position", "atc_id", "atc_title", "atc_layer"],
         "description": "Provenance for a run-linked defect (originating Run + failed step position + ATC), or null for a standalone one — the page reads null as \"Filed manually\" (PO ruling)."
       },
+      "BugEvidenceAttachment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9,
+            "description": "Place in the combined evidence list (links and images together), 0-based."
+          },
+          "filename": {
+            "type": "string",
+            "description": "Display only."
+          },
+          "content_type": {
+            "type": "string",
+            "enum": ["image/png", "image/jpeg", "image/webp"]
+          },
+          "byte_size": {
+            "type": "integer"
+          }
+        },
+        "required": ["id", "position", "filename", "content_type", "byte_size"]
+      },
       "BugRunLinkedCreateBody": {
         "type": "object",
         "properties": {
@@ -3046,6 +3164,25 @@
             },
             "maxItems": 10,
             "description": "Up to 10 evidence links. Each entry must use the `http://` or `https://` scheme — the validator is protocol-restricted, so `ftp://`, `data:`, `file://` and any other scheme are rejected with 422 `validation_failed` even though the value is a well-formed URL."
+          },
+          "evidence_attachment_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 10,
+            "description": "BK-594 — images to attach: the caller's own committed, never-filed uploads in this Project (POST /api/v1/projects/{id}/bug-evidence). Links and images share ONE budget of 10 items, and images 50 MiB in total. Each upload can be filed once; any other id answers 404 `not_found` (reason `evidence_not_found`)."
+          },
+          "evidence_order": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9
+            },
+            "maxItems": 10,
+            "description": "BK-594 — the 0-based position of each `evidence_attachment_ids` entry in the combined evidence list; the links fill the remaining positions in their own order. Omitted, the images follow the links."
           }
         },
         "required": ["run_step_id", "title", "severity"]
@@ -3084,6 +3221,25 @@
             },
             "maxItems": 10,
             "description": "Up to 10 evidence links. Each entry must use the `http://` or `https://` scheme — the validator is protocol-restricted, so `ftp://`, `data:`, `file://` and any other scheme are rejected with 422 `validation_failed` even though the value is a well-formed URL."
+          },
+          "evidence_attachment_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 10,
+            "description": "BK-594 — images to attach: the caller's own committed, never-filed uploads in this Project (POST /api/v1/projects/{id}/bug-evidence). Links and images share ONE budget of 10 items, and images 50 MiB in total. Each upload can be filed once; any other id answers 404 `not_found` (reason `evidence_not_found`)."
+          },
+          "evidence_order": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9
+            },
+            "maxItems": 10,
+            "description": "BK-594 — the 0-based position of each `evidence_attachment_ids` entry in the combined evidence list; the links fill the remaining positions in their own order. Omitted, the images follow the links."
           }
         },
         "required": ["project_id", "module_id", "title", "severity"]
@@ -4099,6 +4255,58 @@
           }
         },
         "required": ["notification"]
+      },
+      "BugEvidenceUploadTarget": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": ["PUT"]
+          },
+          "url": {
+            "type": "string",
+            "description": "Storage signed upload URL for this upload only. Valid for 2 hours. Treat it as a secret."
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Send exactly these headers with the PUT. The body is the raw file bytes."
+          },
+          "expires_at": {
+            "type": "string"
+          }
+        },
+        "required": ["method", "url", "headers", "expires_at"]
+      },
+      "BugEvidenceInitBody": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Display name, 1-255 characters after trimming."
+          },
+          "content_type": {
+            "type": "string",
+            "enum": ["image/png", "image/jpeg", "image/webp"],
+            "description": "Declared type. The bytes are checked against it at commit: the content decides, never the name."
+          },
+          "byte_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10485760,
+            "description": "Size in bytes, 1 to 10485760 (10 MiB), inclusive."
+          },
+          "draft_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A uuid the client keeps for one filing form. At most 10 uploads and 50 MiB are live per draft."
+          }
+        },
+        "required": ["filename", "content_type", "byte_size", "draft_id"]
       },
       "DefectHeatmapReport": {
         "type": "object",
@@ -10829,7 +11037,7 @@
             }
           },
           "404": {
-            "description": "Project, module, or run step not found (non-disclosing).",
+            "description": "Project, module, run step or an evidence upload not found (non-disclosing).",
             "content": {
               "application/json": {
                 "schema": {
@@ -10849,7 +11057,7 @@
             }
           },
           "422": {
-            "description": "Validation failed (title 5–200 chars, severity P1–P4, evidence links ≤10, module outside project, or the run-linked step is not `failed`).",
+            "description": "Validation failed (title 5–200 chars, severity P1–P4, more than 10 evidence items or 50 MiB of images in total, an invalid `evidence_order`, module outside project, or the run-linked step is not `failed`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -11080,6 +11288,97 @@
           },
           "422": {
             "description": "Validation failed — the requested assignee is not an active member of this workspace (`assignee_not_workspace_member`), or is a view-only member (`assignee_view_only`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bugs/{id}/evidence/{attachmentId}/content": {
+      "get": {
+        "tags": ["Bugs"],
+        "summary": "Open an image filed as defect evidence",
+        "description": "Bearer `atc:read` (or cookie session); any member of the owning Workspace, viewers included (access is Workspace-level). Answers 302 with a `Location` that is a signed URL valid for 60 seconds, `Cache-Control: private, no-store`. There is no anonymous read path and a stored reference alone is never enough. Do not store or log the `Location`. Missing, foreign-Workspace, never-filed and soft-deleted-Workspace evidence all answer the same 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Bug id."
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the signed URL of the image (60 seconds)."
+          },
+          "400": {
+            "description": "Malformed ids (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Evidence not found (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is temporarily unavailable (`storage_unavailable`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -13121,6 +13420,389 @@
           },
           "404": {
             "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/bug-evidence": {
+      "post": {
+        "tags": ["Bugs"],
+        "summary": "Start an image upload for a defect being filed",
+        "description": "Bearer `atc:write` (or cookie session); member+ write access in the Project's Workspace. Step 1 of 3: init -> PUT the raw bytes to `upload.url` with `upload.headers` -> `POST .../bug-evidence/{attachmentId}/commit`, then file the defect with `POST /api/v1/bugs` and `evidence_attachment_ids`. Limits (inclusive): PNG, JPEG or WebP only; 10 MiB per file; one budget of 10 items (pasted links and images together) and 50 MiB per defect. Nobody can read an upload until a filing claims it; an upload never claimed is discarded after 3 hours.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8-128 chars, [a-zA-Z0-9_-]. A retry with the same key and payload returns the stored answer and creates no second upload; the same key with a different payload returns 409 `conflict`. The same image attached twice on purpose uses two different keys."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BugEvidenceInitBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pending upload created. PUT the bytes to `upload`, then commit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachment": {
+                      "$ref": "#/components/schemas/BugEvidenceUpload"
+                    },
+                    "upload": {
+                      "$ref": "#/components/schemas/BugEvidenceUploadTarget"
+                    }
+                  },
+                  "required": ["attachment", "upload"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id, malformed JSON, or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or a viewer (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found, or in a Workspace the caller is not a member of (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Idempotency-Key was reused with a different payload or is still in flight (`conflict`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The file is larger than 10 MiB (`file_too_large`). Copy: \"Images must be 10 MiB or smaller.\"",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Not PNG, JPEG or WebP (`unsupported_media_type`). Copy: \"Only PNG, JPEG or WebP images are accepted.\"",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Empty file or invalid name (`validation_failed`, reasons `empty_file`, `invalid_filename`), or the draft is full (`attachment_limit_exceeded`, reasons `defect_count`, `defect_bytes`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is temporarily unavailable (`storage_unavailable`). Safe to retry with the same Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/bug-evidence/{attachmentId}/commit": {
+      "post": {
+        "tags": ["Bugs"],
+        "summary": "Finish an image upload for a defect being filed",
+        "description": "Bearer `atc:write` (or cookie session); the uploader only. Reads what actually arrived in Storage: the size from the object metadata, the type from its first 64 KiB. A file that is not the declared, still PNG, JPEG or WebP image is refused and discarded. Idempotent: an already committed upload answers with the same body. The upload stays invisible until a filing claims it.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachment": {
+                      "$ref": "#/components/schemas/BugEvidenceUpload"
+                    }
+                  },
+                  "required": ["attachment"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed ids (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or no longer a writer (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Upload not found under this Project, or not the caller's (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The bytes have not arrived yet (`conflict`, reason `upload_missing`), or the 3 hour window lapsed (reason `pending_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "What arrived is larger than 10 MiB (`file_too_large`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "What arrived is empty, not the declared type, or animated (`validation_failed`, reasons `empty_file`, `content_mismatch`, `animated_image`), or the draft is full (`attachment_limit_exceeded`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is temporarily unavailable (`storage_unavailable`). Safe to retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/bug-evidence/{attachmentId}": {
+      "delete": {
+        "tags": ["Bugs"],
+        "summary": "Discard an image upload that was never filed",
+        "description": "Bearer `atc:write` (or cookie session); the uploader only. Works on a `pending` or a committed upload that no defect has claimed. Evidence on a filed defect is fixed at filing and cannot be removed (409). The stored object is deleted afterwards on a best-effort basis and retried by the daily cleanup sweep.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Discarded."
+          },
+          "400": {
+            "description": "Malformed ids (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or no longer a writer (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Upload not found under this Project, or not the caller's (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A filed defect already holds this image (`conflict`, reason `evidence_frozen`).",
             "content": {
               "application/json": {
                 "schema": {

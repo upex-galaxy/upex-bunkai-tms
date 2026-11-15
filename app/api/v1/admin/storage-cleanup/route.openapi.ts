@@ -3,6 +3,7 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 const StorageCleanupResponseSchema = z
   .object({
     expired_pending: z.number().int().openapi({ description: 'Pending uploads whose window lapsed, deleted this run (their objects are queued).' }),
+    expired_bug_evidence: z.number().int().openapi({ description: 'BK-594 - defect evidence uploads no filing claimed within 3 hours, deleted this run (their objects are queued).' }),
     deleted: z.number().int().openapi({ description: 'Queued objects removed from Storage this run.' }),
     failed: z.number().int().openapi({ description: 'Queued objects whose removal failed this run; retried by the next sweep.' }),
     purged: z.number().int().openapi({ description: 'Finished outbox rows older than 7 days, deleted.' }),

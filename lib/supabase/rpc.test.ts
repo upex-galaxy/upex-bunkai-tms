@@ -1,4 +1,4 @@
-import { abortRun, commitRunStepAttachment, expirePendingRunStepAttachments, finishRun, initRunStepAttachment, removeRunStepAttachment } from '@lib/supabase/rpc';
+import { abortRun, commitBugEvidence, commitRunStepAttachment, createBug, discardBugEvidence, expireBugEvidence, expirePendingRunStepAttachments, finishRun, initBugEvidence, initRunStepAttachment, removeRunStepAttachment } from '@lib/supabase/rpc';
 import { describe, expect, it } from 'bun:test';
 
 // BK-211/12198 — a narrow unit seam for the one thing genuinely new here:
@@ -90,5 +90,39 @@ describe('run step attachment wrappers', () => {
     await expirePendingRunStepAttachments(client as never);
     await expirePendingRunStepAttachments(client as never, { limit: 5 });
     expect(calls.map(c => c.args.p_limit)).toEqual([500, 5]);
+  });
+});
+
+// BK-594 - defect evidence: the upload writers carry no identity parameter; createBug keeps its
+// explicit actor and forwards the uploads to claim with their positions.
+describe('defect evidence wrappers', () => {
+  it('init forwards the project, the draft and the declared file, and no actor', async () => {
+    const { client, calls } = fakeClient();
+    await initBugEvidence(client as never, { projectId: 'p1', draftId: 'd1', filename: 'a.png', contentType: 'image/png', byteSize: 10 });
+    expect(calls[0]).toEqual({
+      fn: 'bunkai_init_bug_evidence',
+      args: { p_project_id: 'p1', p_draft_id: 'd1', p_filename: 'a.png', p_content_type: 'image/png', p_byte_size: 10 },
+    });
+  });
+
+  it('commit, discard and expire forward only their own arguments', async () => {
+    const { client, calls } = fakeClient();
+    await commitBugEvidence(client as never, { attachmentId: 'a1', byteSize: 99 });
+    await discardBugEvidence(client as never, { attachmentId: 'a1' });
+    await expireBugEvidence(client as never);
+    expect(calls).toEqual([
+      { fn: 'bunkai_commit_bug_evidence', args: { p_attachment_id: 'a1', p_byte_size: 99 } },
+      { fn: 'bunkai_discard_bug_evidence', args: { p_attachment_id: 'a1' } },
+      { fn: 'bunkai_expire_bug_evidence', args: { p_limit: 500 } },
+    ]);
+  });
+
+  it('createBug forwards the uploads and their order, and an empty list with a null order by default', async () => {
+    const { client, calls } = fakeClient();
+    const base = { actorUserId: 'u1', projectId: 'p1', moduleId: 'm1', title: 'Title here', severity: 'P2' };
+    await createBug(client as never, { ...base, evidenceAttachmentIds: ['a1', 'a2'], evidenceOrder: [0, 2] });
+    await createBug(client as never, base);
+    expect(calls[0].args).toMatchObject({ p_actor_user_id: 'u1', p_evidence_attachment_ids: ['a1', 'a2'], p_evidence_order: [0, 2] });
+    expect(calls[1].args).toMatchObject({ p_evidence_urls: [], p_evidence_attachment_ids: [], p_evidence_order: null });
   });
 });

@@ -1,11 +1,12 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { expirePendingRunStepAttachments } from '@lib/supabase/rpc';
+import { expireBugEvidence, expirePendingRunStepAttachments } from '@lib/supabase/rpc';
 
 // BK-593 - the daily sweep of the storage cleanup outbox (ADR-0019, ADR-0017 shape). Three
 // idempotent steps, safe to run twice the same day:
 //   1. expire pending uploads whose window lapsed (their rows are deleted, which enqueues
-//      their objects through the AFTER DELETE trigger);
+//      their objects through the AFTER DELETE trigger), and BK-594 defect evidence uploads
+//      that no filing claimed within 3 hours (same trigger shape, migration 0131);
 //   2. drain the outbox: delete each queued object whose `not_before` has passed from its bucket, mark the row done on
 //      success, count an attempt and keep the error on failure (retried by the next sweep,
 //      parked after MAX_ATTEMPTS and reported as `stuck`);
@@ -19,6 +20,7 @@ export const CLEANUP_RETENTION_DAYS = 7;
 
 export interface CleanupSweepResult {
   expired_pending: number
+  expired_bug_evidence: number
   deleted: number
   failed: number
   purged: number
@@ -45,6 +47,9 @@ export async function runStorageCleanupSweep(
   if (expired.error) {
     throw new Error(`expire pending uploads failed: ${expired.error.message}`);
   }
+  // A failure here must not stop the outbox drain for every other surface: it is reported
+  // after the drain instead.
+  const expiredBug = await expireBugEvidence(admin, { limit: 500 });
 
   const open = await admin
     .from('storage_cleanup_queue')
@@ -93,8 +98,13 @@ export async function runStorageCleanupSweep(
     .is('done_at', null)
     .gte('attempts', CLEANUP_MAX_ATTEMPTS);
 
+  if (expiredBug.error) {
+    throw new Error(`expire unclaimed defect evidence failed (the outbox was drained): ${expiredBug.error.message}`);
+  }
+
   return {
     expired_pending: typeof expired.data === 'number' ? expired.data : 0,
+    expired_bug_evidence: typeof expiredBug.data === 'number' ? expiredBug.data : 0,
     deleted,
     failed,
     purged: purge.count ?? 0,

@@ -1,4 +1,6 @@
 import {
+  bugEvidenceContentPath,
+  buildBugEvidenceRows,
   evidenceCountLabel,
   formatBugEvidenceRow,
   isModuleArchived,
@@ -143,5 +145,48 @@ describe('evidenceCountLabel', () => {
     expect(evidenceCountLabel(0, 10)).toBe('0 / 10');
     expect(evidenceCountLabel(6, 10)).toBe('6 / 10');
     expect(evidenceCountLabel(10, 10)).toBe('10 / 10');
+  });
+});
+
+// BK-594 — links and filed images in one list, by position.
+describe('buildBugEvidenceRows', () => {
+  const BUG = 'b0000000-0000-4000-8000-000000000001';
+  const img = (id: string, position: number) => ({ id, position, filename: `${id}.png`, content_type: 'image/png', byte_size: 2048 });
+
+  test('places images at their positions and links in the free ones, in order (AC-09)', () => {
+    const rows = buildBugEvidenceRows({
+      id: BUG,
+      evidence_urls: ['https://example.com/log', 'https://example.com/video.mp4'],
+      evidence_attachments: [img('a', 0), img('b', 2)],
+    });
+    expect(rows.map(r => (r.kind === 'image' ? `img:${r.id}` : `link:${r.url}`))).toEqual([
+      'img:a',
+      'link:https://example.com/log',
+      'img:b',
+      'link:https://example.com/video.mp4',
+    ]);
+    expect(rows).toHaveLength(4);
+  });
+
+  test('an image row opens the authorized content route, never a stored URL (AC-01)', () => {
+    const [row] = buildBugEvidenceRows({ id: BUG, evidence_urls: [], evidence_attachments: [img('a', 0)] });
+    expect(row).toEqual({ kind: 'image', id: 'a', label: 'a.png', href: bugEvidenceContentPath(BUG, 'a'), byteSize: 2048 });
+    expect(bugEvidenceContentPath(BUG, 'a')).toBe(`/api/v1/bugs/${BUG}/evidence/a/content`);
+  });
+
+  test('links only, as before 0131, when no image is present (AC-08)', () => {
+    const rows = buildBugEvidenceRows({ id: BUG, evidence_urls: ['javascript:alert(1)', 'https://example.com/x'] });
+    expect(rows.map(r => r.kind)).toEqual(['link', 'link']);
+    expect(rows[0]).toMatchObject({ kind: 'link', isOpenable: false });
+    expect(rows[1]).toMatchObject({ kind: 'link', isOpenable: true });
+  });
+
+  test('no evidence is an empty list, not an error (AC-10)', () => {
+    expect(buildBugEvidenceRows({ id: BUG, evidence_urls: [], evidence_attachments: [] })).toEqual([]);
+  });
+
+  test('never drops a row, even with an out-of-range position', () => {
+    const rows = buildBugEvidenceRows({ id: BUG, evidence_urls: ['https://example.com/1'], evidence_attachments: [img('a', 7)] });
+    expect(rows).toHaveLength(2);
   });
 });

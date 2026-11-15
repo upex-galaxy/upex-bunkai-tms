@@ -1,6 +1,6 @@
 import type { UploadableFile } from './evidence-upload';
 import { describe, expect, it } from 'bun:test';
-import { uploadStepEvidence } from './evidence-upload';
+import { uploadEvidenceFile, uploadStepEvidence } from './evidence-upload';
 
 // BK-593 - the browser's upload sequence (init -> PUT to Storage -> commit) against a scripted
 // fetch. Nothing here talks to a server or to a bucket.
@@ -123,7 +123,7 @@ describe('uploadStepEvidence', () => {
   it('shows the server copy when commit refuses what arrived (the server already discarded it)', async () => {
     const f = script([INIT_OK, { status: 200 }, { status: 422, json: { error: { code: 'validation_failed', message: 'That file is empty or is not a valid PNG, JPEG or WebP image.' } } }]);
     const result = await uploadStepEvidence({ file: file(PNG), runId: RUN, stepId: STEP, fetchImpl: f.fetchImpl });
-    expect(result).toEqual({ ok: false, message: 'That file is empty or is not a valid PNG, JPEG or WebP image.' });
+    expect(result).toEqual({ ok: false, message: 'That file is empty or is not a valid PNG, JPEG or WebP image.', attachmentId: 'att-1' });
     expect(f.calls.map(c => c.method)).toEqual(['POST', 'PUT', 'POST']);
   });
 
@@ -132,5 +132,39 @@ describe('uploadStepEvidence', () => {
     const result = await uploadStepEvidence({ file: file(PNG), runId: RUN, stepId: STEP, fetchImpl: f.fetchImpl });
     expect(result.ok).toBe(true);
     expect(f.calls.map(c => c.method)).toEqual(['POST', 'PUT', 'POST', 'POST']);
+  });
+});
+
+// BK-594 - the shared sequence for defect evidence: same steps, its own base, extra init fields,
+// and the upload id on every failure after init so the drawer can discard a row the server may
+// still count.
+describe('uploadEvidenceFile', () => {
+  const BASE = '/api/v1/projects/p-1/bug-evidence';
+
+  it('posts init to the given base with the extra fields, and commits under it', async () => {
+    const f = script([INIT_OK, { status: 200 }, COMMIT_OK]);
+    const result = await uploadEvidenceFile({ file: file(PNG), base: BASE, initFields: { draft_id: 'd-1' }, fetchImpl: f.fetchImpl });
+    expect(result.ok).toBe(true);
+    expect(JSON.parse(f.calls[0].body as string)).toMatchObject({ draft_id: 'd-1', content_type: 'image/png' });
+    expect(f.calls.map(c => `${c.method} ${c.url}`)).toEqual([`POST ${BASE}`, 'PUT https://storage.test/up?token=t', `POST ${BASE}/att-1/commit`]);
+  });
+
+  it('a commit that never answers ends as a failure that carries the upload id (BK-1450 pattern, AC-07)', async () => {
+    const f = script([INIT_OK, { status: 200 }, 'throw', 'throw']);
+    const result = await uploadEvidenceFile({ file: file(PNG), base: BASE, commitTimeoutMs: 10, fetchImpl: f.fetchImpl });
+    expect(result).toMatchObject({ ok: false, attachmentId: 'att-1' });
+  });
+
+  it('carries no upload id when init itself failed (no row exists)', async () => {
+    const f = script([{ status: 403, json: { error: { message: 'You must be a member of this workspace with write access.' } } }]);
+    const result = await uploadEvidenceFile({ file: file(PNG), base: BASE, fetchImpl: f.fetchImpl });
+    expect(result).toEqual({ ok: false, message: 'You must be a member of this workspace with write access.' });
+  });
+
+  it('refuses a non-image before any request, whatever its name (AC-14)', async () => {
+    const f = script([]);
+    const result = await uploadEvidenceFile({ file: file(GIF, 'x.png'), base: BASE, fetchImpl: f.fetchImpl });
+    expect(result).toEqual({ ok: false, message: 'Only PNG, JPEG or WebP images are accepted.' });
+    expect(f.calls).toHaveLength(0);
   });
 });

@@ -59,3 +59,11 @@ The invariant for any future file surface: no anonymous read path, no client Sto
 - Jira BK-593: AI Product Owner and AI Tech Lead decisions (2026-10-19) and the storage backend ruling (2026-08-21).
 - `supabase/migrations/0097_run_step_attachments.sql`; precedent `0083_workspace_data_export.sql`, `0042_run_step_mark.sql`.
 - ADR-0012 (RPC authorization), ADR-0017 (cron principal), ADR-0001 (two principals).
+
+## Amendment 1 - BK-594 defect evidence (2026-11-15)
+
+BK-594 is the second file surface. It reuses this foundation and departs from decision 1 in one point, recorded here rather than in a new ADR because nothing else changes:
+
+- **Bucket:** defect evidence lives in the same private `run-evidence` bucket, under `{workspace_id}/bug/{project_id}/{attachment_id}`, instead of a second bucket. The limits (10 MiB, PNG/JPEG/WebP), the absence of any client storage policy, the Storage seam, the read route shape and the cleanup outbox are identical, so a second bucket would only have duplicated configuration. The literal `bug` segment cannot collide with the run layout, whose segments are all uuids. A later split is a key-prefix copy. Decision: BK-594 "AI Tech Lead - Decision" T1 (Jira, 2026-11-15).
+- **Metadata:** its own typed table, `bug_evidence_attachments` (migration 0131), as decision 8 requires. An upload is created before its defect exists, so it is owned by the uploader and counted against a draft (one open filing form) until `bunkai_create_bug` claims it; every unclaimed row expires after 3 hours, committed or not. The select policy exposes claimed rows only, and a claimed row is frozen.
+- **Invariant kept:** no anonymous read path, no client Storage policy, no object visible before its claim, and every database delete reaches the outbox (AFTER DELETE trigger, same `not_before` hold). The daily sweep expires unclaimed defect uploads too.
