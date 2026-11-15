@@ -20,6 +20,15 @@ interface MeBody {
   active_workspace_id?: string | null
 }
 
+function originOf(raw: string): string | null {
+  try {
+    return new URL(raw).origin;
+  }
+  catch {
+    return null;
+  }
+}
+
 export function invalidSessionMessage(source: Session['source']): string {
   return source === 'env' ? MSG_TOKEN_INVALID : MSG_SIGN_IN_INVALID;
 }
@@ -54,6 +63,12 @@ export async function resolveSession(deps: Deps): Promise<Session> {
   if (signIn.token_expires_at && Date.parse(signIn.token_expires_at) <= deps.now().getTime()) {
     throw new CliError(MSG_SIGN_IN_INVALID);
   }
-  const api = new ApiClient(normalizeApiUrl(deps.env.BUNKAI_API_URL ?? signIn.api_url), deps.fetch);
+  const apiUrl = normalizeApiUrl(deps.env.BUNKAI_API_URL ?? signIn.api_url);
+  // TL-7 lets BUNKAI_API_URL win over the saved URL, so the override is kept,
+  // but the saved PAT then travels to a Bunkai it was not minted for: say so.
+  if (deps.env.BUNKAI_API_URL !== undefined && new URL(apiUrl).origin !== originOf(signIn.api_url)) {
+    deps.stderr.write(`Warning: BUNKAI_API_URL (${apiUrl}) is not the Bunkai you signed in to (${signIn.api_url}); your saved PAT is being sent there.\n`);
+  }
+  const api = new ApiClient(apiUrl, deps.fetch);
   return { api, token: signIn.token, workspace: signIn.workspace, source: 'saved' };
 }

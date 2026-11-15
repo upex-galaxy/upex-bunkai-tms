@@ -252,6 +252,23 @@ describe('bunkai atc list — BUNKAI_TOKEN (CI)', () => {
   });
 });
 
+describe('bunkai atc list — BUNKAI_API_URL over a saved sign-in (TL-7)', () => {
+  it('uses the override but warns on stderr that the saved PAT goes to another Bunkai', async () => {
+    const s = await setup({ env: { BUNKAI_API_URL: 'https://other.bunkai.test' } });
+    expect(await s.go('--project', 'checkout-v2', '--query', 'login', '--json')).toBe(EXIT_OK);
+    expect(s.api.requests.every(r => r.url.origin === 'https://other.bunkai.test')).toBe(true);
+    expect(s.deps.stderrText()).toContain('Warning: BUNKAI_API_URL (https://other.bunkai.test) is not the Bunkai you signed in to (https://bunkai.test)');
+    expect(s.deps.stderrText()).not.toContain(TOKEN);
+    expect(() => JSON.parse(s.deps.stdoutText())).not.toThrow();
+  });
+
+  it('stays quiet when the override names the same Bunkai', async () => {
+    const s = await setup({ env: { BUNKAI_API_URL: 'https://bunkai.test/' } });
+    expect(await s.go('--project', 'checkout-v2', '--query', 'login')).toBe(EXIT_OK);
+    expect(s.deps.stderrText()).not.toContain('Warning');
+  });
+});
+
 describe('bunkai atc list — usage', () => {
   it('refuses an empty text plainly before sending anything', async () => {
     const s = await setup();
@@ -264,6 +281,12 @@ describe('bunkai atc list — usage', () => {
     const blank = await setup();
     expect(await blank.go('--project', 'checkout-v2', '--query', '   ')).toBe(EXIT_USAGE);
     expect(blank.deps.stderrText()).toBe('A search text is required: --query <text>.\n');
+    expect(blank.api.requests).toEqual([]);
+    cleanup?.();
+    const missing = await setup();
+    expect(await missing.go('--project', 'checkout-v2')).toBe(EXIT_USAGE);
+    expect(missing.deps.stderrText()).toBe('A search text is required: --query <text>.\n');
+    expect(missing.api.requests).toEqual([]);
   });
 
   it('requires a Project', async () => {
@@ -281,12 +304,6 @@ describe('bunkai atc list — usage', () => {
 
   it('prints its usage on --help', async () => {
     const s = await setup();
-    expect(blank.api.requests).toEqual([]);
-    cleanup?.();
-    const missing = await setup();
-    expect(await missing.go('--project', 'checkout-v2')).toBe(EXIT_USAGE);
-    expect(missing.deps.stderrText()).toBe('A search text is required: --query <text>.\n');
-    expect(missing.api.requests).toEqual([]);
     expect(await s.go('--help')).toBe(EXIT_OK);
     expect(s.deps.stdoutText()).toContain('Usage: bunkai atc list');
   });
