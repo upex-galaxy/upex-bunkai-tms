@@ -28,5 +28,6 @@ registry.registerPath({
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope, or the caller is a viewer (details.reason forbidden_role).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Milestone not found in this project (or not visible to the caller).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'The milestone is archived and keeps its plans until restored (details.reason milestone_archived).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
