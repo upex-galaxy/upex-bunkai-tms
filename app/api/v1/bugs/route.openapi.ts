@@ -78,6 +78,7 @@ const BugDetailSchema = BugSchema
   .omit({ module: true })
   .extend({
     module: BugDetailModuleSchema,
+    content_version: z.number().int().min(1).describe('BK-1835 — the content version, bumped only by an effective correction (PATCH /api/v1/bugs/{id}). Send it back as `expected_version` when correcting; a status or assignee change never bumps it.'),
     origin: BugOriginSchema.nullable().describe('Provenance for a run-linked defect (originating Run + failed step position + ATC), or null for a standalone one — the page reads null as "Filed manually" (PO ruling).'),
   })
   .openapi('BugDetail');

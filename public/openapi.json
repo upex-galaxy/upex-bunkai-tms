@@ -2717,6 +2717,11 @@
           "module": {
             "$ref": "#/components/schemas/BugDetailModule"
           },
+          "content_version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "BK-1835 — the content version, bumped only by an effective correction (PATCH /api/v1/bugs/{id}). Send it back as `expected_version` when correcting; a status or assignee change never bumps it."
+          },
           "origin": {
             "$ref": "#/components/schemas/BugOrigin"
           }
@@ -2740,6 +2745,7 @@
           "created_at",
           "updated_at",
           "module",
+          "content_version",
           "origin"
         ]
       },
@@ -3080,6 +3086,36 @@
           }
         },
         "required": ["assignee_user_id"]
+      },
+      "BugCorrectionBody": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The defect's `content_version` as the caller loaded it."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200,
+            "description": "Trimmed, then 5 to 200 characters (the filing rule)."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4"]
+          },
+          "description": {
+            "type": "string",
+            "description": "Trimmed; an empty value clears the description. No explicit size limit, the same as filing."
+          },
+          "steps_to_reproduce": {
+            "type": "string",
+            "description": "Stored as typed, the same as filing."
+          }
+        },
+        "required": ["expected_version"],
+        "additionalProperties": false
       },
       "BugStatusTransitionBody": {
         "type": "object",
@@ -10841,6 +10877,121 @@
           },
           "404": {
             "description": "Bug not found — also returned for a well-formed id in a workspace the caller is not a member of (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Bugs"],
+        "summary": "Correct a defect's title, severity, description and steps",
+        "description": "Bearer `atc:write` (or cookie session); member+ write access, in any status including closed. `bunkai_correct_bug` (migration 0129) writes only these four fields: status, assignee, evidence, Run, step, ATC and Module never change, and any other key in the body is refused (422). Send at least one field plus `expected_version`. A save whose values equal the current ones (a title differing only by surrounding spaces included) writes nothing and returns `changed: false`. An effective correction bumps `content_version` and emits ONE `bug.corrected` activity entry naming every changed field. A save from an older `content_version` is refused with 409 and `details.current` holds the current defect.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BugCorrectionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved (or nothing to save). Returns the current defect and whether anything changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bug": {
+                      "$ref": "#/components/schemas/BugDetail"
+                    },
+                    "changed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["bug", "changed"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (not a UUID) or malformed JSON body (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or a workspace member without write access, such as a Viewer (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bug not found, also returned for a caller who is not a member of the bug's workspace (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The defect changed since `expected_version` was read (`conflict`, `details.reason: bug_changed`). `details.current` carries the current defect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed: the title or severity breaks the filing rules, a field outside the four is present, or no field was sent.",
             "content": {
               "application/json": {
                 "schema": {

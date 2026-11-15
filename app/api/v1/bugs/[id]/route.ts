@@ -3,8 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
-import { throwBugNotFound } from '@lib/bugs/errors';
-import { getBugJson } from '@lib/supabase/rpc';
+import { mapBugRpcError, throwBugNotFound } from '@lib/bugs/errors';
+import { BugCorrectionBodySchema } from '@lib/bugs/validation';
+import { correctBug, getBugJson } from '@lib/supabase/rpc';
 
 // GET /api/v1/bugs/{id} — a single defect's full composed record (BK-337).
 // Read auth requiring `atc:read` (BK-499) — mirrors the report/traceability
@@ -53,6 +54,65 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   return jsonResponse({ bug }, { status: 200 });
 }, { auth: 'required', requires: ['atc:read'] });
+
+// BK-1835 — PATCH /api/v1/bugs/{id}: correct a filed defect's title,
+// severity, description and reproduction steps. Bearer `atc:write` (or a
+// cookie session), the same capability as the sibling /assign and /status
+// routes. `bunkai_correct_bug` (migration 0129) has no actor parameter and is
+// granted to `authenticated` only, so it runs through the caller's OWN client.
+//
+// A stale save (45314) is answered with 409 and the CURRENT defect in
+// `details.current`, read under the caller's own RLS right after the refusal,
+// so the form can show what changed (AI Product Owner P8). Every other RPC
+// error maps through `mapBugRpcError` (404 non-member or missing, 403 Viewer,
+// 422 title/severity backstops).
+export interface BugCorrectionArgs {
+  bugId: string
+  expectedVersion: number
+  title?: string
+  severity?: string
+  description?: string
+  stepsToReproduce?: string
+}
+
+export async function performBugCorrection(db: SupabaseClient<Database>, args: BugCorrectionArgs) {
+  const { data, error } = await correctBug(db, args);
+  if (error) {
+    if (error.code === '45314') {
+      const { data: current } = await getBugJson(db, args.bugId);
+      throw new ApiError('conflict', 'This defect changed since you opened it. Review the current version before saving again.', {
+        details: { reason: 'bug_changed', current: current ?? null },
+      });
+    }
+    mapBugRpcError(error, { notFoundEntity: 'bug' });
+  }
+  return data as unknown as { bug: unknown, changed: boolean };
+}
+
+export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
+  const bugId = extractBugId(request);
+  if (!isUuid(bugId)) {
+    throw new ApiError('bad_request', 'Bug id must be a UUID.');
+  }
+
+  const { db } = getAuth(ctx);
+
+  const payload: unknown = await request.json().catch(() => {
+    throw new ApiError('bad_request', 'Request body must be valid JSON.');
+  });
+  const body = BugCorrectionBodySchema.parse(payload);
+
+  const result = await performBugCorrection(db, {
+    bugId,
+    expectedVersion: body.expected_version,
+    title: body.title,
+    severity: body.severity,
+    description: body.description,
+    stepsToReproduce: body.steps_to_reproduce,
+  });
+
+  return jsonResponse({ bug: result.bug, changed: result.changed }, { status: 200 });
+}, { auth: 'required', requires: ['atc:write'] });
 
 // The route is /api/v1/bugs/{id} — the bug id is the last segment.
 function extractBugId(request: NextRequest): string {

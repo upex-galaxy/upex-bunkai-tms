@@ -106,6 +106,13 @@ describe('mapBugRpcError', () => {
     expect(err.details).toEqual({ reason: 'assignee_view_only' });
   });
 
+  test('BK-1835: 45314 → conflict 409 (bug_changed)', () => {
+    const err = capture({ code: '45314', message: 'bug_content_stale' }, { notFoundEntity: 'bug' });
+    expect(err.code).toBe('conflict');
+    expect(err.status).toBe(409);
+    expect(err.details).toEqual({ reason: 'bug_changed' });
+  });
+
   test('45300 → validation_failed 422 (bugs_module_outside_project)', () => {
     const err = capture({ code: '45300', message: 'bugs_module_outside_project' });
     expect(err.code).toBe('validation_failed');

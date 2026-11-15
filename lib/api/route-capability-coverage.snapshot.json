@@ -135,6 +135,11 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/bugs/[id]/route.ts",
+    "method": "PATCH",
+    "posture": "required:atc:write"
+  },
+  {
     "file": "app/api/v1/bugs/[id]/status/route.ts",
     "method": "POST",
     "posture": "required:atc:write"

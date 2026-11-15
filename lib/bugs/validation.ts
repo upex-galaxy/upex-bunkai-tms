@@ -23,13 +23,13 @@ import { z } from 'zod';
 
 export const BUG_TITLE_MESSAGE = `Title must be between ${BUG_TITLE_MIN} and ${BUG_TITLE_MAX} characters`;
 
-const titleSchema = z
+export const titleSchema = z
   .string()
   .trim()
   .min(BUG_TITLE_MIN, BUG_TITLE_MESSAGE)
   .max(BUG_TITLE_MAX, BUG_TITLE_MESSAGE);
 
-const severitySchema = z.enum(BUG_SEVERITY_VALUES);
+export const severitySchema = z.enum(BUG_SEVERITY_VALUES);
 
 // BK-337 (TQ5) — tightened from `z.string().url()` (which accepts ANY
 // parseable scheme, including `javascript:`/`data:` — `z.array(z.string().
@@ -96,3 +96,27 @@ export const BugStatusTransitionBodySchema = z.object({
 });
 
 export type BugStatusTransitionBody = z.infer<typeof BugStatusTransitionBodySchema>;
+
+// BK-1835 — PATCH /api/v1/bugs/{id} body: correct a filed defect's content.
+// Reuses the filing title and severity schemas above (never a copy, AI Tech
+// Lead T2) and filing's description normalization (trimmed; the RPC stores an
+// empty one as null). Steps stay as typed, like filing. `.strict()` refuses
+// any other key (evidence, status, assignee, provenance) instead of silently
+// dropping it (AI Product Owner P7). `expected_version` is the defect's
+// `content_version` as the caller loaded it (T1).
+export const BugCorrectionBodySchema = z
+  .object({
+    expected_version: z.number().int().min(1),
+    title: titleSchema.optional(),
+    severity: severitySchema.optional(),
+    description: z.string().trim().optional(),
+    steps_to_reproduce: z.string().optional(),
+  })
+  .strict()
+  .refine(
+    body => body.title !== undefined || body.severity !== undefined
+      || body.description !== undefined || body.steps_to_reproduce !== undefined,
+    { message: 'Send at least one of title, severity, description or steps_to_reproduce.' },
+  );
+
+export type BugCorrectionBody = z.infer<typeof BugCorrectionBodySchema>;
