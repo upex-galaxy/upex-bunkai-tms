@@ -58,4 +58,46 @@ registry.registerPath({
   },
 });
 
+// BK-1900 — the read the Bunkai CLI uses to resolve `--project <slug>`.
+const ProjectSummarySchema = z
+  .object({
+    id: z.string().uuid(),
+    slug: z.string().describe('URL slug, unique per workspace — the project route is `/projects/{slug}`.'),
+    name: z.string(),
+    created_at: z.string().datetime({ offset: true }),
+  })
+  .openapi('ProjectSummary');
+
+const ProjectListSchema = z
+  .object({
+    projects: z.array(ProjectSummarySchema).describe('Ordered by name. Empty for a workspace with no projects AND for one the caller cannot reach.'),
+  })
+  .openapi('ProjectList');
+
+const SlugParam = {
+  name: 'slug',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const, minLength: 1, maxLength: 100 },
+  description: 'Optional exact project slug. When given, the list holds that one project or nothing.',
+};
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/workspaces/{id}/projects',
+  tags: ['Projects'],
+  summary: 'List a workspace\'s projects, optionally by exact slug',
+  description: 'Bearer `atc:read` (or cookie session). Runs entirely under the caller\'s own RLS, so a foreign, nonexistent or soft-deleted workspace id returns the SAME `200 {"projects": []}` an empty workspace does — never an existence echo. A read that fails answers 500, never an empty list. The Bunkai CLI uses `?slug=` to resolve `--project <slug>`.',
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [IdParam, SlugParam],
+  responses: {
+    200: { description: 'The workspace\'s projects (possibly empty).', content: { 'application/json': { schema: ProjectListSchema } } },
+    400: { description: 'The workspace id in the path is not a UUID (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: '`slug` is present but blank or longer than 100 characters (`validation_failed`, `details.reason = slug_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    500: { description: 'The projects could not be read (`internal_error`). Deliberately not collapsed into an empty list.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+  },
+});
+
 export { ProjectSchema };

@@ -738,6 +738,11 @@
   },
   {
     "file": "app/api/v1/workspaces/[id]/projects/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/projects/route.ts",
     "method": "POST",
     "posture": "required:atc:write"
   },
