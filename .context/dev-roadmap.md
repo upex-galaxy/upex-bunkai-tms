@@ -210,6 +210,7 @@ BK-201 Test Plans & Milestones:
   BK-203 Add/remove tests ──> BK-202 ✅ — **UNBLOCKED 2026-08-20** (mockup ✅ `plan-detail.html`) │   BK-206 Assign plans ──> BK-205 ✅, BK-204 ✅ (PR #275) — built in PR #315 (migration `0112_milestone_plans`)
   BK-204 Track progress ──> BK-203, epic BK-30
   BK-207 Close plan ──> BK-202 ✅ — hard edge RELEASED 2026-08-20; still soft-gated on BK-204 (no commit on staging)  ··> BK-204
+  BK-1899 Archive / restore milestone ──> BK-205 ✅, BK-206 ✅ (PR #315) — no mockup draws archive: spec-only departure, master-design-plan §5 D69 (design gate cleared by ratification, not by a mockup)
 
 BK-221 Automation & CI Ingestion:
   BK-222 Submit automated run ──> BK-88, BK-34, BK-39        (entry point of the cluster)
