@@ -20,7 +20,7 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
     expect(Object.keys(ACTION_LABELS).sort()).toEqual([...ACTIVITY_ALLOWED_ACTIONS].sort());
   });
 
-  test('the exact 23-row table matches implementation-plan.md / BK-264 + BK-508\'s AC verbatim', () => {
+  test('the exact 25-row table matches implementation-plan.md / BK-264 + BK-508\'s AC verbatim', () => {
     expect(ACTION_LABELS).toEqual({
       'module.renamed': 'renamed a module',
       'module.description_updated': 'updated a module description',
@@ -45,6 +45,8 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
       'jira_connection.changed': 'changed the Jira connection',
       'jira_connection.disconnected': 'disconnected Jira',
       'bug.corrected': 'corrected this defect',
+      'milestone.archived': 'archived a milestone',
+      'milestone.restored': 'restored a milestone',
     });
   });
 });

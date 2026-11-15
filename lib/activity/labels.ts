@@ -37,6 +37,8 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   'jira_connection.changed': 'changed the Jira connection',
   'jira_connection.disconnected': 'disconnected Jira',
   'bug.corrected': 'corrected this defect',
+  'milestone.archived': 'archived a milestone',
+  'milestone.restored': 'restored a milestone',
 };
 
 // R1 backstop (implementation-plan.md Risk R1 — allowlist/label-map drift):

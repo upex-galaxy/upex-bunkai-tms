@@ -332,6 +332,12 @@
           },
           {
             "$ref": "#/components/schemas/ActivityItemBugCorrected"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemMilestoneArchived"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemMilestoneRestored"
           }
         ],
         "discriminator": {
@@ -357,7 +363,9 @@
             "jira_connection.connected": "#/components/schemas/ActivityItemJiraConnectionConnected",
             "jira_connection.changed": "#/components/schemas/ActivityItemJiraConnectionChanged",
             "jira_connection.disconnected": "#/components/schemas/ActivityItemJiraConnectionDisconnected",
-            "bug.corrected": "#/components/schemas/ActivityItemBugCorrected"
+            "bug.corrected": "#/components/schemas/ActivityItemBugCorrected",
+            "milestone.archived": "#/components/schemas/ActivityItemMilestoneArchived",
+            "milestone.restored": "#/components/schemas/ActivityItemMilestoneRestored"
           }
         }
       },
@@ -1630,6 +1638,114 @@
           }
         },
         "required": ["title", "changed_fields", "title_change", "severity_change"]
+      },
+      "ActivityItemMilestoneArchived": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["milestone"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["milestone.archived"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadMilestoneArchived"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadMilestoneArchived": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["name"]
+      },
+      "ActivityItemMilestoneRestored": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["milestone"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["milestone.restored"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadMilestoneRestored"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadMilestoneRestored": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["name"]
       },
       "SendDigestResponse": {
         "type": "object",
