@@ -16,7 +16,7 @@ bun run bunkai atc list --project checkout-v2 --query login
 To get a real `bunkai` command on your PATH, link the package once:
 
 ```bash
-cd packages/bunkai-cli && bun link
+cd apps/bunkai-cli && bun link
 bunkai --help
 ```
 
