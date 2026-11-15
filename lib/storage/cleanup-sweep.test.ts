@@ -76,7 +76,8 @@ describe('runStorageCleanupSweep', () => {
     expect(f.queries[0]).toContain('bunkai_expire_pending_run_step_attachments');
     expect(f.removes).toEqual([{ bucket: 'run-evidence', paths: ['w/r/s/a', 'w/r/s/b'] }]);
     expect(f.updates).toEqual([{ values: { done_at: now.toISOString() }, column: 'id', value: [1, 2] }]);
-    expect(result).toEqual({ expired_pending: 3, deleted: 2, failed: 0, purged: 4, stuck: 1 });
+    expect(f.queries[1]).toContain('bunkai_expire_bug_evidence');
+    expect(result).toEqual({ expired_pending: 3, expired_bug_evidence: 3, deleted: 2, failed: 0, purged: 4, stuck: 1 });
     // only open rows below the attempt cap are read
     expect(f.selectFilters).toContain('is:done_at');
     expect(f.selectFilters).toContain('lt:attempts');
@@ -111,7 +112,7 @@ describe('runStorageCleanupSweep', () => {
   it('does nothing harmful on an empty queue (repeat run the same day)', async () => {
     const f = fake({});
     const result = await runStorageCleanupSweep(f.client);
-    expect(result).toEqual({ expired_pending: 0, deleted: 0, failed: 0, purged: 0, stuck: 0 });
+    expect(result).toEqual({ expired_pending: 0, expired_bug_evidence: 0, deleted: 0, failed: 0, purged: 0, stuck: 0 });
     expect(f.removes).toHaveLength(0);
     expect(f.updates).toHaveLength(0);
   });
