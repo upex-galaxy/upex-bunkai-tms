@@ -1,4 +1,5 @@
 import type { Deps } from './deps';
+import { atcList, LIST_USAGE } from './commands/atc-list';
 import { authLogin, LOGIN_USAGE } from './commands/auth-login';
 import { CliError, EXIT_FAILURE, EXIT_OK, EXIT_USAGE } from './errors';
 
@@ -9,6 +10,7 @@ export const USAGE = `Usage: bunkai <command> [options]
 
 Commands:
   auth login    Sign in with your email and password.
+  atc list      Find ATCs in a Project by text.
 
 Run "bunkai <command> --help" for a command's options.
 
@@ -22,6 +24,7 @@ type Command = (argv: string[], deps: Deps) => Promise<number>;
 
 const COMMANDS: Record<string, { run: Command, usage: string }> = {
   'auth login': { run: authLogin, usage: LOGIN_USAGE },
+  'atc list': { run: atcList, usage: LIST_USAGE },
 };
 
 export async function run(argv: string[], deps: Deps): Promise<number> {
