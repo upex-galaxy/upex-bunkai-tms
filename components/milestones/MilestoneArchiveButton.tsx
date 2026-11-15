@@ -1,20 +1,12 @@
 'use client';
 
-import type { MilestoneArchiveAction } from '@lib/milestones/archive-client';
 import { Button } from '@components/ui/button';
+import { runArchiveAction } from '@lib/milestones/archive-action';
 import { setMilestoneArchived } from '@lib/milestones/archive-client';
-import {
-  ARCHIVE_FORBIDDEN_COPY,
-  ARCHIVED_LABEL,
-  archivedToast,
-  archiveFailedToast,
-  milestonesListHref,
-  restoredToast,
-  restoreFailedToast,
-} from '@lib/milestones/archive-view';
+import { ARCHIVED_LABEL } from '@lib/milestones/archive-view';
 import { Archive, ArchiveRestore } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // BK-1899 — the one Archive / Restore control, mounted on the list row and on the
@@ -37,32 +29,31 @@ interface MilestoneArchiveButtonProps {
 export function MilestoneArchiveButton({ milestoneId, name, archived, projectSlug, testId, variant = 'ghost' }: MilestoneArchiveButtonProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
-  const action: MilestoneArchiveAction = archived ? 'restore' : 'archive';
+  // The toast's Try again lives outside the disabled button, so a second request
+  // is refused here while one is in flight.
+  const inFlight = useRef(false);
 
   const run = async () => {
+    if (inFlight.current) { return; }
+    inFlight.current = true;
     setPending(true);
-    const result = await setMilestoneArchived(milestoneId, action);
-    setPending(false);
-    if (!result.ok) {
-      if (result.forbidden) {
-        toast.error(ARCHIVE_FORBIDDEN_COPY);
-        return;
-      }
-      toast.error(archived ? restoreFailedToast(name) : archiveFailedToast(name), {
-        description: result.errorMessage,
-        action: { label: 'Try again', onClick: () => { void run(); } },
-      });
-      return;
+    try {
+      await runArchiveAction(
+        { milestoneId, name, archived, projectSlug },
+        {
+          request: setMilestoneArchived,
+          success: (message, options) => { toast.success(message, options); },
+          error: (message, options) => { toast.error(message, options); },
+          push: (href) => { router.push(href); },
+          refresh: () => { router.refresh(); },
+        },
+        () => { void run(); },
+      );
     }
-    if (archived) {
-      toast.success(restoredToast(name));
+    finally {
+      inFlight.current = false;
+      setPending(false);
     }
-    else {
-      toast.success(archivedToast(name), {
-        action: { label: 'Show archived', onClick: () => { router.push(milestonesListHref(projectSlug, true)); } },
-      });
-    }
-    router.refresh();
   };
 
   const Icon = archived ? ArchiveRestore : Archive;
@@ -77,7 +68,7 @@ export function MilestoneArchiveButton({ milestoneId, name, archived, projectSlu
       size="sm"
       disabled={pending}
       aria-busy={pending}
-      aria-label={`${idleLabel} ${name}`}
+      aria-label={`${pending ? pendingLabel : idleLabel} ${name}`}
       onClick={() => { void run(); }}
     >
       <Icon size={13} aria-hidden="true" />

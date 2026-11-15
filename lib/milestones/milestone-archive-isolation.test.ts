@@ -402,6 +402,9 @@ describeOrSkip('BK-1899 — archive and restore a Milestone against the real dat
     expect(unarchive.error?.code).toBe('42501');
     const rename = await qa.from('milestones').update({ name: `${PREFIX} sneaky` }).eq('id', archived);
     expect(rename.error?.code).toBe('45507');
+    const otherProject = must(await service().from('projects').insert({ workspace_id: f.workspaceId, slug: `${PREFIX}-move-${++counter}`, name: `${PREFIX} move target` }).select('id').single(), 'move target project');
+    const move = await qa.from('milestones').update({ project_id: otherProject.id }).eq('id', archived);
+    expect(move.error?.code).toBe('45507');
     const insert = await qa.from('milestones').insert({
       workspace_id: f.workspaceId,
       project_id: f.projectId,

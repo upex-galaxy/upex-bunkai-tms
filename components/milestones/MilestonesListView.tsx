@@ -7,7 +7,7 @@ import { MilestoneOverdueBadge } from '@components/milestones/MilestoneOverdueBa
 import { PlanMiniBar } from '@components/test-plans/TestPlanProgress';
 import { Button, buttonVariants } from '@components/ui/button';
 import { Card } from '@components/ui/card';
-import { allArchivedCopy, milestonesListHref, milestonesSubline } from '@lib/milestones/archive-view';
+import { allArchivedCopy, milestonesListHref, milestonesSubline, overdueUnlessArchived } from '@lib/milestones/archive-view';
 import { computeCountdown } from '@lib/milestones/countdown';
 import { asProgressSummary, planCountLabel } from '@lib/milestones/readiness-view';
 import { Archive, Flag, Plus } from 'lucide-react';
@@ -70,7 +70,7 @@ const ACTIONS_COLUMN = 'actions';
 
 export function MilestonesListView({ projectId, projectSlug, milestones, canCreate, todayIso, showArchived, archivedCount }: MilestonesListViewProps) {
   const [creating, setCreating] = useState(false);
-  const overdueCount = milestones.filter(milestone => milestone.overdue !== null).length;
+  const overdueCount = milestones.filter(milestone => overdueUnlessArchived(milestone.overdue, milestone.archivedAt) !== null).length;
 
   return (
     <div data-testid="milestones-list-view" className="flex flex-1 flex-col overflow-hidden">
@@ -211,6 +211,7 @@ export function MilestonesListView({ projectId, projectSlug, milestones, canCrea
 function MilestoneRow({ milestone, projectSlug, todayIso, canManage }: { milestone: MilestoneListItem, projectSlug: string, todayIso: string, canManage: boolean }) {
   const countdown = computeCountdown(milestone.targetDate, todayIso);
   const archived = milestone.archivedAt !== null;
+  const overdue = overdueUnlessArchived(milestone.overdue, milestone.archivedAt);
 
   return (
     <tr
@@ -237,7 +238,7 @@ function MilestoneRow({ milestone, projectSlug, todayIso, canManage }: { milesto
           <span className="inline-flex items-center rounded-1 bg-surface-3 px-2 py-0.5 text-xs text-fg-2" data-testid={`milestone-countdown-${milestone.id}`}>
             {countdown.label}
           </span>
-          {milestone.overdue && <MilestoneOverdueBadge label={milestone.overdue.label} testId={`milestone-overdue-${milestone.id}`} />}
+          {overdue && <MilestoneOverdueBadge label={overdue.label} testId={`milestone-overdue-${milestone.id}`} />}
         </span>
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">

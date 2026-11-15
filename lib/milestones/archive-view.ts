@@ -62,3 +62,13 @@ export const ARCHIVE_FORBIDDEN_COPY = 'Archiving and restoring milestones requir
 export function overdueUnlessArchived<T>(overdue: T | null, archivedAt: string | null): T | null {
   return archivedAt ? null : overdue;
 }
+
+// The call found the Milestone already in the state it asked for (a teammate got
+// there first): say so instead of claiming the change (P8).
+export function alreadyArchivedToast(name: string): string {
+  return `“${name}” was already archived.`;
+}
+
+export function alreadyActiveToast(name: string): string {
+  return `“${name}” is already active.`;
+}

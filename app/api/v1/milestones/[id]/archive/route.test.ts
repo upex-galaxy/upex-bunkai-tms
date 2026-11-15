@@ -19,6 +19,7 @@ const { POST: RESTORE } = await import('../restore/route');
 const { PATCH } = await import('../route');
 const { GET: LIST, POST: CREATE } = await import('../../../projects/[id]/milestones/route');
 const { POST: ATTACH } = await import('../../../projects/[id]/milestones/[milestoneId]/plans/route');
+const { DELETE: DETACH } = await import('../../../projects/[id]/milestones/[milestoneId]/plans/[testPlanId]/route');
 const { mintPat } = await import('@lib/api/pat');
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -176,7 +177,7 @@ describeOrSkip('BK-1899 — POST /api/v1/milestones/{id}/archive and /restore', 
     expect(rows[0].archived_at).not.toBeNull();
   });
 
-  it('answers 409 milestone_archived to an edit and an attach on an archived Milestone', async () => {
+  it('answers 409 milestone_archived to an edit, an attach and a detach on an archived Milestone', async () => {
     const f = await setup();
     await ARCHIVE(call('POST', `milestones/${f.milestoneId}/archive`, f.write));
 
@@ -192,6 +193,14 @@ describeOrSkip('BK-1899 — POST /api/v1/milestones/{id}/archive and /restore', 
     const attached = await ATTACH(attach);
     expect(attached.status).toBe(409);
     expect(((await attached.json()) as ErrorBody).error?.details?.reason).toBe('milestone_archived');
+
+    const detach = new NextRequest(`https://app.test/api/v1/projects/${f.projectId}/milestones/${f.milestoneId}/plans/${f.planId}`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${f.write}` },
+    });
+    const detached = await DETACH(detach);
+    expect(detached.status).toBe(409);
+    expect(((await detached.json()) as ErrorBody).error?.details?.reason).toBe('milestone_archived');
   });
 
   it('refuses a new Milestone named like an archived one with 409 milestone_name_archived naming it', async () => {

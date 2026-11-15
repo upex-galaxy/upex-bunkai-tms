@@ -40,13 +40,15 @@ function detail(archivedAt: string | null): MilestoneDetail {
   };
 }
 
-function renderDetail(archivedAt: string | null, canEdit: boolean): string {
+const OVERDUE = { days: 45, label: 'Overdue · 45d' };
+
+function renderDetail(archivedAt: string | null, canEdit: boolean, overdue: typeof OVERDUE | null = null): string {
   return renderToStaticMarkup(
     <MilestoneDetailView
       milestone={detail(archivedAt)}
       canEdit={canEdit}
       readiness={READINESS}
-      overdue={null}
+      overdue={overdue}
       attachablePlans={[]}
       todayIso={TODAY}
     />,
@@ -81,6 +83,16 @@ describe('MilestoneDetailView — BK-1899', () => {
     // The date fact stays: "N days past target", never Overdue.
     expect(html).toContain('45 days past target');
     expect(html).toContain('Smoke');
+  });
+
+  it('never shows an archived Milestone as overdue, even when handed an overdue state', () => {
+    const active = renderDetail(null, true, OVERDUE);
+    expect(has(active, 'milestone-detail-overdue-badge')).toBe(true);
+    expect(has(active, 'milestone-detail-overdue-note')).toBe(true);
+    const archived = renderDetail('2026-11-10T12:00:00Z', true, OVERDUE);
+    expect(has(archived, 'milestone-detail-overdue-badge')).toBe(false);
+    expect(has(archived, 'milestone-detail-overdue-note')).toBe(false);
+    expect(archived).toContain('45 days past target');
   });
 
   it('shows a Viewer the archived marking and no restore control', () => {
@@ -168,6 +180,17 @@ describe('MilestonesListView — BK-1899', () => {
     expect(has(html, 'milestones-all-archived')).toBe(true);
     expect(has(html, 'milestones-empty')).toBe(false);
     expect(html).toContain('All 2 milestones of this project are archived.');
+  });
+
+  it('drops the overdue badge and count of an archived row, even when handed an overdue state', () => {
+    const html = renderList({
+      milestones: [{ ...item('b', 'Release 1.0', '2026-11-10T12:00:00Z'), overdue: OVERDUE }],
+      canCreate: true,
+      showArchived: true,
+      archivedCount: 1,
+    });
+    expect(has(html, 'milestone-overdue-b')).toBe(false);
+    expect(has(html, 'milestones-overdue-count')).toBe(false);
   });
 
   it('hides the Show archived choice when the Project has nothing archived', () => {

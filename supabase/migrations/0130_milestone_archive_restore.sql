@@ -15,8 +15,10 @@
 --      information_schema.role_table_grants), so without this a session could
 --      PATCH archived_at through PostgREST with no event and a forged actor.
 --      The trigger refuses that, and refuses ANY writer that changes the name,
---      target date or description of an archived row (read-only is enforced by
---      the database, not only by the functions).
+--      target date, description, project or workspace of an archived row
+--      (read-only is enforced by the database, not only by the functions).
+--      Content writes to an ACTIVE row through the 0064 table grant stay as
+--      BK-205 shipped them (ADR-0012 debt, recorded on BK-1899).
 --   3. bunkai_archive_milestone / bunkai_restore_milestone (T2): idempotent,
 --      one activity_log row per real change, none for a no-op (business rule
 --      "a change that alters nothing is not an event").
@@ -103,14 +105,18 @@ begin
   end if;
 
   -- Read-only while archived, for every writer (business rule: it cannot be
-  -- edited until it is restored). The archive and the restore themselves
-  -- change only the archive columns, so they pass.
+  -- edited until it is restored): its content and where it belongs. The
+  -- archive and the restore themselves change only the archive columns, so
+  -- they pass. created_by is deliberately NOT frozen: the auth.users
+  -- `on delete set null` cascade must keep working on archived rows.
   if tg_op = 'UPDATE'
      and old.archived_at is not null
      and new.archived_at is not null
      and (old.name is distinct from new.name
           or old.target_date is distinct from new.target_date
-          or old.description is distinct from new.description) then
+          or old.description is distinct from new.description
+          or old.project_id is distinct from new.project_id
+          or old.workspace_id is distinct from new.workspace_id) then
     raise exception 'milestone_archived' using errcode = '45507';
   end if;
 

@@ -10,7 +10,7 @@ import { MilestoneOverdueBadge } from '@components/milestones/MilestoneOverdueBa
 import { MilestoneReadinessCard, MilestoneReadinessUnavailable } from '@components/milestones/MilestoneReadinessCard';
 import { Button } from '@components/ui/button';
 import { Card, CardContent, CardHeader } from '@components/ui/card';
-import { ARCHIVED_NOTE } from '@lib/milestones/archive-view';
+import { ARCHIVED_NOTE, overdueUnlessArchived } from '@lib/milestones/archive-view';
 import { computeCountdown } from '@lib/milestones/countdown';
 import { overdueNoteText } from '@lib/milestones/readiness-view';
 import { AlertTriangle, Archive, Pencil, Plus } from 'lucide-react';
@@ -67,12 +67,15 @@ interface MilestoneDetailViewProps {
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, attachablePlans, todayIso }: MilestoneDetailViewProps) {
+export function MilestoneDetailView({ milestone, canEdit, readiness, overdue: serverOverdue, attachablePlans, todayIso }: MilestoneDetailViewProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [picking, setPicking] = useState(false);
   const countdown = computeCountdown(milestone.targetDate, todayIso);
   const archived = milestone.archivedAt !== null;
+  // P2 — an archived Milestone never claims to be overdue. The page already drops
+  // it; the view enforces it too, so neither alone can bring the badge back.
+  const overdue = overdueUnlessArchived(serverOverdue, milestone.archivedAt);
   // An archived Milestone is read-only (BK-1899): every write control goes away.
   const canWrite = canEdit && !archived;
   // Attaching needs the current attachments to mark them in the picker; when the

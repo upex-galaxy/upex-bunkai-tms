@@ -43,14 +43,11 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
     .select('target_date, archived_at')
     .eq('id', milestoneId)
     .maybeSingle();
-  // BK-1899 — an archived Milestone is read-only: refuse it before the edge
-  // date check could answer a 422 for a date the caller cannot change anyway.
-  // The RPC (45507) and the milestones_guard_archive trigger stay the
-  // authority; this only orders the answers.
-  if (current?.archived_at) {
-    mapMilestoneRpcError({ code: '45507', message: 'milestone_archived' });
-  }
-  if (!current || current.target_date !== body.target_date) {
+  // BK-1899 — an archived Milestone is read-only, so the edge date check is
+  // skipped for it: the RPC then answers in its own order (403 for a Viewer,
+  // then 409 milestone_archived), never a 422 for a date nobody may change.
+  const archived = Boolean(current?.archived_at);
+  if (!archived && (!current || current.target_date !== body.target_date)) {
     assertTargetDateBounds(body.target_date);
   }
 
