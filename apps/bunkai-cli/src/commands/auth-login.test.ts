@@ -1,5 +1,5 @@
 import type { Route } from '../testing/fakes';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { afterEach, describe, expect, it } from 'bun:test';
 import { EXIT_CANCELLED, EXIT_FAILURE, EXIT_OK, EXIT_USAGE } from '../errors';
@@ -163,7 +163,19 @@ describe('bunkai auth login — refusals keep nothing', () => {
     const s = setup({ 'POST /api/v1/auth/signin': signInOk, 'GET /api/v1/me': () => ({ status: 403, body: {} }) }, ['karim@acme.test', PASSWORD]);
     expect(await s.go()).toBe(EXIT_FAILURE);
     expect(s.deps.stderrText()).toContain('Nothing was saved');
+    expect(s.deps.stderrText()).toContain('The PAT "bunkai-cli test-host" this sign-in created stays active');
+    expect(s.deps.stderrText()).not.toContain(TOKEN);
     expectNothingSaved(s.t.path);
+  });
+
+  it('names the PAT it created when the sign-in cannot be saved', async () => {
+    const s = setup({ 'POST /api/v1/auth/signin': signInOk, 'GET /api/v1/me': meOk }, ['karim@acme.test', PASSWORD]);
+    // A plain file where the config folder should be: mkdir fails.
+    writeFileSync(dirname(s.t.path), 'not a folder');
+    expect(await s.go()).toBe(EXIT_FAILURE);
+    expect(s.deps.stderrText()).toContain('could not be saved');
+    expect(s.deps.stderrText()).toContain('The PAT "bunkai-cli test-host" this sign-in created stays active');
+    expect(s.deps.stderrText()).not.toContain(TOKEN);
   });
 
   it('keeps nothing and explains a network failure, with no stack trace', async () => {

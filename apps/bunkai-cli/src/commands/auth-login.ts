@@ -35,6 +35,12 @@ export const MSG_WRONG_CREDENTIALS = 'The email or password is not right. This s
 export const MSG_THROTTLED = 'Too many sign-in attempts. Wait a few minutes and try again.';
 export const MSG_CANCELLED = 'Sign-in cancelled. Nothing was saved.';
 
+// The sign-in already created the PAT when a later step fails, and a PAT
+// cannot revoke itself (TL-3), so the person is told it exists.
+export function leftoverPat(tokenName: string): string {
+  return `The PAT "${tokenName}" this sign-in created stays active until you revoke it in Settings or it expires.`;
+}
+
 export function patName(hostname: string): string {
   const host = hostname.trim().replace(/[^\w.-]/g, '') || 'unknown-host';
   return `bunkai-cli ${host}`.slice(0, PAT_NAME_MAX);
@@ -94,12 +100,13 @@ export async function authLogin(argv: string[], deps: Deps): Promise<number> {
     throw new CliError('A password is required.');
   }
 
+  const tokenName = patName(deps.hostname());
   const signIn = await api.request('/api/v1/auth/signin', {
     method: 'POST',
     body: {
       email,
       password,
-      pat_name: patName(deps.hostname()),
+      pat_name: tokenName,
       pat_scopes: [...PAT_SCOPES],
       pat_expires_in_days: PAT_EXPIRES_IN_DAYS,
     },
@@ -129,7 +136,7 @@ export async function authLogin(argv: string[], deps: Deps): Promise<number> {
   const me = await api.request('/api/v1/me', { token: pat.token });
   const meBody = me.body as MeBody | null;
   if (me.status !== 200 || !meBody) {
-    throw new CliError(`Signed in, but your Workspaces could not be read (${me.status}). Nothing was saved; run "bunkai auth login" again.`);
+    throw new CliError(`Signed in, but your Workspaces could not be read (${me.status}). Nothing was saved; run "bunkai auth login" again. ${leftoverPat(tokenName)}`);
   }
   const active = meBody.workspaces?.find(w => w.id === meBody.active_workspace_id) ?? null;
   const workspace: SavedWorkspace | null = active ? { id: active.id, slug: active.slug, name: active.name } : null;
@@ -148,7 +155,7 @@ export async function authLogin(argv: string[], deps: Deps): Promise<number> {
     await writeSignIn(deps.credentialsPath, saved);
   }
   catch (err) {
-    throw new CliError(`Signed in, but the sign-in could not be saved to ${deps.credentialsPath}: ${(err as Error).message}`);
+    throw new CliError(`Signed in, but the sign-in could not be saved to ${deps.credentialsPath}: ${(err as Error).message}. ${leftoverPat(tokenName)}`);
   }
 
   deps.stderr.write(`Signed in as ${saved.email}.\n`);
