@@ -5,8 +5,8 @@ import { buttonVariants } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { BUG_EVIDENCE_MAX } from '@lib/bugs/constants';
 import {
+  buildBugEvidenceRows,
   evidenceCountLabel,
-  formatBugEvidenceRow,
   isModuleArchived,
   resolveBugOriginView,
   severityLabel,
@@ -14,8 +14,9 @@ import {
   splitStepsToReproduce,
   statusLabel,
 } from '@lib/bugs/detail-view';
+import { formatByteSize } from '@lib/runs/evidence-view';
 import { cn } from '@lib/utils';
-import { ArrowLeft, ArrowUpRight, Info } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ImageIcon, Info } from 'lucide-react';
 import Link from 'next/link';
 
 // BK-337 — the read-only defect detail record (`bug-detail.html`, §4.6).
@@ -39,7 +40,8 @@ export function BugDetailView({ bug, assigneeEmail, reporterEmail, projectSlug, 
   const reporterLabel = reporterEmail ?? 'Unknown';
   const origin = resolveBugOriginView(bug.origin);
   const steps = splitStepsToReproduce(bug.steps_to_reproduce);
-  const evidenceRows = bug.evidence_urls.map(formatBugEvidenceRow);
+  // BK-594 — links and filed images together, in the order they were filed.
+  const evidenceRows = buildBugEvidenceRows(bug);
   const moduleArchived = isModuleArchived(bug.module);
 
   return (
@@ -137,30 +139,49 @@ export function BugDetailView({ bug, assigneeEmail, reporterEmail, projectSlug, 
               {evidenceRows.length > 0
                 ? (
                     <ul className="flex flex-col gap-1" data-testid="bug-detail-evidence-list">
-                      {evidenceRows.map(row => (
-                        <li key={row.url}>
-                          {row.isOpenable
+                      {evidenceRows.map((row, index) => (
+                        <li key={row.kind === 'image' ? row.id : `${index}-${row.url}`}>
+                          {row.kind === 'image'
                             ? (
+                                // BK-594 — an image filed as evidence: opens through the
+                                // authorized content route (302 to a 60 s signed URL). Read
+                                // only: no remove or replace control (AC-11).
                                 <a
-                                  href={row.url}
-                                  title={row.url}
+                                  href={row.href}
+                                  title={row.label}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="truncate text-sm text-accent underline decoration-transparent underline-offset-2 transition-colors duration-token ease-token hover:decoration-accent"
+                                  className="inline-flex max-w-full items-center gap-1.5 text-sm text-accent underline decoration-transparent underline-offset-2 transition-colors duration-token ease-token hover:decoration-accent"
                                   data-testid="bug-detail-evidence-row"
+                                  data-evidence-kind="image"
                                 >
-                                  {row.label}
+                                  <ImageIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                                  <span className="truncate">{row.label}</span>
+                                  <span className="shrink-0 font-mono text-2xs text-fg-3">{formatByteSize(row.byteSize)}</span>
                                 </a>
                               )
-                            : (
-                                <span
-                                  title={row.url}
-                                  className="truncate text-sm text-fg-2"
-                                  data-testid="bug-detail-evidence-row"
-                                >
-                                  {row.label}
-                                </span>
-                              )}
+                            : row.isOpenable
+                              ? (
+                                  <a
+                                    href={row.url}
+                                    title={row.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="truncate text-sm text-accent underline decoration-transparent underline-offset-2 transition-colors duration-token ease-token hover:decoration-accent"
+                                    data-testid="bug-detail-evidence-row"
+                                  >
+                                    {row.label}
+                                  </a>
+                                )
+                              : (
+                                  <span
+                                    title={row.url}
+                                    className="truncate text-sm text-fg-2"
+                                    data-testid="bug-detail-evidence-row"
+                                  >
+                                    {row.label}
+                                  </span>
+                                )}
                         </li>
                       ))}
                     </ul>

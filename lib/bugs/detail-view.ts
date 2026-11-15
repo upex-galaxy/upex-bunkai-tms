@@ -20,6 +20,14 @@ export interface BugDetailOrigin {
   atc_layer: string | null
 }
 
+export interface BugEvidenceAttachmentInput {
+  id: string
+  position: number
+  filename: string
+  content_type: string
+  byte_size: number
+}
+
 export interface BugDetailInput {
   id: string
   title: string
@@ -28,6 +36,9 @@ export interface BugDetailInput {
   description: string | null
   steps_to_reproduce: string
   evidence_urls: string[]
+  // BK-594 — images filed as evidence, ordered by position (0131). Optional so
+  // a payload composed before 0131 still renders as links only.
+  evidence_attachments?: BugEvidenceAttachmentInput[]
   assignee_user_id: string | null
   // BK-1835 — the content version a correction must send back (0129).
   content_version: number
@@ -167,4 +178,51 @@ function evidenceLabel(url: string): string {
 
 export function evidenceCountLabel(count: number, cap: number): string {
   return `${count} / ${cap}`;
+}
+
+// ---------------------------------------------------------------------------
+// BK-594 — the combined evidence list (links and filed images)
+// ---------------------------------------------------------------------------
+
+export type BugEvidenceListRow
+  = | ({ kind: 'link' } & BugEvidenceRow)
+    | { kind: 'image', id: string, label: string, href: string, byteSize: number };
+
+// Each image sits at its stored position in the combined list; the links fill
+// the remaining positions in their own order (0131, AI Tech Lead T5). A
+// position past the end (cannot happen through the RPC) just sorts last, so a
+// row is never dropped from the count. The image row opens the authorized
+// content route (302 to a 60 s signed URL), never a stored URL.
+export function buildBugEvidenceRows(bug: Pick<BugDetailInput, 'id' | 'evidence_urls' | 'evidence_attachments'>): BugEvidenceListRow[] {
+  const images = [...(bug.evidence_attachments ?? [])].sort((a, b) => a.position - b.position);
+  const total = bug.evidence_urls.length + images.length;
+  const slots: Array<BugEvidenceListRow | undefined> = Array.from({ length: total });
+  const overflow: BugEvidenceListRow[] = [];
+  for (const image of images) {
+    const row: BugEvidenceListRow = {
+      kind: 'image',
+      id: image.id,
+      label: image.filename,
+      href: bugEvidenceContentPath(bug.id, image.id),
+      byteSize: image.byte_size,
+    };
+    if (image.position >= 0 && image.position < total && slots[image.position] === undefined) {
+      slots[image.position] = row;
+    }
+    else {
+      overflow.push(row);
+    }
+  }
+  let link = 0;
+  for (let i = 0; i < total && link < bug.evidence_urls.length; i += 1) {
+    if (slots[i] === undefined) {
+      slots[i] = { kind: 'link', ...formatBugEvidenceRow(bug.evidence_urls[link]) };
+      link += 1;
+    }
+  }
+  return [...slots.filter((row): row is BugEvidenceListRow => row !== undefined), ...overflow];
+}
+
+export function bugEvidenceContentPath(bugId: string, attachmentId: string): string {
+  return `/api/v1/bugs/${bugId}/evidence/${attachmentId}/content`;
 }
