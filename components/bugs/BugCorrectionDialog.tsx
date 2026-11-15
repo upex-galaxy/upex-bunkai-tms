@@ -11,7 +11,7 @@ import {
 } from '@lib/bugs/correction-view';
 import { Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // BK-1835 — correct a filed defect's title, severity, description and steps
@@ -132,6 +132,28 @@ function BugCorrectionDialog({ bugId, bug, onClose }: BugCorrectionDialogProps) 
     }
   };
 
+  // Escape cancels and Ctrl/Cmd+Enter saves wherever focus is (P9): a
+  // disabled Save button drops focus to the body while a save runs, so a
+  // listener on the dialog element alone would miss the key.
+  const keyHandlers = useRef({ close, save });
+  useEffect(() => {
+    keyHandlers.current = { close, save };
+  });
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        keyHandlers.current.close();
+      }
+      else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        void keyHandlers.current.save();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={close}>
       <div
@@ -141,16 +163,6 @@ function BugCorrectionDialog({ bugId, bug, onClose }: BugCorrectionDialogProps) 
         aria-labelledby="bug-correction-heading"
         className="max-h-full w-full max-w-[480px] overflow-y-auto rounded-3 border border-stroke-2 bg-surface-1 p-5"
         onClick={e => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            close();
-          }
-          else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            void save();
-          }
-        }}
       >
         <div id="bug-correction-heading" className="mb-3 flex items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-fg-1">
           <Pencil size={13} aria-hidden="true" />
