@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { getAuth, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { runIdempotentCreate } from '@lib/api/idempotent-create';
 import { isReservedProjectSlug } from '@lib/projects/validation';
 import { hasAlphanumeric, slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
-import { assertCanCreateProject, mapCreateProjectError, projectLimitReached } from './response';
+import { assertCanCreateProject, listWorkspaceProjects, mapCreateProjectError, parseProjectSlugFilter, projectLimitReached } from './response';
 
 // POST /api/v1/workspaces/{id}/projects — a workspace member (role >= member)
 // creates a project. The slug is auto-derived from the name and is unique per
@@ -110,6 +110,25 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 // the RLS-gated insert above; a PAT that holds it but whose caller is not a
 // member is rejected by `assertCanCreateProject` with 403.
 }, { auth: 'required', requires: ['atc:write'] });
+
+// GET /api/v1/workspaces/{id}/projects — the workspace's projects, ordered by
+// name, optionally narrowed to one exact `?slug=` (BK-1900, the Bunkai CLI's
+// `--project <slug>` lookup). A member read gated like the other ATC-library
+// reads (`atc:read`); it runs entirely under the caller's RLS, so a foreign,
+// nonexistent or soft-deleted workspace answers the same `200 {"projects": []}`
+// as an empty one. See `listWorkspaceProjects` in `./response`.
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+  const workspaceId = extractWorkspaceId(request);
+  if (!isUuid(workspaceId)) {
+    throw new ApiError('bad_request', 'Workspace id must be a UUID.');
+  }
+  const slug = parseProjectSlugFilter(request.nextUrl.searchParams.get('slug'));
+
+  const { db } = getAuth(ctx);
+  const projects = await listWorkspaceProjects(db, { workspaceId, slug });
+
+  return jsonResponse({ projects }, { status: 200 });
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractWorkspaceId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/');

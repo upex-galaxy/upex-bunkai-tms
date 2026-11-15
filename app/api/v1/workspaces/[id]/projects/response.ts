@@ -95,3 +95,57 @@ export async function projectLimitReached(
     return plainLimitError();
   }
 }
+
+// BK-1900 — GET /api/v1/workspaces/{id}/projects. The read the Bunkai CLI uses
+// to turn `--project checkout-v2` into a Project id, and to tell "Project not
+// found" apart from "No ATCs found" (the ATC search answers `[]` for both).
+//
+// `db` MUST be the caller's own RLS-scoped client (`getAuth(ctx).db`), never
+// the admin client: `projects_select_workspace_member` (0005, `deleted_at is
+// null` guard since 0084) is the whole authorization, so a foreign, unknown or
+// soft-deleted workspace selects nothing and answers the same empty list as a
+// workspace with no projects (non-disclosure).
+
+export const PROJECT_SLUG_MAX = 100;
+
+export interface ProjectSummary {
+  id: string
+  slug: string
+  name: string
+  created_at: string
+}
+
+// `?slug=` is optional. Present but blank, or longer than any slug can be, is
+// a caller mistake: refuse it instead of silently listing everything.
+export function parseProjectSlugFilter(raw: string | null): string | null {
+  if (raw === null) {
+    return null;
+  }
+  const slug = raw.trim();
+  if (slug.length === 0 || slug.length > PROJECT_SLUG_MAX) {
+    throw new ApiError('validation_failed', `slug must be 1 to ${PROJECT_SLUG_MAX} characters when given.`, {
+      details: { reason: 'slug_invalid' },
+    });
+  }
+  return slug;
+}
+
+export async function listWorkspaceProjects(
+  db: SupabaseClient<Database>,
+  args: { workspaceId: string, slug: string | null },
+): Promise<ProjectSummary[]> {
+  let query = db
+    .from('projects')
+    .select('id, slug, name, created_at')
+    .eq('workspace_id', args.workspaceId);
+  if (args.slug !== null) {
+    query = query.eq('slug', args.slug);
+  }
+  const { data, error } = await query.order('name', { ascending: true });
+  // A failed read must never leave as `[]`: that is the answer for a
+  // workspace with no projects, and the CLI would print "Project not found".
+  if (error) {
+    throw new ApiError('internal_error', 'The workspace\'s projects could not be read.');
+  }
+  return data ?? [];
+}

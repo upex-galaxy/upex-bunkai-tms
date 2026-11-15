@@ -8,6 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "bunkai": "bun apps/bunkai-cli/src/index.ts",
     "typecheck": "tsc --noEmit",
     "setup": "bun cli/preflight.ts --for setup --gate && bun cli/install.ts",
     "setup:doctor": "bun cli/doctor.ts",

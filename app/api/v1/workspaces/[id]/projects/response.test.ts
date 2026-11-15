@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 import { ApiError } from '@lib/api/error-envelope';
 import { describe, expect, it } from 'bun:test';
-import { assertCanCreateProject, mapCreateProjectError } from './response';
+import { assertCanCreateProject, listWorkspaceProjects, mapCreateProjectError, parseProjectSlugFilter } from './response';
 
 // BK-992 — POST /api/v1/workspaces/{id}/projects returned 422
 // project_limit_reached for a non-existent workspace because the 0077
@@ -120,5 +120,96 @@ describe('route wiring', () => {
     const insert = source.indexOf('.from(\'projects\')');
     expect(gate).toBeGreaterThan(-1);
     expect(insert).toBeGreaterThan(gate);
+  });
+});
+
+// BK-1900 — the GET read. A fake chainable `db` records every filter, so the
+// tests pin that the workspace id and the slug reach the query and that a read
+// failure never turns into the empty list the CLI reads as "Project not found".
+interface QueryLog { table: string, select: string, eq: Array<[string, string]>, order: string | null }
+
+function fakeListDb(result: { data: unknown, error: { message: string } | null }, log: QueryLog[]): SupabaseClient<Database> {
+  return {
+    from: (table: string) => {
+      const entry: QueryLog = { table, select: '', eq: [], order: null };
+      log.push(entry);
+      const chain = {
+        select: (cols: string) => {
+          entry.select = cols;
+          return chain;
+        },
+        eq: (col: string, value: string) => {
+          entry.eq.push([col, value]);
+          return chain;
+        },
+        order: async (col: string) => {
+          entry.order = col;
+          return result;
+        },
+      };
+      return chain;
+    },
+  } as unknown as SupabaseClient<Database>;
+}
+
+const PROJECT = { id: 'p-1', slug: 'checkout-v2', name: 'Checkout v2', created_at: '2026-11-01T00:00:00Z' };
+
+describe('parseProjectSlugFilter (BK-1900)', () => {
+  it('treats an absent slug as no filter', () => {
+    expect(parseProjectSlugFilter(null)).toBeNull();
+  });
+
+  it('trims a given slug', () => {
+    expect(parseProjectSlugFilter('  checkout-v2 ')).toBe('checkout-v2');
+  });
+
+  it('refuses a blank slug with 422 slug_invalid instead of listing everything', async () => {
+    const err = await captureError(() => parseProjectSlugFilter('   '));
+    expect(err.status).toBe(422);
+    expect(err.details).toEqual({ reason: 'slug_invalid' });
+  });
+
+  it('refuses a slug longer than any slug can be', async () => {
+    const err = await captureError(() => parseProjectSlugFilter('a'.repeat(101)));
+    expect(err.status).toBe(422);
+  });
+});
+
+describe('listWorkspaceProjects (BK-1900)', () => {
+  it('scopes the read to the workspace and orders by name', async () => {
+    const log: QueryLog[] = [];
+    const projects = await listWorkspaceProjects(fakeListDb({ data: [PROJECT], error: null }, log), { workspaceId: MEMBER_WS, slug: null });
+    expect(projects).toEqual([PROJECT]);
+    expect(log).toEqual([{ table: 'projects', select: 'id, slug, name, created_at', eq: [['workspace_id', MEMBER_WS]], order: 'name' }]);
+  });
+
+  it('narrows to the exact slug when one is given', async () => {
+    const log: QueryLog[] = [];
+    await listWorkspaceProjects(fakeListDb({ data: [PROJECT], error: null }, log), { workspaceId: MEMBER_WS, slug: 'checkout-v2' });
+    expect(log[0]?.eq).toEqual([['workspace_id', MEMBER_WS], ['slug', 'checkout-v2']]);
+  });
+
+  it('answers an RLS-filtered (foreign) workspace with the same empty list as an empty one', async () => {
+    const foreign = await listWorkspaceProjects(fakeListDb({ data: [], error: null }, []), { workspaceId: FOREIGN_WS, slug: null });
+    const missing = await listWorkspaceProjects(fakeListDb({ data: null, error: null }, []), { workspaceId: MISSING_WS, slug: null });
+    expect(foreign).toEqual([]);
+    expect(missing).toEqual([]);
+  });
+
+  it('maps a failed read to 500 instead of an empty list', async () => {
+    const err = await captureError(async () => listWorkspaceProjects(fakeListDb({ data: null, error: { message: 'boom' } }, []), { workspaceId: MEMBER_WS, slug: null }));
+    expect(err.status).toBe(500);
+    expect(err.code).toBe('internal_error');
+  });
+});
+
+describe('GET wiring (BK-1900)', () => {
+  it('reads through the caller\'s RLS-scoped client, never the admin client, and requires atc:read', () => {
+    const source = readFileSync(new URL('./route.ts', import.meta.url), 'utf8');
+    const get = source.slice(source.indexOf('export const GET'));
+    expect(get).toContain('const { db } = getAuth(ctx);');
+    expect(get).toContain('listWorkspaceProjects(db,');
+    expect(get).toContain('requires: [\'atc:read\']');
+    expect(source).not.toContain('createAdminClient');
   });
 });
