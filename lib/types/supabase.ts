@@ -2514,7 +2514,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
-      bunkai_archive_milestone: { Args: { p_milestone_id: string }, Returns: Json }
+      bunkai_archive_milestone: {
+        Args: { p_milestone_id: string }
+        Returns: Json
+      }
       bunkai_archive_module_subtree: {
         Args: { p_module_id: string }
         Returns: Json
@@ -2548,6 +2551,12 @@ export interface Database {
       bunkai_bootstrap_workspace: {
         Args: { p_name: string, p_slug: string }
         Returns: string
+      }
+      bunkai_bug_evidence_json: {
+        Args: {
+          a: Database['public']['Tables']['bug_evidence_attachments']['Row']
+        }
+        Returns: Json
       }
       bunkai_bug_json: { Args: { p_bug_id: string }, Returns: Json }
       bunkai_bulk_edit_atcs: {
@@ -2608,7 +2617,11 @@ export interface Database {
         }[]
       }
       bunkai_chat_send_message: {
-        Args: { p_body: string, p_mention_ids?: string[], p_workspace_id: string }
+        Args: {
+          p_body: string
+          p_mention_ids?: string[]
+          p_workspace_id: string
+        }
         Returns: {
           author_user_id: string
           body: string
@@ -3052,7 +3065,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
-      bunkai_restore_milestone: { Args: { p_milestone_id: string }, Returns: Json }
+      bunkai_restore_milestone: {
+        Args: { p_milestone_id: string }
+        Returns: Json
+      }
       bunkai_restore_module_subtree: {
         Args: { p_module_id: string }
         Returns: Json
