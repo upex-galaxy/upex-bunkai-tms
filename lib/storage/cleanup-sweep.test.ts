@@ -10,6 +10,7 @@ interface Update { values: Record<string, unknown>, column: string, value: unkno
 function fake(opts: {
   rows?: Array<{ id: number, bucket: string, path: string, attempts: number }>
   expired?: number | { message: string }
+  expiredBug?: number | { message: string }
   removeError?: (bucket: string, paths: string[]) => string | null
   purged?: number
   stuck?: number
@@ -21,8 +22,9 @@ function fake(opts: {
   const client = {
     rpc: async (fn: string, args: unknown) => {
       queries.push(`rpc:${fn}:${JSON.stringify(args)}`);
-      if (typeof opts.expired === 'object') { return { data: null, error: opts.expired }; }
-      return { data: opts.expired ?? 0, error: null };
+      const answer = fn === 'bunkai_expire_bug_evidence' && opts.expiredBug !== undefined ? opts.expiredBug : opts.expired;
+      if (typeof answer === 'object') { return { data: null, error: answer }; }
+      return { data: answer ?? 0, error: null };
     },
     storage: {
       from: (bucket: string) => ({
@@ -128,6 +130,19 @@ describe('runStorageCleanupSweep', () => {
     }
     expect(message).toContain('permission denied');
     expect(f.removes).toHaveLength(0);
+  });
+
+  it('BK-594: a failing defect-evidence expiry still drains the outbox, then reports the failure', async () => {
+    const f = fake({ expiredBug: { message: 'statement timeout' }, rows: [{ id: 3, bucket: 'run-evidence', path: 'w/r/s/c', attempts: 0 }] });
+    let message = '';
+    try {
+      await runStorageCleanupSweep(f.client);
+    }
+    catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain('statement timeout');
+    expect(f.removes).toEqual([{ bucket: 'run-evidence', paths: ['w/r/s/c'] }]);
   });
 
   it('parks rows at the attempt cap (exposed as a constant the stuck count uses)', () => {

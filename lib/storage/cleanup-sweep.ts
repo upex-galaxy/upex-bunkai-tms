@@ -47,10 +47,9 @@ export async function runStorageCleanupSweep(
   if (expired.error) {
     throw new Error(`expire pending uploads failed: ${expired.error.message}`);
   }
+  // A failure here must not stop the outbox drain for every other surface: it is reported
+  // after the drain instead.
   const expiredBug = await expireBugEvidence(admin, { limit: 500 });
-  if (expiredBug.error) {
-    throw new Error(`expire unclaimed defect evidence failed: ${expiredBug.error.message}`);
-  }
 
   const open = await admin
     .from('storage_cleanup_queue')
@@ -98,6 +97,10 @@ export async function runStorageCleanupSweep(
     .select('id', { count: 'exact', head: true })
     .is('done_at', null)
     .gte('attempts', CLEANUP_MAX_ATTEMPTS);
+
+  if (expiredBug.error) {
+    throw new Error(`expire unclaimed defect evidence failed (the outbox was drained): ${expiredBug.error.message}`);
+  }
 
   return {
     expired_pending: typeof expired.data === 'number' ? expired.data : 0,
