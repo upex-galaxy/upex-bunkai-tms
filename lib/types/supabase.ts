@@ -410,6 +410,7 @@ export interface Database {
         Row: {
           assignee_user_id: string | null
           atc_id: string | null
+          content_version: number
           created_at: string
           created_by: string | null
           description: string | null
@@ -438,6 +439,7 @@ export interface Database {
         Insert: {
           assignee_user_id?: string | null
           atc_id?: string | null
+          content_version?: number
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -466,6 +468,7 @@ export interface Database {
         Update: {
           assignee_user_id?: string | null
           atc_id?: string | null
+          content_version?: number
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -2547,6 +2550,17 @@ export interface Database {
       }
       bunkai_compare_run: { Args: { p_run_id: string }, Returns: Json }
       bunkai_compare_run_header: { Args: { p_run_id: string }, Returns: Json }
+      bunkai_correct_bug: {
+        Args: {
+          p_bug_id: string
+          p_description?: string
+          p_expected_version: number
+          p_severity?: string
+          p_steps_to_reproduce?: string
+          p_title?: string
+        }
+        Returns: Json
+      }
       bunkai_create_atc: {
         Args: {
           p_ac_ids: string[]

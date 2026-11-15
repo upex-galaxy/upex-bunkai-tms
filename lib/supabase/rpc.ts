@@ -1070,6 +1070,32 @@ export async function transitionBugStatus(
   });
 }
 
+// BK-1835 — correct a defect's title, severity, description and steps.
+// `bunkai_correct_bug` (migration 0129) is SECURITY DEFINER with no actor
+// parameter and is granted to `authenticated` only, so it runs through the
+// caller's own client, like `transitionBugStatus` above. An omitted field is
+// left unchanged; the call returns `{ bug, changed }`.
+export async function correctBug(
+  supabase: Client,
+  args: {
+    bugId: string
+    expectedVersion: number
+    title?: string
+    severity?: string
+    description?: string
+    stepsToReproduce?: string
+  },
+) {
+  return supabase.rpc('bunkai_correct_bug', {
+    p_bug_id: args.bugId,
+    p_expected_version: args.expectedVersion,
+    p_title: args.title,
+    p_severity: args.severity,
+    p_description: args.description,
+    p_steps_to_reproduce: args.stepsToReproduce,
+  });
+}
+
 // BK-49 — batch-resolve actor emails for one page of activity rows
 // (ADR-0011). SECURITY DEFINER: asserts the CALLER's own co-membership of
 // `workspaceId` in-band (auth.uid(), non-spoofable, no explicit actor param)
