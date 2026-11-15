@@ -229,6 +229,7 @@ describe('BugCorrectionBodySchema', () => {
   test('requires expected_version as a positive integer', () => {
     expect(BugCorrectionBodySchema.safeParse({ title: 'A valid title' }).success).toBe(false);
     expect(BugCorrectionBodySchema.safeParse({ expected_version: 0, title: 'A valid title' }).success).toBe(false);
+    expect(BugCorrectionBodySchema.safeParse({ expected_version: 3000000000, title: 'A valid title' }).success).toBe(false);
   });
 
   test('requires at least one content field', () => {

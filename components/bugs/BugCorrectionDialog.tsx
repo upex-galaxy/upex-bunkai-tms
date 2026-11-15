@@ -68,6 +68,7 @@ function BugCorrectionDialog({ bugId, bug, onClose }: BugCorrectionDialogProps) 
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   const update = (patch: Partial<CorrectionDraft>) => {
     setDraft(prev => ({ ...prev, ...patch }));
@@ -78,11 +79,11 @@ function BugCorrectionDialog({ bugId, bug, onClose }: BugCorrectionDialogProps) 
     if (submitting) { return; }
     onClose();
     // After a stale refusal the screen behind still shows the old content.
-    if (current) { router.refresh(); }
+    if (current || blocked) { router.refresh(); }
   };
 
   const save = async () => {
-    if (submitting) { return; }
+    if (submitting || blocked) { return; }
     const problem = titleError(draft.title);
     if (problem) {
       setFieldError(problem);
@@ -103,6 +104,10 @@ function BugCorrectionDialog({ bugId, bug, onClose }: BugCorrectionDialogProps) 
           if (failure.current) {
             setCurrent(failure.current);
             setVersion(failure.current.content_version);
+          }
+          else {
+            // Nothing to rebase on: only Cancel (which reloads) is offered.
+            setBlocked(true);
           }
         }
         setFormError(failure.message);
@@ -252,7 +257,7 @@ function BugCorrectionDialog({ bugId, bug, onClose }: BugCorrectionDialogProps) 
             size="sm"
             data-testid="bug-correction-save"
             onClick={() => { void save(); }}
-            disabled={submitting}
+            disabled={submitting || blocked}
           >
             {submitting ? 'Saving…' : formError && !current ? 'Retry' : 'Save'}
           </Button>

@@ -106,7 +106,7 @@ export type BugStatusTransitionBody = z.infer<typeof BugStatusTransitionBodySche
 // `content_version` as the caller loaded it (T1).
 export const BugCorrectionBodySchema = z
   .object({
-    expected_version: z.number().int().min(1),
+    expected_version: z.number().int().min(1).max(2147483647),
     title: titleSchema.optional(),
     severity: severitySchema.optional(),
     description: z.string().trim().optional(),

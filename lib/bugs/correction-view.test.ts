@@ -43,10 +43,11 @@ describe('titleError (the filing rule)', () => {
     expect(titleError(title)).toBe('Title must be between 5 and 200 characters');
   });
 
-  test('accepts the 5 and 200 boundaries and counts an emoji as one character', () => {
+  test('accepts the 5 and 200 boundaries, counting an emoji the way the API schema does', () => {
     expect(titleError('abcde')).toBeNull();
     expect(titleError('y'.repeat(200))).toBeNull();
-    expect(titleError(`${'z'.repeat(199)}🐞`)).toBeNull();
+    expect(titleError(`${'z'.repeat(198)}🐞`)).toBeNull();
+    expect(titleError(`${'z'.repeat(199)}🐞`)).toBe('Title must be between 5 and 200 characters');
   });
 });
 
@@ -76,9 +77,10 @@ describe('parseCorrectionFailure', () => {
     expect(failure.kind === 'stale' && failure.current).toEqual(current);
   });
 
-  test('a 409 without a readable current defect still reports the staleness', () => {
+  test('a 409 without a readable current defect says so and sends the user to reload', () => {
     const failure = parseCorrectionFailure(409, {});
     expect(failure).toMatchObject({ kind: 'stale', current: null });
+    expect(failure.message).toContain('could not be loaded');
   });
 
   test('a validation error shows the server message', () => {

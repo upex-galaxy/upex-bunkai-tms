@@ -27,8 +27,9 @@
 --     one would open a REST write path with no audit row. DEFINER keeps the
 --     write and its activity row atomic in one path.
 --   * No actor parameter: the caller is auth.uid(). Execute is granted to
---     `authenticated` only; a service-role caller has a null uid and fails the
---     membership check.
+--     `authenticated` only and revoked from `service_role` (a null uid would
+--     fail the membership check anyway) and from `qa_inspector_ro`, the
+--     read-only inspector role 0085's default privilege would otherwise reach.
 --   * A missing defect and a defect in a workspace the caller is not a member
 --     of both raise P0002 (404). Only a confirmed member without write access
 --     gets the distinct 42501 (403): that member can already read the defect.
@@ -258,8 +259,20 @@ begin
 end;
 $$;
 
-revoke execute on function public.bunkai_correct_bug(uuid, integer, text, text, text, text) from public, anon;
+revoke execute on function public.bunkai_correct_bug(uuid, integer, text, text, text, text) from public, anon, service_role;
 grant execute on function public.bunkai_correct_bug(uuid, integer, text, text, text, text) to authenticated;
+
+-- The 0085 default privilege grants EXECUTE on every new function to the QA
+-- inspector roles. The read-only one must never reach a write path (0086's
+-- own invariant), so it is revoked here, guarded like 0118 / 0124.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'qa_inspector_ro') then
+    revoke all on function public.bunkai_correct_bug(uuid, integer, text, text, text, text)
+      from qa_inspector_ro;
+  end if;
+end;
+$$;
 
 -- ============================================================================
 -- 4. bunkai_list_activity — 0120's body plus `bug.corrected`

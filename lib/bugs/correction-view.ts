@@ -40,10 +40,11 @@ export function draftFromBug(bug: CorrectableBug): CorrectionDraft {
   };
 }
 
-// The filing title rule, counted the way the server counts it (code points,
-// so an emoji is one character). Null when the title is acceptable.
+// The filing title rule, counted the way the filing dialog and the shared
+// Zod schema count it (string length), so the client never accepts a title
+// the API refuses. Null when the title is acceptable.
 export function titleError(title: string): string | null {
-  const length = [...title.trim()].length;
+  const length = title.trim().length;
   if (length < BUG_TITLE_MIN || length > BUG_TITLE_MAX) {
     return `Title must be between ${BUG_TITLE_MIN} and ${BUG_TITLE_MAX} characters`;
   }
@@ -72,6 +73,7 @@ interface ErrorEnvelope {
 }
 
 const STALE_MESSAGE = 'This defect changed since you opened it. The current version is shown below; your draft is kept. Save again to replace it with your draft, or cancel to keep the current version.';
+const STALE_UNREADABLE_MESSAGE = 'This defect changed since you opened it and its current version could not be loaded. Cancel to reload it before correcting it again.';
 
 // Turns a refused PATCH into what the dialog shows. A 409 carries the current
 // defect (AI Product Owner P8); anything else shows the server's own message
@@ -81,7 +83,7 @@ export function parseCorrectionFailure(status: number, body: unknown): Correctio
   if (status === 409) {
     const details = envelope.error?.details as { current?: unknown } | undefined;
     const current = isCorrectableBug(details?.current) ? details.current : null;
-    return { kind: 'stale', current, message: STALE_MESSAGE };
+    return { kind: 'stale', current, message: current ? STALE_MESSAGE : STALE_UNREADABLE_MESSAGE };
   }
   const message = envelope.error?.message;
   if (status === 403) {
