@@ -36,6 +36,7 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   'jira_connection.connected': 'connected Jira',
   'jira_connection.changed': 'changed the Jira connection',
   'jira_connection.disconnected': 'disconnected Jira',
+  'bug.corrected': 'corrected this defect',
 };
 
 // R1 backstop (implementation-plan.md Risk R1 — allowlist/label-map drift):
@@ -100,9 +101,55 @@ export function resolveActionLabel({ action, payload, assigneeEmail }: ResolveAc
     return template.replace('{status}', displayStatus);
   }
 
+  if (action === 'bug.corrected') {
+    const changes = describeBugCorrection(payload);
+    return changes ? `${template}: ${changes}` : template;
+  }
+
   if (action === 'bug.assigned' || action === 'bug.reassigned') {
     return template.replace('{assignee}', assigneeEmail ?? UNRESOLVED_ASSIGNEE_LABEL);
   }
 
   return template;
+}
+
+// BK-1835 (AI Product Owner P6) — the changed fields of a `bug.corrected`
+// entry, in a fixed order: title and severity with their previous and new
+// value, description and steps by name only (their free text stays out of
+// the feed, migration 0129's projection never sends it).
+const CORRECTED_FIELD_ORDER = ['title', 'severity', 'description', 'steps_to_reproduce'] as const;
+
+function describeBugCorrection(payload: Record<string, unknown>): string {
+  const changed = Array.isArray(payload.changed_fields)
+    ? new Set(payload.changed_fields.filter((f): f is string => typeof f === 'string'))
+    : new Set<string>();
+  const parts: string[] = [];
+  for (const field of CORRECTED_FIELD_ORDER) {
+    if (!changed.has(field)) {
+      continue;
+    }
+    if (field === 'title') {
+      const pair = readPair(payload.title_change);
+      parts.push(pair ? `title "${pair.from}" → "${pair.to}"` : 'title');
+    }
+    else if (field === 'severity') {
+      const pair = readPair(payload.severity_change);
+      parts.push(pair ? `severity ${pair.from} → ${pair.to}` : 'severity');
+    }
+    else if (field === 'description') {
+      parts.push('description');
+    }
+    else {
+      parts.push('steps to reproduce');
+    }
+  }
+  return parts.join(', ');
+}
+
+function readPair(value: unknown): { from: string, to: string } | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+  const { from, to } = value as { from?: unknown, to?: unknown };
+  return typeof from === 'string' && typeof to === 'string' ? { from, to } : null;
 }

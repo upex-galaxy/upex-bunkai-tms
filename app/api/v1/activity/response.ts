@@ -147,6 +147,7 @@ export function deriveItemLabel(row: Pick<ActivityRpcRow, 'action' | 'entity_typ
     case 'atc.archived':
     case 'atc.restored':
     case 'test.created':
+    case 'bug.corrected': // BK-1835: the defect's title after the correction (0129).
       return nonEmptyString(row.payload.title) ?? fallback;
     case 'module.archived':
     case 'module.restored':

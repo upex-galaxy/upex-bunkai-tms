@@ -20,7 +20,7 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
     expect(Object.keys(ACTION_LABELS).sort()).toEqual([...ACTIVITY_ALLOWED_ACTIONS].sort());
   });
 
-  test('the exact 22-row table matches implementation-plan.md / BK-264 + BK-508\'s AC verbatim', () => {
+  test('the exact 23-row table matches implementation-plan.md / BK-264 + BK-508\'s AC verbatim', () => {
     expect(ACTION_LABELS).toEqual({
       'module.renamed': 'renamed a module',
       'module.description_updated': 'updated a module description',
@@ -44,6 +44,7 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
       'jira_connection.connected': 'connected Jira',
       'jira_connection.changed': 'changed the Jira connection',
       'jira_connection.disconnected': 'disconnected Jira',
+      'bug.corrected': 'corrected this defect',
     });
   });
 });
@@ -146,5 +147,45 @@ describe('resolveActionLabel — BK-264 Bug-triage actions (acceptance-criteria.
       assigneeEmail: 'should-not-appear@example.com',
     });
     expect(label).toBe('created an ATC');
+  });
+});
+
+// BK-1835 — `bug.corrected`: one entry, each changed field named, title and
+// severity with previous and new value (AI Product Owner P6).
+describe('resolveActionLabel — BK-1835 bug.corrected', () => {
+  test('severity P3 to P2 reads as a pair (AC-04 "severity changed from P3 to P2")', () => {
+    const label = resolveActionLabel({
+      action: 'bug.corrected',
+      payload: { title: 'Checkout', changed_fields: ['severity'], severity_change: { from: 'P3', to: 'P2' }, title_change: null },
+      assigneeEmail: null,
+    });
+    expect(label).toBe('corrected this defect: severity P3 → P2');
+  });
+
+  test('two fields at once are both listed in one label, title first', () => {
+    const label = resolveActionLabel({
+      action: 'bug.corrected',
+      payload: {
+        title: 'Checkout button does nothing on the second click',
+        changed_fields: ['severity', 'title'],
+        title_change: { from: 'Checkout button does nothing', to: 'Checkout button does nothing on the second click' },
+        severity_change: { from: 'P3', to: 'P2' },
+      },
+      assigneeEmail: null,
+    });
+    expect(label).toBe('corrected this defect: title "Checkout button does nothing" → "Checkout button does nothing on the second click", severity P3 → P2');
+  });
+
+  test('description and steps are named without their text', () => {
+    const label = resolveActionLabel({
+      action: 'bug.corrected',
+      payload: { title: 'X', changed_fields: ['description', 'steps_to_reproduce'], title_change: null, severity_change: null },
+      assigneeEmail: null,
+    });
+    expect(label).toBe('corrected this defect: description, steps to reproduce');
+  });
+
+  test('a malformed payload falls back to the plain label', () => {
+    expect(resolveActionLabel({ action: 'bug.corrected', payload: {}, assigneeEmail: null })).toBe('corrected this defect');
   });
 });

@@ -54,6 +54,9 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   'jira_connection.connected',
   'jira_connection.changed',
   'jira_connection.disconnected',
+  // BK-1835 — one entry per effective content correction of a defect
+  // (migration 0129). Payload: title, changed_fields, title/severity pairs.
+  'bug.corrected',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ALLOWED_ACTIONS)[number];
