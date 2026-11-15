@@ -1344,6 +1344,9 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
           context={{
             mode: 'run-linked',
             runStepId: bugDialogStep.step.id,
+            // BK-594 — where the drawer's image uploads are counted before
+            // the defect exists; the filing re-checks it against the run.
+            projectId: view.project_id,
             // The failing step's OWN ATC module — not the run-level
             // chain-position-1 snapshot, which is wrong for any Test chain
             // spanning more than one module. Falls back to the snapshot only

@@ -1,19 +1,26 @@
 'use client';
 
 import type { BugSeverity } from '@lib/bugs/constants';
+import type { DraftEvidence } from '@lib/bugs/evidence-draft';
+import { BugEvidenceField, discardDraftUpload } from '@components/bugs/BugEvidenceField';
 import { Button } from '@components/ui/button';
 import { Select } from '@components/ui/select';
 import {
-  BUG_EVIDENCE_MAX,
   BUG_SEVERITY_LABEL,
   BUG_SEVERITY_VALUES,
   BUG_TITLE_MAX,
   BUG_TITLE_MIN,
 } from '@lib/bugs/constants';
+import {
+  buildEvidencePayload,
+  idempotencyKeyFor,
+  readyAttachmentIds,
+  SUBMIT_BLOCKER_MESSAGES,
+  submitBlocker,
+} from '@lib/bugs/evidence-draft';
 import { BUG_TITLE_MESSAGE } from '@lib/bugs/validation';
-import { isHttpUrl } from '@lib/utils/url';
-import { Bug, Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import { Bug } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 // BK-40 — the "Report bug" / "New bug" dialog, matching RunnerView's existing
 // Abort/Finish overlay family (Technical Decision 9): a plain fixed-inset
@@ -32,6 +39,9 @@ export interface BugFormDialogRunLinkedContext {
   mode: 'run-linked'
   runStepId: string
   moduleLabel: string
+  // BK-594 — the run's Project: where image uploads are counted until the
+  // filing claims them (the filing re-checks it against the run).
+  projectId: string
 }
 
 // BK-40 Slice 3 — standalone: there is no run to derive context from, so the
@@ -80,40 +90,37 @@ export function BugFormDialog({
   const [severity, setSeverity] = useState<BugSeverity>(initialSeverity);
   const [description, setDescription] = useState('');
   const [stepsToReproduce, setStepsToReproduce] = useState(initialStepsToReproduce);
-  const [evidenceUrls, setEvidenceUrls] = useState<string[]>(initialEvidenceUrls);
-  const [evidenceDraft, setEvidenceDraft] = useState('');
+  // BK-594 — links and images in one ordered list (lib/bugs/evidence-draft.ts).
+  // The BK-500-filtered step evidence seeds it as links, exactly as before.
+  const [evidence, setEvidence] = useState<DraftEvidence[]>(() => initialEvidenceUrls.map((url, i) => ({ kind: 'link', key: `seed-${i}`, url })));
+  // One draft per open drawer: the server counts this drawer's uploads on it.
+  const [draftId] = useState(() => crypto.randomUUID());
   // Standalone mode only — which module was picked. Unused (and never
   // validated) in run-linked mode, where the module is server-derived.
   const [moduleId, setModuleId] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  // One Idempotency-Key per attempt (BK-667, ADR-0002): generated once, rotated
-  // only after a refusal so a corrected retry is not a payload mismatch.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  // One Idempotency-Key per payload (BK-667, ADR-0002; BK-594 AC-18): a retry
+  // of the SAME filing after a timeout, a network error or a 5xx reuses the
+  // key, so the server replays the first defect instead of filing a second
+  // one. A changed payload (a corrected retry) gets a new key.
+  const lastAttempt = useRef<{ key: string, payload: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const projectId = context.projectId;
 
   if (!open) {
     return null;
   }
 
+  const blocker = submitBlocker(evidence);
+
   const close = () => {
     if (submitting) { return; }
-    onClose();
-  };
-
-  const addEvidence = () => {
-    const trimmed = evidenceDraft.trim();
-    if (!trimmed || evidenceUrls.length >= BUG_EVIDENCE_MAX) { return; }
-    if (!isHttpUrl(trimmed)) {
-      setError('Evidence link must be a valid URL.');
-      return;
+    // Uploads never filed are discarded now (best effort; the sweep removes any
+    // it misses after 3 hours).
+    for (const id of readyAttachmentIds(evidence)) {
+      discardDraftUpload(projectId, id);
     }
-    setEvidenceUrls(prev => [...prev, trimmed]);
-    setEvidenceDraft('');
-    setError(null);
-  };
-
-  const removeEvidence = (index: number) => {
-    setEvidenceUrls(prev => prev.filter((_, i) => i !== index));
+    onClose();
   };
 
   const handleSubmit = async () => {
@@ -131,32 +138,44 @@ export function BugFormDialog({
       setError('Select a module.');
       return;
     }
+    // BK-594 (AC-07, P3) — never file against evidence that has not landed.
+    if (blocker) {
+      setError(SUBMIT_BLOCKER_MESSAGES[blocker]);
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
     try {
+      const payload = buildEvidencePayload(evidence);
       const sharedFields = {
         title: trimmedTitle,
         severity,
         description: description.trim() || undefined,
         steps_to_reproduce: stepsToReproduce.trim() || undefined,
-        evidence_urls: evidenceUrls,
+        evidence_urls: payload.evidence_urls,
+        // Links-only filings send exactly the body they always did (AC-08).
+        ...(payload.evidence_attachment_ids.length > 0
+          ? { evidence_attachment_ids: payload.evidence_attachment_ids, evidence_order: payload.evidence_order }
+          : {}),
       };
       const requestBody = context.mode === 'run-linked'
         ? { run_step_id: context.runStepId, ...sharedFields }
         : { project_id: context.projectId, module_id: moduleId, ...sharedFields };
 
+      const serialized = JSON.stringify(requestBody);
+      const attempt = idempotencyKeyFor(lastAttempt.current, serialized, () => crypto.randomUUID());
+      lastAttempt.current = attempt;
       const response = await fetch('/api/v1/bugs', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
-        body: JSON.stringify(requestBody),
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': attempt.key },
+        body: serialized,
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as BugCreateErrorBody;
         // Server copy rendered verbatim, same convention as handleAbort/
         // handleFinish/handleMarkSubmit.
         setError(body.error?.message ?? 'Could not file this bug.');
-        setIdempotencyKey(crypto.randomUUID());
         setSubmitting(false);
         return;
       }
@@ -168,8 +187,9 @@ export function BugFormDialog({
       onClose();
     }
     catch (err) {
-      setError(err instanceof Error ? err.message : 'Network error.');
-      setIdempotencyKey(crypto.randomUUID());
+      // Everything typed and every upload stays in the drawer; pressing File
+      // again retries the same filing with the same key.
+      setError(err instanceof Error ? `${err.message} Nothing was lost: press File bug to retry.` : 'Network error. Nothing was lost: press File bug to retry.');
       setSubmitting(false);
     }
   };
@@ -300,65 +320,14 @@ export function BugFormDialog({
           className="w-full resize-none rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-2 text-sm text-fg-1 placeholder:text-fg-4 focus:border-accent focus:outline-none"
         />
 
-        <div className="mb-1.5 mt-3 flex items-center justify-between">
-          <span className="text-xs text-fg-2">Evidence</span>
-          <span data-testid="bug-evidence-counter" className="font-mono text-2xs text-fg-4">
-            {evidenceUrls.length}
-            {' / '}
-            {BUG_EVIDENCE_MAX}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          {evidenceUrls.map((url, index) => (
-            <div key={`${index}-${url}`} className="flex items-center gap-1.5">
-              <span className="min-w-0 flex-1 truncate rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-1.5 text-xs text-fg-2">
-                {url}
-              </span>
-              <button
-                type="button"
-                data-testid={`bug-evidence-remove-${index}`}
-                onClick={() => removeEvidence(index)}
-                disabled={submitting}
-                className="inline-flex size-6 shrink-0 items-center justify-center rounded-1 border border-stroke-2 bg-surface-2 text-fg-3 hover:border-stroke-3 hover:text-fg-1"
-                aria-label="Remove evidence link"
-              >
-                <X size={11} />
-              </button>
-            </div>
-          ))}
-          {evidenceUrls.length < BUG_EVIDENCE_MAX && (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                data-testid="bug-evidence-draft-input"
-                value={evidenceDraft}
-                onChange={(e) => {
-                  setEvidenceDraft(e.target.value);
-                  if (error) { setError(null); }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addEvidence();
-                  }
-                }}
-                disabled={submitting}
-                placeholder="https://…"
-                className="w-full min-w-0 flex-1 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-1.5 text-xs text-fg-1 placeholder:text-fg-4 focus:border-accent focus:outline-none"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                data-testid="bug-evidence-add"
-                onClick={addEvidence}
-                disabled={submitting || !evidenceDraft.trim()}
-              >
-                <Plus size={11} />
-              </Button>
-            </div>
-          )}
-        </div>
+        <BugEvidenceField
+          items={evidence}
+          setItems={setEvidence}
+          projectId={projectId}
+          draftId={draftId}
+          disabled={submitting}
+          onChange={() => { if (error) { setError(null); } }}
+        />
 
         {error && (
           <p data-testid="bug-form-error" className="m-0 mt-2.5 text-xs text-signal-fail">
@@ -373,10 +342,10 @@ export function BugFormDialog({
             size="sm"
             data-testid="bug-form-submit"
             onClick={() => { void handleSubmit(); }}
-            disabled={submitting}
+            disabled={submitting || blocker === 'uploading'}
           >
             <Bug size={11} />
-            {submitting ? 'Filing…' : 'File bug'}
+            {submitting ? 'Filing…' : blocker === 'uploading' ? 'Waiting for uploads…' : 'File bug'}
           </Button>
           <Button
             type="button"
