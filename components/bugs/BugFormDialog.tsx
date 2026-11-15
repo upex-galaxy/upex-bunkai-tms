@@ -116,9 +116,13 @@ export function BugFormDialog({
   const close = () => {
     if (submitting) { return; }
     // Uploads never filed are discarded now (best effort; the sweep removes any
-    // it misses after 3 hours).
-    for (const id of readyAttachmentIds(evidence)) {
-      discardDraftUpload(projectId, id);
+    // it misses after 3 hours). Not once a filing was attempted: it may still be
+    // completing server-side after a client timeout, and a discard winning the
+    // row lock would make it fail.
+    if (lastAttempt.current === null) {
+      for (const id of readyAttachmentIds(evidence)) {
+        discardDraftUpload(projectId, id);
+      }
     }
     onClose();
   };

@@ -60,9 +60,13 @@ export function BugEvidenceField({ items, setItems, projectId, draftId, disabled
     setItems(itemsRef.current);
   };
 
+  // False once the drawer closed: an upload loop still running stops, and discards what lands.
+  const mounted = useRef(true);
   useEffect(() => {
+    mounted.current = true;
     const map = previews.current;
     return () => {
+      mounted.current = false;
       for (const url of map.values()) { URL.revokeObjectURL(url); }
       map.clear();
     };
@@ -99,7 +103,9 @@ export function BugEvidenceField({ items, setItems, projectId, draftId, disabled
       URL.revokeObjectURL(preview);
       previews.current.delete(item.key);
     }
-    if (item.kind === 'image' && item.status === 'ready' && item.attachmentId && projectId) {
+    // A failed upload's row may still exist server-side (a commit that timed out may have
+    // landed) and still count against the draft: discard it too.
+    if (item.kind === 'image' && item.status !== 'uploading' && item.attachmentId && projectId) {
       discardDraftUpload(projectId, item.attachmentId);
     }
     onChange();
@@ -130,6 +136,7 @@ export function BugEvidenceField({ items, setItems, projectId, draftId, disabled
 
     // One at a time, in selection order: each init re-checks the draft cap on the server.
     for (const { file, key } of queued) {
+      if (!mounted.current) { break; }
       try {
         previews.current.set(key, URL.createObjectURL(file));
       }
@@ -142,11 +149,17 @@ export function BugEvidenceField({ items, setItems, projectId, draftId, disabled
         initFields: { draft_id: draftId },
         commitTimeoutMs: COMMIT_TIMEOUT_MS,
       });
+      if (!mounted.current) {
+        // The drawer closed mid-upload: nothing will file this image.
+        const landed = outcome.ok ? outcome.attachment.id : outcome.attachmentId;
+        if (landed) { discardDraftUpload(projectId, landed); }
+        break;
+      }
       if (outcome.ok) {
         patchImage(key, { status: 'ready', attachmentId: outcome.attachment.id, error: null });
       }
       else {
-        patchImage(key, { status: 'failed', error: outcome.message });
+        patchImage(key, { status: 'failed', error: outcome.message, attachmentId: outcome.attachmentId ?? null });
       }
     }
   };

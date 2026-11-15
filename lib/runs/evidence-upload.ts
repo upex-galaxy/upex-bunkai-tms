@@ -20,7 +20,7 @@ export interface UploadableFile {
   slice: (start: number, end: number) => { arrayBuffer: () => Promise<ArrayBuffer> }
 }
 
-export type UploadOutcome = { ok: true, attachment: StepAttachment } | { ok: false, message: string };
+export type UploadOutcome = { ok: true, attachment: StepAttachment } | { ok: false, message: string, attachmentId?: string };
 
 const UNREACHABLE = 'Could not reach the server. Nothing was saved. Try again.';
 const UPLOAD_FAILED = 'The upload did not finish. Nothing was saved. Try again.';
@@ -48,7 +48,9 @@ export async function uploadStepEvidence(args: {
 // `initFields` are extra init body fields (the defect drawer's draft id). `commitTimeoutMs`
 // bounds each commit attempt, so a commit that hangs after the bytes landed (the BK-1450
 // pattern) ends as a retryable failure instead of an endless "Uploading".
-export type EvidenceUploadOutcome<T> = { ok: true, attachment: T } | { ok: false, message: string };
+// A failure after init carries the upload id, so the caller can discard a row the server may
+// still count (a commit that timed out may have landed).
+export type EvidenceUploadOutcome<T> = { ok: true, attachment: T } | { ok: false, message: string, attachmentId?: string };
 
 export async function uploadEvidenceFile<T extends { id: string }>(args: {
   file: UploadableFile
@@ -102,14 +104,14 @@ export async function uploadEvidenceFile<T extends { id: string }>(args: {
   if (commit === 'unreachable') {
     // The bytes may have landed. Commit is idempotent, but the connection is gone: leave the
     // pending row to the sweep (invisible meanwhile) rather than deleting what might commit.
-    return { ok: false, message: UNREACHABLE };
+    return { ok: false, message: UNREACHABLE, attachmentId: created.attachment.id };
   }
   if (!commit.ok) {
-    return { ok: false, message: await errorMessage(commit, 'Could not finish the upload.') };
+    return { ok: false, message: await errorMessage(commit, 'Could not finish the upload.'), attachmentId: created.attachment.id };
   }
   const done = (await commit.json().catch(() => null)) as { attachment?: T } | null;
   if (!done?.attachment) {
-    return { ok: false, message: 'Could not finish the upload.' };
+    return { ok: false, message: 'Could not finish the upload.', attachmentId: created.attachment.id };
   }
   return { ok: true, attachment: done.attachment };
 }
