@@ -406,6 +406,85 @@ export interface Database {
           },
         ]
       }
+      bug_evidence_attachments: {
+        Row: {
+          bug_id: string | null
+          byte_size: number
+          claimed_at: string | null
+          committed_at: string | null
+          content_type: string
+          created_at: string
+          created_by: string | null
+          draft_id: string
+          expires_at: string | null
+          id: string
+          original_filename: string
+          position: number | null
+          project_id: string
+          status: string
+          storage_path: string
+          workspace_id: string
+        }
+        Insert: {
+          bug_id?: string | null
+          byte_size: number
+          claimed_at?: string | null
+          committed_at?: string | null
+          content_type: string
+          created_at?: string
+          created_by?: string | null
+          draft_id: string
+          expires_at?: string | null
+          id?: string
+          original_filename: string
+          position?: number | null
+          project_id: string
+          status?: string
+          storage_path: string
+          workspace_id: string
+        }
+        Update: {
+          bug_id?: string | null
+          byte_size?: number
+          claimed_at?: string | null
+          committed_at?: string | null
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          draft_id?: string
+          expires_at?: string | null
+          id?: string
+          original_filename?: string
+          position?: number | null
+          project_id?: string
+          status?: string
+          storage_path?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'bug_evidence_attachments_bug_id_fkey'
+            columns: ['bug_id']
+            isOneToOne: false
+            referencedRelation: 'bugs'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'bug_evidence_attachments_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'bug_evidence_attachments_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       bugs: {
         Row: {
           assignee_user_id: string | null
@@ -2551,6 +2630,10 @@ export interface Database {
         Args: { p_summary?: string, p_test_plan_id: string, p_verdict: string }
         Returns: Json
       }
+      bunkai_commit_bug_evidence: {
+        Args: { p_attachment_id: string, p_byte_size: number }
+        Returns: Json
+      }
       bunkai_commit_run_step_attachment: {
         Args: { p_attachment_id: string, p_byte_size: number }
         Returns: Json
@@ -2589,6 +2672,8 @@ export interface Database {
           p_actor_user_id: string
           p_atc_id: string
           p_description: string
+          p_evidence_attachment_ids?: string[]
+          p_evidence_order?: number[]
           p_evidence_urls: string[]
           p_module_id: string
           p_project_id: string
@@ -2654,6 +2739,10 @@ export interface Database {
         Args: { p_milestone_id: string, p_test_plan_id: string }
         Returns: Json
       }
+      bunkai_discard_bug_evidence: {
+        Args: { p_attachment_id: string }
+        Returns: Json
+      }
       bunkai_duplicate_atc: {
         Args: {
           p_actor_user_id: string
@@ -2665,6 +2754,10 @@ export interface Database {
       bunkai_effective_plan: {
         Args: { p_grace_ends_at: string, p_now?: string, p_plan: string }
         Returns: string
+      }
+      bunkai_expire_bug_evidence: {
+        Args: { p_limit?: number }
+        Returns: number
       }
       bunkai_expire_pending_run_step_attachments: {
         Args: { p_limit?: number }
@@ -2703,6 +2796,16 @@ export interface Database {
       }
       bunkai_get_workspace_jira_credentials: {
         Args: { p_workspace_id: string }
+        Returns: Json
+      }
+      bunkai_init_bug_evidence: {
+        Args: {
+          p_byte_size: number
+          p_content_type: string
+          p_draft_id: string
+          p_filename: string
+          p_project_id: string
+        }
         Returns: Json
       }
       bunkai_init_run_step_attachment: {

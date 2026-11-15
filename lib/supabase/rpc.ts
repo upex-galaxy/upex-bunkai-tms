@@ -922,6 +922,10 @@ export interface CreateBugArgs {
   runId?: string | null
   runStepId?: string | null
   atcId?: string | null
+  // BK-594 — uploads to claim (the actor's own committed, unclaimed uploads)
+  // and the position of each one in the combined evidence list.
+  evidenceAttachmentIds?: string[]
+  evidenceOrder?: number[] | null
 }
 
 export async function createBug(supabase: Client, args: CreateBugArgs) {
@@ -940,7 +944,51 @@ export async function createBug(supabase: Client, args: CreateBugArgs) {
     p_run_id: (args.runId ?? null) as string,
     p_run_step_id: (args.runStepId ?? null) as string,
     p_atc_id: (args.atcId ?? null) as string,
+    p_evidence_attachment_ids: args.evidenceAttachmentIds ?? [],
+    // Null lets the RPC place the uploads after the links.
+    p_evidence_order: (args.evidenceOrder ?? null) as number[],
   });
+}
+
+// BK-594 — defect evidence uploads (0131). init, commit and discard are
+// SECURITY DEFINER with NO identity parameter (ADR-0012): they MUST run
+// through the caller's own RLS-scoped client, never `createAdminClient()`.
+export interface InitBugEvidenceArgs {
+  projectId: string
+  draftId: string
+  filename: string
+  contentType: string
+  byteSize: number
+}
+
+// Returns `{ attachment, storage_path }`; the route signs the upload URL for
+// `storage_path` and never echoes the path to the client.
+export async function initBugEvidence(supabase: Client, args: InitBugEvidenceArgs) {
+  return supabase.rpc('bunkai_init_bug_evidence', {
+    p_project_id: args.projectId,
+    p_draft_id: args.draftId,
+    p_filename: args.filename,
+    p_content_type: args.contentType,
+    p_byte_size: args.byteSize,
+  });
+}
+
+// `byteSize` is the size the route read from Storage metadata. Idempotent.
+export async function commitBugEvidence(supabase: Client, args: { attachmentId: string, byteSize: number }) {
+  return supabase.rpc('bunkai_commit_bug_evidence', {
+    p_attachment_id: args.attachmentId,
+    p_byte_size: args.byteSize,
+  });
+}
+
+// Uploader only, never a claimed row. Returns `{ id, storage_path, status }`.
+export async function discardBugEvidence(supabase: Client, args: { attachmentId: string }) {
+  return supabase.rpc('bunkai_discard_bug_evidence', { p_attachment_id: args.attachmentId });
+}
+
+// Sweep helper, service role only.
+export async function expireBugEvidence(supabase: Client, args: { limit?: number } = {}) {
+  return supabase.rpc('bunkai_expire_bug_evidence', { p_limit: args.limit ?? 500 });
 }
 
 // BK-337 — read ONE bug's full composed record (`GET /api/v1/bugs/{id}`).
