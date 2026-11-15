@@ -101,7 +101,7 @@ When `BUNKAI_TOKEN` is set, every command uses it, ignores the saved sign-in and
 | Variable | Effect |
 | --- | --- |
 | `BUNKAI_TOKEN` | Use this PAT instead of the saved sign-in. |
-| `BUNKAI_API_URL` | Talk to this Bunkai instead of the saved one (or the default production URL). |
+| `BUNKAI_API_URL` | Talk to this Bunkai instead of the saved one (or the default production URL). With a saved sign-in for another address, the CLI warns on stderr that the saved PAT is sent there. |
 | `BUNKAI_CONFIG_DIR` | Keep the saved sign-in in this folder. |
 
 ## Exit codes
@@ -110,7 +110,7 @@ When `BUNKAI_TOKEN` is set, every command uses it, ignores the saved sign-in and
 | --- | --- |
 | 0 | Success, including a search with no match. |
 | 1 | Any failure: wrong credentials, not signed in, a revoked or expired PAT, Project or Module not found, network or server error. |
-| 2 | The command line itself is wrong: unknown command or option, missing `--project`, `--limit` out of range. |
+| 2 | The command line itself is wrong: unknown command or option, missing `--project`, a missing or blank `--query`, `--limit` out of range. |
 | 130 | Cancelled with Ctrl+C. |
 
 When a PAT is revoked or expires, the next command (or the current one, if it happens mid-command) says the sign-in is no longer valid and to run `bunkai auth login`. The CLI never prints a stack trace.
