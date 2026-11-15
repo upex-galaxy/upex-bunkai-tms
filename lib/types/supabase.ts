@@ -938,6 +938,8 @@ export interface Database {
       }
       milestones: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string
           created_by: string | null
           description: string
@@ -949,6 +951,8 @@ export interface Database {
           workspace_id: string
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
@@ -960,6 +964,8 @@ export interface Database {
           workspace_id: string
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
@@ -2429,6 +2435,7 @@ export interface Database {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
+      bunkai_archive_milestone: { Args: { p_milestone_id: string }, Returns: Json }
       bunkai_archive_module_subtree: {
         Args: { p_module_id: string }
         Returns: Json
@@ -2942,6 +2949,7 @@ export interface Database {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
+      bunkai_restore_milestone: { Args: { p_milestone_id: string }, Returns: Json }
       bunkai_restore_module_subtree: {
         Args: { p_module_id: string }
         Returns: Json
