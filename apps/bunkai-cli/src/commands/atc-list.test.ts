@@ -255,14 +255,14 @@ describe('bunkai atc list — BUNKAI_TOKEN (CI)', () => {
 describe('bunkai atc list — usage', () => {
   it('refuses an empty text plainly before sending anything', async () => {
     const s = await setup();
-    expect(await s.go('--project', 'checkout-v2', '--query', '')).toBe(EXIT_FAILURE);
+    expect(await s.go('--project', 'checkout-v2', '--query', '')).toBe(EXIT_USAGE);
     expect(s.deps.stderrText()).toBe('A search text is required: --query <text>.\n');
     expect(s.api.requests).toEqual([]);
   });
 
   it('refuses a blank text and a missing one the same way', async () => {
     const blank = await setup();
-    expect(await blank.go('--project', 'checkout-v2', '--query', '   ')).toBe(EXIT_FAILURE);
+    expect(await blank.go('--project', 'checkout-v2', '--query', '   ')).toBe(EXIT_USAGE);
     expect(blank.deps.stderrText()).toBe('A search text is required: --query <text>.\n');
   });
 
@@ -281,6 +281,12 @@ describe('bunkai atc list — usage', () => {
 
   it('prints its usage on --help', async () => {
     const s = await setup();
+    expect(blank.api.requests).toEqual([]);
+    cleanup?.();
+    const missing = await setup();
+    expect(await missing.go('--project', 'checkout-v2')).toBe(EXIT_USAGE);
+    expect(missing.deps.stderrText()).toBe('A search text is required: --query <text>.\n');
+    expect(missing.api.requests).toEqual([]);
     expect(await s.go('--help')).toBe(EXIT_OK);
     expect(s.deps.stdoutText()).toContain('Usage: bunkai atc list');
   });

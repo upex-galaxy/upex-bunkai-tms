@@ -76,9 +76,10 @@ function parseOptions(argv: string[]): Options | 'help' {
   if (project.length === 0) {
     throw usageError(`A Project is required: --project <slug|id>.\n\n${LIST_USAGE}`);
   }
-  // PO-8: an empty or blank text is refused before anything is sent.
+  // PO-8: an empty or blank text is refused before anything is sent. It is a
+  // usage error, so it exits 2 like a missing --project (TL-6).
   if (values.query === undefined || values.query.trim().length === 0) {
-    throw new CliError('A search text is required: --query <text>.');
+    throw usageError('A search text is required: --query <text>.');
   }
   let limit = LIMIT_DEFAULT;
   if (values.limit !== undefined) {
