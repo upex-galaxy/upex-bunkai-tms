@@ -3,7 +3,7 @@
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { Label } from '@components/ui/label';
-import { isLeaveConfirmEnabled } from '@lib/account/leave-workspace';
+import { isDeleteConfirmEnabled } from '@lib/account/delete-workspace';
 import { useModalDismiss } from '@lib/hooks/use-modal-dismiss';
 import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -34,14 +34,14 @@ interface ApiErrorBody {
 
 // Settings > Workspaces delete confirmation (BK-512, ADR-0015). Structurally
 // mirrors `LeaveWorkspaceModal` (overlay, `role="alertdialog"`,
-// `useModalDismiss`, type-to-confirm gate via the same `isLeaveConfirmEnabled`
-// pure check — reused as-is, the semantics ("typed value === workspace
-// name") are identical for both destructive confirmations) — plus two
-// additions this action needs that Leave does not: a counted disclosure of
-// the OTHER people it evicts (AC-19; the message shape `bunkai_delete_
-// environment`'s `environment_in_use` already uses) and an export-first
-// offer (AC-06). AC-04/AC-05/AC-20 come for free from the shared gate +
-// `useModalDismiss` + the always-reset-on-(re)open pattern below — reopening
+// `useModalDismiss`, a type-to-confirm gate) — plus two additions this
+// action needs that Leave does not: a counted disclosure of the OTHER people
+// it evicts (AC-19; the message shape `bunkai_delete_environment`'s
+// `environment_in_use` already uses) and an export-first offer (AC-06). The
+// gate is its own `isDeleteConfirmEnabled`, an EXACT match (BK-1918): unlike
+// Leave's trimmed `isLeaveConfirmEnabled`, a whitespace-padded name must not
+// unlock a deletion (BK-512 business rule). AC-04/AC-05/AC-20 come from that
+// gate + `useModalDismiss` + the always-reset-on-(re)open pattern below — reopening
 // after following the export link starts with an empty field exactly like
 // any other reopen (N6: one reset rule for the whole confirmation).
 export function DeleteWorkspaceModal({ workspace, onClose }: DeleteWorkspaceModalProps) {
@@ -71,7 +71,7 @@ export function DeleteWorkspaceModal({ workspace, onClose }: DeleteWorkspaceModa
     return null;
   }
 
-  const confirmEnabled = isLeaveConfirmEnabled(typedValue, workspace.name);
+  const confirmEnabled = isDeleteConfirmEnabled(typedValue, workspace.name);
 
   const handleConfirm = async () => {
     if (!confirmEnabled || submitting) {
