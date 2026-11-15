@@ -57,6 +57,10 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   // BK-1835 — one entry per effective content correction of a defect
   // (migration 0129). Payload: title, changed_fields, title/severity pairs.
   'bug.corrected',
+  // BK-1899 — one entry per real archive and per real restore of a Milestone,
+  // none for a no-op (migration 0130). Payload: the Milestone's name.
+  'milestone.archived',
+  'milestone.restored',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ALLOWED_ACTIONS)[number];

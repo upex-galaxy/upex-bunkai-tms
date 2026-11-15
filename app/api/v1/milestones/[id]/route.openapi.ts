@@ -4,6 +4,7 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 // BK-205 — Milestones: edit. No DELETE — deletion is out of scope for this
 // story (out-of-scope.md); the milestone domain ships default-deny on
 // removal, same precedent 0031_runs.sql set for project_environments.
+// BK-1899 retires a Milestone with POST .../archive instead (reversible).
 
 const UpdateBodySchema = z
   .object({
@@ -48,7 +49,7 @@ registry.registerPath({
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Milestone not found (or not visible to the caller).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'A milestone with this name already exists in the project.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'The milestone is archived and read-only until restored (`milestone_archived`), a milestone with this name already exists in the project (`milestone_name_taken`), or an archived milestone holds it (`milestone_name_archived`, with `details.archived_name` naming it).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (name/description length, or target date out of bounds when changed).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

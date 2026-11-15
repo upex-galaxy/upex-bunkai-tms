@@ -192,6 +192,12 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
     expect(deriveItemLabel({ action: 'module.restored', entity_type: 'module', payload: {} })).toBe('a module');
   });
 
+  it('BK-1899: a Milestone archive or restore is labelled with the Milestone\'s name', () => {
+    expect(deriveItemLabel({ action: 'milestone.archived', entity_type: 'milestone', payload: { name: 'Release 1.0' } })).toBe('Release 1.0');
+    expect(deriveItemLabel({ action: 'milestone.restored', entity_type: 'milestone', payload: { name: 'Release 1.0' } })).toBe('Release 1.0');
+    expect(deriveItemLabel({ action: 'milestone.restored', entity_type: 'milestone', payload: {} })).toBe('a milestone');
+  });
+
   it('BK-1835: a defect correction is labelled with the defect\'s corrected title', () => {
     expect(deriveItemLabel({ action: 'bug.corrected', entity_type: 'bug', payload: { title: 'Checkout button does nothing on the second click' } })).toBe('Checkout button does nothing on the second click');
     expect(deriveItemLabel({ action: 'bug.corrected', entity_type: 'bug', payload: {} })).toBe('a bug');

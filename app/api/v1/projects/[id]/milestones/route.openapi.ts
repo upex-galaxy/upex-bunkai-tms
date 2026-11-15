@@ -13,6 +13,8 @@ const MilestoneSchema = z
     description: z.string().describe('0–500 chars.'),
     created_by: z.string().uuid().nullable(),
     created_at: z.string().datetime(),
+    archived_at: z.string().datetime({ offset: true }).nullable().optional().describe('BK-1899: when the Milestone was archived; null while active. Returned by the list; an archived Milestone is read-only and keeps its name reserved.'),
+    archived_by: z.string().uuid().nullable().optional().describe('BK-1899: who archived it; null while active.'),
   })
   .openapi('Milestone');
 
@@ -47,9 +49,15 @@ registry.registerPath({
   tags: ['Milestones'],
   summary: 'List a project\'s milestones',
   description:
-    'Lists the project\'s milestones ordered by target date (ascending), id ascending as the tie-break. Visible to any workspace member; a non-member receives an empty list.',
+    'Lists the project\'s milestones ordered by target date (ascending), id ascending as the tie-break. Active milestones only by default; `include_archived=true` adds the archived ones, each carrying a non-null `archived_at`. Visible to any workspace member, viewers included; a non-member receives an empty list.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-  parameters: [IdParam],
+  parameters: [IdParam, {
+    name: 'include_archived',
+    in: 'query' as const,
+    required: false,
+    schema: { type: 'string' as const, enum: ['true', 'false'] },
+    description: 'BK-1899: `true` adds archived milestones to the list.',
+  }],
   responses: {
     200: {
       description: 'Milestones listed.',
@@ -84,7 +92,7 @@ registry.registerPath({
     400: { description: 'Malformed project id or invalid JSON body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'A milestone with this name already exists in the project.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'A milestone with this name already exists in the project (`milestone_name_taken`), or an archived milestone holds it (`milestone_name_archived`, with `details.archived_name` naming it).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (name/description length, or target date out of bounds).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

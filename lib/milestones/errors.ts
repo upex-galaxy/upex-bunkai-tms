@@ -12,7 +12,7 @@ import { ApiError } from '@lib/api/error-envelope';
 // (`: never`), so the route's `if (error) mapMilestoneRpcError(error)` is
 // exhaustive — control never falls through.
 
-export function mapMilestoneRpcError(error: { code?: string, message: string }): never {
+export function mapMilestoneRpcError(error: { code?: string, message: string, details?: string | null }): never {
   switch (error.code) {
     case '42501':
       // Non-member, or (on create) a viewer — member+ write access is
@@ -30,6 +30,19 @@ export function mapMilestoneRpcError(error: { code?: string, message: string }):
       // Case-insensitive, whitespace-collapsed duplicate name in the project.
       throw new ApiError('conflict', 'A milestone with this name already exists.', {
         details: { reason: 'milestone_name_taken' },
+      });
+    case '45507':
+      // BK-1899 — an archived Milestone is read-only until it is restored.
+      throw new ApiError('conflict', 'This milestone is archived. Restore it before editing it.', {
+        details: { reason: 'milestone_archived' },
+      });
+    case '45508':
+      // BK-1899 — the name is held by an archived Milestone of the project. The
+      // RPC puts that Milestone's stored name in the error DETAIL (AC-03: the
+      // message names it). The caller can already see it (any member reads
+      // archived Milestones), so naming it discloses nothing.
+      throw new ApiError('conflict', archivedNameMessage(error.details), {
+        details: { reason: 'milestone_name_archived', archived_name: error.details ?? null },
       });
     case '45500':
       throw new ApiError('validation_failed', 'Name must be between 1 and 100 characters.', {
@@ -66,6 +79,11 @@ export function mapMilestonePlanRpcError(error: { code?: string, message: string
       throw new ApiError('not_found', 'Milestone not found.', {
         details: { reason: 'not_found' },
       });
+    case '45507':
+      // BK-1899 — an archived Milestone keeps its Test Plans until it is restored.
+      throw new ApiError('conflict', 'This milestone is archived. Restore it before attaching or detaching test plans.', {
+        details: { reason: 'milestone_archived' },
+      });
     case '45504':
     case '23505':
       throw new ApiError('conflict', 'A selected test plan is already attached to this milestone.', {
@@ -87,4 +105,12 @@ export function mapMilestonePlanRpcError(error: { code?: string, message: string
     default:
       throw new ApiError('internal_error', error.message);
   }
+}
+
+// BK-1899 (AI Product Owner P12) — the refusal names the archived Milestone.
+export function archivedNameMessage(archivedName: string | null | undefined): string {
+  const name = typeof archivedName === 'string' && archivedName.trim() !== '' ? archivedName : null;
+  return name
+    ? `An archived milestone already uses the name “${name}”. Restore it or choose another name.`
+    : 'An archived milestone already uses this name. Restore it or choose another name.';
 }

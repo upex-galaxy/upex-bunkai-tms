@@ -198,6 +198,16 @@
     "why": "Identity probe — a token must be able to resolve who it is and which workspaces it can see before it can hold any scope-gated conversation."
   },
   {
+    "file": "app/api/v1/milestones/[id]/archive/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/milestones/[id]/restore/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
     "file": "app/api/v1/milestones/[id]/route.ts",
     "method": "PATCH",
     "posture": "required:atc:write"

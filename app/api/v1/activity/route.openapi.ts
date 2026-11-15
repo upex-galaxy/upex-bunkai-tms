@@ -153,6 +153,13 @@ const ActivityItemSchema = z
       title_change: z.object({ from: z.string(), to: z.string() }).nullable(),
       severity_change: z.object({ from: z.enum(['P1', 'P2', 'P3', 'P4']), to: z.enum(['P1', 'P2', 'P3', 'P4']) }).nullable(),
     }),
+    // BK-1899 — projection of migration 0130: the Milestone's name.
+    activityItemVariant('MilestoneArchived', 'milestone.archived', 'milestone', {
+      name: z.string().nullable(),
+    }),
+    activityItemVariant('MilestoneRestored', 'milestone.restored', 'milestone', {
+      name: z.string().nullable(),
+    }),
   ])
   .openapi('ActivityItem');
 

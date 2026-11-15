@@ -332,6 +332,12 @@
           },
           {
             "$ref": "#/components/schemas/ActivityItemBugCorrected"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemMilestoneArchived"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemMilestoneRestored"
           }
         ],
         "discriminator": {
@@ -357,7 +363,9 @@
             "jira_connection.connected": "#/components/schemas/ActivityItemJiraConnectionConnected",
             "jira_connection.changed": "#/components/schemas/ActivityItemJiraConnectionChanged",
             "jira_connection.disconnected": "#/components/schemas/ActivityItemJiraConnectionDisconnected",
-            "bug.corrected": "#/components/schemas/ActivityItemBugCorrected"
+            "bug.corrected": "#/components/schemas/ActivityItemBugCorrected",
+            "milestone.archived": "#/components/schemas/ActivityItemMilestoneArchived",
+            "milestone.restored": "#/components/schemas/ActivityItemMilestoneRestored"
           }
         }
       },
@@ -1630,6 +1638,114 @@
           }
         },
         "required": ["title", "changed_fields", "title_change", "severity_change"]
+      },
+      "ActivityItemMilestoneArchived": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["milestone"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["milestone.archived"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadMilestoneArchived"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadMilestoneArchived": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["name"]
+      },
+      "ActivityItemMilestoneRestored": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["milestone"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["milestone.restored"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadMilestoneRestored"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadMilestoneRestored": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["name"]
       },
       "SendDigestResponse": {
         "type": "object",
@@ -3528,6 +3644,42 @@
         },
         "required": ["user", "workspaces", "active_workspace_id", "active_workspace_role", "auth"]
       },
+      "MilestoneArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "milestone": {
+            "$ref": "#/components/schemas/MilestoneArchiveState"
+          }
+        },
+        "required": ["milestone"]
+      },
+      "MilestoneArchiveState": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the Milestone was archived. Null once it is active again."
+          },
+          "archived_by": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Who archived it. Null once it is active again."
+          },
+          "changed": {
+            "type": "boolean",
+            "description": "False when the call changed nothing: the Milestone was already in the state the call asks for."
+          }
+        },
+        "required": ["id", "name", "archived_at", "archived_by", "changed"]
+      },
       "MilestoneListResponse": {
         "type": "object",
         "properties": {
@@ -3571,6 +3723,16 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "BK-1899: when the Milestone was archived; null while active. Returned by the list; an archived Milestone is read-only and keeps its name reserved."
+          },
+          "archived_by": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "BK-1899: who archived it; null while active."
           }
         },
         "required": [
@@ -11770,11 +11932,169 @@
         }
       }
     },
+    "/api/v1/milestones/{id}/archive": {
+      "post": {
+        "tags": ["Milestones"],
+        "summary": "Archive a milestone",
+        "description": "Bearer `atc:write` (or cookie session). Member-only (role >= member). Hides the Milestone from the default list (`GET /api/v1/projects/{id}/milestones` returns it only with `include_archived=true`) and makes it read-only: edit, attach and detach answer 409 `milestone_archived` until it is restored. Its name stays reserved. Nothing the Milestone groups changes: its Test Plans, their Tests and Runs are untouched, and a Run in progress keeps running. One `milestone.archived` Activity Stream event per real change; archiving an archived Milestone is a 200 with `changed: false` and no event. Non-members receive a non-disclosing 404; a member with only the viewer role receives 403.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Milestone to archive."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archived, or already archived.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneArchiveResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or a viewer of the owning workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Milestone not found (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/milestones/{id}/restore": {
+      "post": {
+        "tags": ["Milestones"],
+        "summary": "Restore an archived milestone",
+        "description": "Bearer `atc:write` (or cookie session). Member-only (role >= member). Puts the Milestone back in the default list exactly as it was: name, target date, description and attached Test Plans. A past target date is kept as it is, never re-validated, and the name cannot collide because an archived Milestone keeps it reserved. One `milestone.restored` Activity Stream event per real change; restoring an active Milestone is a 200 with `changed: false` and no event. Non-members receive a non-disclosing 404; a member with only the viewer role receives 403.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Milestone to restore."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored, or already active.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneArchiveResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or a viewer of the owning workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Milestone not found (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{id}/milestones": {
       "get": {
         "tags": ["Milestones"],
         "summary": "List a project's milestones",
-        "description": "Lists the project's milestones ordered by target date (ascending), id ascending as the tie-break. Visible to any workspace member; a non-member receives an empty list.",
+        "description": "Lists the project's milestones ordered by target date (ascending), id ascending as the tie-break. Active milestones only by default; `include_archived=true` adds the archived ones, each carrying a non-null `archived_at`. Visible to any workspace member, viewers included; a non-member receives an empty list.",
         "security": [
           {
             "cookieAuth": []
@@ -11792,6 +12112,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            },
+            "description": "BK-1899: `true` adds archived milestones to the list."
           }
         ],
         "responses": {
@@ -11912,7 +12242,7 @@
             }
           },
           "409": {
-            "description": "A milestone with this name already exists in the project.",
+            "description": "A milestone with this name already exists in the project (`milestone_name_taken`), or an archived milestone holds it (`milestone_name_archived`, with `details.archived_name` naming it).",
             "content": {
               "application/json": {
                 "schema": {
@@ -12020,7 +12350,7 @@
             }
           },
           "409": {
-            "description": "A milestone with this name already exists in the project.",
+            "description": "The milestone is archived and read-only until restored (`milestone_archived`), a milestone with this name already exists in the project (`milestone_name_taken`), or an archived milestone holds it (`milestone_name_archived`, with `details.archived_name` naming it).",
             "content": {
               "application/json": {
                 "schema": {
@@ -13344,6 +13674,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "The milestone is archived and keeps its plans until restored (details.reason milestone_archived).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       }
@@ -13444,7 +13784,7 @@
             }
           },
           "409": {
-            "description": "A selected plan is already attached (details.reason milestone_plan_exists), or the Idempotency-Key was reused with a different body.",
+            "description": "A selected plan is already attached (details.reason milestone_plan_exists), the milestone is archived and read-only until restored (details.reason milestone_archived), or the Idempotency-Key was reused with a different body.",
             "content": {
               "application/json": {
                 "schema": {

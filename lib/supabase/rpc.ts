@@ -1197,6 +1197,18 @@ export async function detachPlanFromMilestone(supabase: Client, args: { mileston
   });
 }
 
+// BK-1899 — archive / restore a Milestone (0130_milestone_archive_restore.sql).
+// SECURITY DEFINER, NO p_actor_user_id, granted to `authenticated` only (revoked
+// from service_role): call them ONLY through the caller's own RLS-scoped client.
+// Idempotent: `changed: false` when the Milestone was already in that state.
+export async function archiveMilestone(supabase: Client, args: { milestoneId: string }) {
+  return supabase.rpc('bunkai_archive_milestone', { p_milestone_id: args.milestoneId });
+}
+
+export async function restoreMilestone(supabase: Client, args: { milestoneId: string }) {
+  return supabase.rpc('bunkai_restore_milestone', { p_milestone_id: args.milestoneId });
+}
+
 // BK-206 — pooled readiness of a set of milestones plus the per-plan rows behind
 // it, in ONE read (0112). SECURITY INVOKER: RLS on the caller's own client is the
 // only authorization, and a caller with no session is refused with P0002, so the

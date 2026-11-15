@@ -29,6 +29,9 @@ interface MilestoneAttachedPlansProps {
   milestoneId: string
   plans: AttachedPlanReadiness[]
   canEdit: boolean
+  // BK-1899 — why nothing can be attached when the reason is not the role (an
+  // archived Milestone). Replaces the role note; omitted, the role note stands.
+  readOnlyNote?: string
   onAttach: () => void
   onDetached: () => void
 }
@@ -37,7 +40,7 @@ interface ApiErrorBody {
   error?: { message?: string }
 }
 
-export function MilestoneAttachedPlans({ projectId, projectSlug, milestoneId, plans, canEdit, onAttach, onDetached }: MilestoneAttachedPlansProps) {
+export function MilestoneAttachedPlans({ projectId, projectSlug, milestoneId, plans, canEdit, readOnlyNote, onAttach, onDetached }: MilestoneAttachedPlansProps) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [detachingId, setDetachingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +102,7 @@ export function MilestoneAttachedPlans({ projectId, projectSlug, milestoneId, pl
                   : (
                       <span data-testid="milestone-attached-viewer-note" className="inline-flex items-center gap-1.5 text-xs text-fg-3">
                         <Lock size={12} />
-                        Attaching test plans requires the member role or higher.
+                        {readOnlyNote ?? 'Attaching test plans requires the member role or higher.'}
                       </span>
                     )}
               </div>

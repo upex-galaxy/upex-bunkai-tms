@@ -52,7 +52,7 @@ registry.registerPath({
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope, or the caller is a viewer (details.reason forbidden_role).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Milestone not found in this project (or not visible to the caller).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'A selected plan is already attached (details.reason milestone_plan_exists), or the Idempotency-Key was reused with a different body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'A selected plan is already attached (details.reason milestone_plan_exists), the milestone is archived and read-only until restored (details.reason milestone_archived), or the Idempotency-Key was reused with a different body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Empty test_plan_ids, a plan outside the milestone\'s project (plan_outside_project), or more than 50 plans (milestone_plan_limit).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

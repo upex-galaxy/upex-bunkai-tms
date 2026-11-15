@@ -7,6 +7,7 @@ import { createMilestone } from '@lib/supabase/rpc';
 
 // GET  /api/v1/projects/{id}/milestones — list a project's milestones,
 //      ordered by target date ascending (id tie-break for a stable order).
+//      Active ones only unless `?include_archived=true` (BK-1899).
 //      Visible to any workspace member via the SELECT RLS policy (a
 //      non-member's cookie-scoped read returns []).
 // POST /api/v1/projects/{id}/milestones — create a milestone (member+). The
@@ -25,14 +26,23 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   const { db } = getAuth(ctx);
 
+  // BK-1899 — archived Milestones are out of the default list and one choice
+  // away: `?include_archived=true` adds them (the modules / user-stories
+  // vocabulary). Viewers included: reading is role-agnostic.
+  const includeArchived = new URL(request.url).searchParams.get('include_archived') === 'true';
+
   // RLS scopes the read to milestones the caller can see (workspace
   // members). `target_date asc, id asc` is the deterministic, predictable
   // order the AC requires (also the sole index this story adds — see
   // migration 0064).
-  const { data, error } = await db
+  let query = db
     .from('milestones')
-    .select('id, project_id, name, target_date, description, created_by, created_at')
-    .eq('project_id', projectId)
+    .select('id, project_id, name, target_date, description, created_by, created_at, archived_at, archived_by')
+    .eq('project_id', projectId);
+  if (!includeArchived) {
+    query = query.is('archived_at', null);
+  }
+  const { data, error } = await query
     .order('target_date', { ascending: true })
     .order('id', { ascending: true });
 
