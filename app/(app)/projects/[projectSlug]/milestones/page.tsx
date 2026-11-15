@@ -2,6 +2,7 @@ import type { MilestoneListItem } from '@components/milestones/MilestonesListVie
 import type { MilestoneReadiness } from '@lib/milestones/readiness-view';
 import { MilestonesListSkeleton, MilestonesListView } from '@components/milestones/MilestonesListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { isShowArchived, overdueUnlessArchived, SHOW_ARCHIVED_PARAM } from '@lib/milestones/archive-view';
 import { overdueInfo, parseMilestonesReadiness } from '@lib/milestones/readiness-view';
 import { todayUtcIso } from '@lib/milestones/validation';
 import { milestonesReadiness, resolveActivityActors } from '@lib/supabase/rpc';
@@ -13,6 +14,7 @@ import { Suspense } from 'react';
 
 interface PageProps {
   params: Promise<{ projectSlug: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 // BK-205 — the "Milestones" list view (`/projects/[projectSlug]/milestones`).
@@ -22,17 +24,22 @@ interface PageProps {
 // BK-206 — plus ONE `bunkai_milestones_readiness` read for every milestone of the
 // list (no per-row query), with the overdue predicate evaluated here on the server
 // UTC date, never in the browser (D7).
-export default async function ProjectMilestonesPage({ params }: PageProps) {
+// BK-1899 — archived Milestones are left out unless the address carries
+// `?archived=show` (AI Product Owner P3); the archived count is read either way,
+// so the Show archived choice can say there is something to show. An archived
+// Milestone never claims an overdue state (P2).
+export default async function ProjectMilestonesPage({ params, searchParams }: PageProps) {
   const { projectSlug } = await params;
+  const showArchived = isShowArchived((await searchParams)[SHOW_ARCHIVED_PARAM]);
 
   return (
     <Suspense fallback={<MilestonesListSkeleton />}>
-      <ProjectMilestonesSection projectSlug={projectSlug} />
+      <ProjectMilestonesSection projectSlug={projectSlug} showArchived={showArchived} />
     </Suspense>
   );
 }
 
-async function ProjectMilestonesSection({ projectSlug }: { projectSlug: string }) {
+async function ProjectMilestonesSection({ projectSlug, showArchived }: { projectSlug: string, showArchived: boolean }) {
   const supabase = await createClient();
 
   const { data: workspaceRows } = await supabase
@@ -72,12 +79,22 @@ async function ProjectMilestonesSection({ projectSlug }: { projectSlug: string }
     canCreate = membership != null && membership.role !== 'viewer';
   }
 
-  const { data: rows } = await supabase
+  let milestonesQuery = supabase
     .from('milestones')
-    .select('id, name, target_date, description, created_by')
-    .eq('project_id', project.id)
+    .select('id, name, target_date, description, created_by, archived_at')
+    .eq('project_id', project.id);
+  if (!showArchived) {
+    milestonesQuery = milestonesQuery.is('archived_at', null);
+  }
+  const { data: rows } = await milestonesQuery
     .order('target_date', { ascending: true })
     .order('id', { ascending: true });
+
+  const { count: archivedTotal } = await supabase
+    .from('milestones')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', project.id)
+    .not('archived_at', 'is', null);
 
   const milestoneRows = rows ?? [];
   const creatorIds = [...new Set(
@@ -111,7 +128,11 @@ async function ProjectMilestonesSection({ projectSlug }: { projectSlug: string }
       description: row.description,
       creatorLabel: row.created_by ? (emailByUserId.get(row.created_by) ?? '') : '',
       readiness,
-      overdue: readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }, todayIso) : null,
+      overdue: overdueUnlessArchived(
+        readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }, todayIso) : null,
+        row.archived_at,
+      ),
+      archivedAt: row.archived_at,
     };
   });
 
@@ -122,6 +143,8 @@ async function ProjectMilestonesSection({ projectSlug }: { projectSlug: string }
       milestones={milestones}
       canCreate={canCreate}
       todayIso={todayIso}
+      showArchived={showArchived}
+      archivedCount={archivedTotal ?? 0}
     />
   );
 }

@@ -4,14 +4,16 @@ import type { AttachablePlan } from '@components/milestones/AttachPlansDialog';
 import type { MilestoneReadiness, OverdueInfo } from '@lib/milestones/readiness-view';
 import { AttachPlansDialog } from '@components/milestones/AttachPlansDialog';
 import { EditMilestoneForm } from '@components/milestones/EditMilestoneForm';
+import { MilestoneArchiveButton, MilestoneArchivedBadge } from '@components/milestones/MilestoneArchiveButton';
 import { MilestoneAttachedPlans } from '@components/milestones/MilestoneAttachedPlans';
 import { MilestoneOverdueBadge } from '@components/milestones/MilestoneOverdueBadge';
 import { MilestoneReadinessCard, MilestoneReadinessUnavailable } from '@components/milestones/MilestoneReadinessCard';
 import { Button } from '@components/ui/button';
 import { Card, CardContent, CardHeader } from '@components/ui/card';
+import { ARCHIVED_NOTE } from '@lib/milestones/archive-view';
 import { computeCountdown } from '@lib/milestones/countdown';
 import { overdueNoteText } from '@lib/milestones/readiness-view';
-import { AlertTriangle, Pencil, Plus } from 'lucide-react';
+import { AlertTriangle, Archive, Pencil, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
@@ -27,6 +29,12 @@ import { useMemo, useState } from 'react';
 // `bunkai_milestones_readiness` read, one overdue predicate on the server UTC date)
 // and arrive as props; this view never recomputes them. After an attach or a detach it
 // refreshes the route, so readiness is recalculated on view (D1).
+//
+// BK-1899 (master-design-plan §5 D69, spec-only) — an archived Milestone opens from
+// its saved address read-only: the Archived label beside the countdown, a neutral
+// note saying it is read-only until restored, its readiness and Test Plans still
+// visible, and no Edit, Attach or Detach. Restore is the only change offered, and
+// only to members who can write; a Viewer sees the marking and no control.
 
 export interface MilestoneDetail {
   id: string
@@ -36,6 +44,9 @@ export interface MilestoneDetail {
   targetDate: string
   description: string
   creatorLabel: string
+  // BK-1899 — null while active.
+  archivedAt: string | null
+  archivedByLabel: string
 }
 
 interface MilestoneDetailViewProps {
@@ -61,10 +72,13 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, at
   const [editing, setEditing] = useState(false);
   const [picking, setPicking] = useState(false);
   const countdown = computeCountdown(milestone.targetDate, todayIso);
+  const archived = milestone.archivedAt !== null;
+  // An archived Milestone is read-only (BK-1899): every write control goes away.
+  const canWrite = canEdit && !archived;
   // Attaching needs the current attachments to mark them in the picker; when the
   // readiness read failed, the Attach control is left out rather than offering
   // plans that may already be attached.
-  const canAttach = canEdit && readiness !== null;
+  const canAttach = canWrite && readiness !== null;
   const attachedPlanIds = useMemo(() => new Set((readiness?.plans ?? []).map(plan => plan.plan_id)), [readiness]);
   const note = overdue ? overdueNoteText({ days: overdue.days, readinessPct: readiness?.passed_pct ?? null, planCount: readiness?.plan_count ?? 0 }) : null;
   const refresh = () => router.refresh();
@@ -88,9 +102,20 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, at
                     {countdown.label}
                   </span>
                   {overdue && <MilestoneOverdueBadge label={overdue.label} testId="milestone-detail-overdue-badge" />}
+                  {archived && <MilestoneArchivedBadge testId="milestone-detail-archived-badge" />}
                 </div>
               </div>
-              {canEdit && (
+              {canEdit && archived && (
+                <MilestoneArchiveButton
+                  milestoneId={milestone.id}
+                  name={milestone.name}
+                  archived
+                  projectSlug={milestone.projectSlug}
+                  testId="milestone-detail-restore-button"
+                  variant="primary"
+                />
+              )}
+              {canWrite && (
                 <div className="flex items-center gap-1.5">
                   {!editing && (
                     <Button
@@ -103,6 +128,15 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, at
                       <Pencil size={13} />
                       Edit
                     </Button>
+                  )}
+                  {!editing && (
+                    <MilestoneArchiveButton
+                      milestoneId={milestone.id}
+                      name={milestone.name}
+                      archived={false}
+                      projectSlug={milestone.projectSlug}
+                      testId="milestone-detail-archive-button"
+                    />
                   )}
                   {canAttach && (
                     <Button
@@ -138,7 +172,24 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, at
             </CardContent>
           </Card>
 
-          {editing && (
+          {archived && (
+            <div
+              data-testid="milestone-detail-archived-note"
+              role="status"
+              className="flex items-start gap-3 rounded-3 border border-stroke-2 bg-surface-2 p-3 text-sm text-fg-1"
+            >
+              <Archive size={16} className="mt-px shrink-0 text-fg-3" aria-hidden="true" />
+              <span className="flex flex-col gap-0.5">
+                <b className="font-semibold text-fg-0">{ARCHIVED_NOTE}</b>
+                <span className="text-xs text-fg-2" data-testid="milestone-detail-archived-by">
+                  {`Archived by ${milestone.archivedByLabel || UNRESOLVED_CREATOR} · `}
+                  <span className="font-mono">{milestone.archivedAt?.slice(0, 10)}</span>
+                </span>
+              </span>
+            </div>
+          )}
+
+          {editing && canWrite && (
             <EditMilestoneForm
               milestoneId={milestone.id}
               initialName={milestone.name}
@@ -180,7 +231,8 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue, at
               projectSlug={milestone.projectSlug}
               milestoneId={milestone.id}
               plans={readiness.plans}
-              canEdit={canEdit}
+              canEdit={canWrite}
+              readOnlyNote={archived && canEdit ? 'Restore this milestone to attach test plans.' : undefined}
               onAttach={() => setPicking(true)}
               onDetached={refresh}
             />

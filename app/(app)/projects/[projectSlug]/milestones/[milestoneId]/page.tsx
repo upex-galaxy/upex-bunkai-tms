@@ -1,6 +1,7 @@
 import type { MilestoneDetail } from '@components/milestones/MilestoneDetailView';
 import { MilestoneDetailView } from '@components/milestones/MilestoneDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { overdueUnlessArchived } from '@lib/milestones/archive-view';
 import { overdueInfo, parseMilestonesReadiness } from '@lib/milestones/readiness-view';
 import { todayUtcIso } from '@lib/milestones/validation';
 import { milestonesReadiness, resolveActivityActors } from '@lib/supabase/rpc';
@@ -25,6 +26,10 @@ interface PageProps {
 // A missing / not-visible / foreign-workspace milestone collapses into one
 // safe `notFound()` (non-disclosure), matching the RPC's own P0002 split for
 // the edit path.
+//
+// BK-1899 — an archived Milestone still opens from its saved address (AC-02),
+// read-only: no overdue state (P2), no attachable-plans read, and the archiver
+// resolved in the same actor batch as the creator for the archived note.
 export default async function MilestoneDetailPage({ params }: PageProps) {
   const { projectSlug, milestoneId } = await params;
   const supabase = await createClient();
@@ -46,7 +51,7 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
 
   const { data: row, error } = await supabase
     .from('milestones')
-    .select('id, project_id, name, target_date, description, created_by')
+    .select('id, project_id, name, target_date, description, created_by, archived_at, archived_by')
     .eq('id', milestoneId)
     .maybeSingle();
   if (error || !row) { notFound(); }
@@ -61,14 +66,16 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
   const canEdit = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
 
   let creatorLabel = '';
-  if (row.created_by) {
+  let archivedByLabel = '';
+  const actorIds = [...new Set([row.created_by, row.archived_by].filter((id): id is string => id !== null))];
+  if (actorIds.length > 0) {
     const { data: resolved } = await resolveActivityActors(supabase, {
       workspaceId: activeWorkspaceId,
-      userIds: [row.created_by],
+      userIds: actorIds,
     });
-    creatorLabel = ((resolved ?? []) as { user_id: string, email: string | null }[])
-      .find(actor => actor.user_id === row.created_by)
-      ?.email ?? '';
+    const actors = (resolved ?? []) as { user_id: string, email: string | null }[];
+    creatorLabel = actors.find(actor => actor.user_id === row.created_by)?.email ?? '';
+    archivedByLabel = actors.find(actor => actor.user_id === row.archived_by)?.email ?? '';
   }
 
   // A failed read leaves readiness null: the card says "unavailable" and no overdue
@@ -76,10 +83,13 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
   const { data: readinessData, error: readinessError } = await milestonesReadiness(supabase, { milestoneIds: [row.id] });
   const readiness = readinessError ? null : (parseMilestonesReadiness(readinessData).get(row.id) ?? null);
   const todayIso = todayUtcIso();
-  const overdue = readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }, todayIso) : null;
+  const overdue = overdueUnlessArchived(
+    readiness ? overdueInfo({ targetDate: row.target_date, readinessPct: readiness.passed_pct }, todayIso) : null,
+    row.archived_at,
+  );
 
   let attachablePlans: { id: string, name: string }[] = [];
-  if (canEdit) {
+  if (canEdit && !row.archived_at) {
     const { data: openPlans } = await supabase
       .from('test_plans')
       .select('id, name')
@@ -98,6 +108,8 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
     targetDate: row.target_date,
     description: row.description,
     creatorLabel,
+    archivedAt: row.archived_at,
+    archivedByLabel,
   };
 
   return (
