@@ -1,6 +1,7 @@
 import type { BugDetailInput } from '@lib/bugs/detail-view';
 import { BugDetailView } from '@components/bugs/BugDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { canCorrectDefect } from '@lib/bugs/correction-view';
 import { getBugJson, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -110,12 +111,30 @@ async function BugDetailSection({ projectSlug, bugId }: { projectSlug: string, b
   const assigneeEmail = assigneeUserId ? (emailById.get(assigneeUserId) ?? null) : null;
   const reporterEmail = reporterUserId ? (emailById.get(reporterUserId) ?? null) : null;
 
+  // BK-1835 (AC-04) — the correction is offered only to an active member of
+  // the BUG'S OWN workspace whose role can write; the same member+ gate
+  // `bugs/page.tsx` uses for `canCreateBug`. The RPC refuses anyone else
+  // (403 / 404), so this only decides what is rendered.
+  const { data: { user } } = await supabase.auth.getUser();
+  let canCorrect = false;
+  if (user) {
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', bugWorkspaceId)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+    canCorrect = canCorrectDefect(membership?.role);
+  }
+
   return (
     <BugDetailView
       bug={bug}
       assigneeEmail={assigneeEmail}
       reporterEmail={reporterEmail}
       projectSlug={projectSlug}
+      canCorrect={canCorrect}
     />
   );
 }

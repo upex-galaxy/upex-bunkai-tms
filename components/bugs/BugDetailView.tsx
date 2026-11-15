@@ -1,5 +1,6 @@
 import type { BugDetailInput } from '@lib/bugs/detail-view';
 import type { HTMLAttributes } from 'react';
+import { BugCorrection } from '@components/bugs/BugCorrectionDialog';
 import { buttonVariants } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { BUG_EVIDENCE_MAX } from '@lib/bugs/constants';
@@ -22,16 +23,19 @@ import Link from 'next/link';
 // identifier treatment (Critical Rule #14 — live UI is the fidelity source).
 // STRUCTURALLY read-only: no input, textarea, contenteditable, or any
 // status/assignment/delete control exists ANYWHERE in this file (AC4/E-4) —
-// not disabled, absent.
+// not disabled, absent. BK-1835: the one exception is the Edit trigger of
+// `BugCorrection`, rendered only when `canCorrect` (a member who can write);
+// a Viewer's render of this file is unchanged, with no control at all.
 
 export interface BugDetailViewProps {
   bug: BugDetailInput
   assigneeEmail: string | null
   reporterEmail: string | null
   projectSlug: string
+  canCorrect?: boolean
 }
 
-export function BugDetailView({ bug, assigneeEmail, reporterEmail, projectSlug }: BugDetailViewProps) {
+export function BugDetailView({ bug, assigneeEmail, reporterEmail, projectSlug, canCorrect = false }: BugDetailViewProps) {
   const reporterLabel = reporterEmail ?? 'Unknown';
   const origin = resolveBugOriginView(bug.origin);
   const steps = splitStepsToReproduce(bug.steps_to_reproduce);
@@ -69,7 +73,21 @@ export function BugDetailView({ bug, assigneeEmail, reporterEmail, projectSlug }
             {statusLabel(bug.status)}
           </span>
         </div>
-        <h1 className="text-lg font-semibold text-fg-0" data-testid="bug-detail-title">{bug.title}</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-lg font-semibold text-fg-0" data-testid="bug-detail-title">{bug.title}</h1>
+          {canCorrect && (
+            <BugCorrection
+              bugId={bug.id}
+              bug={{
+                title: bug.title,
+                severity: bug.severity,
+                description: bug.description,
+                steps_to_reproduce: bug.steps_to_reproduce,
+                content_version: bug.content_version,
+              }}
+            />
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-2">
           <span className="font-mono text-xs" data-testid="bug-detail-module-path">{bug.module?.path ?? '—'}</span>
           {moduleArchived && (

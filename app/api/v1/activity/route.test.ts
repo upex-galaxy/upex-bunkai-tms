@@ -192,6 +192,11 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
     expect(deriveItemLabel({ action: 'module.restored', entity_type: 'module', payload: {} })).toBe('a module');
   });
 
+  it('BK-1835: a defect correction is labelled with the defect\'s corrected title', () => {
+    expect(deriveItemLabel({ action: 'bug.corrected', entity_type: 'bug', payload: { title: 'Checkout button does nothing on the second click' } })).toBe('Checkout button does nothing on the second click');
+    expect(deriveItemLabel({ action: 'bug.corrected', entity_type: 'bug', payload: {} })).toBe('a bug');
+  });
+
   it('BK-1619: the Jira connection events name the site host, never a raw entity type', () => {
     for (const action of ['jira_connection.connected', 'jira_connection.changed', 'jira_connection.disconnected']) {
       expect(deriveItemLabel({ action, entity_type: 'workspace_jira_connection', payload: { site_host: 'acme.atlassian.net' } })).toBe('acme.atlassian.net');

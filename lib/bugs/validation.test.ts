@@ -1,5 +1,6 @@
 import {
   BugAssignBodySchema,
+  BugCorrectionBodySchema,
   BugCreateBodySchema,
   BugStandaloneCreateBodySchema,
   BugStatusTransitionBodySchema,
@@ -180,5 +181,58 @@ describe('BugStatusTransitionBodySchema', () => {
   test('rejects a missing status key', () => {
     const result = BugStatusTransitionBodySchema.safeParse({});
     expect(result.success).toBe(false);
+  });
+});
+
+// BK-1835 — PATCH /api/v1/bugs/{id} body: the filing rules, unchanged.
+describe('BugCorrectionBodySchema', () => {
+  test('accepts a title and severity correction and trims the title', () => {
+    const result = BugCorrectionBodySchema.safeParse({ expected_version: 1, title: '  Checkout button does nothing on the second click ', severity: 'P2' });
+    expect(result.success).toBe(true);
+    expect(result.data?.title).toBe('Checkout button does nothing on the second click');
+  });
+
+  test.each([
+    ['empty', ''],
+    ['only whitespace', '        '],
+    ['shorter than 5 after trimming', '  abcd  '],
+    ['longer than 200', 'x'.repeat(201)],
+  ])('refuses a title that is %s, with the filing message', (_label, title) => {
+    const result = BugCorrectionBodySchema.safeParse({ expected_version: 1, title });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe('Title must be between 5 and 200 characters');
+  });
+
+  test.each([['exactly 5', 'abcde'], ['exactly 200', 'y'.repeat(200)]])('accepts a title of %s characters', (_label, title) => {
+    expect(BugCorrectionBodySchema.safeParse({ expected_version: 1, title }).success).toBe(true);
+  });
+
+  test('refuses a severity outside P1-P4', () => {
+    expect(BugCorrectionBodySchema.safeParse({ expected_version: 1, severity: 'P5' }).success).toBe(false);
+  });
+
+  test('trims the description and keeps the steps as typed', () => {
+    const result = BugCorrectionBodySchema.safeParse({ expected_version: 3, description: '  rewritten  ', steps_to_reproduce: ' 1. open\n2. click twice ' });
+    expect(result.data?.description).toBe('rewritten');
+    expect(result.data?.steps_to_reproduce).toBe(' 1. open\n2. click twice ');
+  });
+
+  test.each([
+    ['evidence_urls', ['https://example.com/a.png']],
+    ['status', 'closed'],
+    ['assignee_user_id', null],
+    ['module_id', '11111111-1111-4111-8111-111111111111'],
+  ])('refuses %s instead of silently dropping it', (key, value) => {
+    expect(BugCorrectionBodySchema.safeParse({ expected_version: 1, title: 'A valid title', [key]: value }).success).toBe(false);
+  });
+
+  test('requires expected_version as a positive integer', () => {
+    expect(BugCorrectionBodySchema.safeParse({ title: 'A valid title' }).success).toBe(false);
+    expect(BugCorrectionBodySchema.safeParse({ expected_version: 0, title: 'A valid title' }).success).toBe(false);
+    expect(BugCorrectionBodySchema.safeParse({ expected_version: 3000000000, title: 'A valid title' }).success).toBe(false);
+  });
+
+  test('requires at least one content field', () => {
+    expect(BugCorrectionBodySchema.safeParse({ expected_version: 1 }).success).toBe(false);
   });
 });

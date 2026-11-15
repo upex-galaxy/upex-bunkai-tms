@@ -82,6 +82,13 @@ export function mapBugRpcError(
       throw new ApiError('validation_failed', 'A view-only workspace member cannot be assigned bugs.', {
         details: { reason: 'assignee_view_only' },
       });
+    case '45314':
+      // BK-1835 — bunkai_correct_bug: the defect's content changed since the
+      // caller loaded it. The route catches this code first to attach the
+      // current defect; this is the fallback for any other caller.
+      throw new ApiError('conflict', 'This defect changed since you opened it.', {
+        details: { reason: 'bug_changed' },
+      });
     case '45300':
       throw new ApiError('validation_failed', 'The module must belong to the current project.', {
         details: { reason: 'module_outside_project' },

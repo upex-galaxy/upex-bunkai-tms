@@ -29,6 +29,8 @@ export interface BugDetailInput {
   steps_to_reproduce: string
   evidence_urls: string[]
   assignee_user_id: string | null
+  // BK-1835 — the content version a correction must send back (0129).
+  content_version: number
   created_by: string | null
   created_at: string
   module: { id: string, name: string, path: string, archived_at: string | null } | null

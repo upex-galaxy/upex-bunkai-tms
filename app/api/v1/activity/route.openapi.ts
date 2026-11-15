@@ -144,6 +144,15 @@ const ActivityItemSchema = z
     activityItemVariant('JiraConnectionDisconnected', 'jira_connection.disconnected', 'workspace_jira_connection', {
       site_host: z.string().nullable(),
     }),
+    // BK-1835 — projection of migration 0129. `item.label` is the defect's
+    // title after the correction. Description and steps are named in
+    // `changed_fields` only; their text never leaves the database here.
+    activityItemVariant('BugCorrected', 'bug.corrected', 'bug', {
+      title: z.string().nullable(),
+      changed_fields: z.array(z.enum(['description', 'severity', 'steps_to_reproduce', 'title'])),
+      title_change: z.object({ from: z.string(), to: z.string() }).nullable(),
+      severity_change: z.object({ from: z.enum(['P1', 'P2', 'P3', 'P4']), to: z.enum(['P1', 'P2', 'P3', 'P4']) }).nullable(),
+    }),
   ])
   .openapi('ActivityItem');
 
