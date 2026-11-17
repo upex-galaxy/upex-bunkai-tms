@@ -16,11 +16,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 // with `signInWithPassword` on the anon key, the app's own login path. The
 // service-role client only seeds and removes fixtures.
 //
-// Fixture: two workspaces, IN (the identity is an active member, granted a
-// throwaway Viewer membership if it was not one already) and OUT (the identity
-// is not a member). IN gets two throwaway Projects, each with a module named
-// "Payments" (AC-06), plus an archived module (AC-19) and a run-linked defect
-// whose Run is deleted (AC-18). OUT gets one Project with one defect.
+// Fixture: two throwaway workspaces, IN (the identity is an active Viewer)
+// and OUT (owned by another user; the identity is not a member). IN gets two
+// throwaway Projects, each with a module named "Payments" (AC-06), plus an
+// archived module (AC-19) and a run-linked defect whose Run is deleted
+// (AC-18). OUT gets one Project with one defect.
 //
 // Env-gated: needs NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
 // NEXT_PUBLIC_SUPABASE_ANON_KEY, QA_E2E_USER_EMAIL, QA_E2E_USER_PASSWORD. It
@@ -88,8 +88,6 @@ function service() {
 let fixture: Fixture | null = null;
 let caller: SupabaseClient | null = null;
 let skipReason: string | null = null;
-// Recorded as soon as it happens, so cleanup runs even when seeding fails halfway.
-let grantedMembership: { workspaceId: string, userId: string } | null = null;
 
 const BASE = Date.parse('2026-06-01T12:00:00.000Z');
 const at = (minutesAgo: number) => new Date(BASE - minutesAgo * 60_000).toISOString();
@@ -97,7 +95,7 @@ const at = (minutesAgo: number) => new Date(BASE - minutesAgo * 60_000).toISOStr
 async function seedRun(db: SupabaseClient, workspaceId: string, projectId: string, userId: string, tag: string): Promise<string> {
   const { data: environment, error: environmentError } = await db
     .from('project_environments')
-    .insert({ project_id: projectId, name: 'Staging' })
+    .insert({ project_id: projectId, name: `Staging ${tag}` })
     .select('id')
     .single();
   if (environmentError) { throw environmentError; }
@@ -212,42 +210,40 @@ describeOrSkip('BK-555 — bunkai_list_workspace_bugs (real session, RLS as the 
       return;
     }
 
-    const { data: workspaces, error: workspacesError } = await db
-      .from('workspaces')
-      .select('id')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: true });
-    if (workspacesError) { throw workspacesError; }
-    const { data: memberships, error: membershipsError } = await db
+    // OUT is owned by someone else, so nothing about it can reach the identity
+    // through ownership either.
+    const { data: otherMember, error: otherError } = await db
       .from('workspace_members')
-      .select('workspace_id, status')
-      .eq('user_id', userId);
-    if (membershipsError) { throw membershipsError; }
-    const memberOf = new Set((memberships ?? []).filter(m => m.status === 'active').map(m => m.workspace_id as string));
-    const anyMembership = new Set((memberships ?? []).map(m => m.workspace_id as string));
-    const ids = (workspaces ?? []).map(w => w.id as string);
-
-    const out = ids.find(id => !anyMembership.has(id));
-    let inWs = ids.find(id => memberOf.has(id));
-    if (!out) {
-      skipReason = 'need a live workspace the QA identity does not belong to (seed state).';
+      .select('user_id')
+      .neq('user_id', userId)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+    if (otherError) { throw otherError; }
+    if (!otherMember) {
+      skipReason = 'need a second user to own the foreign workspace (seed state).';
       return;
     }
-    if (!inWs) {
-      inWs = ids.find(id => id !== out && !anyMembership.has(id));
-      if (!inWs) {
-        skipReason = 'need a second live workspace for the QA identity (seed state).';
-        return;
-      }
-      const { error: grantError } = await db
-        .from('workspace_members')
-        .insert({ workspace_id: inWs, user_id: userId, role: 'viewer', status: 'active' });
-      if (grantError) {
-        skipReason = `could not grant a temporary membership (${grantError.message}).`;
-        return;
-      }
-      grantedMembership = { workspaceId: inWs, userId };
-    }
+
+    // Throwaway workspaces, so a live workspace's project limit (community
+    // plan: 3) never blocks the seed and nothing real is touched.
+    const { data: created, error: createError } = await db
+      .from('workspaces')
+      .insert([
+        { slug: `${PREFIX}-in`, name: `${PREFIX} IN`, owner_user_id: userId },
+        { slug: `${PREFIX}-out`, name: `${PREFIX} OUT`, owner_user_id: otherMember.user_id },
+      ])
+      .select('id, slug');
+    if (createError) { throw createError; }
+    const inWs = (created ?? []).find(w => w.slug === `${PREFIX}-in`)!.id as string;
+    const out = (created ?? []).find(w => w.slug === `${PREFIX}-out`)!.id as string;
+
+    // The identity reads IN as a Viewer: the access boundary is the workspace,
+    // never the role (AC-22).
+    const { error: grantError } = await db
+      .from('workspace_members')
+      .insert({ workspace_id: inWs, user_id: userId, role: 'viewer', status: 'active' });
+    if (grantError) { throw grantError; }
 
     fixture = await seed(db, inWs, out, userId);
     caller = anon;
@@ -255,18 +251,16 @@ describeOrSkip('BK-555 — bunkai_list_workspace_bugs (real session, RLS as the 
 
   // Cleans by PREFIX, not by the fixture object, so a seed that failed halfway
   // leaves nothing behind either. Bugs first (they reference runs and modules),
-  // then Runs (runs.test_id is ON DELETE RESTRICT), then Projects (cascading
-  // modules and environments), then Tests.
+  // then Runs (runs.test_id is ON DELETE RESTRICT), then Tests, then the two
+  // throwaway workspaces, which cascade their Projects, modules, environments,
+  // memberships and chat channel.
   afterAll(async () => {
     if (!hasEnv) { return; }
     const db = service();
     await db.from('bugs').delete().like('title', `${PREFIX}%`);
     await db.from('runs').delete().like('start_token', `${PREFIX}%`);
-    await db.from('projects').delete().like('slug', `${PREFIX}%`);
     await db.from('tests').delete().like('title', `${PREFIX}%`);
-    if (grantedMembership) {
-      await db.from('workspace_members').delete().eq('workspace_id', grantedMembership.workspaceId).eq('user_id', grantedMembership.userId);
-    }
+    await db.from('workspaces').delete().like('slug', `${PREFIX}%`);
   });
 
   async function list(args: Record<string, unknown>): Promise<Page> {
