@@ -50,6 +50,12 @@ export interface ExpandedTest {
   tags: string[]
   created_at: string
   updated_at: string
+  // BK-596 — set while archived. The Test keeps resolving, read-only.
+  archived_at: string | null
+  archived_by: string | null
+  // BK-596 — what the archive confirmation names.
+  run_count: number
+  plans: { id: string, name: string, status: string }[]
   atc_count: number
   atcs: ChainedAtc[]
 }
@@ -63,8 +69,10 @@ interface TestDetailViewProps {
   canReorder?: boolean
 }
 
-export function TestDetailView({ test, projectSlug, canReorder = false }: TestDetailViewProps) {
+export function TestDetailView({ test, projectSlug, canReorder: canWrite = false }: TestDetailViewProps) {
   const tags = test.tags ?? [];
+  // BK-596 (AC-06) — an archived Test is frozen: no tag editor, no drag handles.
+  const canReorder = canWrite && test.archived_at === null;
   return (
     <div
       data-testid="test-detail-view"

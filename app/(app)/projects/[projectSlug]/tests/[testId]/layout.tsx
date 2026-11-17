@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { StartRunButton } from '@components/tests/StartRunButton';
+import { TestArchiveButton, TestArchivedBanner, TestRenameControl } from '@components/tests/TestArchiveControls';
 import { TestDetailTabs } from '@components/tests/TestDetailTabs';
 import { loadTestDetail } from '@lib/tests/load-test-detail';
 import { ChevronLeft, GitBranch } from 'lucide-react';
@@ -23,6 +24,17 @@ interface LayoutProps {
 export default async function TestDetailLayout({ children, params }: LayoutProps) {
   const { projectSlug, testId } = await params;
   const { test, canReorder, environments } = await loadTestDetail(projectSlug, testId);
+  // BK-596 — an archived Test is read-only until restored: no Start run, no
+  // rename, no archive; the banner below the header carries Restore.
+  const archived = test.archived_at !== null;
+  const canChange = canReorder && !archived;
+  const subject = {
+    id: test.id,
+    title: test.title,
+    version: test.version,
+    runCount: test.run_count,
+    plans: test.plans,
+  };
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-surface-1">
@@ -55,8 +67,13 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
           >
             {test.title}
           </h1>
+          {archived && (
+            <span className="status-chip shrink-0" data-status="skipped" data-testid="test-archived-badge">Archived</span>
+          )}
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            {canReorder && (
+            {canChange && <TestRenameControl test={subject} />}
+            {canChange && <TestArchiveButton test={subject} />}
+            {canChange && (
               <StartRunButton
                 testId={test.id}
                 projectSlug={projectSlug}
@@ -74,6 +91,10 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
           </div>
         </div>
       </div>
+
+      {archived && (
+        <TestArchivedBanner testId={test.id} title={test.title} archivedAt={test.archived_at!} canRestore={canReorder} />
+      )}
 
       <TestDetailTabs projectSlug={projectSlug} testId={testId} />
 
