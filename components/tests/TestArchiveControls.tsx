@@ -39,6 +39,9 @@ export interface TestArchiveSubject {
   plans: { id: string, name: string }[]
 }
 
+// Set by a successful archive in this tab, read once by the banner it brings.
+let pendingBannerFocus = false;
+
 // ---------------------------------------------------------------- rename
 
 export function TestRenameControl({ test }: { test: TestArchiveSubject }) {
@@ -176,6 +179,9 @@ export function ArchiveTestDialog({ test, onArchived, onCancel, onSubmittingChan
       onSubmittingChange?.(false);
       return;
     }
+    // The Archive button is about to disappear with the refresh; the banner
+    // that replaces it takes focus when it mounts (TestArchivedBanner).
+    pendingBannerFocus = true;
     toast.success(testArchivedToast(test.title));
     onArchived();
     router.refresh();
@@ -277,12 +283,7 @@ function ArchiveTestOverlay({ test, onClose }: { test: TestArchiveSubject, onClo
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panelRef.current?.querySelector<HTMLElement>('[data-testid="archive-test-cancel"]')?.focus();
     return () => {
-      if (opener?.isConnected) { opener.focus(); return; }
-      // After a successful archive the Archive button is gone: the banner that
-      // replaced it takes focus once the refreshed header renders.
-      requestAnimationFrame(() => {
-        document.querySelector<HTMLElement>('[data-testid="test-archived-banner"]')?.focus();
-      });
+      if (opener?.isConnected) { opener.focus(); }
     };
   }, []);
 
@@ -307,6 +308,12 @@ function ArchiveTestOverlay({ test, onClose }: { test: TestArchiveSubject, onClo
 // ---------------------------------------------------------------- archived state
 
 export function TestArchivedBanner({ testId, title, archivedAt, canRestore }: { testId: string, title: string, archivedAt: string, canRestore: boolean }) {
+  const bannerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!pendingBannerFocus) { return; }
+    pendingBannerFocus = false;
+    bannerRef.current?.focus();
+  }, []);
   const router = useRouter();
   const [restoring, setRestoring] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -327,6 +334,7 @@ export function TestArchivedBanner({ testId, title, archivedAt, canRestore }: { 
 
   return (
     <div
+      ref={bannerRef}
       role="status"
       tabIndex={-1}
       data-testid="test-archived-banner"
