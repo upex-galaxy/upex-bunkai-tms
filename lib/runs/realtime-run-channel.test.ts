@@ -200,6 +200,83 @@ describe('createRefetchScheduler', () => {
     clock.advance(1);
     expect(refetchCount).toBe(1);
   });
+
+  // BK-718 — the optional maxWaitMs ceiling.
+  test('without a ceiling, a stream faster than the debounce holds the refetch until it stops', () => {
+    let refetchCount = 0;
+    const clock = createFakeClock();
+    const scheduler = createRefetchScheduler(() => { refetchCount++; }, DEFAULT_REFETCH_DEBOUNCE_MS, clock);
+
+    // One event every 200 ms for 8 s: each restarts the 250 ms window.
+    for (let elapsed = 0; elapsed < 8000; elapsed += 200) {
+      scheduler.trigger();
+      clock.advance(200);
+    }
+    expect(refetchCount).toBe(0);
+
+    clock.advance(DEFAULT_REFETCH_DEBOUNCE_MS);
+    expect(refetchCount).toBe(1);
+  });
+
+  test('with a ceiling, a stream faster than the debounce still refetches at least every maxWaitMs', () => {
+    let refetchCount = 0;
+    const clock = createFakeClock();
+    const scheduler = createRefetchScheduler(() => { refetchCount++; }, DEFAULT_REFETCH_DEBOUNCE_MS, clock, 2000);
+
+    for (let elapsed = 0; elapsed < 8000; elapsed += 200) {
+      scheduler.trigger();
+      clock.advance(200);
+    }
+    // 8 s of stream with a 2 s ceiling: refetches at 2, 4, 6 and 8 s, never a
+    // gap past 2 s. The one at 8 s already follows the last event (7.8 s), so
+    // nothing is left pending once the stream stops.
+    expect(refetchCount).toBe(4);
+
+    clock.advance(DEFAULT_REFETCH_DEBOUNCE_MS);
+    expect(refetchCount).toBe(4);
+  });
+
+  test('with a ceiling, an event after a ceiling refetch still gets its own trailing refetch', () => {
+    let refetchCount = 0;
+    const clock = createFakeClock();
+    const scheduler = createRefetchScheduler(() => { refetchCount++; }, DEFAULT_REFETCH_DEBOUNCE_MS, clock, 2000);
+
+    for (let elapsed = 0; elapsed < 2000; elapsed += 200) {
+      scheduler.trigger();
+      clock.advance(200);
+    }
+    expect(refetchCount).toBe(1);
+
+    scheduler.trigger();
+    clock.advance(DEFAULT_REFETCH_DEBOUNCE_MS);
+    expect(refetchCount).toBe(2);
+  });
+
+  test('with a ceiling, an isolated trigger still fires once on the trailing edge, not again at the ceiling', () => {
+    let refetchCount = 0;
+    const clock = createFakeClock();
+    const scheduler = createRefetchScheduler(() => { refetchCount++; }, DEFAULT_REFETCH_DEBOUNCE_MS, clock, 2000);
+
+    scheduler.trigger();
+    clock.advance(DEFAULT_REFETCH_DEBOUNCE_MS);
+    expect(refetchCount).toBe(1);
+
+    clock.advance(5000);
+    expect(refetchCount).toBe(1);
+  });
+
+  test('cancel drops both the trailing refetch and the ceiling', () => {
+    let refetchCount = 0;
+    const clock = createFakeClock();
+    const scheduler = createRefetchScheduler(() => { refetchCount++; }, DEFAULT_REFETCH_DEBOUNCE_MS, clock, 2000);
+
+    scheduler.trigger();
+    clock.advance(100);
+    scheduler.cancel();
+    clock.advance(5000);
+
+    expect(refetchCount).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
