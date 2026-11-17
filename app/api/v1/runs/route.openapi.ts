@@ -99,7 +99,7 @@ registry.registerPath({
     400: { description: 'Malformed body or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Test the caller cannot see).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'Idempotency-Key reused with a different payload, or a request with the same key is still in flight (`conflict`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'Idempotency-Key reused with a different payload, or a request with the same key is still in flight (`conflict`), or the Test is archived (`details.reason: test_archived`; a replayed start token still returns its Run).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (`validation_failed` for body shape, `no_executable_steps` when the Test has no executable steps, `environment_invalid` when the environment is not configured for the Test\'s Project).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

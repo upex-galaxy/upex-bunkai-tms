@@ -1885,6 +1885,8 @@ export interface Database {
       }
       tests: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           automation_status: string
           created_at: string
           created_by: string
@@ -1896,6 +1898,8 @@ export interface Database {
           workspace_id: string
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           automation_status?: string
           created_at?: string
           created_by: string
@@ -1907,6 +1911,8 @@ export interface Database {
           workspace_id: string
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           automation_status?: string
           created_at?: string
           created_by?: string
@@ -2514,6 +2520,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
+      bunkai_archive_test: {
+        Args: { p_actor_user_id: string, p_test_id: string }
+        Returns: Json
+      }
       bunkai_archive_milestone: {
         Args: { p_milestone_id: string }
         Returns: Json
@@ -3011,6 +3021,15 @@ export interface Database {
         Args: { p_test_plan_id: string }
         Returns: Json
       }
+      bunkai_rename_test: {
+        Args: {
+          p_actor_user_id: string
+          p_if_match?: number
+          p_test_id: string
+          p_title: string
+        }
+        Returns: Json
+      }
       bunkai_reorder_test_steps: {
         Args: {
           p_actor_user_id: string
@@ -3076,6 +3095,10 @@ export interface Database {
       }
       bunkai_restore_atc: {
         Args: { p_actor_user_id: string, p_atc_id: string }
+        Returns: Json
+      }
+      bunkai_restore_test: {
+        Args: { p_actor_user_id: string, p_test_id: string }
         Returns: Json
       }
       bunkai_restore_milestone: {

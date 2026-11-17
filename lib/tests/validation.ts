@@ -95,3 +95,29 @@ export function chainDiff(current: string[], submitted: string[]): { missing: st
     extra: submitted.filter(id => !currentSet.has(id)),
   };
 }
+
+// BK-596 — Test rename. The same name rule bunkai_create_test enforces (trim,
+// then 1..200 characters), with two refinements the AI Tech Lead ruling of
+// 2026-11-17 fixed (Dev Q5): the trim is JavaScript's (spaces, tabs, NBSP and
+// the other Unicode spaces), and the length counts characters (code points), so
+// 200 multi-byte characters pass here exactly as they pass `char_length` in the
+// RPC. A blank title and an over-long one are two different faults with two
+// different reasons. The RPC stays the enforcement point of record.
+export type TestTitleFault = 'title_required' | 'title_too_long';
+
+export function testTitleFault(title: string): TestTitleFault | null {
+  const trimmed = title.trim();
+  if (trimmed.length === 0) {
+    return 'title_required';
+  }
+  if ([...trimmed].length > TEST_TITLE_MAX) {
+    return 'title_too_long';
+  }
+  return null;
+}
+
+export const TestRenameBodySchema = z.object({
+  title: z.string(),
+});
+
+export type TestRenameBody = z.infer<typeof TestRenameBodySchema>;

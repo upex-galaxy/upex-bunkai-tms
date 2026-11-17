@@ -1,4 +1,4 @@
-import { TestCreateBodySchema, TestTagsBodySchema } from '@lib/tests/validation';
+import { TestCreateBodySchema, TestTagsBodySchema, testTitleFault } from '@lib/tests/validation';
 import { describe, expect, test } from 'bun:test';
 
 describe('TestCreateBodySchema boundaries', () => {
@@ -104,5 +104,28 @@ describe('TestTagsBodySchema boundaries', () => {
 
   test('rejects a non-array tags value', () => {
     expect(TestTagsBodySchema.safeParse({ tags: 'smoke' }).success).toBe(false);
+  });
+});
+
+// BK-596 — one whitespace rule and a character count (AI Tech Lead ruling, Dev Q5).
+describe('testTitleFault', () => {
+  test('a blank title, including tabs and NBSP only, is required', () => {
+    for (const title of ['', '   ', '\t', '  ', ' \t  ']) {
+      expect(testTitleFault(title)).toBe('title_required');
+    }
+  });
+
+  test('201 characters is too long, 200 is fine', () => {
+    expect(testTitleFault('x'.repeat(201))).toBe('title_too_long');
+    expect(testTitleFault('x'.repeat(200))).toBeNull();
+  });
+
+  test('length counts characters, so 200 multi-byte characters pass', () => {
+    expect(testTitleFault('🧪'.repeat(200))).toBeNull();
+    expect(testTitleFault('🧪'.repeat(201))).toBe('title_too_long');
+  });
+
+  test('surrounding whitespace does not count toward the limit', () => {
+    expect(testTitleFault(`  ${'x'.repeat(200)}  `)).toBeNull();
   });
 });

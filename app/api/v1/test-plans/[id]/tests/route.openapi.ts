@@ -78,7 +78,7 @@ registry.registerPath({
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope, or the caller is a viewer.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Test plan not found (or not visible to the caller).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'A submitted test is already in the plan, or the plan is closed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'A submitted test is already in the plan, or is archived (`test_archived`), or the plan is closed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Empty test_ids, or a submitted test does not belong to the plan\'s project.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

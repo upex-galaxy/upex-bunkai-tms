@@ -386,6 +386,34 @@ export async function setTestTags(supabase: Client, args: SetTestTagsArgs) {
   });
 }
 
+// BK-596 — rename / archive / restore one Test. Idempotent: an identical name,
+// a repeated archive and a restore of a live Test are successes with
+// `changed: false`, no write and no event. An archived Test refuses a rename
+// with 45127. Execute is granted to service_role only (migration 0134), so these
+// run through the API routes' admin client. `ifMatch` null skips the version guard.
+export async function renameTest(supabase: Client, args: { actorUserId: string, testId: string, title: string, ifMatch: number | null }) {
+  return supabase.rpc('bunkai_rename_test', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+    p_title: args.title,
+    p_if_match: args.ifMatch as number,
+  });
+}
+
+export async function archiveTest(supabase: Client, args: { actorUserId: string, testId: string }) {
+  return supabase.rpc('bunkai_archive_test', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+  });
+}
+
+export async function restoreTest(supabase: Client, args: { actorUserId: string, testId: string }) {
+  return supabase.rpc('bunkai_restore_test', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+  });
+}
+
 // BK-33 — workspace-scoped filter of Tests carrying a single tag. The SECURITY
 // DEFINER RPC restricts results to the actor's active memberships (any role) —
 // caller scope is ignored — and matches via a GIN `@>` containment. The lookup
