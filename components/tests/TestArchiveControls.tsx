@@ -88,7 +88,7 @@ export function TestRenameControl({ test }: { test: TestArchiveSubject }) {
         size="sm"
         variant="ghost"
         data-testid="test-detail-rename"
-        onClick={() => setEditing(true)}
+        onClick={() => { setTitle(test.title); setError(null); setEditing(true); }}
         title="Rename this Test"
       >
         <Pencil size={12} />
@@ -121,7 +121,7 @@ export function TestRenameControl({ test }: { test: TestArchiveSubject }) {
         Cancel
       </Button>
       {error && (
-        <span role="alert" data-testid="test-rename-error" className="shrink-0 text-xs text-signal-fail" title={TEST_RENAME_FAILURE_COPY}>
+        <span role="alert" data-testid="test-rename-error" className="max-w-[220px] shrink truncate text-xs text-signal-fail" title={`${TEST_RENAME_FAILURE_COPY} ${error}`}>
           {error}
         </span>
       )}
@@ -277,7 +277,12 @@ function ArchiveTestOverlay({ test, onClose }: { test: TestArchiveSubject, onClo
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panelRef.current?.querySelector<HTMLElement>('[data-testid="archive-test-cancel"]')?.focus();
     return () => {
-      if (opener?.isConnected) { opener.focus(); }
+      if (opener?.isConnected) { opener.focus(); return; }
+      // After a successful archive the Archive button is gone: the banner that
+      // replaced it takes focus once the refreshed header renders.
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>('[data-testid="test-archived-banner"]')?.focus();
+      });
     };
   }, []);
 
@@ -323,6 +328,7 @@ export function TestArchivedBanner({ testId, title, archivedAt, canRestore }: { 
   return (
     <div
       role="status"
+      tabIndex={-1}
       data-testid="test-archived-banner"
       className="flex flex-shrink-0 items-start border-b border-stroke-1 bg-surface-2 px-4 py-2.5 text-sm text-fg-1"
     >

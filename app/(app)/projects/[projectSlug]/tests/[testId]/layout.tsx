@@ -26,7 +26,7 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
   const { test, canReorder, environments } = await loadTestDetail(projectSlug, testId);
   // BK-596 — an archived Test is read-only until restored: no Start run, no
   // rename, no archive; the banner below the header carries Restore.
-  const archived = test.archived_at !== null;
+  const archived = test.archived_at != null;
   const canChange = canReorder && !archived;
   const subject = {
     id: test.id,

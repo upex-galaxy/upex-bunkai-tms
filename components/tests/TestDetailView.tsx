@@ -72,7 +72,7 @@ interface TestDetailViewProps {
 export function TestDetailView({ test, projectSlug, canReorder: canWrite = false }: TestDetailViewProps) {
   const tags = test.tags ?? [];
   // BK-596 (AC-06) — an archived Test is frozen: no tag editor, no drag handles.
-  const canReorder = canWrite && test.archived_at === null;
+  const canReorder = canWrite && test.archived_at == null;
   return (
     <div
       data-testid="test-detail-view"
