@@ -710,6 +710,36 @@ export async function listWorkspaceRunsRpc(supabase: Client, args: ListWorkspace
   });
 }
 
+// BK-555 — one page of a workspace's defects across every Project, most severe
+// first, with severity and status counts over the whole filtered set.
+// SECURITY INVOKER with NO actor parameter (0132, ADR-0012's preferred form):
+// the caller's own RLS scopes every row, so pass the caller's client, never the
+// admin client. `workspaceId` pins the page to the active workspace. Returns
+// `{ data, aggregates, next_cursor }`; the caller owns the opaque cursor.
+export interface ListWorkspaceBugsArgs {
+  workspaceId: string
+  projectId?: string | null
+  statuses?: string[] | null
+  severities?: string[] | null
+  limit?: number
+  cursorSeverity?: string | null
+  cursorCreatedAt?: string | null
+  cursorId?: string | null
+}
+
+export async function listWorkspaceBugsRpc(supabase: Client, args: ListWorkspaceBugsArgs) {
+  return supabase.rpc('bunkai_list_workspace_bugs', {
+    p_workspace_id: args.workspaceId,
+    p_project_id: args.projectId ?? undefined,
+    p_statuses: args.statuses ?? undefined,
+    p_severities: args.severities ?? undefined,
+    p_limit: args.limit ?? undefined,
+    p_cursor_severity: args.cursorSeverity ?? undefined,
+    p_cursor_created_at: args.cursorCreatedAt ?? undefined,
+    p_cursor_id: args.cursorId ?? undefined,
+  });
+}
+
 // BK-46 — whole-project coverage rollup (untested ACs / not-run filter /
 // fully-covered modules). Same explicit-actor contract; the SECURITY DEFINER
 // RPC resolves the Project's workspace and gates the actor's active

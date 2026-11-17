@@ -2894,6 +2894,19 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_list_workspace_bugs: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_id?: string
+          p_cursor_severity?: string
+          p_limit?: number
+          p_project_id?: string
+          p_severities?: string[]
+          p_statuses?: string[]
+          p_workspace_id: string
+        }
+        Returns: Json
+      }
       bunkai_list_workspace_runs: {
         Args: {
           p_cursor_id?: string
