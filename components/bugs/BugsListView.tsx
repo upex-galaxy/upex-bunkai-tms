@@ -155,19 +155,19 @@ async function fetchBugsPage(
 // duplicate here, same pattern `RunHistoryView.tsx`'s own local
 // `STATUS_TOKEN`/`OUTCOME_DOT_CLASS` maps already establish for a sibling
 // list view.
-const STATUS_FILTER_TONE: Record<BugStatus, string> = {
+export const STATUS_FILTER_TONE: Record<BugStatus, string> = {
   open: 'fail',
   in_progress: 'running',
   resolved: 'pass',
   closed: 'skipped',
 };
-const STATUS_FILTER_LABEL: Record<BugStatus, string> = {
+export const STATUS_FILTER_LABEL: Record<BugStatus, string> = {
   open: 'Open',
   in_progress: 'In progress',
   resolved: 'Resolved',
   closed: 'Closed',
 };
-const SEVERITY_FILTER_TONE: Record<BugSeverity, string> = {
+export const SEVERITY_FILTER_TONE: Record<BugSeverity, string> = {
   P1: 'fail',
   P2: 'blocked',
   P3: 'running',
@@ -206,7 +206,7 @@ const TONE_CLASSES: Record<string, ToneClasses> = {
 
 // One multi-select filter toggle chip — mirrors the mockup's `.chip-toggle`
 // (neutral outline idle, tone-colored fill+border when `aria-pressed`).
-function FilterChip({ pressed, tone, label, onClick, testId }: {
+export function FilterChip({ pressed, tone, label, onClick, testId }: {
   pressed: boolean
   tone: string
   label: ReactNode
@@ -236,7 +236,7 @@ function FilterChip({ pressed, tone, label, onClick, testId }: {
 // One severity/status count pill in the aggregates panel — mirrors the
 // mockup's `.count-chip` (dimmed at `count === 0`, same tone family as the
 // matching filter chip / table row badge).
-function CountChip({ tone, label, count, testId }: { tone: string, label: ReactNode, count: number, testId: string }) {
+export function CountChip({ tone, label, count, testId }: { tone: string, label: ReactNode, count: number, testId: string }) {
   const toneClasses = TONE_CLASSES[tone];
   return (
     <span

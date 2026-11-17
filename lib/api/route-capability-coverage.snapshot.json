@@ -624,6 +624,11 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/workspaces/[id]/bugs/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
     "file": "app/api/v1/workspaces/[id]/chat/entities/resolve/route.ts",
     "method": "POST",
     "posture": "authenticated",

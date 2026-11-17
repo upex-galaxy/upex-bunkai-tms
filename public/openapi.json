@@ -7669,6 +7669,127 @@
         ],
         "description": "A workspace's live billing-relevant counts, admin/owner only."
       },
+      "WorkspaceBugs": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceBug"
+            },
+            "description": "At most `limit` defects, most severe first, then most recently filed."
+          },
+          "aggregates": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BugsAggregates"
+              },
+              {
+                "description": "Severity and status counts over EVERY defect matching the filters, not the page."
+              }
+            ]
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "description": "Opaque token for the next page with the same filters, or `null` when this page holds the last matching defect. Paging until `null` reaches every defect: there is no cap."
+          },
+          "workspace_bug_count": {
+            "type": "integer",
+            "description": "Every defect of the workspace the caller can see, unfiltered and exact, defects on archived modules excluded. Not affected by any filter or by `limit`. The sidebar's \"Bug Reports\" badge shows the same number."
+          }
+        },
+        "required": ["data", "aggregates", "next_cursor", "workspace_bug_count"]
+      },
+      "WorkspaceBug": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The defect's id. The record opens at `/projects/{project_slug}/bugs/{id}`."
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_slug": {
+            "type": ["string", "null"],
+            "description": "URL slug of the defect's Project, unique per workspace."
+          },
+          "project_name": {
+            "type": ["string", "null"]
+          },
+          "module": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BugModule"
+              },
+              {
+                "description": "The module the defect was filed against, with its full path. Never an archived module."
+              }
+            ]
+          },
+          "run_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "The Run the defect was filed from. `null` for a defect filed manually, and for one whose Run was deleted later."
+          },
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4"],
+            "description": "P1 Critical, P2 Major, P3 Minor, P4 Trivial. The primary ordering key, P1 first."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "in_progress", "resolved", "closed"]
+          },
+          "assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "assignee": {
+            "type": ["object", "null"],
+            "properties": {
+              "user_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["user_id", "email"],
+            "description": "The resolved assignee; `email` is null when it cannot be resolved; `null` when unassigned."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the defect was filed: the second ordering key, newest first, then id descending."
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "project_id",
+          "project_slug",
+          "project_name",
+          "module",
+          "run_id",
+          "title",
+          "severity",
+          "status",
+          "assignee_user_id",
+          "assignee",
+          "created_at"
+        ]
+      },
       "ChatEntityCard": {
         "anyOf": [
           {
@@ -20117,6 +20238,143 @@
           },
           "500": {
             "description": "The overview could not be read (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/bugs": {
+      "get": {
+        "tags": ["Workspaces"],
+        "summary": "List every defect of a workspace, most severe first, with severity and status counts",
+        "description": "Bearer `atc:read` (or cookie session), the floor every workspace read uses. One row per defect across every Project of the workspace, keyset paginated on `(severity asc, created_at desc, id desc)`. Defects filed against an archived module are neither listed nor counted. Filters AND-compose and travel with the cursor. Runs entirely under the caller's own RLS (the read function is SECURITY INVOKER), so a foreign, nonexistent, or lost-membership workspace id returns the SAME empty `200` an empty workspace does, never an existence echo. A read that FAILS answers 500, never an empty list.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Only defects of this Project."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma list of `open`, `in_progress`, `resolved`, `closed`; OR within the list."
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma list of `P1`..`P4`; OR within the list."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 50
+            },
+            "description": "Page size, 1..50. Out of range is rejected with 422, never clamped. Does not affect the counts."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The `next_cursor` of a previous response. A malformed token is 400, never a silent first page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the workspace's defects (possibly empty), the filtered counts and the unfiltered count.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceBugs"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The workspace id is not a UUID, or the cursor is malformed (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A filter value or `limit` is invalid (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The defects could not be read (`internal_error`). Deliberately not collapsed into an empty list.",
             "content": {
               "application/json": {
                 "schema": {

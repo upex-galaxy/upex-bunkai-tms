@@ -56,3 +56,12 @@ export function isProjectsNavActive(pathname: string): boolean {
 export function isRunsNavActive(pathname: string): boolean {
   return pathname === '/runs' || pathname.startsWith('/runs/') || activeProjectSection(pathname) === 'runs';
 }
+
+// BK-555 — "Bug Reports" opens the workspace-wide defect index at `/bugs`
+// (§5 D70) and stays current on a Project's own bug screens
+// (`/projects/{slug}/bugs` and a defect record under it), so opening a row
+// from the index keeps the same entry lit. "Projects" already yields on those
+// routes (above), so the two never highlight together.
+export function isBugsNavActive(pathname: string): boolean {
+  return pathname === '/bugs' || pathname.startsWith('/bugs/') || activeProjectSection(pathname) === 'bugs';
+}

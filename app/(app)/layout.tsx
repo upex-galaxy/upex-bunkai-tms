@@ -10,6 +10,7 @@ import { AuthProvider } from '@components/providers/auth-context';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { countAtcsInWorkspace } from '@lib/atcs/library';
 import { loadEffectiveProjectPlan, loadOwnership, planLimitView } from '@lib/billing/plan-limit';
+import { countWorkspaceBugs } from '@lib/bugs/workspace-bugs';
 import { countWorkspaceRuns } from '@lib/runs/workspace-runs';
 import { listNotifications } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
@@ -52,6 +53,7 @@ async function getShellData() {
   let unreadCount = 0;
   let atcCount: number | null = null;
   let runCount: number | null = null;
+  let bugCount: number | null = null;
   if (activeWorkspaceId) {
     const { data } = await supabase
       .from('projects')
@@ -79,9 +81,11 @@ async function getShellData() {
 
     // BK-439 — ATC Library badge, read once per navigation (layout re-render).
     // BK-513 — Test Runs badge: the same count the `/runs` index pages through.
-    [atcCount, runCount] = await Promise.all([
+    // BK-555 — Bug Reports badge: the same count the `/bugs` index pages through.
+    [atcCount, runCount, bugCount] = await Promise.all([
       countAtcsInWorkspace(supabase, activeWorkspaceId),
       countWorkspaceRuns(supabase, activeWorkspaceId),
+      countWorkspaceBugs(supabase, activeWorkspaceId),
     ]);
   }
 
@@ -105,7 +109,7 @@ async function getShellData() {
     }
   }
 
-  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userId: user?.id ?? null, userRole, unreadCount, atcCount, runCount, planLimit };
+  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userId: user?.id ?? null, userRole, unreadCount, atcCount, runCount, bugCount, planLimit };
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -132,6 +136,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               initialUnreadCount={shell.unreadCount}
               atcCount={shell.atcCount}
               runCount={shell.runCount}
+              bugCount={shell.bugCount}
             />
           )}
           dock={shell.activeWorkspaceId && shell.userId
