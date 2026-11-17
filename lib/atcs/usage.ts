@@ -14,6 +14,17 @@ export function atcUsageLabel(count: number): string {
   return `Used in ${count} ${count === 1 ? 'test' : 'tests'}`;
 }
 
+// BK-21 / BK-596 — the ATC save confirmation. `affected` counts every Test the
+// edit reaches, archived ones included (an archived Test runs the new content
+// once restored), and the archived share is named so nobody is surprised.
+export function atcSaveConfirmation(affected: number, archived: number): string {
+  if (affected <= 0) {
+    return 'ATC saved — no Tests affected';
+  }
+  const base = `ATC saved — ${affected} ${affected === 1 ? 'Test' : 'Tests'} updated`;
+  return archived > 0 ? `${base}, ${archived} archived` : base;
+}
+
 // Render an entry's positions compactly: a single position shows as "#1"; the
 // same ATC at multiple positions in one Test (AC2.2) shows as "#1, #3". An
 // empty list (should not happen for a returned entry) yields an empty string.

@@ -193,6 +193,8 @@ export interface AtcUsageEntry {
 export interface AtcUsageReport {
   count: number
   used_in: AtcUsageEntry[]
+  // BK-596 — archived Tests that still chain the ATC (bunkai_atc_usage only).
+  archived_count?: number
 }
 
 export interface ModuleTreeNode extends Module {

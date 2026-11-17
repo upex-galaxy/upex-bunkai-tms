@@ -410,6 +410,15 @@
           },
           {
             "$ref": "#/components/schemas/ActivityItemMilestoneRestored"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemTestRenamed"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemTestArchived"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemTestRestored"
           }
         ],
         "discriminator": {
@@ -437,7 +446,10 @@
             "jira_connection.disconnected": "#/components/schemas/ActivityItemJiraConnectionDisconnected",
             "bug.corrected": "#/components/schemas/ActivityItemBugCorrected",
             "milestone.archived": "#/components/schemas/ActivityItemMilestoneArchived",
-            "milestone.restored": "#/components/schemas/ActivityItemMilestoneRestored"
+            "milestone.restored": "#/components/schemas/ActivityItemMilestoneRestored",
+            "test.renamed": "#/components/schemas/ActivityItemTestRenamed",
+            "test.archived": "#/components/schemas/ActivityItemTestArchived",
+            "test.restored": "#/components/schemas/ActivityItemTestRestored"
           }
         }
       },
@@ -1819,6 +1831,171 @@
         },
         "required": ["name"]
       },
+      "ActivityItemTestRenamed": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["test"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["test.renamed"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadTestRenamed"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadTestRenamed": {
+        "type": "object",
+        "properties": {
+          "old_title": {
+            "type": ["string", "null"]
+          },
+          "new_title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["old_title", "new_title"]
+      },
+      "ActivityItemTestArchived": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["test"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["test.archived"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadTestArchived"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadTestArchived": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["title"]
+      },
+      "ActivityItemTestRestored": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["test"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["test.restored"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadTestRestored"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadTestRestored": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["title"]
+      },
       "SendDigestResponse": {
         "type": "object",
         "properties": {
@@ -2270,16 +2447,20 @@
         "properties": {
           "count": {
             "type": "integer",
-            "description": "Number of distinct Tests that chain this ATC."
+            "description": "Number of distinct live Tests that chain this ATC (BK-596: an archived Test is not offered, so it is not counted)."
           },
           "used_in": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AtcUsageEntry"
             }
+          },
+          "archived_count": {
+            "type": "integer",
+            "description": "BK-596: archived Tests that still chain this ATC. Not listed in `used_in`."
           }
         },
-        "required": ["count", "used_in"]
+        "required": ["count", "used_in", "archived_count"]
       },
       "AtcUsageEntry": {
         "type": "object",
@@ -10121,7 +10302,11 @@
                     },
                     "affected_test_count": {
                       "type": "integer",
-                      "description": "DISTINCT Tests that chain this ATC and now reflect the edit. 0 for a no-op."
+                      "description": "DISTINCT Tests that chain this ATC and now reflect the edit, archived ones included. 0 for a no-op."
+                    },
+                    "affected_archived_test_count": {
+                      "type": "integer",
+                      "description": "BK-596: how many of those Tests are archived (they run the edit once restored). Absent on a no-op."
                     }
                   },
                   "required": ["atc", "version", "affected_test_count"]

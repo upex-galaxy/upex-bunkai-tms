@@ -13,6 +13,7 @@ import { assertionsToYaml, stepsToMarkdown } from '@lib/atc-parse';
 import { canAddTag, TAG_CAP_MESSAGE, tagCapReached, TITLE_MESSAGE, titleValid } from '@lib/atcs/builder-guards';
 import { duplicateAtc } from '@lib/atcs/duplicate-client';
 import { ATC_UNSPECIFIED_LABEL } from '@lib/atcs/list-filters';
+import { atcSaveConfirmation } from '@lib/atcs/usage';
 import { ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
 import { cn, shortSlug } from '@lib/utils';
 import { Archive, ChevronLeft, Files, Save } from 'lucide-react';
@@ -53,7 +54,7 @@ export interface AtcSaveInput {
 }
 
 export type AtcSaveResult
-  = | { ok: true, affectedTestCount: number }
+  = | { ok: true, affectedTestCount: number, archivedTestCount?: number }
     | { ok: false, error: string };
 
 interface AtcEditorProps {
@@ -171,12 +172,7 @@ export function AtcEditor({
         return;
       }
       // BK-21 — confirm how many Tests the edit propagated to.
-      const n = result.affectedTestCount;
-      toast.success(
-        n === 0
-          ? 'ATC saved — no Tests affected'
-          : `ATC saved — ${n} ${n === 1 ? 'Test' : 'Tests'} updated`,
-      );
+      toast.success(atcSaveConfirmation(result.affectedTestCount, result.archivedTestCount ?? 0));
       router.refresh();
     });
   };

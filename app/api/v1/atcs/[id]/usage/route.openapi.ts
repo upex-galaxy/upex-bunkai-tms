@@ -15,8 +15,9 @@ const AtcUsageEntrySchema = z
 
 const AtcUsageReportSchema = z
   .object({
-    count: z.number().int().describe('Number of distinct Tests that chain this ATC.'),
+    count: z.number().int().describe('Number of distinct live Tests that chain this ATC (BK-596: an archived Test is not offered, so it is not counted).'),
     used_in: z.array(AtcUsageEntrySchema),
+    archived_count: z.number().int().describe('BK-596: archived Tests that still chain this ATC. Not listed in `used_in`.'),
   })
   .openapi('AtcUsageReport');
 

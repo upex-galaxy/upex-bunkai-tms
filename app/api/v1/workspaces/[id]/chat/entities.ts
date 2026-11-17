@@ -252,7 +252,9 @@ export async function searchEntities(
   // (oldest-by-name order is irrelevant — any project of the workspace resolves).
   const anyProject = [...projects.values()][0];
   if (anyProject) {
-    let tq = db.from('tests').select('id, title').eq('workspace_id', params.workspaceId);
+    // BK-596: the mention picker offers a Test, so an archived one is not offered.
+    // A card that already references it keeps resolving (resolveTests above).
+    let tq = db.from('tests').select('id, title').eq('workspace_id', params.workspaceId).is('archived_at', null);
     if (term) { tq = isUuid ? tq.eq('id', term.toLowerCase()) : tq.ilike('title', pattern); }
     const { data, error } = await tq.order('updated_at', { ascending: false }).limit(SEARCH_PER_TYPE);
     if (error) { fail(error.message); }
