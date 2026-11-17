@@ -1,8 +1,13 @@
 'use client';
 
 import type { DefectHeatmapReport, DefectHeatmapReportItem, HeatBucket } from '@lib/metrics/defect-heatmap';
+import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
+import { buildHeatmapChannelConfig, HEATMAP_REFETCH_MAX_WAIT_MS } from '@lib/bugs/realtime-heatmap-channel';
+import { createRefetchScheduler, DEFAULT_REFETCH_DEBOUNCE_MS, shouldReconcileOnStatusChange } from '@lib/runs/realtime-run-channel';
+import { createClient } from '@lib/supabase/client';
+import { subscribeWithUserAuth } from '@lib/supabase/realtime-auth';
 import { cn } from '@lib/utils';
 import { AlertTriangle, ArrowDown, ArrowUp, Minus, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -18,6 +23,16 @@ import { useEffect, useRef, useState } from 'react';
 // master-design-plan §4.6). Window switch (7d/30d/90d, default 30d, AC-3)
 // and a freshness ("as of") stamp from the response's own generated_at
 // (AC-10) sit in the toolbar above the grid.
+//
+// BK-718 — the heatmap keeps itself current while it is on screen: a
+// Realtime subscription to defect INSERTs for this Project (ADR-0010, third
+// consumer of the BK-35 pattern) re-reads the whole report on an event, on
+// the first connect and on every reconnect. That background read is SILENT:
+// it never dims the grid and never shows the error card; on success the
+// figures and the "as of" stamp change in place, on failure the last figures
+// stay. No toast, flash, badge or count-up announces a change (the absence of
+// any drawn announce affordance is the spec, master-design-plan §8 BK-718
+// row and §5 D71).
 
 export type HeatmapWindow = '7d' | '30d' | '90d';
 
@@ -83,23 +98,39 @@ async function fetchHeatmap(
   return { ok: true, report: (await response.json()) as DefectHeatmapReport };
 }
 
+// Per-mount suffix for the Realtime topic (see buildHeatmapChannelConfig).
+let heatmapChannelInstance = 0;
+
 export function BugsHeatmapView({ projectId }: { projectId: string }) {
   const [window, setWindow] = useState<HeatmapWindow>('30d');
   const [report, setReport] = useState<DefectHeatmapReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // One controller for every heatmap read, visible or silent: a newer read
+  // always aborts the older one, so a response for a window the reader has
+  // already left can never land.
   const inFlight = useRef<AbortController | null>(null);
+  // True while a VISIBLE load (mount, window switch, Retry) is pending. A
+  // background refresh that arrives meanwhile re-runs that load instead of
+  // aborting it, so the grid is never left dimmed by a load nobody finishes.
+  const visibleLoadPending = useRef(false);
+  // The window on screen right now, read by the background refresh so a
+  // refresh that fires just after a 30d -> 7d switch reads 7d.
+  const windowRef = useRef<HeatmapWindow>(window);
+  useEffect(() => { windowRef.current = window; }, [window]);
   useEffect(() => () => inFlight.current?.abort(), []);
 
   const load = (nextWindow: HeatmapWindow) => {
     inFlight.current?.abort();
     const controller = new AbortController();
     inFlight.current = controller;
+    visibleLoadPending.current = true;
     setLoading(true);
     setError(null);
     void fetchHeatmap(projectId, nextWindow, controller.signal).then((result) => {
       if (controller.signal.aborted) { return; }
+      visibleLoadPending.current = false;
       if (!result.ok) {
         setError(result.message);
         setLoading(false);
@@ -109,10 +140,36 @@ export function BugsHeatmapView({ projectId }: { projectId: string }) {
       setLoading(false);
     }).catch((err: unknown) => {
       if (controller.signal.aborted) { return; }
+      visibleLoadPending.current = false;
       setError(err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE);
       setLoading(false);
     });
   };
+
+  // BK-718 — the background read. No loading state, no error state: success
+  // replaces the figures and the stamp (and clears an error card left by an
+  // earlier failed load), failure changes nothing (BR-7).
+  const refreshSilently = () => {
+    if (visibleLoadPending.current) {
+      load(windowRef.current);
+      return;
+    }
+    inFlight.current?.abort();
+    const controller = new AbortController();
+    inFlight.current = controller;
+    void fetchHeatmap(projectId, windowRef.current, controller.signal).then((result) => {
+      if (controller.signal.aborted || !result.ok) { return; }
+      setReport(result.report);
+      setError(null);
+    }).catch(() => {
+      // Silent on failure, like the Runner's and the bell's realtime
+      // refetch: the next event or reconnect retries through this same path.
+    });
+  };
+  // The channel effect below lives as long as the Project; it reads the
+  // current render's refresh through this ref.
+  const refreshSilentlyRef = useRef(refreshSilently);
+  useEffect(() => { refreshSilentlyRef.current = refreshSilently; });
 
   // `load` intentionally omitted from the dependency list — it closes over
   // `projectId`, which IS listed, and is redefined every render; only a
@@ -122,6 +179,54 @@ export function BugsHeatmapView({ projectId }: { projectId: string }) {
   useEffect(() => {
     load(window);
   }, [window, projectId]);
+
+  // BK-718 / ADR-0010 — live updates. Keyed on the Project only: a window
+  // switch keeps the same subscription (the refresh reads the current
+  // window), while a Project change, the List view or leaving the screen
+  // unmounts or re-keys it, which cancels the pending join and the pending
+  // refresh and removes the channel (AC-10).
+  useEffect(() => {
+    const supabase = createClient();
+    heatmapChannelInstance += 1;
+    const config = buildHeatmapChannelConfig(projectId, heatmapChannelInstance);
+    let previousStatus: RealtimeConnectionStatus | null = null;
+
+    const scheduler = createRefetchScheduler(
+      () => refreshSilentlyRef.current(),
+      DEFAULT_REFETCH_DEBOUNCE_MS,
+      undefined,
+      HEATMAP_REFETCH_MAX_WAIT_MS,
+    );
+
+    const channel = supabase.channel(config.channelName);
+    for (const binding of config.bindings) {
+      channel.on<Record<string, unknown>>(
+        'postgres_changes',
+        { event: binding.event, schema: binding.schema, table: binding.table, filter: binding.filter },
+        () => scheduler.trigger(),
+      );
+    }
+    // BK-1279: join as the signed-in user, never as anon. Events missed while
+    // disconnected are not replayed, so the first connect and every reconnect
+    // re-read the whole report (BR-8).
+    const cancelJoin = subscribeWithUserAuth({
+      realtime: supabase.realtime,
+      channel,
+      callback: (status) => {
+        const next = String(status) as RealtimeConnectionStatus;
+        if (shouldReconcileOnStatusChange(previousStatus, next)) {
+          scheduler.trigger();
+        }
+        previousStatus = next;
+      },
+    });
+
+    return () => {
+      cancelJoin();
+      scheduler.cancel();
+      void supabase.removeChannel(channel);
+    };
+  }, [projectId]);
 
   return (
     <div data-testid="bugs-heatmap-view" className="flex flex-col gap-3">
