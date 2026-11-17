@@ -203,72 +203,76 @@ export function WorkspaceBugsView({ workspaceId, projects, initialPage, initialE
       <div className="flex-1 overflow-auto p-4">
         <div className="flex flex-col gap-3">
           {/* Filters: Project, status (multi), severity (multi). Never disabled
-              while a query is in flight: a newer request supersedes the older. */}
-          <div
-            role="group"
-            aria-label="Defect filters"
-            data-testid="workspace-bugs-filters"
-            className="flex flex-wrap items-end gap-4 rounded-3 border border-stroke-2 bg-surface-2 p-3 shadow-card"
-          >
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="workspace-bugs-filter-project" className={LABEL_CLASS}>Project</label>
-              <Select
-                id="workspace-bugs-filter-project"
-                data-testid="workspace-bugs-filter-project"
-                value={filters.projectId ?? ''}
-                onChange={e => setFilters(prev => ({ ...prev, projectId: e.target.value === '' ? null : e.target.value }))}
-                className="min-w-[200px]"
-              >
-                <option value="">All projects</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span id="workspace-bugs-status-label" className={LABEL_CLASS}>Status</span>
-              <div role="group" aria-labelledby="workspace-bugs-status-label" className="flex flex-wrap gap-1.5">
-                {BUG_STATUS_VALUES.map((value: BugStatus) => (
-                  <FilterChip
-                    key={value}
-                    pressed={filters.statuses.includes(value)}
-                    tone={STATUS_FILTER_TONE[value]}
-                    label={STATUS_FILTER_LABEL[value]}
-                    onClick={() => setFilters(prev => ({ ...prev, statuses: toggle(prev.statuses, value) }))}
-                    testId={`workspace-bugs-filter-status-${value}`}
-                  />
-                ))}
+              while a query is in flight: a newer request supersedes the older.
+              Not rendered without a workspace: there is nothing to query, so
+              a filter could only turn the empty state into a false error. */}
+          {workspaceId !== '' && (
+            <div
+              role="group"
+              aria-label="Defect filters"
+              data-testid="workspace-bugs-filters"
+              className="flex flex-wrap items-end gap-4 rounded-3 border border-stroke-2 bg-surface-2 p-3 shadow-card"
+            >
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="workspace-bugs-filter-project" className={LABEL_CLASS}>Project</label>
+                <Select
+                  id="workspace-bugs-filter-project"
+                  data-testid="workspace-bugs-filter-project"
+                  value={filters.projectId ?? ''}
+                  onChange={e => setFilters(prev => ({ ...prev, projectId: e.target.value === '' ? null : e.target.value }))}
+                  className="min-w-[200px]"
+                >
+                  <option value="">All projects</option>
+                  {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </Select>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <span id="workspace-bugs-severity-label" className={LABEL_CLASS}>Severity</span>
-              <div role="group" aria-labelledby="workspace-bugs-severity-label" className="flex flex-wrap gap-1.5">
-                {BUG_SEVERITY_VALUES.map((value: BugSeverity) => (
-                  <FilterChip
-                    key={value}
-                    pressed={filters.severities.includes(value)}
-                    tone={SEVERITY_FILTER_TONE[value]}
-                    label={(
-                      <>
-                        <span className="font-mono">{value}</span>
-                        {' '}
-                        {BUG_SEVERITY_LABEL[value]}
-                      </>
-                    )}
-                    onClick={() => setFilters(prev => ({ ...prev, severities: toggle(prev.severities, value) }))}
-                    testId={`workspace-bugs-filter-severity-${value}`}
-                  />
-                ))}
+              <div className="flex flex-col gap-1.5">
+                <span id="workspace-bugs-status-label" className={LABEL_CLASS}>Status</span>
+                <div role="group" aria-labelledby="workspace-bugs-status-label" className="flex flex-wrap gap-1.5">
+                  {BUG_STATUS_VALUES.map((value: BugStatus) => (
+                    <FilterChip
+                      key={value}
+                      pressed={filters.statuses.includes(value)}
+                      tone={STATUS_FILTER_TONE[value]}
+                      label={STATUS_FILTER_LABEL[value]}
+                      onClick={() => setFilters(prev => ({ ...prev, statuses: toggle(prev.statuses, value) }))}
+                      testId={`workspace-bugs-filter-status-${value}`}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {hasActiveFilters && (
-              <Button type="button" variant="ghost" size="sm" data-testid="workspace-bugs-clear-filters" className="ml-auto" onClick={clearFilters}>
-                <X size={12} />
-                Clear filters
-              </Button>
-            )}
-          </div>
+              <div className="flex flex-col gap-1.5">
+                <span id="workspace-bugs-severity-label" className={LABEL_CLASS}>Severity</span>
+                <div role="group" aria-labelledby="workspace-bugs-severity-label" className="flex flex-wrap gap-1.5">
+                  {BUG_SEVERITY_VALUES.map((value: BugSeverity) => (
+                    <FilterChip
+                      key={value}
+                      pressed={filters.severities.includes(value)}
+                      tone={SEVERITY_FILTER_TONE[value]}
+                      label={(
+                        <>
+                          <span className="font-mono">{value}</span>
+                          {' '}
+                          {BUG_SEVERITY_LABEL[value]}
+                        </>
+                      )}
+                      onClick={() => setFilters(prev => ({ ...prev, severities: toggle(prev.severities, value) }))}
+                      testId={`workspace-bugs-filter-severity-${value}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {hasActiveFilters && (
+                <Button type="button" variant="ghost" size="sm" data-testid="workspace-bugs-clear-filters" className="ml-auto" onClick={clearFilters}>
+                  <X size={12} />
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          )}
 
           <span className="text-xs text-fg-3" aria-live="polite" aria-busy={loading} data-testid="workspace-bugs-count-label">
             {loading
