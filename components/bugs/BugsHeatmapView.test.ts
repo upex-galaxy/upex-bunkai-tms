@@ -267,6 +267,29 @@ describe('BugsHeatmapView — live updates (BK-718)', () => {
     expect(pending()).toHaveLength(1);
   });
 
+  test('a slow background read is never aborted by the next event; one follow-up read runs once it settles', async () => {
+    const { container } = await mountWatching();
+
+    await insertEvent();
+    await waitForDebounce();
+    expect(pending()).toHaveLength(1);
+
+    // More defects arrive while that read is still out: no abort, no second read yet.
+    await insertEvent();
+    await waitForDebounce();
+    await insertEvent();
+    await waitForDebounce();
+    expect(pending()).toHaveLength(1);
+
+    await answerNext(ok(report(3, '2026-11-17T10:05:00.000Z')));
+    expect(cellText(container)).toContain('3defects');
+    expect(pending()).toHaveLength(1);
+
+    await answerNext(ok(report(5, '2026-11-17T10:06:00.000Z')));
+    expect(cellText(container)).toContain('5defects');
+    expect(pending()).toHaveLength(0);
+  });
+
   test('BR-7: a failed background read keeps the last figures and stamp, with no error card', async () => {
     const { container } = await mountWatching();
     const stampBefore = text(container, 'bugs-heatmap-asof');
