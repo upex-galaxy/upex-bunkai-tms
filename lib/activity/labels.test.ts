@@ -47,6 +47,9 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
       'bug.corrected': 'corrected this defect',
       'milestone.archived': 'archived a milestone',
       'milestone.restored': 'restored a milestone',
+      'test.renamed': 'renamed a Test',
+      'test.archived': 'archived a Test',
+      'test.restored': 'restored a Test',
     });
   });
 });
@@ -189,5 +192,17 @@ describe('resolveActionLabel — BK-1835 bug.corrected', () => {
 
   test('a malformed payload falls back to the plain label', () => {
     expect(resolveActionLabel({ action: 'bug.corrected', payload: {}, assigneeEmail: null })).toBe('corrected this defect');
+  });
+});
+
+// BK-596 — a rename carries the name before and after.
+describe('resolveActionLabel — test.renamed', () => {
+  test('names the old and the new title', () => {
+    const label = resolveActionLabel({ action: 'test.renamed', payload: { old_title: 'Checkout - guest', new_title: 'Checkout - guest, card' }, assigneeEmail: null });
+    expect(label).toBe('renamed a Test: "Checkout - guest" → "Checkout - guest, card"');
+  });
+
+  test('a malformed payload falls back to the plain label', () => {
+    expect(resolveActionLabel({ action: 'test.renamed', payload: {}, assigneeEmail: null })).toBe('renamed a Test');
   });
 });

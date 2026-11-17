@@ -61,6 +61,12 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   // none for a no-op (migration 0130). Payload: the Milestone's name.
   'milestone.archived',
   'milestone.restored',
+  // BK-596 — one entry per real rename, archive and restore of a Test, none for
+  // a no-op (migration 0134). Payload: the name before and after for a rename,
+  // the Test's name otherwise.
+  'test.renamed',
+  'test.archived',
+  'test.restored',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ALLOWED_ACTIONS)[number];

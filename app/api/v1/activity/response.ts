@@ -140,6 +140,8 @@ export function deriveItemLabel(row: Pick<ActivityRpcRow, 'action' | 'entity_typ
   switch (row.action as ActivityAction) {
     case 'module.renamed':
       return nonEmptyString(row.payload.name) ?? fallback;
+    case 'test.renamed': // BK-596: the Test's name after the rename (0134).
+      return nonEmptyString(row.payload.new_title) ?? fallback;
     case 'module.moved':
       return nonEmptyString(row.payload.new_path) ?? fallback;
     case 'atc.created':
@@ -147,6 +149,8 @@ export function deriveItemLabel(row: Pick<ActivityRpcRow, 'action' | 'entity_typ
     case 'atc.archived':
     case 'atc.restored':
     case 'test.created':
+    case 'test.archived': // BK-596: the Test's name (0134).
+    case 'test.restored':
     case 'bug.corrected': // BK-1835: the defect's title after the correction (0129).
       return nonEmptyString(row.payload.title) ?? fallback;
     case 'module.archived':

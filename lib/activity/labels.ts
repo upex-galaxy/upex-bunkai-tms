@@ -39,6 +39,9 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   'bug.corrected': 'corrected this defect',
   'milestone.archived': 'archived a milestone',
   'milestone.restored': 'restored a milestone',
+  'test.renamed': 'renamed a Test',
+  'test.archived': 'archived a Test',
+  'test.restored': 'restored a Test',
 };
 
 // R1 backstop (implementation-plan.md Risk R1 — allowlist/label-map drift):
@@ -101,6 +104,12 @@ export function resolveActionLabel({ action, payload, assigneeEmail }: ResolveAc
     const status = typeof payload.status === 'string' ? payload.status : null;
     const displayStatus = status !== null ? (BUG_STATUS_DISPLAY[status] ?? status) : 'an unknown status';
     return template.replace('{status}', displayStatus);
+  }
+
+  if (action === 'test.renamed') {
+    const from = typeof payload.old_title === 'string' ? payload.old_title : null;
+    const to = typeof payload.new_title === 'string' ? payload.new_title : null;
+    return from !== null && to !== null ? `${template}: "${from}" → "${to}"` : template;
   }
 
   if (action === 'bug.corrected') {
