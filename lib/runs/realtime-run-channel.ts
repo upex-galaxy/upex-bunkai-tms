@@ -120,32 +120,56 @@ export interface RefetchScheduler {
   cancel: () => void
 }
 
-// A pure state machine: the only state is "is a refetch currently pending",
-// held in a closure and never read back out — trigger()/cancel() are the
-// whole interface, so behavior is verified by observing calls to the
-// injected `refetch`, not by inspecting internals.
+// A pure state machine: the only state is "is a refetch currently pending"
+// (plus, with a ceiling, "when did this burst start"), held in a closure and
+// never read back out — trigger()/cancel() are the whole interface, so
+// behavior is verified by observing calls to the injected `refetch`, not by
+// inspecting internals.
+//
+// BK-718 — optional `maxWaitMs` ceiling. The trailing debounce restarts on
+// every trigger, so a steady stream of events closer together than
+// `debounceMs` (an agent filing defects every 200 ms) would hold the refetch
+// back until the stream stops. With a ceiling, the first trigger of a burst
+// also arms a second timer; when it fires first, the refetch runs then and
+// the burst starts over. Omitted (the Runner and the notifications bell), the
+// scheduler behaves exactly as before: no second timer is ever armed.
 export function createRefetchScheduler(
   refetch: () => void,
   debounceMs: number = DEFAULT_REFETCH_DEBOUNCE_MS,
   clock: RefetchSchedulerClock = REAL_CLOCK,
+  maxWaitMs?: number,
 ): RefetchScheduler {
   let pending: ReturnType<typeof setTimeout> | null = null;
+  let ceiling: ReturnType<typeof setTimeout> | null = null;
+
+  const clearAll = () => {
+    if (pending !== null) {
+      clock.clearTimeout(pending);
+      pending = null;
+    }
+    if (ceiling !== null) {
+      clock.clearTimeout(ceiling);
+      ceiling = null;
+    }
+  };
+
+  const fire = () => {
+    clearAll();
+    refetch();
+  };
 
   return {
     trigger() {
       if (pending !== null) {
         clock.clearTimeout(pending);
       }
-      pending = clock.setTimeout(() => {
-        pending = null;
-        refetch();
-      }, debounceMs);
+      pending = clock.setTimeout(fire, debounceMs);
+      if (maxWaitMs !== undefined && ceiling === null) {
+        ceiling = clock.setTimeout(fire, maxWaitMs);
+      }
     },
     cancel() {
-      if (pending !== null) {
-        clock.clearTimeout(pending);
-        pending = null;
-      }
+      clearAll();
     },
   };
 }
