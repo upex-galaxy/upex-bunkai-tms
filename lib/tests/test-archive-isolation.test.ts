@@ -635,6 +635,19 @@ describeOrSkip('BK-596: rename, archive and restore a Test', () => {
       expect(await runCount(t.id)).toBe(1);
     });
 
+    it('adding an archived Test to a plan is refused with 45127 and writes no membership', async () => {
+      const t = await newTest();
+      const plan = await newPlan();
+      expect((await archive(t.id)).error).toBeNull();
+      // bunkai_add_tests_to_plan is session-bound (auth.uid()), so it runs as the QA session.
+      const added = await qa.rpc('bunkai_add_tests_to_plan', { p_test_plan_id: plan, p_test_ids: [t.id] });
+      expect(added.error?.code).toBe('45127');
+      expect(must(await service().from('test_plan_tests').select('id').eq('test_plan_id', plan), 'members')).toHaveLength(0);
+
+      expect((await restore(t.id)).error).toBeNull();
+      expect((await qa.rpc('bunkai_add_tests_to_plan', { p_test_plan_id: plan, p_test_ids: [t.id] })).error).toBeNull();
+    });
+
     it('a Run in progress at archive time can still finish', async () => {
       const t = await newTest();
       const run = await startRun(t.id);
