@@ -191,3 +191,8 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - I wrote an invented time into the journal twice (12:56, 16:20) instead of reading `date`: run `date +%H:%M` in the same call that appends the journal line.
 - A student can ask for the same failpoint on consecutive days because she did not see the earlier answer: the tutor relays it as a new `student-blocker`. Re-arm (plain DML from the 0126 header), answer with the exact steps, and clear it at the 21:00 soft close (done 2026-11-15: 0 failpoints, workspace intact).
 - A defect that reuses a gate meant for another flow (BK-1918: Delete reused the Leave gate that trims on purpose, per the BK-90 mockup contract) is fixed with a separate named predicate, never by changing the shared one; the Leave ATP row is what proves the other side must keep trimming.
+
+## 2026-11-16 · Monday run (quiet day, two small traps)
+- `mcp__supabase__list_tables` reports a row estimate, not a count: it showed 1 row in `bunkai_test_failpoints` while `select count(*)` said 0. Count with SQL before acting on a leftover failpoint.
+- A G4 sonnet subagent stops at the dependency check when the hard dependency has no code on staging (BK-373 on BK-372, BK-228 on BK-226): cheap and correct, 30 seconds. Re-check the one `git log --grep` yourself and park the story as `shift-left-held`; the stock stays below target until the chain's first story qualifies for G4 (BK-372 was in Backlog but outside the 7-day JQL).
+- A full quiet day (37 stock tickets, no delta, no inbox, no worker) costs only the heartbeats: the watcher exits 10 about every two hours and 13 at each proactive slot; relaunch first, then probe.
