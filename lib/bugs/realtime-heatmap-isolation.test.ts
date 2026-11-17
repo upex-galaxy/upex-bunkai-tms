@@ -166,6 +166,10 @@ describeOrSkip('BK-718 — defect Realtime events reach workspace members only',
     const memberOther = await listen(member, 'member-other-project', `project_id=eq.${otherProjectId}`);
     const outsiderAll = await listen(outsider, 'outsider-unfiltered', undefined);
     const outsiderWatched = await listen(outsider, 'outsider-watched', `project_id=eq.${watchedProjectId}`);
+    // SUBSCRIBED can be reported a moment before the server has activated the
+    // postgres_changes binding; a short settle keeps the positive control
+    // from missing the event for that reason alone.
+    await sleep(1500);
 
     const { data, error } = await service().rpc('bunkai_create_bug', {
       p_actor_user_id: users.member.id,
