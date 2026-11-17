@@ -2520,16 +2520,16 @@ export interface Database {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
-      bunkai_archive_test: {
-        Args: { p_actor_user_id: string, p_test_id: string }
-        Returns: Json
-      }
       bunkai_archive_milestone: {
         Args: { p_milestone_id: string }
         Returns: Json
       }
       bunkai_archive_module_subtree: {
         Args: { p_module_id: string }
+        Returns: Json
+      }
+      bunkai_archive_test: {
+        Args: { p_actor_user_id: string, p_test_id: string }
         Returns: Json
       }
       bunkai_archive_user_story: { Args: { p_story_id: string }, Returns: Json }
@@ -3017,10 +3017,6 @@ export interface Database {
         }
         Returns: Json
       }
-      bunkai_reopen_test_plan: {
-        Args: { p_test_plan_id: string }
-        Returns: Json
-      }
       bunkai_rename_test: {
         Args: {
           p_actor_user_id: string
@@ -3028,6 +3024,10 @@ export interface Database {
           p_test_id: string
           p_title: string
         }
+        Returns: Json
+      }
+      bunkai_reopen_test_plan: {
+        Args: { p_test_plan_id: string }
         Returns: Json
       }
       bunkai_reorder_test_steps: {
@@ -3097,16 +3097,16 @@ export interface Database {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
-      bunkai_restore_test: {
-        Args: { p_actor_user_id: string, p_test_id: string }
-        Returns: Json
-      }
       bunkai_restore_milestone: {
         Args: { p_milestone_id: string }
         Returns: Json
       }
       bunkai_restore_module_subtree: {
         Args: { p_module_id: string }
+        Returns: Json
+      }
+      bunkai_restore_test: {
+        Args: { p_actor_user_id: string, p_test_id: string }
         Returns: Json
       }
       bunkai_restore_workspace_deletion: {
