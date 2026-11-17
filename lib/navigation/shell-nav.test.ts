@@ -1,5 +1,6 @@
 import {
   activeProjectSection,
+  isBugsNavActive,
   isProjectsNavActive,
   isRunsNavActive,
   projectSectionHref,
@@ -98,6 +99,31 @@ describe('isRunsNavActive', () => {
   test('never highlights together with Projects', () => {
     for (const path of ['/runs', '/projects/checkout/runs', '/projects/checkout/runs/abc']) {
       expect(isRunsNavActive(path) && isProjectsNavActive(path)).toBe(false);
+    }
+  });
+});
+
+describe('isBugsNavActive', () => {
+  test('is current on the workspace Bug Reports index', () => {
+    expect(isBugsNavActive('/bugs')).toBe(true);
+  });
+
+  test('stays current on a Project\'s bug screens, so opening a row keeps it lit', () => {
+    expect(isBugsNavActive('/projects/checkout/bugs')).toBe(true);
+    expect(isBugsNavActive('/projects/checkout/bugs/abc')).toBe(true);
+  });
+
+  test('other routes are not Bug Reports', () => {
+    expect(isBugsNavActive('/bugsy')).toBe(false);
+    expect(isBugsNavActive('/runs')).toBe(false);
+    expect(isBugsNavActive('/projects/checkout/metrics')).toBe(false);
+    expect(isBugsNavActive('/projects/checkout')).toBe(false);
+  });
+
+  test('never highlights together with Projects or Test Runs', () => {
+    for (const path of ['/bugs', '/projects/checkout/bugs', '/projects/checkout/bugs/abc']) {
+      expect(isBugsNavActive(path) && isProjectsNavActive(path)).toBe(false);
+      expect(isBugsNavActive(path) && isRunsNavActive(path)).toBe(false);
     }
   });
 });

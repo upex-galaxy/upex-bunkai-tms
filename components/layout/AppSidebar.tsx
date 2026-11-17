@@ -12,7 +12,7 @@ import { OpenInboxFromQuery } from '@components/notifications/OpenInboxFromQuery
 import { useAuth } from '@components/providers/auth-context';
 import { emailInitials } from '@lib/account/initials';
 import { NO_WORKSPACE_LABEL, roleLabel } from '@lib/account/role-label';
-import { activeProjectSection, isProjectsNavActive, isRunsNavActive, projectSectionHref, resolveNavProjectSlug } from '@lib/navigation/shell-nav';
+import { activeProjectSection, isBugsNavActive, isProjectsNavActive, isRunsNavActive, projectSectionHref, resolveNavProjectSlug } from '@lib/navigation/shell-nav';
 import { resolveNotificationChatTarget, resolveNotificationHref } from '@lib/notifications/entity-routes';
 import { buildNotificationsChannelConfig } from '@lib/notifications/realtime-notifications-channel';
 import { formatUnreadBadgeCount, shouldResetNotificationsOnWorkspaceChange } from '@lib/notifications/view';
@@ -53,9 +53,9 @@ import { toast } from 'sonner';
 //
 // Per the Master Design Plan (§3): nav targets without a route yet render
 // disabled with a "soon" tag; badges show real counts only where data exists.
-// Bug Reports and Metrics open the current (or first) project's surface
-// (BK-1557, §5 D52). Test Runs opens the workspace-wide Runs index (BK-513,
-// §5 D66).
+// Metrics opens the current (or first) project's surface (BK-1557, §5 D52).
+// Test Runs opens the workspace-wide Runs index (BK-513, §5 D66) and Bug
+// Reports the workspace-wide defect index (BK-555, §5 D70).
 
 interface ShellWorkspace {
   id: string
@@ -86,6 +86,10 @@ interface AppSidebarProps {
   // BK-513 — unfiltered count of every Run in the active workspace, the same
   // number the `/runs` index pages through; null (failed read) hides the badge.
   runCount: number | null
+  // BK-555 — unfiltered count of every defect in the active workspace on a live
+  // module, the same number the `/bugs` index pages through; null (failed
+  // read) hides the badge.
+  bugCount: number | null
 }
 
 interface NavItem {
@@ -94,7 +98,7 @@ interface NavItem {
   label: string
   href: string | null
   badge?: number
-  // BK-1557 — set on the project-scoped entries (Bug Reports, Metrics); their
+  // BK-1557 — set on the project-scoped entry (Metrics); its
   // href points into a project, see lib/navigation/shell-nav.ts.
   section?: ProjectSection
 }
@@ -134,7 +138,7 @@ async function fetchNotificationsData(workspaceId: string): Promise<Notification
   return { ok: true, items: body.items, unreadCount: body.unread_count };
 }
 
-export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail, userRole, initialUnreadCount, atcCount, runCount }: AppSidebarProps) {
+export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail, userRole, initialUnreadCount, atcCount, runCount, bugCount }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
@@ -194,11 +198,14 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
     // BK-513 — Test Runs is the workspace-wide Runs index, with a real count
     // (master-design-plan §5 D66, superseding D52 for this entry only).
     { id: 'runs', icon: Play, label: 'Test Runs', href: '/runs', badge: runCount ?? undefined },
-    // BK-1557 — these two project-scoped surfaces have no workspace-wide
-    // route, so they open the current project's (else the first project's)
-    // screen, and stay disabled only when there is no project at all
-    // (master-design-plan §5 D52, superseding D18/D31 for these entries).
-    { id: 'bugs', icon: Bug, label: 'Bug Reports', href: projectSectionHref(navProjectSlug, 'bugs'), section: 'bugs' },
+    // BK-555 — Bug Reports is the workspace-wide defect index, with a real
+    // count, live even with no project (master-design-plan §5 D70,
+    // superseding D52 for this entry only).
+    { id: 'bugs', icon: Bug, label: 'Bug Reports', href: '/bugs', badge: bugCount ?? undefined },
+    // BK-1557 — Metrics has no workspace-wide route, so it opens the current
+    // project's (else the first project's) screen, and stays disabled only
+    // when there is no project at all (master-design-plan §5 D52, superseding
+    // D18/D31 for this entry).
     { id: 'metrics', icon: BarChart3, label: 'Metrics', href: projectSectionHref(navProjectSlug, 'metrics'), section: 'metrics' },
     { id: 'settings', icon: Settings, label: 'Settings', href: '/settings' },
   ];
@@ -208,6 +215,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
     if (item.section) { return currentSection === item.section; }
     if (item.id === 'projects') { return isProjectsNavActive(pathname); }
     if (item.id === 'runs') { return isRunsNavActive(pathname); }
+    if (item.id === 'bugs') { return isBugsNavActive(pathname); }
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
   };
 
