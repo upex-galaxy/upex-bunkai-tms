@@ -5631,7 +5631,13 @@
             "format": "uuid"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "The Test's title; for a Test that ran, the title its latest Run started under."
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "BK-596: set when the Test is archived. It stays evidence, never a gap."
           }
         },
         "required": ["id", "title"],
@@ -6803,6 +6809,11 @@
               "type": "string"
             }
           },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "BK-596: set when the Test is archived. An archived member stays in the plan; it is never removed by the archive."
+          },
           "added_by": {
             "type": ["string", "null"],
             "format": "uuid"
@@ -6815,7 +6826,7 @@
             "format": "date-time"
           }
         },
-        "required": ["id", "title", "tags", "added_by", "added_by_email", "added_at"]
+        "required": ["id", "title", "tags", "archived_at", "added_by", "added_by_email", "added_at"]
       },
       "TestPlanAddTestsResponse": {
         "type": "object",

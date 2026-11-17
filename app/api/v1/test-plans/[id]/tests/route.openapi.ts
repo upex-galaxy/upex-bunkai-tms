@@ -7,6 +7,7 @@ const TestPlanMemberTestSchema = z
     id: z.string().uuid().describe('The Test id (not the membership row id).'),
     title: z.string(),
     tags: z.array(z.string()),
+    archived_at: z.string().datetime({ offset: true }).nullable().describe('BK-596: set when the Test is archived. An archived member stays in the plan; it is never removed by the archive.'),
     added_by: z.string().uuid().nullable(),
     added_by_email: z.string().nullable(),
     added_at: z.string().datetime(),

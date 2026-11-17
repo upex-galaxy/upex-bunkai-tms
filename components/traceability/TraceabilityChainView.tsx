@@ -755,7 +755,15 @@ function AtcRow({ atc, visible }: { atc: TraceabilityAtc, visible: boolean }) {
       <div className="min-w-0">
         {testCopy
           ? <PlaceholderPill text={testCopy} />
-          : <span className="truncate text-fg-2">{atc.test?.title}</span>}
+          : (
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate text-fg-2">{atc.test?.title}</span>
+                {/* BK-596 — an archived Test stays evidence, marked as archived. */}
+                {atc.test?.archived_at && (
+                  <span className="status-chip shrink-0" data-status="skipped" data-testid="traceability-test-archived">Archived</span>
+                )}
+              </div>
+            )}
       </div>
 
       <div className="min-w-0">

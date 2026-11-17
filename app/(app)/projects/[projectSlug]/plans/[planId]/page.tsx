@@ -94,7 +94,7 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
   // BK-203 — the plan's member tests, joined with `tests` for title/tags.
   const { data: memberRows } = await supabase
     .from('test_plan_tests')
-    .select('id, test_id, added_by, created_at, tests(id, title, tags)')
+    .select('id, test_id, added_by, created_at, tests(id, title, tags, archived_at)')
     .eq('test_plan_id', row.id)
     .order('created_at', { ascending: true });
 
@@ -127,6 +127,7 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
     id: r.test_id,
     title: r.tests?.title ?? '',
     tags: r.tests?.tags ?? [],
+    archivedAt: r.tests?.archived_at ?? null,
     addedByLabel: r.added_by ? (emailById.get(r.added_by) || 'a workspace member') : 'a workspace member',
   }));
 
