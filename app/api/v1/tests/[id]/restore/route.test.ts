@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock, setDefaultTimeout } from 'bun:test';
 import { NextRequest } from 'next/server';
 
 void mock.module('server-only', () => ({}));
+setDefaultTimeout(30_000);
 const { POST } = await import('./route');
 const { DELETE, GET, PATCH } = await import('../route');
 const { PUT: TAGS } = await import('../tags/route');

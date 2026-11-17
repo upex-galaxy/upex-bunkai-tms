@@ -742,8 +742,13 @@ describeOrSkip('BK-596: rename, archive and restore a Test', () => {
     it('run history keeps every Run of an archived Test', async () => {
       const f = need();
       const t = await newTest();
-      expect((await startRun(t.id)).error).toBeNull();
-      expect((await startRun(t.id)).error).toBeNull();
+      // Run history lists finished Runs, so both are finished before the archive.
+      for (let i = 0; i < 2; i += 1) {
+        const run = await startRun(t.id);
+        expect(run.error).toBeNull();
+        const finished = await service().rpc('bunkai_finish_run', { p_actor_user_id: f.qaUserId, p_run_id: (run.data as { id: string }).id, p_verdict: 'passed', p_via: 'cookie' });
+        expect(finished.error).toBeNull();
+      }
       expect((await archive(t.id)).error).toBeNull();
       const { data, error } = await service().rpc('bunkai_list_test_runs', { p_actor_user_id: f.qaUserId, p_test_id: t.id });
       expect(error).toBeNull();
