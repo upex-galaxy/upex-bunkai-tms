@@ -142,10 +142,15 @@ export const BASE_ESLINT_OPTIONS = {
  * re-exec'd mid-run). `api/`, `src/`, `config/` and `tests/` are listed for
  * the scaffolded project this config travels into; they are equally absent
  * at re-exec time.
+ *
+ * `ts/no-unnecessary-type-assertion` is off here: the casts in `cli/` (`NodeJS.ProcessEnv`, `ErrnoException`) are
+ * needed or redundant depending on the host's type packages, so a disable directive would warn as unused in the hosts
+ * where the cast is needed and error in the others.
  */
 export const CLI_IMPORT_CLOSURE = {
   files: ['cli/**/*.ts'],
   rules: {
+    'ts/no-unnecessary-type-assertion': 'off',
     'no-restricted-imports': ['error', {
       patterns: [{
         group: [

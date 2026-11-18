@@ -68,7 +68,7 @@
     "vars:schema:check": "bun scripts/env-schema.ts --check",
     "worktree:audit": "bun scripts/worktree-audit.ts",
     "worktree:provision": "bun scripts/provision-worktree.ts",
-    "guard:example:check": "cd packages/guard-example && bunx eslint --max-warnings 0 src && bunx tsc -p tsconfig.json && bun ../../scripts/guard-manifest.ts --root src/features --check --out guard-manifest.json && cd ../.. && bun test --preload ./packages/guard-example/test-setup.ts packages/guard-example",
+    "guard:example:check": "bun scripts/guard-example-check.ts",
     "guard:manifest": "bun scripts/guard-manifest.ts",
     "guard:manifest:check": "bun scripts/guard-manifest.ts --check",
     "lint:cached": "eslint --cache --cache-location node_modules/.cache/eslint/.eslintcache .",
