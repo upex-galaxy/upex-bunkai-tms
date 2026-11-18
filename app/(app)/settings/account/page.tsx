@@ -1,6 +1,7 @@
 import type { MemberRole } from '@lib/types';
 import { IdentityCard } from '@components/settings/IdentityCard';
 import { WorkspacesList, WorkspacesListSkeleton } from '@components/settings/WorkspacesList';
+import { readOwnDisplayName, readProviderName } from '@lib/account/display-name';
 import { buildWorkspaceRows, countActiveMembersByWorkspace, selectInIdBatches } from '@lib/account/workspaces';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { fetchAllPages } from '@lib/atcs/export-query';
@@ -79,6 +80,8 @@ export default async function SettingsAccountPage() {
 
       <IdentityCard
         email={email}
+        ownDisplayName={readOwnDisplayName(user.app_metadata)}
+        providerName={readProviderName(user.user_metadata)}
         role={role}
         workspaceName={activeWorkspace?.name ?? null}
         workspaceSlug={activeWorkspace?.slug ?? null}

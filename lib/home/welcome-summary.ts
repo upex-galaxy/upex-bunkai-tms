@@ -35,6 +35,18 @@ export function resolveDisplayName(input: {
     ?? nameFromEmail(input.email);
 }
 
+// The banner's headline. BK-1949: a saved name is typed by the person, so it
+// can already end in sentence punctuation ("Elena V.", "Hi!"); the closing
+// period is added only when it does not, so the greeting never reads "V..".
+export function welcomeGreeting(displayName: string | null): string {
+  if (displayName === null) {
+    return 'Welcome back.';
+  }
+  return /[.!?]$/.test(displayName)
+    ? `Welcome back, ${displayName}`
+    : `Welcome back, ${displayName}.`;
+}
+
 // Same tokenization `emailInitials` (BK-86) already uses, so the avatar label
 // and the greeting can never disagree about where one name ends and the next
 // begins: strip a `+tag` suffix, split the local-part on `.`/`-`/`_`, keep the

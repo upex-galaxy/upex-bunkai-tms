@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { resolveDisplayName } from './welcome-summary';
+import { resolveDisplayName, welcomeGreeting } from './welcome-summary';
 
 // BK-1949 Business Rule 7 — the Home banner's fallback order, as a decision
 // table over (own name, provider name, email). The own name is read from
@@ -41,5 +41,20 @@ describe('resolveDisplayName (Home welcome banner)', () => {
 
   it('shows markup in the saved name as the literal string (AC 2.7)', () => {
     expect(resolveDisplayName({ appMetadata: { display_name: '<b>Elena</b>' }, email: 'e@x.io' })).toBe('<b>Elena</b>');
+  });
+});
+
+describe('welcomeGreeting (Home welcome banner headline)', () => {
+  it('greets with the full name and a closing period (AC 1.2)', () => {
+    expect(welcomeGreeting('Elena Vargas')).toBe('Welcome back, Elena Vargas.');
+  });
+
+  it('does not double the punctuation a saved name already ends with (AC 1.3)', () => {
+    expect(welcomeGreeting('Elena V.')).toBe('Welcome back, Elena V.');
+    expect(welcomeGreeting('Elena!')).toBe('Welcome back, Elena!');
+  });
+
+  it('greets without a name when none resolves (AC 3.3)', () => {
+    expect(welcomeGreeting(null)).toBe('Welcome back.');
   });
 });
