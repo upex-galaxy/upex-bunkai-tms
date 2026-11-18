@@ -1,6 +1,7 @@
 import type { Principal } from '@lib/api/principal';
 import type { MemberRole } from '@lib/types';
 import type { NextRequest } from 'next/server';
+import { readOwnDisplayName } from '@lib/account/display-name';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
@@ -83,7 +84,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   // Email lives in auth.users (not exposed through PostgREST), so fetch it
   // best-effort via the admin auth API for both auth methods.
+  // BK-1949 — the same lookup also carries the own display name, which lives
+  // in `app_metadata` (written only by PUT /api/v1/me/display-name).
   let email: string | null = null;
+  let displayName: string | null = null;
   try {
     const { data: lookup, error: lookupError } = await createAdminClient()
       .auth
@@ -91,14 +95,16 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
       .getUserById(principal.userId);
     if (!lookupError) {
       email = lookup.user?.email ?? null;
+      displayName = readOwnDisplayName(lookup.user?.app_metadata);
     }
   }
   catch {
     email = null;
+    displayName = null;
   }
 
   return jsonResponse({
-    user: { id: principal.userId, email },
+    user: { id: principal.userId, email, display_name: displayName },
     workspaces,
     active_workspace_id: activeWorkspaceId,
     active_workspace_role: activeWorkspaceRole,

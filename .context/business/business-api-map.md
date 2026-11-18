@@ -51,11 +51,12 @@ Role inheritance: `viewer ⊂ member ⊂ admin ⊂ owner`. Capability is **AND**
 
 Counts are the live census in `lib/api/route-capability-coverage.snapshot.json` — read that file rather than trusting these numbers, which drift with every new route.
 
-**The four `cookie-only` routes** are the ones that surprise people, because a valid PAT gets a **403, not a 401**:
+**The `cookie-only` routes** (the snapshot above holds the full list) are the ones that surprise people, because a valid PAT gets a **403, not a 401**. Among them:
 
 - `POST /api/v1/tokens` — a PAT must not mint a PAT (ADR-0001's deliberate exception)
 - `DELETE /api/v1/tokens/{id}` — nor revoke one
 - `POST /api/v1/me/active-workspace` — browser UI state
+- `PUT` / `DELETE /api/v1/me/display-name` — identity details (BK-1949)
 - `DELETE /api/v1/workspaces/{id}/membership` — leaving a workspace
 
 **The public + bypass set** (everything else needs an identity): `POST /api/v1/auth/check-email`, `/auth/confirm`, `/auth/magic-link`, `/auth/resend`, `/auth/signin`, `/auth/signup`, `GET /api/v1/health`, `GET /api/v1` (index) — plus the bypass routes `GET /api/openapi`, `OPTIONS /api/v1`, `GET /auth/callback`, `GET /auth/oauth/{provider}`.
@@ -445,6 +446,8 @@ Auth column legend: `Public` (no auth) · `Bearer` (any authenticated caller) ·
 | GET    | `/api/v1/tokens`           | List my tokens                           | {{PROJECT_KEY}}-034 | `authenticated`                                    | None                                                                                        |
 | DELETE | `/api/v1/tokens/{id}`      | Revoke a token                           | {{PROJECT_KEY}}-034 | **`cookie-only`** — a Bearer PAT gets **403**      | UPDATE `access_tokens.revoked_at`; immediate invalidation                                   |
 | GET    | `/api/v1/me`               | Caller identity + active workspace       | (cross)             | `authenticated`                                    | UPDATE `access_tokens.last_used_at` (fire-and-forget side-effect of every bearer auth)      |
+| PUT    | `/api/v1/me/display-name`  | Save my own display name (BK-1949)       | (cross)             | **`cookie-only`** — a Bearer PAT gets **403**      | UPDATE the caller's `auth.users` `app_metadata.display_name` (admin auth API); no activity row |
+| DELETE | `/api/v1/me/display-name`  | Remove my own display name (BK-1949)     | (cross)             | **`cookie-only`** — a Bearer PAT gets **403**      | Removes the caller's `app_metadata.display_name`; idempotent                                |
 | POST   | `/api/v1/auth/check-email` | Email-first routing probe                | (ADR-0007)          | `public`                                           | None (429 `rate_limited` passthrough from Supabase)                                         |
 | POST   | `/api/v1/auth/signin`      | Password sign-in (+ mints a default PAT) | (ADR-0007)          | `public`                                           | Supabase session; PAT minted with `DEFAULT_PAT_SCOPES` (never `workspace:admin`)            |
 | POST   | `/api/v1/auth/signup`      | Password sign-up                         | (ADR-0007)          | `public`                                           | Supabase user; email-OTP confirmation required before a session or PAT is minted            |

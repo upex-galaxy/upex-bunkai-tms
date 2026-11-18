@@ -17,6 +17,7 @@ const { POST: createProject } = await import('@app/api/v1/workspaces/[id]/projec
 const { POST: switchActiveWorkspace } = await import('@app/api/v1/me/active-workspace/route');
 const { DELETE: leaveWorkspaceRoute } = await import('@app/api/v1/workspaces/[id]/membership/route');
 const { GET: getMe } = await import('@app/api/v1/me/route');
+const { PUT: saveDisplayName, DELETE: removeDisplayName } = await import('@app/api/v1/me/display-name/route');
 const { mintPat } = await import('@lib/api/pat');
 
 // BK-498 — capability scopes are ENFORCED on the authoring domain.
@@ -333,6 +334,7 @@ describeOrSkip('BK-499 — capability scopes are enforced on reads and identity 
     readToken: string
     writeToken: string
     executeToken: string
+    userId: string
     workspaceId: string
     prefix: string
   } | null = null;
@@ -372,6 +374,7 @@ describeOrSkip('BK-499 — capability scopes are enforced on reads and identity 
       // that is simply the WRONG one. A scopeless token would be rejected for a
       // different reason and would prove nothing about the capability gate.
       executeToken: (await mintFor(db, writer.user_id, `${prefix}-exec`, ['run:execute'])).token,
+      userId: writer.user_id,
       workspaceId: writer.workspace_id,
       prefix,
     };
@@ -514,6 +517,43 @@ describeOrSkip('BK-499 — capability scopes are enforced on reads and identity 
     );
   });
 
+  // BK-1949 — the display-name write is session-only (Business Rule 6). The
+  // token here HOLDS `atc:write`, so a 403 means "you are a token", not "you
+  // lack a scope". The PUT body is deliberately an EMPTY name: if the posture
+  // ever regressed, the handler would answer 422 instead of 403 and write
+  // nothing to this real member's account, the same safety idea as the
+  // membership case above.
+  it('rejects PUT /me/display-name from any Bearer PAT and leaves the name unchanged', async () => {
+    if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
+    const before = await ownDisplayName(service(), fixture.userId);
+
+    const response = await saveDisplayName(displayNameRequest('PUT', fixture.writeToken, { display_name: '' }));
+
+    expect(response.status).toBe(403);
+    const body = await response.json() as { error?: { message?: string } };
+    expect(body.error?.message).toBe(
+      'Personal access tokens cannot change identity details. Use a browser session.',
+    );
+    expect(await ownDisplayName(service(), fixture.userId)).toBe(before);
+  });
+
+  // DELETE has no harmless body. It runs only when the member has no saved
+  // name, so a regressed posture would remove nothing from a real account.
+  it('rejects DELETE /me/display-name from any Bearer PAT', async () => {
+    if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
+    const before = await ownDisplayName(service(), fixture.userId);
+    if (before !== null) {
+      return;
+    }
+
+    const response = await removeDisplayName(displayNameRequest('DELETE', fixture.writeToken));
+
+    expect(response.status).toBe(403);
+    const body = await response.json() as { error?: { message?: string } };
+    expect(body.error?.message).toContain('Use a browser session.');
+    expect(await ownDisplayName(service(), fixture.userId)).toBeNull();
+  });
+
   // The over-gating direction, which is the failure mode this Story's own
   // no-capability category invites: someone later "tidies" an identity route
   // onto `auth: 'required'` and every narrowly-scoped token loses the ability
@@ -549,6 +589,23 @@ function leaveWorkspaceRequest(workspaceId: string, token: string): NextRequest 
     method: 'DELETE',
     headers: { authorization: `Bearer ${token}` },
   });
+}
+
+function displayNameRequest(method: 'PUT' | 'DELETE', token: string, body?: unknown): NextRequest {
+  return new NextRequest('https://app.test/api/v1/me/display-name', {
+    method,
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+}
+
+// The member's own display name, read through the admin auth API (it lives in
+// `app_metadata`, not in a table).
+async function ownDisplayName(db: Db, userId: string): Promise<string | null> {
+  const { data, error } = await db.auth.admin.getUserById(userId);
+  if (error) { throw error; }
+  const raw = data.user?.app_metadata?.display_name;
+  return typeof raw === 'string' ? raw : null;
 }
 
 function meRequest(token: string): NextRequest {
