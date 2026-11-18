@@ -4,39 +4,35 @@
 //
 // Framework-agnostic per the Stack §10 utilities rule — no React, no Next, no
 // Supabase types. The page owns the reads; this module owns the wording. The
-// one import is the sibling constants module, which is itself zero-import, so
+// imports are the sibling constants module, which is itself zero-import, so
 // the window the copy names and the window the page queries stay the same
-// number.
+// number, and the zero-import display-name readers (BK-1949), so the banner
+// and Settings > Account read a name out of the auth user the same way.
 
+import { readOwnDisplayName, readProviderName } from '@lib/account/display-name';
 import { HOME_CHANGE_WINDOW_HOURS } from '@lib/home/constants';
 
 // ---------------------------------------------------------------------------
 // Display name
 // ---------------------------------------------------------------------------
 
-// Resolution order:
-//   1. `user_metadata.full_name` — set by the Google OAuth provider (BK-3).
-//   2. `user_metadata.name` — the GitHub provider's spelling of the same thing.
-//   3. A name derived from the email local-part, for the password and
+// Resolution order (BK-1949 Business Rule 7):
+//   1. `app_metadata.display_name` — the name the person saved in Settings >
+//      Account (BK-1949). Stored where no provider sign-in writes, so it wins.
+//   2. `user_metadata.full_name` — set by the Google OAuth provider (BK-3).
+//   3. `user_metadata.name` — the GitHub provider's spelling of the same thing.
+//   4. A name derived from the email local-part, for the password and
 //      magic-link paths (BK-166 / BK-2), which carry no metadata at all.
-//   4. null — the caller falls back to an un-personalized greeting rather than
+//   5. null — the caller falls back to an un-personalized greeting rather than
 //      inventing a name or printing a raw email address as one.
-//
-// NOTE: `IdentityCard` (BK-87, TD6) records that no code path read
-// `user_metadata` at the time it was written. This is that path — the greeting
-// is the first surface in the product that has a reason to want a human name,
-// and reading it here does not change what Settings > Account displays.
 export function resolveDisplayName(input: {
+  appMetadata?: Record<string, unknown> | null
   metadata?: Record<string, unknown> | null
   email?: string | null
 }): string | null {
-  for (const key of ['full_name', 'name'] as const) {
-    const raw = input.metadata?.[key];
-    if (typeof raw === 'string' && raw.trim().length > 0) {
-      return raw.trim();
-    }
-  }
-  return nameFromEmail(input.email);
+  return readOwnDisplayName(input.appMetadata)
+    ?? readProviderName(input.metadata)
+    ?? nameFromEmail(input.email);
 }
 
 // Same tokenization `emailInitials` (BK-86) already uses, so the avatar label

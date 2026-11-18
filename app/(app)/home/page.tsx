@@ -73,7 +73,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     redirect('/login?next=/home');
   }
 
-  const displayName = resolveDisplayName({ metadata: user.user_metadata, email: user.email });
+  const displayName = resolveDisplayName({ appMetadata: user.app_metadata, metadata: user.user_metadata, email: user.email });
 
   // Same cookie-honouring resolution the shell layout and the projects index
   // already run, so the banner can never name a different workspace than the
