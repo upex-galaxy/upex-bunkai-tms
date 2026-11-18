@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-11-18T06:39:29.526Z`
+> Generated: `2026-11-18T06:50:27.669Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.agents/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -227,24 +227,24 @@ Skills indexed: 39
 
 ## Skill: design-taste-frontend
 
-**Purpose**: Senior UI/UX Engineer.
+**Purpose**: tasteskill 2.5.1, the anti-slop frontend skill.
 
 **Compact Rules**:
-- DESIGN_VARIANCE: 8 (1=Perfect Symmetry, 10=Artsy Chaos)
-- MOTION_INTENSITY: 6 (1=Static/No movement, 10=Cinematic/Magic Physics)
-- VISUAL_DENSITY: 4 (1=Art Gallery/Airy, 10=Pilot Cockpit/Packed Data)
-- **DEPENDENCY VERIFICATION [MANDATORY]:** Before importing ANY 3rd party library (e.g. `framer-motion`, `lucide-react`, `zustand`), you MUST check `package.json`. If the package is missing, you MUST output the installation command (e.g. `npm install package-name`) before providing the code. **Never** assume a library exists.
-- **Framework & Interactivity:** React or Next.js. Default to Server Components (`RSC`).
-- **RSC SAFETY:** Global state works ONLY in Client Components. In Next.js, wrap providers in a `"use client"` component.
-- **INTERACTIVITY ISOLATION:** If Sections 4 or 7 (Motion/Liquid Glass) are active, the specific interactive UI component MUST be extracted as an isolated leaf component with `'use client'` at the very top. Server Components must exclusively render static layouts.
-- **State Management:** Use local `useState`/`useReducer` for isolated UI. Use global state strictly for deep prop-drilling avoidance.
-- **Styling Policy:** Use Tailwind CSS (v3/v4) for 90% of styling.
-- **TAILWIND VERSION LOCK:** Check `package.json` first. Do not use v4 syntax in v3 projects.
-- **T4 CONFIG GUARD:** For v4, do NOT use `tailwindcss` plugin in `postcss.config.js`. Use `@tailwindcss/postcss` or the Vite plugin.
-- **ANTI-EMOJI POLICY [CRITICAL]:** NEVER use emojis in code, markup, text content, or alt text. Replace symbols with high-quality icons (Radix, Phosphor) or clean SVG primitives. Emojis are BANNED.
-- **Responsiveness & Spacing:**
-- Standardize breakpoints (`sm`, `md`, `lg`, `xl`).
-- Contain page layouts using `max-w-[1400px] mx-auto` or `max-w-7xl`.
+- **No caption or description under any image, render or visual.** Licence credits go in one
+- **Every visual renders, never an empty ground,** at 1440, 1024, 768 and 390.
+- **One section per screen:** the hero alone on the first screen, every section exactly one or
+- **Equal left and right content edges.**
+- **Hover micro-animations:** a linked card lifts 2px, a photo zooms 1.02-1.03 inside its frame,
+- **More and better real photographs where they fit;** nicer backgrounds; better heroes, layouts
+- **Real full-colour icons** (a known product's real icon, never a drawn one); small diagram
+- **The big award-site scenes and creative moments are part of the skill:** every page deals its
+- **Addresses:** street and district only (no street given: the district), no house number, postcode or coordinates; no register
+- **Place** (a cafe, bakery, guesthouse, shop). Photographs lead: 12 to 20 on the full page, 8 to
+- **Product and service** (site-kind other). Photographs lead: the product, the people, the rooms,
+- **Every product page** (photographed, in stand-ins or rendered on a 3D ask, hardware too; the bar is Figure and 1X;
+- **Tech** (software, gaming, hardware). The client's own subject leads at true size. Software: its
+- **One object never carries the page.** The product or hero object whole leads the hero and **two more sections at
+- **The client's own assets get slots.** A trailer, key art, screenshots, CAD renders or a motion
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
@@ -255,7 +255,7 @@ Skills indexed: 39
 
 ## Skill: emil-design-eng
 
-**Purpose**: This skill encodes Emil Kowalski's philosophy on UI polish, component design, animation decisions, and the invisible details that make so...
+**Purpose**: Emil Kowalski's design-engineering philosophy for UI polish, component design, animation decisions, and the invisible details that make s...
 
 **Compact Rules**:
 - **Spatial consistency**: toast enters and exits from the same direction, making swipe-to-dismiss feel intuitive
@@ -283,22 +283,21 @@ Skills indexed: 39
 
 ## Skill: frontend-design
 
-**Purpose**: Create distinctive, production-grade frontend interfaces with high design quality.
+**Purpose**: Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one.
 
 **Compact Rules**:
-- **Purpose**: What problem does this interface solve? Who uses it?
-- **Tone**: Pick an extreme: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. There are so many flavors to choose from. Use these for inspiration but design one that is true to the aesthetic direction.
-- **Constraints**: Technical requirements (framework, performance, accessibility).
-- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
-- Production-grade and functional
-- Visually striking and memorable
-- Cohesive with a clear aesthetic point-of-view
-- Meticulously refined in every detail
-- **Typography**: Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the frontend's aesthetics; unexpected, characterful font choices. Pair a distinctive display font with a refined body font.
-- **Color & Theme**: Commit to a cohesive aesthetic. Use CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
-- **Motion**: Use animations for effects and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions. Use scroll-triggering and hover states that surprise.
-- **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density.
-- **Backgrounds & Visual Details**: Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, and grain overlays.
+- Accenting just a single word or phrase in a headline, like putting one word in italic/bold or a different color.
+- Using all caps for labels.
+- Adding unnecessary typographic labels above content.
+- a warm cream background (near #F4F1EA) with a high-contrast serif display and a terracotta or warm-clay accent (often near #D97757 — Anthropic's own Claude-interaction accent, so on a user's brief it reads as a tell);
+- a near-black background with a single bright acid-green or vermilion accent;
+- a broadsheet-style layout with hairline rules, zero border-radius, and dense newspaper-like columns;
+- the SaaS-card kit: content chopped into identical rounded cards, one border-radius on everything regardless of hierarchy, the same soft grey shadow (rgba(0,0,0,.1)) under each, and gradient washes as decoration;
+- template chrome that appears whatever the subject: a tracked-out ALL-CAPS eyebrow label above every heading; meta strings joined with middle dots ('A · B · C'); labels built as 'WORD — fragment' with a spaced em dash; tinted near-black (#0B0B0B, #111) standing in for black; a monospace face for small data labels; a '→' appended to link and button text.
+- Color: describe the core base palette as 4–6 named hex values.
+- Type: the typefaces and their roles.
+- Layout: a layout concept, using one-sentence prose descriptions and ASCII wireframes to ideate and compare. Include alignment guidance; should the content be left aligned, center aligned, justified?
+- Principles: the high-level guidance for what makes this page unique.
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
@@ -747,7 +746,7 @@ Skills indexed: 39
 
 ## Skill: shadcn
 
-**Purpose**: Manages shadcn components and projects — adding, searching, fixing, debugging, styling, and composing UI.
+**Purpose**: Manages shadcn components and projects — adding, searching, fixing, debugging, styling, and composing UI, including chat interfaces.
 
 **Compact Rules**:
 - **Use existing components first.** Use `npx shadcn@latest search` to check registries before writing custom UI. Check community registries too.
@@ -819,6 +818,7 @@ Skills indexed: 39
 - **If you use `app_metadata` or `auth.jwt()` for authorization, remember JWT claims are not always fresh until the user's token is refreshed.**
 - **API key and client exposure**
 - **Never expose the `service_role` or secret key in public clients.** Prefer publishable keys for frontend code. Legacy `anon` keys are only for compatibility. In Next.js, any `NEXT_PUBLIC_` env var is sent to the browser.
+- **Use scoped personal access tokens for the Management API, CLI, and MCP server.** A classic personal access token carries the user's full account access, on every organization and project. For scripts, CI, and agents, have the user create a scoped token limited to the organizations, projects, and permissions the task needs. The [personal access tokens guide](https://supabase.com/docs/guides/platform/personal-access-tokens.md) lists the permission each Management API endpoint and MCP tool requires. Look permissions up there rather than guessing.
 - **RLS, views, and privileged database code**
 - **Views bypass RLS by default.** In Postgres 15 and above, use `CREATE VIEW ... WITH (security_invoker = true)`. In older versions of Postgres, protect your views by revoking access from the `anon` and `authenticated` roles, or by putting them in an unexposed schema.
 - **UPDATE requires a SELECT policy.** In Postgres RLS, an UPDATE needs to first SELECT the row. Without a SELECT policy, updates silently return 0 rows — no error, just no change.
@@ -827,7 +827,6 @@ Skills indexed: 39
 - **UPDATE policies require both `USING` and `WITH CHECK`.** Without `WITH CHECK`, a user can reassign a row's `user_id` to another user:
 - **`SECURITY DEFINER` functions bypass RLS.** A `SECURITY DEFINER` function runs with its creator's privileges — typically a role with `bypassrls` (e.g., `postgres`). Never add `SECURITY DEFINER` to resolve a permission error; it silently removes access control without fixing the underlying cause. Prefer `SECURITY INVOKER`.
 - **`SECURITY DEFINER` functions in `public` are callable by all roles.** Postgres grants `EXECUTE` to `PUBLIC` by default for every new function, so any `SECURITY DEFINER` function in `public` is a public API endpoint callable by `anon` and `authenticated` (which inherit from `PUBLIC`) without any additional grant. When `SECURITY DEFINER` is genuinely needed (e.g., bypassing RLS on an internal lookup table), keep the function in a non-exposed schema, always include an `auth.uid()` check in the function body, and run `supabase db advisors` after making changes.
-- **Storage access control**
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
@@ -838,7 +837,7 @@ Skills indexed: 39
 
 ## Skill: supabase-postgres-best-practices
 
-**Purpose**: Postgres performance optimization and best practices from Supabase.
+**Purpose**: Postgres best practices maintained by Supabase, for Postgres running anywhere.
 
 **Compact Rules**:
 - Writing SQL queries or designing schemas

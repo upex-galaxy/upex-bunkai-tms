@@ -220,6 +220,15 @@
       "varlock reveal*": "deny",
       "bunx varlock printenv*": "deny",
       "bunx varlock reveal*": "deny",
+      "git restore .": "deny",
+      "git restore -- .": "deny",
+      "git checkout -- .": "deny",
+      "git checkout .": "deny",
+      "git stash": "deny",
+      "git stash push": "deny",
+      "git clean -f *": "deny",
+      "git clean -xfd *": "deny",
+      "git clean -fdx *": "deny",
     },
     // OpenCode's own base policy already asks on `*.env` / `*.env.*` and
     // allows `*.env.example`; these turn the secret-holding paths into a deny.

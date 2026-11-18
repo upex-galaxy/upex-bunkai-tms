@@ -174,13 +174,6 @@
     "pr": ""
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "context7",
-    "tavily",
-    "supabase",
-    "n8n",
-    "playwright",
-    "dbhub"
-  ],
+  "enabledMcpjsonServers": ["context7", "tavily", "supabase", "n8n", "playwright", "dbhub"],
   "cleanupPeriodDays": 30
 }
