@@ -1,91 +1,68 @@
-Actúa como Senior DevOps Engineer y Code Quality Expert.
+# Setup Linting
+
+Set up ESLint and Prettier in the current project when it has neither. It is first-time setup, and it runs before the first code review so that style findings come from tools, not from the reviewer.
+
+> **Additive, never a replacement.** If the app already has any lint or format configuration (an `eslint.config.*`, `.eslintrc.*`, `.prettierrc*`, `biome.json`, or a non-null `{{stack.scripts.lint}}` in `.agents/project.yaml`), this guide does not run. The app's configuration wins. Whatever is missing goes to the user as a separate proposed change. An existing file is never overwritten and an existing script is never renamed. When the app had nothing and the setup is done, record the script names you created with `bun run agents:setup --stack`, so `stack.scripts.lint` names them.
 
 ---
 
-## 🎯 TAREA
+## Tool check (MCP)
 
-Configurar **ESLint + Prettier** en el proyecto actual (si no está configurado).
+Context7 (`[DOCS_TOOL]`) is recommended: use it to read the official ESLint, Prettier and framework docs before writing any config.
 
-> **Aditivo, nunca reemplazo.** Si la app ya tiene configuración de lint o de formato (cualquier `eslint.config.*`, `.eslintrc.*`, `.prettierrc*`, `biome.json`, o un script `{{stack.scripts.lint}}` no null en `.agents/project.yaml`), esta guía NO corre: la configuración de la app gana, y lo que falte se propone al usuario como cambio aparte, nunca se pisa un archivo existente ni se renombra un script. Al terminar en una app que no tenía nada, registra los nombres de script creados con `bun run agents:setup --stack` para que `stack.scripts.lint` los nombre.
-
----
-
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS (MCP)
-
-### Context7 MCP (Recomendado)
-
-**¿Está disponible?** [Verificar si puedes acceder a `[DOCS_TOOL]`]
-
-**Si ESTÁ disponible:**
-
-- Consultar docs oficiales de ESLint, Prettier, y framework del proyecto
-
-**Si NO está disponible:**
-
-```
-⚠️ MCP Context7 no detectado
-
-Para configurar linting con best practices actuales, recomiendo conectar Context7 MCP.
-
-**¿Continuar sin Context7?**
-Puedo continuar, pero usaré configuración genérica (puede no ser óptima).
-```
+If it is not available, say so in the report and continue with generic configuration, which may not be optimal. A person present can choose to connect Context7 first. Nobody is blocked waiting for it.
 
 ---
 
-## 🔍 PASO 1: Detectar Framework y Estado Actual
+## Step 1: Detect the framework and the current state
 
-### 1.1 Identificar framework del proyecto
+Read these files:
 
-**Lee estos archivos:**
+- `package.json`: the framework (Next.js, React with Vite, etc.)
+- `.eslintrc.*` or `eslint.config.js`: whether ESLint is already configured
+- `.prettierrc.*`: whether Prettier is already configured
 
-- `package.json` - Identificar framework (Next.js, React+Vite, etc.)
-- `.eslintrc.*` o `eslint.config.js` - Ver si ya existe configuración
-- `.prettierrc.*` - Ver si ya existe Prettier
-
-**Output:**
+Write the result:
 
 ```markdown
-## Análisis del Proyecto
+## Project analysis
 
-**Framework detectado:** [Next.js / React+Vite / etc.]
+**Detected framework:** [Next.js / React+Vite / etc.]
 **Package manager:** [`{{stack.package_manager}}`]
 
-**Estado actual:**
+**Current state:**
 
-- ESLint: ✅ Configurado / ❌ No configurado
-- Prettier: ✅ Configurado / ❌ No configurado
+- ESLint: configured / not configured
+- Prettier: configured / not configured
 
-**Próximo paso:** [Configurar desde cero / Ya está OK: la configuración existente gana, fin de la guía]
+**Next step:** [Configure from scratch / Already set up: the existing configuration wins and this guide ends]
 ```
 
 ---
 
-## 📦 PASO 2: Instalar Dependencias (Si no están)
+## Step 2: Install dependencies (if missing)
 
-**⚠️ IMPORTANTE:** NO ejecutar scripts interactivos como `npm init @eslint/config`.
+Install the packages by hand. Interactive generators such as `npm init @eslint/config` ask for input nobody can give, so do not run them.
 
-### 2.1 Instalar packages manualmente
-
-**Comando a ejecutar:**
+### 2.1 Install the packages
 
 ```bash
 {{stack.package_manager}} add -d eslint prettier eslint-config-prettier eslint-plugin-prettier
 ```
 
-**Para Next.js:**
+For Next.js:
 
 ```bash
 {{stack.package_manager}} add -d eslint-config-next
 ```
 
-**Para React (sin Next.js):**
+For React without Next.js:
 
 ```bash
 {{stack.package_manager}} add -d eslint-plugin-react eslint-plugin-react-hooks
 ```
 
-**Para TypeScript:**
+For TypeScript:
 
 ```bash
 {{stack.package_manager}} add -d @typescript-eslint/eslint-plugin @typescript-eslint/parser
@@ -93,15 +70,15 @@ Puedo continuar, pero usaré configuración genérica (puede no ser óptima).
 
 ---
 
-## ⚙️ PASO 3: Crear Archivos de Configuración
+## Step 3: Create the configuration files
 
-**⚠️ CRÍTICO:** Crear archivos manualmente, NO ejecutar scripts interactivos.
+Create the files by hand, for the same reason: no interactive scripts.
 
-### 3.1 Crear `.eslintrc.json` (o `.eslintrc.js`)
+### 3.1 Create `.eslintrc.json` (or `.eslintrc.js`)
 
-**Consulta Context7 MCP:** Buscar configuración oficial del framework.
+Look up the official configuration for the framework through Context7 when it is available.
 
-**Ejemplo para Next.js:**
+**Next.js example:**
 
 ```json
 {
@@ -114,7 +91,7 @@ Puedo continuar, pero usaré configuración genérica (puede no ser óptima).
 }
 ```
 
-**Ejemplo para React+Vite:**
+**React with Vite example:**
 
 ```json
 {
@@ -153,7 +130,7 @@ Puedo continuar, pero usaré configuración genérica (puede no ser óptima).
 
 ---
 
-### 3.2 Crear `.prettierrc` (o `.prettierrc.json`)
+### 3.2 Create `.prettierrc` (or `.prettierrc.json`)
 
 ```json
 {
@@ -166,11 +143,11 @@ Puedo continuar, pero usaré configuración genérica (puede no ser óptima).
 }
 ```
 
-**Nota:** Ajustar según preferencias del equipo.
+Adjust it to the team's preferences.
 
 ---
 
-### 3.3 Crear `.eslintignore`
+### 3.3 Create `.eslintignore`
 
 ```
 node_modules
@@ -184,7 +161,7 @@ build
 
 ---
 
-### 3.4 Crear `.prettierignore`
+### 3.4 Create `.prettierignore`
 
 ```
 node_modules
@@ -199,9 +176,9 @@ package-lock.json
 
 ---
 
-## 📝 PASO 4: Agregar Scripts a `package.json`
+## Step 4: Add scripts to `package.json`
 
-**Edita `package.json` y agrega:**
+Edit `package.json` and add:
 
 ```json
 {
@@ -216,55 +193,40 @@ package-lock.json
 
 ---
 
-## ✅ PASO 5: Validar Configuración
+## Step 5: Validate the configuration
 
-**Ejecutar comandos:**
-
-### 5.1 Probar linting
+### 5.1 Try linting
 
 ```bash
 {{stack.package_manager}} run lint:check
 ```
 
-**Resultado esperado:**
+Expected: it runs without configuration errors. It may report warnings or errors in the code, and that is normal.
 
-- ✅ Se ejecuta sin errores de configuración
-- Puede mostrar warnings/errors de código (eso es normal)
-
-### 5.2 Probar fix automático
+### 5.2 Try the automatic fix
 
 ```bash
 {{stack.package_manager}} run lint:fix
 ```
 
-**Resultado esperado:**
+Expected: it fixes what it can on its own (formatting, imports, etc.).
 
-- Corrige issues automáticamente (formateo, imports, etc.)
-
-### 5.3 Probar Prettier
+### 5.3 Try Prettier
 
 ```bash
 {{stack.package_manager}} run format:fix
 ```
 
-**Resultado esperado:**
-
-- Formatea todos los archivos según reglas
+Expected: it formats every file according to the rules.
 
 ---
 
-## 📋 PASO 6: Setup de Editor (Recomendaciones para el usuario)
+## Step 6: Editor setup (recommend it to the user)
 
-**Recomienda al usuario:**
+For VS Code:
 
-### Para VS Code:
-
-1. **Instalar extensiones:**
-   - ESLint (dbaeumer.vscode-eslint)
-   - Prettier (esbenp.prettier-vscode)
-
-2. **Configurar auto-format on save:**
-   - Crear `.vscode/settings.json`:
+1. Install the extensions ESLint (`dbaeumer.vscode-eslint`) and Prettier (`esbenp.prettier-vscode`).
+2. Turn on format on save by creating `.vscode/settings.json`:
 
 ```json
 {
@@ -278,118 +240,100 @@ package-lock.json
 
 ---
 
-## 💬 OUTPUT ESPERADO
+## Expected output
 
 ````markdown
-## ✅ Linting Configurado Exitosamente
+## Linting configured
 
-### Dependencias instaladas:
+### Dependencies installed:
 
 - eslint
 - prettier
 - eslint-config-prettier
 - eslint-plugin-prettier
-- [Otros según framework]
+- [others, depending on the framework]
 
-### Archivos creados:
+### Files created:
 
-- `.eslintrc.json` - Configuración ESLint
-- `.prettierrc` - Configuración Prettier
-- `.eslintignore` - Archivos ignorados por ESLint
-- `.prettierignore` - Archivos ignorados por Prettier
+- `.eslintrc.json`: ESLint configuration
+- `.prettierrc`: Prettier configuration
+- `.eslintignore`: files ESLint skips
+- `.prettierignore`: files Prettier skips
 
-### Scripts agregados a `package.json`:
+### Scripts added to `package.json`:
 
-- `{{stack.package_manager}} run lint:check` - Ejecutar linting
-- `{{stack.package_manager}} run lint:fix` - Fix automático
-- `{{stack.package_manager}} run format:fix` - Formatear código
+- `{{stack.package_manager}} run lint:check`: run linting
+- `{{stack.package_manager}} run lint:fix`: automatic fix
+- `{{stack.package_manager}} run format:fix`: format the code
 
-### ✅ Validación:
+### Validation:
 
-- ✅ `{{stack.package_manager}} run lint:check` ejecuta sin errores de configuración
-- ✅ `{{stack.package_manager}} run format:fix` formatea archivos
+- `{{stack.package_manager}} run lint:check` runs without configuration errors
+- `{{stack.package_manager}} run format:fix` formats files
 
-### 📋 Próximos Pasos:
+### Next steps:
 
-1. **Ejecutar linting en código existente:**
+1. Run linting on the existing code:
+
    ```bash
    {{stack.package_manager}} run lint:check
    ```
-````
 
-- Revisar warnings/errors
-- Corregir issues críticos
+   Review the warnings and errors, and fix the critical ones.
 
-2. **Fix automático (si es seguro):**
+2. Apply the automatic fix when it is safe:
 
    ```bash
    {{stack.package_manager}} run lint:fix
    {{stack.package_manager}} run format:fix
    ```
 
-3. **Configurar editor:**
-   - Instalar extensiones ESLint + Prettier
-   - Configurar auto-format on save
+3. Set up the editor: install the ESLint and Prettier extensions and turn on format on save.
 
-4. **Continuar con Code Review:**
-   - Ahora que linting está configurado
-   - Usar `references/review-pr.md` (sibling en este skill)
+4. Continue with code review using `references/review-pr.md` (a sibling file in this skill).
 
-### ⚠️ Notas:
+### Notes:
 
-- Algunos warnings existentes son normales (código legacy)
-- Priorizar corregir errors sobre warnings
-- Configurar pre-commit hooks (Husky) es recomendado para el futuro
-
+- Some existing warnings are normal in legacy code
+- Fix errors before warnings
+- Pre-commit hooks (Husky) are a good later addition
 ````
 
 ---
 
-## 🎯 EJEMPLO DE USO
+## Example request
 
 ```markdown
-Configura ESLint y Prettier para este proyecto Next.js.
+Set up ESLint and Prettier for this Next.js project.
 
-**Proceso:**
-1. Detecta el framework y estado actual
-2. Instala dependencias necesarias
-3. Crea archivos de configuración manualmente (NO scripts interactivos)
-4. Agrega scripts a package.json
-5. Valida que funciona ({{stack.package_manager}} run lint:check)
+Process:
+1. Detect the framework and the current state
+2. Install the needed dependencies
+3. Create the configuration files by hand (no interactive scripts)
+4. Add the scripts to package.json
+5. Validate that it works ({{stack.package_manager}} run lint:check)
 
-**Importante:**
-- Usa Context7 MCP para consultar configuración oficial de Next.js
-- NO ejecutes scripts interactivos (ej: npm init @eslint/config)
-- Crea archivos manualmente
-````
-
----
-
-## ⚠️ TROUBLESHOOTING
-
-### Problema: Script interactivo requerido
-
-**Ejemplo:** `npm init @eslint/config` pide input interactivo
-
-**❌ NO ejecutar**
-
-**✅ Solución:**
-
-```markdown
-Este comando requiere input interactivo. En su lugar:
-
-**Opción 1 (Recomendado):** Crear configuración manualmente
-
-- He creado `.eslintrc.json` con configuración apropiada
-- Basada en docs oficiales de [Framework]
-
-**Opción 2:** Usuario ejecuta manualmente
-
-1. Abre terminal
-2. Ejecuta: npm init @eslint/config
-3. Selecciona: [Opciones recomendadas]
+Use Context7 for the official Next.js configuration when it is available.
 ```
 
 ---
 
-**Nota:** Después de configurar linting, procede con code review (Stage 3) usando `review-pr.md`.
+## Troubleshooting
+
+### An interactive script is required
+
+Example: `npm init @eslint/config` asks for input. Do not run it. Create the configuration by hand instead, based on the framework's official docs, and say so:
+
+```markdown
+That command needs interactive input, so I created `.eslintrc.json` by hand with a configuration
+based on the official [Framework] docs.
+
+If you prefer the generator, run it yourself:
+1. Open a terminal
+2. Run: npm init @eslint/config
+3. Select: [recommended options]
+```
+
+---
+
+Once linting is set up, continue with code review (Stage 3) using `review-pr.md`.

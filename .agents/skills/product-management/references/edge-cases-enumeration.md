@@ -1,64 +1,64 @@
-# Edge Cases & Failure Scenarios Enumeration Guide
+# Edge cases and failure scenarios: enumeration guide
 
-> **Purpose**: Help Product Managers, Product Owners, and architects systematically discover edge cases at the feature / epic level — _before_ stories are sliced and sprints start — so the team builds for them deliberately rather than discovering them in production.
-
----
-
-## What Are Edge Cases?
-
-An **edge case** is any scenario that lives at or beyond the boundary of "expected behavior" — empty input, maximum length, simultaneous actions, partial failures, unusual user contexts, network problems, stale state.
-
-Edge cases are not bugs. They are real situations that can happen in production. The question is whether the system has been _designed_ to handle them, or whether you will discover the answer the hard way.
-
-The distinction that matters at PM level:
-
-- **Expected behavior** — what the feature does on the happy and main negative paths
-- **Edge case** — a situation outside those paths that still has a defined, intentional response
-
-This guide is about systematically _finding_ edge cases at feature scope, _categorizing_ their criticality, and _deciding_ which ones get promoted to acceptance criteria vs. left as test-level concerns.
+> **Purpose:** help product managers, product owners and architects find edge cases at feature or epic level, before stories are sliced and sprints start, so the team builds for them on purpose instead of meeting them in production.
 
 ---
 
-## Finding Edge Cases Through Business & Architecture Analysis
+## What edge cases are
 
-Edge-case enumeration is most effective when grounded in two perspectives: what the business cannot afford to get wrong, and where the architecture has natural failure points.
+An edge case is a scenario at or beyond the boundary of expected behavior: empty input, maximum length, simultaneous actions, partial failures, unusual user contexts, network problems, stale state.
 
-### Business Value & Risk Perspective
+Edge cases are not bugs. They are real situations that can happen in production, and the only question is whether the system was designed to handle them or whether you learn the answer the hard way.
 
-Start from the value the feature is meant to deliver, then ask what could undermine it.
+At PM level the distinction is:
 
-**Map the business surface:**
+- Expected behavior is what the feature does on the happy path and the main negative paths.
+- An edge case is a situation outside those paths that still has a defined, intentional response.
 
-- **Key value proposition** — what value does this feature provide to the user? to the business?
-- **Success metrics (KPIs)** — which numbers does this feature move? (conversion, retention, revenue, NPS)
-- **User personas affected** — primary, secondary, edge personas (admin, support, low-engagement user)
-- **Critical user journeys** — which journeys does this feature enable, gate, or change?
+This guide covers finding edge cases at feature scope, rating their criticality, and deciding which become acceptance criteria and which stay test-level concerns.
 
-**Then ask, deliberately:**
+---
 
-- _What outcome would fail the user?_ (not just an error — a wrong answer they trust)
-- _What outcome would fail the business?_ (revenue leakage, compliance breach, reputational damage)
-- _Which persona, in which journey, is one mishap away from churning?_
+## Finding edge cases through business and architecture analysis
 
-These questions surface edge cases that pure technical analysis misses — e.g., "what if a user starts the flow on web and finishes it on mobile?" or "what if the same record is being edited by two users?"
+Enumeration works best from two angles: what the business cannot afford to get wrong, and where the architecture fails naturally.
 
-### Technical Architecture & Integration Points
+### Business value and risk
 
-Architecture defines where the feature touches the world. Every touch point is a potential edge case factory.
+Start from the value the feature should deliver, then ask what could undermine it.
 
-**Map the architecture surface:**
+Map the business surface:
 
-- **Frontend** — components to create / modify, pages and routes, state transitions
-- **Backend** — APIs, business services, side effects (emails, notifications, audit logs)
-- **Database** — tables involved, complex / high-impact queries, integrity rules
-- **External services** — third-party APIs (payments, email, SMS, identity)
+- The value proposition: what the feature gives the user and the business.
+- The success metrics (KPIs) it moves, such as conversion, retention, revenue or NPS.
+- The personas affected: primary, secondary and edge personas (admin, support, low-engagement user).
+- The critical user journeys it enables, gates or changes.
 
-**Identify integration points (this is where edge cases concentrate):**
+Then ask:
 
-- **Internal**: Frontend ↔ Backend API; Backend ↔ Database; Backend ↔ Auth Service
-- **External**: System ↔ Payment provider; System ↔ Email service; System ↔ Analytics
+- What outcome would fail the user? Not only an error, but a wrong answer they trust.
+- What outcome would fail the business? Revenue leakage, a compliance breach, reputational damage.
+- Which persona, in which journey, is one mishap from churning?
 
-**Sketch the data flow:**
+These questions surface cases that technical analysis misses, such as a user who starts a flow on web and finishes on mobile, or one record edited by two users at once.
+
+### Technical architecture and integration points
+
+Architecture defines where the feature touches the world, and every touch point can produce edge cases.
+
+Map the architecture surface:
+
+- Frontend: components to create or change, pages and routes, state transitions.
+- Backend: APIs, business services, side effects (emails, notifications, audit logs).
+- Database: tables involved, complex or high-impact queries, integrity rules.
+- External services: third-party APIs for payments, email, SMS and identity.
+
+Integration points are where edge cases concentrate:
+
+- Internal: frontend and backend API, backend and database, backend and auth service.
+- External: the system and the payment provider, the email service, analytics.
+
+Sketch the data flow:
 
 ```
 User → Frontend → API Gateway → Service X → Database
@@ -66,228 +66,211 @@ User → Frontend → API Gateway → Service X → Database
                         External Service
 ```
 
-For each arrow in that diagram, ask: _what happens if this hop fails, slows down, or returns unexpected data?_ Each answer is one or more edge cases.
+For each arrow, ask what happens if that hop fails, slows down or returns unexpected data. Each answer is one or more edge cases.
 
-### Risk-Driven Edge Case Enumeration
+### Risk-driven enumeration
 
-Risks at feature level translate directly into edge cases at scenario level. Walk through three categories.
+A risk at feature level translates directly into edge cases at scenario level. Walk three categories.
 
-**Technical risks → edge cases:**
+Technical risks:
 
-- _"The API can return 500 under load"_ → edge case: user submits, gets 500, retries — does the system de-duplicate?
-- _"Database write can succeed while email send fails"_ → edge case: record exists, but no notification — what does the user see next time?
-- _"The frontend can drop the websocket connection"_ → edge case: state arrives stale; how does the UI recover?
+- "The API can return 500 under load" gives the case where the user submits, gets a 500 and retries. Does the system de-duplicate?
+- "A database write can succeed while the email send fails" gives a record with no notification. What does the user see next time?
+- "The frontend can drop the websocket connection" gives stale state on arrival. How does the UI recover?
 
-For each technical risk, capture: impact, likelihood, area affected, and the **specific edge-case scenarios** that would expose it. Those scenarios feed into AC or test plans.
+For each technical risk, capture the impact, the likelihood, the area affected and the specific scenarios that would expose it. Those scenarios feed AC or test plans.
 
-**Business risks → edge cases:**
+Business risks:
 
-- _"Pricing rule could be applied incorrectly during a promotion"_ → edge cases: promo expired mid-checkout; user qualifies for two overlapping promos; admin edits price while user has item in cart
-- _"User personal data could leak across accounts"_ → edge cases: shared device; session expiry mid-action; email change followed by password reset
+- "A pricing rule could be applied wrongly during a promotion" gives these cases: the promo expires mid-checkout, a user qualifies for two overlapping promos, an admin edits the price while the item is in a cart.
+- "Personal data could leak across accounts" gives these cases: a shared device, a session that expires mid-action, an email change followed by a password reset.
 
-For each business risk, link the impact (KPI, user persona affected) to the concrete scenarios that mitigate it.
+For each business risk, link the impact (KPI, persona affected) to the concrete scenarios that mitigate it.
 
-**Integration risks → edge cases:**
+Integration risks: for every integration point, list the failure modes (timeout, partial response, malformed payload, auth refused, rate limit, version skew). Each failure mode is at least one edge case to design for.
 
-- For every integration point, list the failure modes: timeout, partial response, malformed payload, auth refused, rate-limited, version skew
-- Each failure mode is at least one edge case to design for
+### Ambiguities and gaps for story refinement
 
-### Critical Analysis & Questions for Story Refinement
+While enumerating, you will find ambiguities and missing information at feature level. Write them down, because they often become PO and developer questions before work starts.
 
-While enumerating, you will surface ambiguities and missing information at the feature level. Capture these explicitly — they often become PO / Dev clarification questions before the work starts:
-
-**Ambiguities** — language in the epic or stories that admits more than one interpretation:
-
-- Document where it appears, the question it raises, and the impact if not clarified
-- Each ambiguity often hides one or more edge cases
-
-**Missing information** — facts the team needs to design for an edge case but does not yet have:
-
-- What is missing, why it is needed, what to add to the story or epic
-- Without it, edge case behavior cannot be specified
-
-**Suggested improvements** — concrete proposals to tighten the story before implementation:
-
-- Story affected, current state, suggested change, the quality benefit
+- Ambiguities are wording in the epic or stories that allows more than one reading. Record where it appears, the question it raises and the impact if left unclear. Each often hides an edge case.
+- Missing information is what the team needs to design for an edge case but does not have. Record what is missing, why it is needed and what to add to the story or epic. Without it the behavior cannot be specified.
+- Suggested improvements are concrete proposals to tighten a story before implementation: the story affected, its current state, the change and the quality benefit.
 
 ---
 
-## Common Categories of Edge Cases
+## Common categories
 
-Use these categories as a checklist when enumerating. Most features touch most categories; the question is which scenarios within each category matter for _this_ feature.
+Use these as a checklist. Most features touch most categories, so the question is which scenarios in each category matter for this feature.
 
-### Boundary Cases
+### Boundary cases
 
-- Minimum and maximum values (length, count, quantity, date range)
-- Zero, one, exactly-at-the-limit, one-over-the-limit
-- Empty input, whitespace-only, null vs. missing
-- Very long strings (256, 1024, 10000 chars)
-- Special characters: quotes, backslashes, emoji, RTL scripts
-- Unicode normalization (composed vs. decomposed forms)
+- Minimum and maximum values (length, count, quantity, date range).
+- Zero, one, exactly at the limit, one over the limit.
+- Empty input, whitespace only, null versus missing.
+- Very long strings (256, 1024, 10000 characters).
+- Special characters: quotes, backslashes, emoji, right-to-left scripts.
+- Unicode normalization (composed versus decomposed forms).
 
-### Error & Failure Cases
+### Error and failure cases
 
-- Network errors: timeout, DNS failure, connection reset
-- Database errors: deadlock, constraint violation, replica lag
-- External service errors: 4xx / 5xx, malformed response, auth refused
-- Validation errors: at the field level, at the form level, server-side after client-side passed
-- Authorization errors: token expired, role changed mid-session, scope insufficient
+- Network errors: timeout, DNS failure, connection reset.
+- Database errors: deadlock, constraint violation, replica lag.
+- External service errors: 4xx and 5xx, malformed response, auth refused.
+- Validation errors at the field level, the form level, and server-side after client-side passed.
+- Authorization errors: token expired, role changed mid-session, insufficient scope.
 
-### Concurrency & State Cases
+### Concurrency and state cases
 
-- Two users editing the same record simultaneously
-- Same user double-clicking submit; duplicate API requests
-- Out-of-order events: response arrives after the user has moved on
-- Stale state: user sees data that has changed server-side
-- Optimistic UI rollback when the server rejects
+- Two users editing the same record at once.
+- The same user double-clicking submit, producing duplicate API requests.
+- Out-of-order events, such as a response arriving after the user has moved on.
+- Stale state, where the user sees data that changed server-side.
+- Optimistic UI rollback when the server rejects.
 
-### Performance & Resource Cases
+### Performance and resource cases
 
-- High volume: 10,000 records in a list, 100 simultaneous operations
-- Slow network: 3G, intermittent connectivity, captive portals
-- Memory pressure: large file upload, big response payload
-- Rate limits: hitting third-party caps, throttling response
-- Cold start vs. warm cache; first-time user vs. returning user state
+- High volume: 10,000 records in a list, 100 simultaneous operations.
+- Slow networks: 3G, intermittent connectivity, captive portals.
+- Memory pressure: a large file upload or a big response payload.
+- Rate limits: hitting third-party caps, throttled responses.
+- Cold start versus warm cache, first-time versus returning user state.
 
-### User-Specific Cases
+### User-specific cases
 
-- Roles and permissions: admin vs. user vs. read-only viewer
-- Locale: date format, number format, currency, timezone, RTL languages
-- Device: mobile vs. desktop, small viewport, touch vs. mouse
-- Accessibility: screen reader, keyboard-only, high-contrast mode, reduced motion
-- Returning user with stale local state (cached tokens, old preferences)
+- Roles and permissions: admin, user, read-only viewer.
+- Locale: date format, number format, currency, timezone, right-to-left languages.
+- Device: mobile versus desktop, small viewport, touch versus mouse.
+- Accessibility: screen reader, keyboard only, high contrast, reduced motion.
+- A returning user with stale local state (cached tokens, old preferences).
 
 ---
 
-## Enumerating Edge Cases: Worksheet
+## Worksheet
 
 A repeatable five-step pass for any feature.
 
-### 1. List the Happy Path
+### 1. List the happy path
 
-Write the main success scenario in plain language: _the user does X, and the system does Y, and the outcome is Z._ You cannot find edges without first knowing the center.
+Write the main success scenario in plain language: the user does X, the system does Y, the outcome is Z. You cannot find the edges without knowing the center.
 
-### 2. Ask "What Could Go Wrong?"
+### 2. Ask what could go wrong
 
-For each step in the happy path, brainstorm failure modes from each category above. Do not filter yet — list everything plausible.
+For each step of the happy path, brainstorm failure modes from each category above. Do not filter yet. List everything plausible.
 
-### 3. Check Risks Identified at Epic Level
+### 3. Check the risks identified at epic level
 
-Cross-reference the technical / business / integration risks already enumerated. Each risk should map to one or more edge-case scenarios. If any risk has no corresponding edge case, you have a coverage gap.
+Cross-reference the technical, business and integration risks already listed. Each risk should map to at least one edge-case scenario, and a risk with none is a coverage gap.
 
-### 4. Review NFRs (Non-Functional Requirements)
+### 4. Review the NFRs
 
-NFRs are edge-case generators. For each that applies:
+Non-functional requirements generate edge cases. For each that applies:
 
-- **Performance NFR** (e.g., page load < 2s) → edge: what happens at p99? Under load? With slow backend?
-- **Security NFR** (e.g., passwords hashed with bcrypt) → edge: what about session reuse, replay, CSRF?
-- **Usability NFR** (e.g., usable on screen reader) → edge: what about keyboard-only navigation through error states?
+- A performance NFR (for example page load under 2s) raises what happens at p99, under load, or with a slow backend.
+- A security NFR (for example passwords hashed with bcrypt) raises session reuse, replay and CSRF.
+- A usability NFR (for example usable with a screen reader) raises keyboard-only navigation through error states.
 
-Each NFR should produce at least one concrete edge-case scenario the team will design and verify against.
+Each NFR should yield at least one concrete edge-case scenario the team designs and verifies against.
 
-### 5. Enumerate by Category
+### 5. Enumerate by category
 
-Go category by category (Boundary, Error, Concurrency, Performance, User-specific) and ask: _for this feature, which scenarios in this category are realistic and important?_ Write them down — even the obvious ones.
+Go through Boundary, Error, Concurrency, Performance and User-specific, and ask which scenarios in each are realistic and important for this feature. Write down the obvious ones too.
 
-The output of the worksheet is a flat list of candidate edge cases ready to be documented and triaged.
+The worksheet's output is a flat list of candidate edge cases, ready to document and triage.
 
 ---
 
-## Documenting Edge Cases
+## Documenting edge cases
 
-Each edge case deserves a short, structured note. Keep it lightweight — this is enumeration, not full design.
-
-**Per-edge-case template:**
+Give each edge case a short, structured note. Keep it light, because this is enumeration and not full design.
 
 ```
 Edge case: <one-line description>
 
 Trigger:           <what causes the system to enter this scenario>
-Expected behavior: <what the system should do — or "needs PO confirmation">
+Expected behavior: <what the system should do, or "needs PO confirmation">
 Criticality:       High | Medium | Low
 Category:          Boundary | Error | Concurrency | Performance | User-specific
 Source:            Original story | Discovered during enumeration
 Action:            Promote to AC | Test-only concern | Defer (with reason)
 ```
 
-**Criticality heuristic:**
+Rate criticality like this:
 
-- **High** — failure leads to data loss, money at risk, security exposure, or breaks a critical user journey
-- **Medium** — failure causes user friction, support load, or an obviously bad experience
-- **Low** — failure is cosmetic, recoverable on retry, or affects a small subset of edge users
-
----
-
-## Validating Edge Case Coverage
-
-Per acceptance criterion, run a quick coverage check before the AC is considered "ready":
-
-- [ ] At least one positive scenario covering the typical success path
-- [ ] At least one error / validation scenario covering the obvious failure mode
-- [ ] Boundary scenarios for every numeric range, length limit, or quantity rule
-- [ ] Concurrency scenario if more than one actor or rapid repeat is possible
-- [ ] External-failure scenario for every integration point this AC depends on
-- [ ] NFR-driven scenario if a performance / security / usability NFR applies
-
-Gaps in this checklist do not necessarily block — but they should be acknowledged and decided, not silent.
+- High: failure causes data loss, puts money at risk, exposes security, or breaks a critical user journey.
+- Medium: failure causes user friction, support load or an obviously bad experience.
+- Low: failure is cosmetic, recoverable on retry, or affects a small subset of edge users.
 
 ---
 
-## Integrating Edge Cases into Story Refinement
+## Validating coverage
 
-Edge-case enumeration produces raw material. The decisions about _what to do with each one_ happen in story refinement.
+Before an acceptance criterion counts as ready, run this check against it:
 
-### 3-Amigos Discussion (Cross-Reference)
+- [ ] At least one positive scenario covers the typical success path.
+- [ ] At least one error or validation scenario covers the obvious failure mode.
+- [ ] Boundary scenarios exist for every numeric range, length limit or quantity rule.
+- [ ] A concurrency scenario exists if more than one actor or a rapid repeat is possible.
+- [ ] An external-failure scenario exists for every integration point the AC depends on.
+- [ ] An NFR-driven scenario exists if a performance, security or usability NFR applies.
 
-Bring the enumerated edge cases into a 3-amigos conversation:
+A gap in this list does not necessarily block the story, but it is acknowledged and decided, never silent.
 
-- **PO / PM** — confirms expected behavior for each high-criticality edge case; defers or kills the rest
-- **Dev** — validates feasibility, surfaces hidden complexity, proposes a default behavior where the PO has none
-- **QA / Tester** — confirms each promoted edge case is verifiable, captures the rest as test-level concerns
+---
 
-For the full 3-amigos protocol, see `story-refinement.md`.
+## Integrating edge cases into story refinement
 
-### Updating Story AC: Decision Rule
+Enumeration produces raw material. The decision on what to do with each case happens in story refinement.
 
-For each enumerated edge case, apply this rule:
+### Three-amigos discussion
 
-> **High-criticality edge case + clear expected behavior → promote to acceptance criterion**
+Bring the enumerated cases to a three-amigos conversation:
+
+- PO or PM confirms the expected behavior of each high-criticality case and defers or drops the rest.
+- Dev checks feasibility, surfaces hidden complexity, and proposes a default behavior where the PO has none.
+- QA or tester confirms each promoted case is verifiable and takes the rest as test-level concerns.
+
+The full protocol is in `story-refinement.md`.
+
+### Updating story AC: the decision rule
+
+> High-criticality edge case with clear expected behavior: promote it to an acceptance criterion.
 >
-> Otherwise → leave as a test-only concern (out of scope of this skill)
+> Anything else: leave it as a test-only concern (outside the scope of this skill).
 
-This rule keeps stories focused: AC describes the behaviors the _team and PO_ have explicitly agreed on. Other edge cases still get tested, but not via the AC contract — they live in the test plan.
+The rule keeps stories focused. AC describes behaviors the team and the PO have explicitly agreed on. Other edge cases still get tested, but through the test plan and not the AC contract.
 
-A few practical notes:
+Notes on applying it:
 
-- _"Clear expected behavior"_ means you can write a `Then` clause without "it depends." If you cannot, ask the PO before promoting
-- _"High-criticality"_ is the heuristic from above — money, data, security, or critical journey
-- Medium-criticality edge cases with _very clear_ expected behavior may also be promoted at PO discretion
-- Anything deferred should be documented (with reason) so it is not silently lost
-
----
-
-## Common Patterns: Edge Cases That Often Slip
-
-Patterns that recur across features regardless of domain. Use this list as a final sanity check.
-
-- **Off-by-one** at boundaries — `<=` vs. `<`, inclusive vs. exclusive ranges
-- **Timezone confusion** — server in UTC, user in local, DST transitions, "which day is it" semantics across midnight
-- **Decimal precision** — money in floats, rounding inconsistencies between client and server
-- **Unicode pitfalls** — counting characters vs. bytes vs. code points; emoji and combining marks
-- **Null vs. empty vs. missing** — three different states often collapsed into one
-- **Concurrent access** — two writes racing, lost update, last-writer-wins without intent
-- **Idempotency** — retried requests creating duplicates; payment double-charges
-- **Pagination** — items added / removed mid-pagination; very large page numbers
-- **Stale cache** — user sees yesterday's data; cache invalidation lagging behind writes
-- **Partial success** — multi-step operation where step 2 of 3 fails; what state is the user left in?
-- **Boundary identity** — exactly-zero amounts, expired-just-now sessions, end-of-period transactions
-- **Trust boundaries** — client-side validation passes, server-side fails; assumed user role wrong
+- "Clear expected behavior" means you can write a `Then` clause without "it depends". If you cannot, ask the PO before promoting.
+- "High-criticality" is the heuristic above: money, data, security or a critical journey.
+- A medium-criticality case with very clear expected behavior may also be promoted at the PO's discretion.
+- Document anything deferred, with the reason, so it is not lost.
 
 ---
 
-## Related References
+## Patterns that often slip
 
-- See `acceptance-criteria.md` for AC quality patterns, Gherkin scenario writing, and the AC refinement workflow
-- See `story-refinement.md` for the full story-level INVEST checklist and 3-amigos protocol
-- See `epic-creation.md` for epic-level scope refinement (the layer above edge-case enumeration)
-- For formal test case design, parametrization, fixtures, and automation — out of scope here
+These recur across domains. Use the list as a final check.
+
+- Off-by-one at boundaries: `<=` versus `<`, inclusive versus exclusive ranges.
+- Timezone confusion: server in UTC, user in local time, DST transitions, which day it is across midnight.
+- Decimal precision: money in floats, rounding differences between client and server.
+- Unicode: counting characters versus bytes versus code points, emoji and combining marks.
+- Null versus empty versus missing: three states often collapsed into one.
+- Concurrent access: two racing writes, a lost update, last-writer-wins that nobody intended.
+- Idempotency: retried requests creating duplicates, payment double-charges.
+- Pagination: items added or removed mid-pagination, very large page numbers.
+- Stale cache: the user sees yesterday's data because invalidation lags behind writes.
+- Partial success: step 2 of 3 fails, and the user is left in an unknown state.
+- Boundary identity: exactly-zero amounts, sessions that expired a moment ago, end-of-period transactions.
+- Trust boundaries: client-side validation passes and server-side fails, or the assumed user role is wrong.
+
+---
+
+## Related references
+
+- `acceptance-criteria.md`: AC quality patterns, Gherkin scenario writing and the AC refinement workflow.
+- `story-refinement.md`: the story-level INVEST checklist and the three-amigos protocol.
+- `epic-creation.md`: epic-level scope refinement, the layer above edge-case enumeration.
+- Formal test case design, parametrization, fixtures and automation are out of scope here.

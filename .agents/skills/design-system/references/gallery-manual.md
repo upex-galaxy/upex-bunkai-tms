@@ -1,6 +1,6 @@
-# Path A — Gallery manual (user-driven)
+# Path A: Gallery manual (user-driven)
 
-User-driven exploration. The skill does not match or rank — the user browses two community galleries, picks a brand off-page, then hands the slug back to the skill for download + lint. Pick this path when the user wants full control, or when the default (Path B) matcher fails to convince after a couple of batches.
+The user explores, and the skill does not match or rank. The user browses two community galleries, picks a brand off-page and hands the slug back, and the skill downloads it and lints it. Pick this path when the user wants full control, or when the default matcher (Path B) has not convinced after a couple of batches.
 
 ---
 
@@ -11,7 +11,7 @@ User-driven exploration. The skill does not match or rank — the user browses t
 | **`getdesign` catalog**     | curated         | MIT (all)                    | None                            | Quality-vetted picks, deterministic slugs |
 | **`designmd.ai` community** | community       | MIT / CC0 / CC-BY / CC-BY-SA | Free API key `DESIGNMD_API_KEY` | Variety, niche styles, recent uploads     |
 
-Why two: the `getdesign` set is small but every entry has been hand-tuned and is licensed MIT. `designmd.ai` is roughly 4x larger but quality and license vary per entry. Surface both — let the user pick.
+Offer both. The `getdesign` set is small, every entry is hand-tuned and all are MIT. `designmd.ai` is roughly 4x larger, but quality and license vary per entry.
 
 ---
 
@@ -27,7 +27,7 @@ npx --yes getdesign list --json | jq '.[].name'  # filter by name
 npx --yes getdesign list --json | jq '.[] | select(.tags[] | contains("dark"))'
 ```
 
-No web gallery for `getdesign` — listing is CLI-only.
+`getdesign` has no web gallery, so listing is CLI-only.
 
 ### `designmd.ai` community
 
@@ -46,12 +46,12 @@ npx --yes designmd get shafius/neon-fintech --json   # full DESIGN.md preview
 
 ## Picking flow
 
-The user decides their criteria off-page (no AI matching). Once they have a choice, they give the skill either:
+The user sets the criteria off-page, with no AI matching. Once they have a choice, they give the skill one of two things:
 
-- A `getdesign` slug — single word, e.g. `linear-app`, `vercel`, `notion`.
-- A `designmd.ai` handle — `<user>/<slug>` form, e.g. `shafius/neon-fintech`.
+- A `getdesign` slug, a single word such as `linear-app`, `vercel` or `notion`.
+- A `designmd.ai` handle in `<user>/<slug>` form, such as `shafius/neon-fintech`.
 
-The skill detects which source by the presence of `/` in the input.
+A `/` in the input means the `designmd.ai` source.
 
 ---
 
@@ -74,7 +74,7 @@ npx --yes designmd download <user>/<slug>
 npx --yes designmd download <user>/<slug> -o "$DESIGN_MD_PATH"
 ```
 
-If `DESIGN.md` already exists, follow the same skip / overwrite / variant prompt documented in `getdesign-matcher.md` step 6. Do not silently overwrite.
+If `DESIGN.md` already exists, use the same skip, overwrite or variant prompt as `getdesign-matcher.md` step 6, and never overwrite silently. With nobody to ask, write a variant (`SKILL.md`, "With nobody at the keyboard").
 
 ---
 
@@ -86,20 +86,20 @@ Same lint step as the default path:
 npx --yes @google/design.md lint <path>
 ```
 
-Surface errors and WCAG warnings to the user. Do not paper over failures.
+Show the user every error and WCAG warning, including the ones that do not block.
 
 ---
 
 ## License surface
 
-After download, print the license of the chosen brand so the user knows what they are committing to. `getdesign` entries are all MIT. `designmd.ai` entries vary — read the `license` field from `designmd get <user>/<slug> --json` before download, or from the frontmatter of the downloaded `DESIGN.md`. Surface a short note in the final report:
+After download, print the chosen brand's license so the user knows what they are committing to. `getdesign` entries are all MIT. `designmd.ai` entries vary: read the `license` field from `designmd get <user>/<slug> --json` before download, or from the frontmatter of the downloaded `DESIGN.md`. Put a short note in the final report:
 
 ```
 Brand:     shafius/neon-fintech
 Source:    designmd.ai community gallery
-License:   CC-BY 4.0  (attribution required — credit `shafius` if you redistribute)
+License:   CC-BY 4.0  (attribution required, credit `shafius` if you redistribute)
 Path:      ./DESIGN.md
 Lint:      PASS
 ```
 
-Why this matters: CC-BY-SA in particular forces downstream attribution and share-alike obligations on derivative DESIGN.md files. MIT and CC0 are usually safe for any project; CC-BY and CC-BY-SA may not match the project's license posture. The user should see the license before merging.
+CC-BY-SA in particular puts attribution and share-alike obligations on derivative DESIGN.md files. MIT and CC0 are usually safe for any project, while CC-BY and CC-BY-SA may not fit the project's license posture. The user sees the license before merging.

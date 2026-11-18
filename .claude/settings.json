@@ -93,7 +93,16 @@
       "Bash(varlock printenv*)",
       "Bash(varlock reveal*)",
       "Bash(bunx varlock printenv*)",
-      "Bash(bunx varlock reveal*)"
+      "Bash(bunx varlock reveal*)",
+      "Bash(git restore .)",
+      "Bash(git restore -- .)",
+      "Bash(git checkout -- .)",
+      "Bash(git checkout .)",
+      "Bash(git stash)",
+      "Bash(git stash push)",
+      "Bash(git clean -f *)",
+      "Bash(git clean -xfd *)",
+      "Bash(git clean -fdx *)"
     ],
     "ask": []
   },
@@ -165,6 +174,13 @@
     "pr": ""
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["context7", "tavily", "supabase", "n8n", "playwright", "dbhub"],
+  "enabledMcpjsonServers": [
+    "context7",
+    "tavily",
+    "supabase",
+    "n8n",
+    "playwright",
+    "dbhub"
+  ],
   "cleanupPeriodDays": 30
 }

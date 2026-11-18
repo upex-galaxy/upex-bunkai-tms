@@ -31,8 +31,8 @@
     "format:fix": "prettier --write '**/*.{json,yml,yaml,css,scss,html}' --ignore-path .prettierignore",
     "format:check": "prettier --check '**/*.{json,yml,yaml,css,scss,html}' --ignore-path .prettierignore",
     "lint:check": "eslint .",
-    "lint:fix": "eslint --fix .",
-    "types:check": "tsc --noEmit",
+    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslintcache --fix .",
+    "types:check": "bun check",
     "types:gen": "bun scripts/gen-supabase-types.ts",
     "db:qa-roles": "bun scripts/provision-qa-roles.ts",
     "release:check": "bun scripts/check-release-readiness.ts",
@@ -67,7 +67,12 @@
     "vars:schema": "bun scripts/env-schema.ts",
     "vars:schema:check": "bun scripts/env-schema.ts --check",
     "worktree:audit": "bun scripts/worktree-audit.ts",
-    "worktree:provision": "bun scripts/provision-worktree.ts"
+    "worktree:provision": "bun scripts/provision-worktree.ts",
+    "guard:example:check": "cd packages/guard-example && bunx eslint --max-warnings 0 src && bunx tsc -p tsconfig.json && bun ../../scripts/guard-manifest.ts --root src/features --check --out guard-manifest.json && cd ../.. && bun test --preload ./packages/guard-example/test-setup.ts packages/guard-example",
+    "guard:manifest": "bun scripts/guard-manifest.ts",
+    "guard:manifest:check": "bun scripts/guard-manifest.ts --check",
+    "lint:cached": "eslint --cache --cache-location node_modules/.cache/eslint/.eslintcache .",
+    "oxlint:check": "oxlint -c .oxlintrc.json"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
@@ -124,7 +129,8 @@
     "prettier": "^3.7.4",
     "tailwindcss": "^3.4",
     "typescript": "^5.9.3",
-    "varlock": "1.20.0"
+    "varlock": "1.20.0",
+    "oxlint": "1.94.0"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

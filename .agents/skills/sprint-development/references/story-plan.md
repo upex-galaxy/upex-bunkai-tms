@@ -1,54 +1,50 @@
-Actúa como Senior Full-Stack Developer + UI/UX Designer.
+# Story implementation plan
 
----
+Stage 1 turns one Story and its Acceptance Test Plan into the plan a developer follows in Stage 2. You write the plan in the session, push it to the Story's Jira field, sync it back and read the materialized file. Only the block between the `plan-body` markers is published, so everything outside it is guidance for the author.
 
-## Custom field resolution — slug-based, never hardcoded
+## Jira fields and tools
 
-Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO viven en este skill. Esta metodología resuelve cada campo en runtime vía `{{jira.<slug>}}` contra el catálogo canónico en `.agents/jira-required.yaml`. El AI runtime resuelve el slug → ID numérico vía `.agents/jira-fields.json` (poblado por `bun run jira:sync-fields`). Si un slug no existe en el workspace de destino, el catálogo declara el fallback y `bun run jira:check` warnea.
+Jira field ids differ per workspace, so this skill never carries them. Each field resolves at runtime through `{{jira.<slug>}}` against the catalog in `.agents/jira-required.yaml`; the slug-to-id map is `.agents/jira-fields.json`, filled by `bun run jira:sync-fields`. When a slug does not exist in the target workspace, the catalog declares the fallback and `bun run jira:check` warns.
 
-**Slugs que este workflow lee/escribe** (semántica de cada campo):
+This workflow uses two slugs:
 
-- `{{jira.acceptance_test_plan}}` — Acceptance Test Plan (Story-level Textarea). Fuente de los escenarios de aceptación que la implementación debe cubrir. Solo lectura desde este flujo.
-- `{{jira.spec_implementation_plan}}` — Spec Implementation Plan (Story-level Textarea). Plan técnico generado por este flujo y publicado a la Story.
+- `{{jira.acceptance_test_plan}}` is the Story-level Textarea holding the acceptance scenarios the implementation must cover. This workflow only reads it.
+- `{{jira.spec_implementation_plan}}` is the Story-level Textarea where this workflow publishes the technical plan.
 
-**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `.agents/instructions/agent-tool-resolution.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.agents/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
+Every Jira read or write is written as `[ISSUE_TRACKER_TOOL]` pseudo-code, and the runtime picks the tool from the table in `.agents/instructions/agent-tool-resolution.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). The operation-to-tool matrix is in `.agents/skills/product-management/references/jira-operations.md`, and the two known rich-text (ADF) publishing bugs are in `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
 
----
+## Inputs
 
-**Input:**
+- Story: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}/story.md`
+- Acceptance Test Plan (ATP), a planning-stage artifact. Read it in full, always through the sync, never with `view`. It branches on the modality resolved in planning:
+  1. jira-native: the ATP lives in `{{jira.acceptance_test_plan}}` on the Story. Run `bun run jira:sync-issues get <STORY_KEY> --include-comments`, then read `acceptance-test-plan.md` in the Story folder (when the field is absent the sync writes a stub pointing at the fallback comment) and `comments.md` (look for "Test Case", "TC-", "Scenario:" or test-case tables).
+  2. jira-xray: the ATP is the description of a `Test Plan` issue linked to the Story. Run `bun run jira:sync-issues get <ATP_KEY>`, which writes `.context/PBI/test-plans/TESTPLAN-<ATP_KEY>-<slug>.md`, and read that. Take `<ATP_KEY>` from the "tests" or "is tested by" link in `story.md` or `comments.md`. Use the Test Plan key, never the Story key, because the ATP body is in the Test Plan.
+  3. Last fallback: `comments.md` or the issue description, where the `## Acceptance Test Plan` fallback comment lands when the custom field is absent (per `.agents/jira-required.yaml`).
+- Feature Implementation Plan: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}/feature-implementation-plan.md`, which the sync materializes from the Epic's `{{jira.feature_implementation_plan}}` field.
+- Relevant SRS: the matching sections of `.context/SRS/`. Without an SRS, use the business-map sections named in `../SKILL.md` under "Product docs: PRD/SRS or business maps".
+- Design system: `DESIGN.md` (tokens and visual personality) and, for stories with UI, `.context/design/master-design-plan.md` §8 (US-to-screen row), then §4 (screen spec), plus the mockup in `.context/designs/` (Critical Rule #14).
 
-- Story: [usar .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/story.md]
-- **Acceptance Test Plan (artefacto de la fase de planning):** Es una lectura DETALLADA, así que SIEMPRE se materializa primero vía sync, nunca se lee por `view`. Ramifica por modalidad (resuelta en planning):
-  1. **Modality jira-native** — ATP vive en el campo `{{jira.acceptance_test_plan}}` de la Story: `bun run jira:sync-issues get <STORY_KEY> --include-comments` materializa el campo + comentarios; lee `.context/PBI/epics/.../stories/.../acceptance-test-plan.md` (si el campo está ausente la sync emite un stub apuntando al comentario fallback) y `comments.md` (para "Test Case", "TC-", "Scenario:", o tablas de test cases).
-  2. **Modality jira-xray** — ATP vive en un issue `Test Plan` enlazado a la Story (su `description` contiene el cuerpo del ATP): `bun run jira:sync-issues get <ATP_KEY>` materializa `.context/PBI/test-plans/TESTPLAN-<ATP_KEY>-<slug>.md`; léelo. El `<ATP_KEY>` sale del enlace "tests" / "is tested by" de la Story (visible en `story.md` / `comments.md`). NUNCA uses `get <STORY_KEY>` para leer un ATP de Xray.
-  3. **Fallback final**: `comments.md` / la descripción de la issue — ahí cae el comentario fallback `## Acceptance Test Plan` cuando el custom field está ausente (per `.agents/jira-required.yaml`).
-- Feature Implementation Plan: [usar .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/feature-implementation-plan.md — materializado por la sync desde el campo `{{jira.feature_implementation_plan}}` del Epic]
-- SRS relevante: [usar secciones relacionadas de .context/SRS/; sin SRS, las secciones de los mapas de negocio que nombra `../SKILL.md` → "Product docs: PRD/SRS or business maps"]
-- **Design System:** [usar `DESIGN.md` (tokens y personalidad visual) y, en stories con UI, `.context/design/master-design-plan.md` §8 (fila US→Screen) → §4 (spec de pantalla) + el mockup en `.context/designs/` (Critical Rule #14)]
+Jira is the source of truth for the ATP. Its scenarios are what the implementation has to cover, so each one maps to an implementation step through that step's **Covers** line, and none is skipped. QA always delivers the ATP and the shift-left handoff comment; read both as QA's test intent. A missing ATP does not block: leave QA a comment on the Story and continue.
 
-**⚠️ IMPORTANTE - Jira es la fuente de verdad para el Acceptance Test Plan:**
-Los escenarios del Acceptance Test Plan (definidos durante la fase de planning) son los que la implementación DEBE cubrir. Cada escenario debe mapearse a un step de implementación (línea **Covers** del step) para garantizar cobertura completa. NO omitir ninguno.
+## Authoring flow
 
-**Autor del plan → Jira → sync → lee.** NO escribas a mano `implementation-plan.md`. Es un archivo `[SYNC]` (read-only cache): redacta el plan en sesión, publícalo al campo `{{jira.spec_implementation_plan}}` de la Story (o comentario fallback per `.agents/jira-required.yaml`), corre `bun run jira:sync-issues get <STORY_KEY> --include-comments`, y lee el `implementation-plan.md` materializado en `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/`. El cuerpo del plan sigue el esqueleto de abajo.
+Write the plan in the session, push it to `{{jira.spec_implementation_plan}}` on the Story (or to the fallback comment, per `.agents/jira-required.yaml`), run `bun run jira:sync-issues get <STORY_KEY> --include-comments`, and read the materialized `implementation-plan.md` under `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}/`. That file is a `[SYNC]` read-only cache, so it is never hand-written. The body follows the skeleton below.
 
----
+## How to write the plan (these notes are not published)
 
-## Cómo escribir el plan (estas reglas NO se publican)
+Copying any of this into the body spends Jira budget (see "Size budget" below) and gives the reviewer nothing.
 
-Lo que se publica es solo el cuerpo entre los marcadores `plan-body`. Todo lo de esta sección guía la redacción y se queda en el skill: copiarlo al cuerpo gasta presupuesto de Jira (ver "Presupuesto de tamaño" abajo) sin darle nada al revisor.
-
-- **Verificar antes de decidir.** Si el enfoque usa librerías externas, consultá Context7 MCP para confirmar que los métodos y hooks existen en la versión del proyecto (ej.: Supabase Auth, React Query, Next.js App Router). Si el proyecto usa shadcn/ui, buscá en shadcn MCP antes de planear un componente nuevo (dialog, form, data-table). El plan registra el enfoque elegido, no la consulta.
-- **Promoción a ADR.** Las decisiones del plan son story-local (qué hook, qué componente, un trade-off de un archivo). Si una pasa el **doble filtro** (arquitectónica Y difícil de revertir: toca muchos archivos, migra datos o impone un invariante cross-cutting), promovela a `ADR-NNNN-<slug>.md` en `.context/ADR/` y dejá en el plan solo el backlink (`See ADR-NNNN`). Detección + procedimiento: `agentic-dev-core/references/adr-doctrine.md`; template + lifecycle: `.context/ADR/README.md`. Estado: una decisión que el humano ya aprobó (plan aprobado, respuesta en el chat, deck de decisiones) va `Accepted`, citando dónde se aprobó; solo una pregunta todavía abierta va `Proposed`.
-- **Tipos del backend.** Los componentes importan los tipos por donde la app ya los expone (greenfield: `@/lib/types`, derivados de `{{stack.database.types_path}}`; alias de la app: `{{stack.conventions.import_alias}}`), las props se tipan con ellos, el mock data cumple su estructura y los schemas de Zod usan `z.infer<>`. El plan nombra los tipos que usa y los que crea; no pega el código.
-- **UI.** Aplica Critical Rule #14 (`AGENTS.md`): la UI viva es la referencia, el mockup es inspiración; inspeccioná y reutilizá los componentes existentes y nunca inventes UI. La personalidad visual (bordes, sombras, espaciado, hover) y la paleta ya están congeladas en `DESIGN.md`: el plan no las repite. Un diagrama ASCII de layout entra solo cuando no hay mockup que citar.
-- **Copy real.** Los textos salen del vocabulario de `.context/business/domain-glossary.md` y del PRD (`executive-summary.md`, `user-personas.md`), con el tono del producto; sin PRD, del glosario y del copy que la UI viva ya usa. Nada de frases genéricas ("Bienvenido a nuestra plataforma", "La mejor solución para...").
-- **Base de datos.** El plan describe los cambios de schema; no incluye SQL estático. El cambio se aplica durante la implementación por el DB MCP según `{{stack.database.migrations_tool}}`, después de leer el historial de migraciones por el mismo MCP (`agentic-dev-core/references/db-change-doctrine.md`); una story sin cambios de base de datos no necesita la capability `db`. Sin MCP en una story que sí la necesita: STOP per `agentic-dev-core/references/mcp-capabilities.md` §4.
-- **Steps.** Específicos y ejecutables, cada uno con su testing y su estimación; la suma coincide con los story points de `story.md`. El último step integra y corre el escenario E2E completo.
-- **Lo que no va en el cuerpo.** El Definition of Done genérico vale para toda story y lo verifican Stage 2-4 de `/sprint-development`; el plan lista solo los checks propios de esta story. Genérico: código según el plan; todos los AC pasando; tipos del backend sin type errors; personalidad de `DESIGN.md` y copy del dominio aplicados; middleware actualizado si hay rutas privadas nuevas; tests unitarios (cobertura según `unit-testing/references/test-coverage.md`: metas por tipo de código, piso y no meta), de integración y E2E (los TC del ATP) pasando; lint, build y TypeScript limpios; code review aprobado; deploy a staging con smoke test en desktop y mobile. Lo que ya dice el Feature Implementation Plan del Epic se enlaza, no se repite.
-- **Detalle de trabajo.** Specs largas de componentes, payloads de API o notas de schema que solo sirven para implementar van a `.session/sprint-development/<STORY_KEY>/notes.md` (notas de trabajo locales; esta skill nunca escribe un `plan.md` bajo `.session/`, ver `agentic-dev-core/references/session-management.md` §13); nada que el revisor necesite puede vivir solo ahí.
-- **Forma.** Una sección que no aplica se omite, no se publica vacía. Listas cortas antes que tablas o paneles: en ADF una tabla cuesta varias veces lo que cuesta la misma información en lista, así que una tabla entra solo cuando reemplaza varias listas paralelas, y un panel `[!WARNING]` solo para un riesgo que bloquea (`../../acli/references/adf-authoring-style.md`).
-
----
+- Verify before deciding. When the approach uses an external library, check Context7 MCP that the methods and hooks exist in the project's version (Supabase Auth, React Query, Next.js App Router). When the project uses shadcn/ui, search the shadcn MCP before planning a new component (dialog, form, data-table). The plan records the chosen approach, not the lookup.
+- Name the test seams in Technical Decisions: the few points where the story will be tested, preferring seams the codebase already has and the highest one that works. Stage 2 hands them to `/unit-testing`, and no test is written at a seam the plan did not name: when the code turns out to need one, add it to the plan first. The plan author, a person or the agent, picks the seams and nobody confirms them; the plan carries the choice.
+- ADR promotion. Plan decisions are story-local (which hook, which component, a one-file trade-off). A decision that passes the three-gate test in `agentic-dev-core/references/adr-doctrine.md` §1 (architectural first, then hard to reverse, surprising without context, and a real trade-off) goes to `ADR-NNNN-<slug>.md` in `.context/ADR/`, and the plan keeps only the backlink (`See ADR-NNNN`). The template and lifecycle are in `.context/ADR/README.md`. A decision the human already approved (approved plan, chat answer, decision deck) is written `Accepted` and cites where it was approved. Only a still-open question is `Proposed`.
+- Backend types. Components import types where the app already exposes them (greenfield: `@/lib/types`, derived from `{{stack.database.types_path}}`; the app's alias is `{{stack.conventions.import_alias}}`), props are typed with them, mock data matches their shape and Zod schemas use `z.infer<>`. The plan names the types it uses and the ones it creates, and does not paste code.
+- UI follows Critical Rule #14 (`AGENTS.md`): the live UI is the reference and the mockup is inspiration, so inspect and reuse existing components and never invent UI. Visual personality (borders, shadows, spacing, hover) and the palette are frozen in `DESIGN.md`, and the plan does not repeat them. An ASCII layout diagram belongs in the plan only when there is no mockup to cite.
+- Real copy. Texts come from the vocabulary in `.context/business/domain-glossary.md` and the PRD (`executive-summary.md`, `user-personas.md`), in the product's tone. Without a PRD, use the glossary and the copy the live UI already has. Generic lines such as "Welcome to our platform" or "The best solution for..." say nothing about this product.
+- Database. The plan describes schema changes and includes no static SQL. The change is applied during implementation through the DB MCP according to `{{stack.database.migrations_tool}}`, after reading the migration history through the same MCP (`agentic-dev-core/references/db-change-doctrine.md`). A story without database changes does not need the `db` capability. A story that does need it, with no MCP available, stops per `agentic-dev-core/references/mcp-capabilities.md` §4.
+- Steps are specific and executable, each with its testing, and carry no time or point estimate (effort is the AI Effort QA set in `story.md`). The last step integrates and runs the full E2E scenario.
+- Leave the generic Definition of Done out of the body. It applies to every story and Stages 2 to 4 of `/sprint-development` verify it: code per the plan, all ACs passing, backend types without type errors, `DESIGN.md` personality and domain copy applied, middleware updated for new private routes, unit tests (coverage per `unit-testing/references/test-coverage.md`, where the targets are a floor and not a goal), integration and E2E tests (the ATP's TCs) passing, lint, build and TypeScript clean, code review approved, and a staging deploy with a smoke test on desktop and mobile. The plan lists only this story's own checks, and links what the Epic's Feature Implementation Plan already says.
+- Long component specs, API payloads and schema notes that only help implementation go to `.session/sprint-development/<STORY_KEY>/notes.md`, a local working note. This skill never writes a `plan.md` under `.session/` (`agentic-dev-core/references/session-management.md` §13), and nothing the reviewer needs may live only in the notes.
+- Omit a section that does not apply instead of publishing it empty. Prefer short lists to tables or panels, because in ADF a table costs several times what the same information costs as a list. A table earns its place when it replaces several parallel lists, and a `[!WARNING]` panel only for a risk that blocks (`../../acli/references/adf-authoring-style.md`).
 
 <!-- plan-body:start -->
 
@@ -56,119 +52,116 @@ Lo que se publica es solo el cuerpo entre los marcadores `plan-body`. Todo lo de
 
 ## Overview
 
-[Qué se implementa, en 1-2 oraciones.]
+[What gets implemented, in 1-2 sentences.]
 
 **Acceptance Criteria:** [AC 1]; [AC 2]; [AC 3]
 
 ## Technical Approach
 
-- **Chosen:** [enfoque técnico]
-- **Alternatives:** [A]: [por qué no]; [B]: [por qué no]
-- **Trade-off:** [lo que se cede]
+- **Chosen:** [technical approach]
+- **Alternatives:** [A]: [why not]; [B]: [why not]
+- **Trade-off:** [what is given up]
 
 ## UI/UX
 
-- **Screen:** [fila §8 → spec §4 / ruta del mockup, o "DESIGN.md-only"]
-- **Reused components:** [componente: uso]
-- **New components:** [Nombre (`components/<domain>/<name>.tsx`)]: [propósito; props principales]
-- **States:** loading [cómo], empty [mensaje + CTA], error [mensaje + retry], success [vista]
-- **Validation:** [campo]: [regla] → "[mensaje]"
-- **Responsive:** mobile [ajuste], tablet [ajuste], desktop [layout completo]
-- **Copy:** [textos clave con vocabulario del dominio]
+- **Screen:** [§8 row, then §4 spec / mockup path, or "DESIGN.md-only"]
+- **Reused components:** [component: use]
+- **New components:** [Name (`components/<domain>/<name>.tsx`)]: [purpose; main props]
+- **States:** loading [how], empty [message + CTA], error [message + retry], success [view]
+- **Validation:** [field]: [rule], message "[text]"
+- **Responsive:** mobile [adjustment], tablet [adjustment], desktop [full layout]
+- **Copy:** [key texts in domain vocabulary]
 
 ## Types
 
-[Tipos del backend que usa (`Mentor` desde `@/lib/types`) y los que crea, con archivo.]
+[Backend types it uses (`Mentor` from `@/lib/types`) and the ones it creates, with file.]
 
 ## Implementation Steps
 
-### Step 1: [Nombre]
+### Step 1: [Name]
 
-- **Files:** `[ruta]`
-- **Task:** [qué cambia]
-- **Edge cases:** [caso]: [cómo se maneja]
+- **Files:** `[path]`
+- **Task:** [what changes]
+- **Edge cases:** [case]: [how it is handled]
 - **Covers:** [TC-001, AC 2]
-- **Testing:** [tipo]: [qué verifica]
-- **Estimate:** [tiempo]
+- **Testing:** [type]: [what it verifies]
 
-(un step por unidad de trabajo; el último integra y corre el E2E)
+(one step per unit of work; the last one integrates and runs the E2E)
 
 ## Technical Decisions
 
-- **[Decisión]:** [elegido], porque [razón]. Trade-off: [compromiso]. [See ADR-NNNN si se promovió]
+- **[Decision]:** [chosen], because [reason]. Trade-off: [what is given up]. [See ADR-NNNN if promoted]
+- **Test seams:** [where the story will be tested: existing seam or new, and why it is the highest that works]
 
 ## Dependencies
 
-- [ ] [Pre-requisito] [BLOCKER si falta]
+- [ ] [Prerequisite] [BLOCKER if missing]
 
 ## Risks
 
-- **[Riesgo]** (impact H/M/L): [mitigación]
+- **[Risk]** (impact H/M/L): [mitigation]
 
-## Estimate
+## AI Effort
 
-**Total:** [tiempo] · **Story points:** [N] (coincide con story.md)
+**AI Effort:** [Low | Medium | High | undefined] (set by QA in shift-left and read from `story.md`, or from the `## AI Effort` comment in `comments.md` when the field does not exist; the plan does not re-estimate it)
+
+- **If High:** note here (and in the PR description) that the story may be large and may be split. You may split your own work into small stacked PRs (reference: about 200 changed lines and 2 to 5 files per PR), but you still work the whole ticket. This is a notice only and never stops the story.
+- **If undefined:** carry on, note it here and, if you like, mention it to QA in the notification comment.
 
 ## Story-specific Done
 
-- [ ] [TC-001]: [nombre] pasa
-- [ ] [Check propio de esta story]
+- [ ] [TC-001]: [name] passes
+- [ ] [This story's own check]
 
 <!-- plan-body:end -->
 
----
+## Publishing to Jira
 
-**Output:** El cuerpo del plan se publica al campo `{{jira.spec_implementation_plan}}` de la Story; tras la sync queda materializado en .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/implementation-plan.md (read-only cache).
+The plan body is published to `{{jira.spec_implementation_plan}}`, and after the sync it is materialized as `implementation-plan.md` under the Story folder in `.context/PBI/` (read-only cache).
 
----
+| Slug (resolves through jira-required.yaml) | Name | Type | Level |
+| --- | --- | --- | --- |
+| `{{jira.spec_implementation_plan}}` | Spec Implementation Plan (Dev) | Textarea | Story |
 
-## 📤 SINCRONIZACIÓN CON JIRA (Condicional - UPEX Workspace)
+Before writing any rich-text field, read `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
 
-### Custom Field para Story Implementation Plan
+### Size budget
 
-| Slug (resuelve vía jira-required.yaml) | Nombre                           | Tipo     | Nivel |
-| -------------------------------------- | -------------------------------- | -------- | ----- |
-| `{{jira.spec_implementation_plan}}`    | Spec Implementation Plan (Dev)🛠️ | Textarea | Story |
+Jira Cloud cuts every rich-text value at 32,767 characters and counts the serialized ADF, not the Markdown. A plan converted to ADF measures several times its Markdown size, and tables, nested lists, panels and code blocks grow the most (measurements: `.context/ADR/ADR-0003-forensic-measurements-ledger.md`). So before publishing, to the field or to the fallback comment, convert and measure the complete body as it will be stored:
 
-### Instrucciones de Sincronización
+```bash
+bun .agents/skills/acli/scripts/md-to-adf.ts plan.md plan.adf.json
+jq -c . plan.adf.json | wc -m        # must stay at or under 30000
+```
 
-**Flujo: autor del plan en sesión → publicar al campo Jira → sync → leer el `.md` materializado.** El `implementation-plan.md` NO se escribe a mano; es un archivo `[SYNC]` (read-only cache) que la sync genera desde el campo Jira.
+Above 30,000, stop before writing. Propose which sections leave the plan and where they go, with what each move saves, and wait for the person's decision. The destinations at this level:
 
-1. **Verificar si la Story tiene el custom field:**
-   - Verificar si el slug `{{jira.spec_implementation_plan}}` resuelve a un campo presente en el workspace (vía `.agents/jira-fields.json` / `.agents/jira-required.yaml`).
+- Long example code leaves the plan: the plan names the file and symbol, and the code lives in the branch and the PR.
+- A hard-to-reverse architectural decision goes to an ADR (`.context/ADR/`) and the plan links it.
+- Context already in the Epic's Feature Implementation Plan is linked, not repeated.
+- A Story that still does not fit is too big: propose splitting it with `/product-management`.
 
-> Antes de escribir campos rich-text en Jira, leé `.agents/skills/product-management/references/jira-publishing-gotchas.md` para los dos bugs ADF conocidos y sus workarounds.
+A Jira rejection for length (`CONTENT_LIMIT_EXCEEDED`) is the same stop. Truncating, splitting the plan across two fields or two comments, and stripping the formatting to fit are all off the table, because each one hides lost content from the reviewer. Canonical rule: `.agents/skills/acli/SKILL.md` under "Size budget".
 
-> **Presupuesto de tamaño (bloqueante).** Jira Cloud corta cada valor rich-text en 32,767 caracteres y cuenta el **ADF serializado**, no el Markdown: el plan convertido mide varias veces lo que mide en Markdown, y las tablas, listas anidadas, paneles y bloques de código son lo que más crece (mediciones: `.context/ADR/ADR-0003-forensic-measurements-ledger.md`). Antes de publicar, en el campo o en el comentario fallback, convertí y medí el cuerpo COMPLETO tal como va a quedar guardado:
->
-> ```bash
-> bun .agents/skills/acli/scripts/md-to-adf.ts plan.md plan.adf.json
-> jq -c . plan.adf.json | wc -m        # debe quedar en 30000 o menos
-> ```
->
-> Más de 30,000 → **STOP antes de escribir.** Proponé qué secciones salen del plan y a dónde van, con lo que ahorra cada movimiento, y esperá la decisión del usuario. Destinos de este nivel: código de ejemplo largo sale del plan (el plan nombra archivo y símbolo; el código vive en la rama y el PR); una decisión arquitectónica difícil de revertir va a un ADR (`.context/ADR/`) y el plan la enlaza; el contexto que ya está en el Feature Implementation Plan del Epic se enlaza, no se repite; una Story que sigue sin entrar es una Story demasiado grande: proponé partirla con `/product-management`. Un rechazo de Jira por longitud (`CONTENT_LIMIT_EXCEEDED`) es el mismo STOP. Nunca truncar, nunca partir el plan en dos campos o dos comentarios, nunca quitar el formato para que entre. Las secciones de la plantilla que no aplican a este plan se omiten, no se publican vacías. Regla canónica: `.agents/skills/acli/SKILL.md` → "Size budget" (T5).
+With nobody at the keyboard, a supervised worker sends the proposal to its conductor and waits for the answer. A routine, `/autonomous-delivery` included, applies the destinations above in order of what each saves, reports the call as `DECIDED:` with the option it beat, and publishes the shortened plan. When the plan still does not fit, splitting the Story is a product call: write no value to the field, log the measured sizes in the run's escalation log and report that this Story's plan does not fit (`acli` "With nobody at the keyboard", `agentic-dev-core/references/decision-protocol.md`).
 
-2. **Si el campo existe:**
-   - Publicar el cuerpo COMPLETO del plan al campo `{{jira.spec_implementation_plan}}` de la Story vía `[ISSUE_TRACKER_TOOL]` (escritura de custom field).
-   - Agregar label: `implementation-plan-ready`.
+### Steps
 
-3. **Si el campo NO existe en el workspace:**
-   - Resolver el fallback declarado en `.agents/jira-required.yaml` para el slug `spec_implementation_plan`.
-   - Si no existe ningún campo equivalente, publicar el plan como **comentario** estructurado en la Story vía `[ISSUE_TRACKER_TOOL]` (crear comentario), encabezado `## Spec Implementation Plan (Dev)`:
+1. Check that the Story has the field: confirm the slug `{{jira.spec_implementation_plan}}` resolves to a field present in the workspace (through `.agents/jira-fields.json` and `.agents/jira-required.yaml`).
+2. When the field exists, publish the complete plan body to `{{jira.spec_implementation_plan}}` on the Story with `[ISSUE_TRACKER_TOOL]` (custom-field write), and add the label `implementation-plan-ready`.
+3. When the field does not exist, resolve the fallback `.agents/jira-required.yaml` declares for the slug `spec_implementation_plan`. When there is no equivalent field either, publish the plan as a structured comment on the Story with `[ISSUE_TRACKER_TOOL]` (create comment), headed `## Spec Implementation Plan (Dev)`:
 
-     ```
-     ## Spec Implementation Plan (Dev)
+   ```
+   ## Spec Implementation Plan (Dev)
 
-     [cuerpo completo del plan]
-     ```
+   [complete plan body]
+   ```
 
-4. **Materializar y leer:**
-   - Correr `bun run jira:sync-issues get <STORY_KEY> --include-comments`.
-   - Leer el `implementation-plan.md` generado bajo `.context/PBI/epics/.../stories/.../` (read-only cache). Si el campo estaba ausente, la sync emite un stub apuntando al comentario fallback.
+4. Run `bun run jira:sync-issues get <STORY_KEY> --include-comments` and read the generated `implementation-plan.md` under `.context/PBI/epics/.../stories/.../` (read-only cache). When the field was absent, the sync writes a stub pointing at the fallback comment.
 
-### Output Esperado
+### Done when
 
-- [ ] Cuerpo del plan publicado al campo `{{jira.spec_implementation_plan}}` de la Story (si el slug resuelve a un campo presente) o al comentario fallback `## Spec Implementation Plan (Dev)`
-- [ ] Tamaño del cuerpo medido como ADF serializado antes de publicar: `{N} / 30,000` (o STOP con la propuesta de qué secciones se mueven)
-- [ ] Label `implementation-plan-ready` agregado a la Story
-- [ ] `bun run jira:sync-issues get <STORY_KEY> --include-comments` ejecutado; `implementation-plan.md` materializado y leído
+- [ ] The plan body is published to `{{jira.spec_implementation_plan}}` on the Story (when the slug resolves to a present field) or to the fallback comment `## Spec Implementation Plan (Dev)`.
+- [ ] The body's serialized ADF size was measured before publishing: `{N} / 30,000` (or the stop with the proposal of which sections move).
+- [ ] The label `implementation-plan-ready` is on the Story.
+- [ ] `bun run jira:sync-issues get <STORY_KEY> --include-comments` ran, and `implementation-plan.md` is materialized and read.

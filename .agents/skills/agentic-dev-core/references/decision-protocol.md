@@ -1,16 +1,11 @@
-# Decision Protocol — decide the technical call, escalate the rest
+# Decision protocol: decide the technical call, escalate the rest
 
-> Cited by: workflow skills' `## Compact Rules`. Pairs with `./orchestration-doctrine.md` (who executes
-> what) and `./dispatch-patterns.md` (how to fan work out). This file governs **who decides**, not who
-> runs the work.
+> Cited by the compact rules of the workflow skills. Pairs with `./orchestration-doctrine.md` (who executes
+> what) and `./dispatch-patterns.md` (how to fan work out). This file governs who decides, not who runs the work.
 
-**Default posture: a technical decision is the agent's to make.** Stopping to ask is the exception, and
-it is reserved for four categories named in §5. An agent that escalates a technical call it was equipped
-to settle has not been careful — it has moved its own work onto the human's queue and stalled everything
-downstream of it.
-
-But autonomy is not the same as improvisation. Deciding well means deciding **in the order below**, and
-the order is the entire point of this file.
+A technical decision is the agent's to make. Stopping to ask is the exception, kept for the four categories in
+§5: an agent that escalates a call it was equipped to settle stalls everything downstream of it. Autonomy is
+not improvisation, though, so decide in the order below. The order is the point of this file.
 
 ---
 
@@ -31,211 +26,208 @@ the order is the entire point of this file.
      6. WRITE IT DOWN  <───────────────┘
 ```
 
-Reversing steps 1 and 4 is the failure this protocol exists to prevent. A scoring panel run as the FIRST
-step reasons well from scratch and produces a confident, well-argued answer that **overwrites a decision
-the project already made**. Good reasoning applied to a settled question is not a second opinion; it is a
-second, contradictory rule, with nothing marking which one governs.
+Running the panel before the search is the failure this protocol exists to prevent. A panel reasons well from
+scratch and returns a confident answer that overwrites a decision the project already made. That is a second,
+contradictory rule, and nothing marks which one governs.
 
 ---
 
-## 2. Step 1 — search the record first
+## 2. Search the record first
 
-Before deciding anything, before dispatching anything, and before drafting a question for the human,
-establish whether the question is already answered. Search, in this order:
+Before you decide, dispatch or draft a question for the human, find out whether the question is already
+answered. Search in this order:
 
-1. **The run's escalation / decision log**, if the workflow keeps one. Read it in full, not a skim at
-   session start. Prior rulings accumulate; the one that governs you may have been written an hour ago
-   by a peer session you never saw.
-2. **Architecture Decision Records.** A settled invariant lives here precisely so it is not re-derived.
-3. **The work queue / board and the ticket itself** — plus its siblings and its parent. A ruling made on
-   a sibling ticket routinely governs yours, because the thing being decided is usually a property of the
-   batch, not of the ticket.
-4. **Tracker comments and handoff notes** on the ticket and its blockers.
-5. **The skill's own reference tree** for the stage you are in.
+1. The run's escalation and decision log, if the workflow keeps one. Read it in full: the governing ruling may
+   be an hour old and written by a peer session you never saw.
+2. Architecture Decision Records. A settled invariant lives there so nobody re-derives it.
+3. The work queue and the ticket itself, plus its siblings and its parent. A ruling on a sibling usually
+   governs yours, since the thing being decided is often a property of the batch.
+4. Tracker comments and handoff notes on the ticket and its blockers.
+5. The skill's own reference tree for the stage you are in.
 
-Search for the shape of the question, not its wording. "Which branch shape do I use" and "how do we
-execute a chain" are the same question and will not match the same grep.
+Search for the shape of the question, not its wording: "which branch shape do I use" and "how do we execute a
+chain" are the same question and will not match the same grep.
 
-**A prior decision found here outranks your own fresh reasoning about the same question**, including
-reasoning you have not done yet. This is not deference to authority; it is that a project with two
-well-argued contradictory answers to one question is worse off than a project with one adequate answer.
+A prior decision found here outranks your own fresh reasoning about the same question, including reasoning you
+have not done yet. Two well-argued contradictory answers leave a project worse off than one adequate answer.
 
 ---
 
-## 3. Step 2 — if settled, follow it
+## 3. If settled, follow it
 
-Apply the decision. Do not re-derive it, do not "sanity-check" it by re-running the analysis, and do not
-ask anyone to reconfirm it. Cite it in your plan or report so the next reader sees the same chain.
+Apply the decision and cite it in your plan or report so the next reader sees the same chain. Do not re-derive
+it, sanity-check it by re-running the analysis, or ask anyone to reconfirm it.
 
-**Asking a fresh question about a settled matter is itself the defect**, even when you ask a human. A
-human asked cold, without being shown the existing ruling, answers from the same blank slate you would
-have — and their answer carries more apparent authority while resting on less context. A reply obtained
-that way is an uninformed re-ask, not an informed override, and it does not supersede anything.
+Asking a fresh question about a settled matter is itself the defect, even of a human. A human asked cold, without
+the ruling in front of them, answers from the same blank slate you would have, with more apparent authority and
+less context. That reply is an uninformed re-ask, and it supersedes nothing.
 
-If you believe the settled decision is genuinely wrong, that is a **supersession**, and it is explicit:
+If you believe the settled decision is wrong, that is a supersession, and it is explicit:
 
 - Name the prior decision by its date and heading.
-- State what changed or what the original missed — new evidence, not a fresh preference.
-- Get it decided under §4 or §5 as appropriate to its category.
-- Record the supersession in the same artifact as the original, referencing it. Append; never rewrite or
-  delete the prior entry. The history of a reversal is as load-bearing as the reversal.
+- State what changed or what the original missed. New evidence counts; a fresh preference does not.
+- Get it decided under §4 or §5, whichever fits its category.
+- Record the supersession in the same artifact as the original and reference it. Append; never rewrite or
+  delete the prior entry, because the history of a reversal is as load-bearing as the reversal.
 
-A silent second answer is not a supersession. It is a contradiction.
+A silent second answer is a contradiction, not a supersession.
 
 ---
 
-## 4. Step 3 — if genuinely novel and technical, decide it yourself
+## 4. If novel and technical, decide it yourself
 
-Unsettled, and not in §5? Decide it. For a call that is close, consequential, or hard to reverse, run a
-**scored judge panel** rather than picking on instinct.
+Unsettled and outside §5 means the call is yours. When it is close, consequential or hard to reverse, run a
+scored judge panel instead of picking on instinct.
 
-**Shape.** Dispatch independent subagents in **Parallel** per `./dispatch-patterns.md` gate 3, each with
-the standard 7-component briefing. Give every panelist the same options and the same evidence, and a
-**different lens**. Panelists do not confer, do not see each other's output, and do not choose — they
-score and justify. You adjudicate. This preserves `dispatch-patterns.md`'s "don't delegate planning": the
-panel supplies evaluations, the deciding agent supplies the decision.
+Dispatch independent subagents in Parallel per `./dispatch-patterns.md` gate 3, each with the standard
+7-component briefing. Every panelist gets the same options and evidence and a different lens. Panelists do not
+confer, see each other's output or choose; they score and justify, and you adjudicate. That keeps
+`dispatch-patterns.md`'s "don't delegate planning" intact: the panel evaluates and the deciding agent decides.
 
-**Panel size: 3 to 5.** Below 3 there is no spread to read. Above 5 the lenses start overlapping and you
-pay fan-out cost for correlated answers. Use 3 for a decision that is reversible within the current
-stage, 5 when it sets a precedent others will follow.
+Use 3 panelists when the decision is reversible within the current stage and 5 when it sets a precedent. Below 3
+there is no spread to read, and above 5 the lenses overlap.
 
-**Lens selection — pick from the axes the decision actually loads**, not a fixed list. Useful ones:
+Pick the lenses from the axes this decision loads, not from a fixed list:
 
 | Lens | Asks |
 | --- | --- |
-| Purpose fidelity | Does the option serve the reason the rule/gate exists, or only its letter? |
-| Failure resilience | What survives if this session dies mid-way, the step is retried, or it lands half-done? |
+| Purpose fidelity | Does the option serve the reason the rule or gate exists, or only its letter? |
+| Failure resilience | What survives if this session dies midway, the step is retried or it lands half done? |
 | Blast radius | What breaks if this is wrong, and how far does the damage reach? |
 | Reversibility | What does undoing this cost tomorrow, next week, after it has dependents? |
 | Precedent load | What is everyone downstream now obliged to do, having seen this? |
-| Track record | What has this project actually observed with each option? Weight lightest — it reflects sample size more than merit. |
+| Track record | What has this project observed with each option? Weight it lightest, since it reflects sample size more than merit. |
 
-Choose the 3 to 5 that bear on THIS decision. A lens that returns the same score for every option is
-telling you it does not apply; drop it rather than pad the panel.
+Drop a lens that scores every option the same; it does not apply. Each panelist scores every option on its axis
+(a fixed scale such as /10) with a one-paragraph justification per score, and the highest total wins. Two
+caveats matter more than the arithmetic:
 
-**Scoring.** Each panelist scores every option on its axis (a fixed scale, e.g. /10) with a one-paragraph
-justification per score. Highest total wins. Two caveats that matter more than the arithmetic:
+- State the weighting before you read the scores, naming which axes dominate and why. An unweighted sum treats
+  reversibility and track record as equally important.
+- A near-tie is a real result. When the top two land within noise, say so and pick on the dominant axis
+  instead of manufacturing a decisive-looking margin. Record it as close, so a later supersession knows it is
+  pushing on a weak decision.
 
-- **State the weighting before you read the scores**, and say which axes dominate and why. An unweighted
-  sum silently treats "reversibility" and "track record" as equally important.
-- **A near-tie is a real result.** If the top two land within noise, say so and pick on the dominant axis
-  rather than manufacturing a decisive-looking margin. Record it as close, so a later supersession knows
-  it is pushing on a weak decision rather than a strong one.
-
-Then **record the decision and its scoring rationale** per §6 — including the axes, the weighting, and
-the losing option. The next agent needs to know what was already considered and rejected, or they will
+Then record the decision per §6, with the axes, the weighting and the losing option, so the next agent does not
 re-derive it and land somewhere else.
 
 ---
 
-## 5. Step 4 — escalate ONLY these
+## 5. Escalate only these
 
 Four categories, and they are exhaustive. Everything outside them is yours.
 
-1. **Product and business decisions.** What to build, what a feature should do, which behaviour is
-   correct for the user, scope changes, priority calls. **Product ambiguity in a requirement or an
-   acceptance criterion stops** — an AI-improvised answer to "what should this do" is a guess wearing a
-   decision's clothes. *Technical* ambiguity about how to build an agreed behaviour is §4 work, not this.
-2. **Security-relevant judgment calls not already covered by an existing rule.** Applying an established,
-   ratified security pattern to new code is implementation, not a decision — do it. Deciding a *new*
-   security posture, or accepting a risk nobody has accepted before, escalates.
-3. **Irreversible or destructive actions.** History rewrites, force pushes, deleting data or branches,
-   anything needing a `--force` / `--no-verify` style override, production actions with no rollback,
-   spending money, anything with external side effects that cannot be taken back.
-4. **Anything the operator explicitly reserved.** A standing instruction to be asked about a specific
-   class of thing outranks this file for that class.
+1. Product and business decisions: what to build, what a feature should do, which behaviour is correct for the
+   user, scope changes, priority calls. Product ambiguity in a requirement or acceptance criterion stops the
+   work, because an improvised answer to "what should this do" is a guess dressed as a decision. Technical
+   ambiguity about how to build an agreed behaviour is §4 work.
+2. Security judgment calls that no existing rule covers. Applying an established, ratified security pattern to
+   new code is implementation, so do it. Deciding a new security posture, or accepting a risk nobody has
+   accepted before, escalates.
+3. Irreversible or destructive actions: history rewrites, force pushes, deleting data or branches, anything
+   that needs a `--force` or `--no-verify` style override, production actions with no rollback, spending
+   money, and any external side effect that cannot be taken back.
+4. Anything the operator reserved. A standing instruction to be asked about a class of thing outranks this
+   file for that class.
 
-**When you do escalate, escalate informed.** Present what the record already says, the options with your
-scoring if you ran a panel, and your recommendation. Never ask a bare open question — that is how a human
-gets pulled into re-deciding something they already decided.
+When you escalate, escalate informed: what the record already says, the options with your scoring if you ran a
+panel, and your recommendation. A bare open question pulls a human into re-deciding something they already
+decided.
 
-**Pick the instrument by the weight of the ask, never the count**: small decisions (A or B, a default to
-confirm, a deferral), however many, are swept with the harness question tool; a heavy one (architecture, an
-implementation approach, a larger change, a tradeoff that does not fit in two sentences) goes to the `mkd`
-decision deck. The ladder, the sweep and who runs it, the deck's justification rules, the fallback when
-`mkd` is absent, and how to read the returned contract live in `./decision-elicitation-doctrine.md`. Who
-receives the escalation is §0 there: only the session the human types into asks the human; a session
-launched by another session escalates to its launcher, which relays.
+The instrument follows the weight of the ask, never the count: small decisions, however many, go to the sweep
+and a heavy one goes to the `mkd` decision deck. The ladder, the sweep, the deck rules and the fallback are in
+`./decision-elicitation-doctrine.md`. Who receives the escalation is §0 there: only the session the human types
+into asks the human, and a session launched by another session escalates to its launcher.
 
-### 5.1 Category 1 is configurable — but only by explicit opt-in
+### 5.1 Category 1 is configurable, by explicit opt-in
 
-Everything above is the default and is correct for any project with a human product owner. **Read
-`decision_authority.product` in `.agents/project.yaml`. If it is absent or `escalate`, §5 applies exactly
-as written and you can stop reading this subsection.**
+Read `decision_authority.product` in `.agents/project.yaml`. Absent or `escalate` means §5 applies as written
+and you can stop reading this subsection.
 
-A project may set `decision_authority.product: decide`. That declares there is **no human PO in the loop**
-— the product is specified and built end to end by AI — and it replaces category 1 only. Categories 2, 3
-and 4 still escalate, unchanged. Under `decide`:
+`decision_authority.product: decide` declares there is no human PO in the loop (the product is specified and
+built end to end by AI) and replaces category 1 only. Categories 2, 3 and 4 still escalate. Under `decide`:
 
-- An open product, business, functional, scope, UX-copy or design-intent question on a ticket is **work to
-  do, not a blocker**. It never waits for a human by default.
-- Search the record first, exactly as §2 requires. A published ruling that already governs the question is
-  followed and cited, never re-derived.
-- If it is genuinely unsettled, **dispatch a decision subagent** rather than escalating. Two profiles;
-  dispatch the one that fits, or both when the call is joint:
+- An open product, business, functional, scope, UX-copy or design-intent question on a ticket is work to do,
+  not a blocker. It does not wait for a human by default.
+- Search the record first, as §2 requires, and follow and cite any published ruling that governs the question.
+- If it is unsettled, dispatch a decision subagent instead of escalating: the profile that fits, or both when
+  the call is joint:
 
-  | Profile | Owns | Must read before deciding |
+  | Profile | Owns | Reads before deciding |
   | --- | --- | --- |
-  | `AI Product Owner / Business Analyst` | product, business, functional, scope, UX copy, design intent | the product-definition context (PRD / SRS / business docs, domain glossary), the design plan, the epic's sibling tickets, the ticket's own folder |
-  | `AI Tech Lead` | schema, index, API contract, auth model, performance, migration shape, integration architecture | the relevant ADRs, existing migrations, and the live code precedent |
+  | `Product Owner / Business Analyst (delegated)` | product, business, functional, scope, UX copy, design intent | the product-definition context (PRD, SRS, business docs, domain glossary), the design plan, the epic's sibling tickets, the ticket's own folder |
+  | `Tech Lead (delegated)` | schema, index, API contract, auth model, performance, migration shape, integration architecture | the relevant ADRs, existing migrations, and the live code precedent |
 
-- The subagent runs the **same scored method as §4** — 2 to 4 concrete candidate answers, scored against
-  explicit criteria, highest scorer wins, reasoning written out. A bare opinion is not a decision.
-- **Publish the ruling to the ticket under a heading that names the deciding profile**, e.g.
-  `## AI Product Owner — Decision: <question>`, then resync the tracker cache. Never style an AI ruling as
-  human sign-off and never leave one unattributed: a future run must be able to tell at a glance that the
-  answer came from the AI team, not from an undisclosed human.
-- **A published ruling that names concrete follow-on work is executed, not re-escalated.** Materializing a
-  decision someone already made is data entry against a settled question; asking who should do it is the
-  same failure as re-asking the question.
+- The subagent runs the same scored method as §4: 2 to 4 concrete candidate answers, scored against explicit
+  criteria, highest scorer wins, reasoning written out. A bare opinion is not a decision.
+- Publish the ruling to the ticket under a heading that names the authority, for example
+  `## Product decision (decision_authority.product: decide): <question>`, then resync the tracker cache. A future
+  run has to see that the ruling came from the delegated authority and not from a person, so it is never styled
+  as human sign-off and never left unattributed.
+- A published ruling that names concrete follow-on work is executed, not re-escalated. Materializing a decision
+  already made is data entry against a settled question.
 
-The wider grant is only safe because the rest of this file still applies in full: search first, score the
-alternatives, write it down. Do not read `decide` as permission to skip any of those.
+The wider grant is safe only because the rest of this file still applies: search first, score the alternatives,
+write it down.
+
+### 5.2 No person at the wheel
+
+Every wait for a person has three paths, and the path depends on who is running:
+
+- A person is present: ask after steps 1 to 4, informed, with the instrument `./decision-elicitation-doctrine.md`
+  §1 picks.
+- A supervised worker (launched by a conductor): send the §5 question to the launcher as a blocking `ask`, or
+  an `escalation`, per `./decision-elicitation-doctrine.md` §0, and keep working on what does not depend on
+  the answer. The conductor holds the gate.
+- A routine with nobody (`/autonomous-delivery`, an unattended automation, CI): technical calls are decided and
+  reported as DECIDED, with the option each one beat. A §5 question is neither asked nor assumed. Write it into
+  the run's escalation log (what happened, which category, what the person has to decide, what waiting costs
+  downstream), do the reversible work, stop before any outward or irreversible action (a push, a tracker
+  write, a message) and end the run cleanly. A brief from the launcher that covers the decision counts as the
+  approval. A routine never waits for a reply.
 
 ---
 
-## 6. Step 5 — write every decision down
+## 6. Write every decision down
 
-**A decision that is not recorded did not happen.** The next agent searches step 1, finds nothing, and
-re-asks — which is the loop this whole protocol exists to break.
-
-When the decision is made, not at the end of the session (a session that runs out of room cannot
-write up what it decided), append to **the artifact step 1 searches**:
+A decision that is not recorded did not happen: the next agent searches per §2, finds nothing and re-asks.
+Record it when it is made, not at the end of the session, because a session that runs out of room cannot write
+up what it decided. Append to the artifact §2 searches:
 
 - The question, in the shape a later agent would search for.
 - The decision, stated as an instruction someone can follow.
-- The rationale: the options considered, the axes, the weighting, why the loser lost.
+- The rationale: the options considered, the axes, the weighting and why the loser lost.
 - The scope and expiry: which tickets, which run, how long it stands, and whether a later effort should
-  re-derive it rather than inherit it.
-- Whether it **supersedes** an earlier entry, cited by date and heading.
+  re-derive it or inherit it.
+- Whether it supersedes an earlier entry, cited by date and heading.
 
-Append-only. New entries reference prior ones; they never rewrite them.
+The log is append-only. New entries reference prior ones and never rewrite them.
 
-If the decision is architectural AND hard to reverse, it is an ADR as well as a log entry — see
-`./adr-doctrine.md`. The log records that a call was made; the ADR records the invariant it created.
+If the decision passes the ADR test in `./adr-doctrine.md`, it is an ADR as well as a log entry. The log records
+that a call was made; the ADR records the invariant it created.
 
 ---
 
 ## 7. Observed failure modes
 
-- **Re-litigation by fresh reasoning.** A settled convention was re-asked because the asking agent never
-  opened the log that settled it. The answer came back opposite, from a human who was asked cold and
-  shown none of the prior ruling. Two contradictory rules for one question, hours apart, in one project.
-  A scoring panel run first would have produced the same outcome with better prose.
-- **Verbal grants do not bind.** Full autonomy stated once in conversation, in a handoff document, and in
-  persistent memory was followed by workers escalating anyway. Prose an executor may never read is not a
-  carrier. A rule binds only when it reaches the executor's briefing — see `./orchestration-doctrine.md`
-  → "Rule reachability".
-- **Over-broad stop categories.** An escalation rule written against "ambiguity" fires on technical
-  ambiguity too, which is most of it, and converts an autonomy grant into a stop-on-everything policy.
-  Stop categories name the *kind* of ambiguity, never ambiguity as such.
+- Re-litigation by fresh reasoning. A settled convention was re-asked because the asking agent never opened the
+  log that settled it. A human, asked cold and shown none of the prior ruling, answered the opposite, and the
+  project held two contradictory rules for one question. A panel run first would have done the same with better
+  prose.
+- Verbal grants do not bind. Full autonomy stated once in conversation, in a handoff document and in persistent
+  memory was followed by workers escalating anyway. Prose an executor may never read is not a carrier. A rule
+  binds only when it reaches the executor's briefing (`./orchestration-doctrine.md`, "Rule reachability").
+- Over-broad stop categories. An escalation rule written against "ambiguity" fires on technical ambiguity too,
+  which is most of it, and turns an autonomy grant into a stop-on-everything policy. Stop categories name the
+  kind of ambiguity, never ambiguity as such.
 
 ---
 
 ## 8. Where this binds
 
-- **Any point an agent is about to raise a question to the human.** Run §2 first. If it is settled, §3.
-  If it is not settled and not in §5, it was never the human's to answer.
-- **Any point an agent is about to pick between defensible technical options.** §4, then §6.
-- **Skill authors.** A rule that must bind an executor appears as a `## Compact Rules` bullet in the
-  owning `SKILL.md`, not only here — `./orchestration-doctrine.md` → "Rule reachability".
+- Before an agent raises a question to the human: run §2 first. Settled means §3. Unsettled and outside §5 means
+  it was never the human's to answer.
+- Before an agent picks between defensible technical options: §4, then §6.
+- For skill authors: a rule that must bind an executor goes in the owning `SKILL.md`'s compact rules
+  (frontmatter `compact_rules`, or a `## Compact Rules` section where the skill has one), not only here
+  (`./orchestration-doctrine.md`, "Rule reachability").

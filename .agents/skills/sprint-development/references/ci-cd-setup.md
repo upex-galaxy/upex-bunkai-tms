@@ -1,212 +1,55 @@
-Actúa como Senior DevOps Engineer y CI/CD Expert especializado en GitHub Actions y Vercel deployment.
+# CI/CD setup (Stage 4, once per project)
 
----
+Sets up a GitHub Actions workflow that lints, tests, builds and deploys to staging, so a merge to the integration branch reaches staging without a manual step. Run it once, after Stage 3 (code review) and before the first staging deploy (`staging-deploy.md`).
 
-## 🎯 TAREA
+## Step 0: check whether the app already has CI
 
-**STAGE 4: CI/CD SETUP (Una sola vez por proyecto)**
+CI that exists is the app's, so this guide only adds to it. List `.github/workflows/` and read `{{stack.ci}}` in `.agents/project.yaml`:
 
-Configurar GitHub Actions workflow que automatice linting, testing, build, y deploy a staging environment.
-
-**Este prompt se ejecuta UNA SOLA VEZ** después de completar Stage 3 (Code Review), antes del primer Stage 4 (Staging Deploy).
-
-### Paso 0: ¿la app ya tiene CI? (aditivo, nunca reemplazo)
-
-Antes de todo, lista `.github/workflows/` y lee `{{stack.ci}}` en `.agents/project.yaml`:
-
-| Lo que encuentras | Qué haces |
+| What you find | What you do |
 |---|---|
-| Ningún workflow y `{{stack.ci}}` es `github-actions` (o null) | Esta guía completa, Pasos 1-5. |
-| Uno o más workflows existentes (cualquier nombre, incluido `ci.yml`) | **Nunca** se reemplaza, renombra ni borra un workflow existente, y nunca se escribe sobre un archivo que ya existe. Lee qué jobs corren y sobre qué ramas; si falta algo que Stage 4 necesita (lint, types, test, build o el deploy de integración), propón al usuario un workflow NUEVO con nombre propio (por ejemplo `.github/workflows/agentic-checks.yml`) que agregue solo lo que falta, o el cambio puntual al existente como diff para que lo apruebe. Sin su OK no se escribe nada. |
-| `{{stack.ci}}` es `gitlab`, `other` o `none` | Fuera del alcance de esta guía: reporta qué CI usa la app (o que no tiene) y que Stage 4 se verifica contra lo que esa CI y `{{stack.hosting}}` exponen. No crees un workflow de GitHub Actions en una app que usa otro CI. |
+| No workflow, and `{{stack.ci}}` is `github-actions` (or null) | Follow this guide, Steps 1 to 5. |
+| One or more workflows (any name, `ci.yml` included) | Never replace, rename, delete or write over an existing workflow. Read which jobs run and on which branches. If Stage 4 needs something that is missing (lint, types, test, build or the integration deploy), propose a new workflow with its own name (for example `.github/workflows/agentic-checks.yml`) that adds only what is missing, or the small change to the existing one as a diff. Write nothing until the user approves. |
+| `{{stack.ci}}` is `gitlab`, `other` or `none` | Out of scope. Report which CI the app uses (or that it has none) and that Stage 4 is verified against what that CI and `{{stack.hosting}}` expose. Do not create a GitHub Actions workflow in an app that uses another CI. |
 
----
+## What to read first
 
-## 📥 INPUT REQUERIDO
+> **Integration branch**: its real name is `git_strategy.branches.integration` in `.agents/project.yaml`. This guide writes it `<integration>`, and the production branch (`git_strategy.branches.production`) `<production>`, in git commands and in the workflow YAML. Substitute the real values when you generate the workflow. With integration null there is no such branch and no staging deploy job. Read the value before running any git command below.
 
-> **Rama de integración**: el nombre real es `git_strategy.branches.integration` en `.agents/project.yaml`; los comandos de git de abajo lo escriben `<integration>` (y la rama de producción, `git_strategy.branches.production`, `<production>`); el workflow YAML también escribe `<integration>` / `<production>`: sustitúyelos por el valor real al generarlo (integration null: sin esa rama ni el job de deploy a staging). Léelo antes de ejecutar cualquier comando de git de abajo.
+1. The repository: `.git/` exists, a GitHub remote exists (`git remote -v`), `<production>` and `<integration>` (when not null) exist, and whether the repo is public or private. `<integration>` is `staging` by convention and may be null under `solo-main`, `github-flow` and `trunk-based`.
+2. The project configuration:
+   - `.agents/project.yaml`, `stack:` (critical): `app_root`, `package_manager`, the script names (`scripts.lint`, `scripts.types`, `scripts.test`, `scripts.build`), `ci`, `hosting`. A null script role means the app has no such script, so that job is not added.
+   - The app's `package.json` (in `{{stack.app_root}}`), to confirm those scripts exist.
+   - `.agents/project.yaml`, `environments` (URLs per environment) and `.vercel/project.json` (the linked Vercel project).
+   - `.context/SRS/architecture-specs.md` for the tech stack. Without an SRS, use `{{stack.hosting}}` plus the `architecture` section of the API map (`bun run context:map business-api-context --section architecture`).
+   - The ESLint configuration (`.eslintrc.js` or `eslint.config.js`), and whether a test framework (Jest or Vitest) and coverage are set up.
+3. The hosting provider (Vercel, Railway, Netlify or custom) and its staging and production URLs. For Vercel the workflow also needs a Vercel project ID, org ID and API token, which only the user can provide.
 
-### 1. Repositorio del Proyecto
+Tools: git, access to the GitHub repo, and optionally the GitHub CLI to check secrets. Context7 is recommended for current Actions syntax before you write the workflow ("GitHub Actions latest setup Node.js", "Vercel deployment GitHub Actions latest", "GitHub Actions secrets configuration"). No other MCP is needed.
 
-**Verificar:**
+## What the workflow does
 
-- `.git/` - Repositorio Git inicializado
-- GitHub repository existente (verificar remotes)
-- Branch strategy: la rama de producción (`git_strategy.branches.production`) y la de integración (`git_strategy.branches.integration`, por convención `staging`; puede ser null en `solo-main`, `github-flow`, `trunk-based`)
+- Runs on push and pull request to `<production>` and `<integration>`.
+- Lint, unit tests with optional coverage, and build, in that order, so a lint failure stops the rest.
+- Deploys to Vercel staging on a push to `<integration>`.
+- Optionally deploys to production on a push to `<production>` in a separate workflow (`.github/workflows/deploy-production.yml`), only behind a manual approval.
 
-**Qué identificar:**
+Out of scope: an automatic production deploy without approval, integration and E2E tests (QA's), performance tests, and security scanning (it can be added later).
 
-1. ¿El proyecto tiene remote origin en GitHub?
-2. ¿Existen las ramas `<production>` y `<integration>` (si no es null)?
-3. ¿El repo es público o privado?
+Outputs: `.github/workflows/ci.yml`, the GitHub secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` (plus any project-specific ones), `.context/ci-cd-setup.md`, and CI badges in `README.md`.
 
-### 2. Configuración del Proyecto
+## Rules
 
-**Leer TODOS estos archivos:**
+- Secrets live in GitHub Secrets, never in the workflow. Use service tokens, not personal ones, and tell the user how to get each one. The user creates and adds the token values, and you never ask for them in the chat (Critical Rule 1).
+- Check action versions with Context7 so no deprecated action ships. Check that every script exists in `package.json` before the workflow calls it.
+- Create or edit files only (the workflow, the docs, the README badge). The one step that changes anything else is the commit and push of Step 4.
+- Keep the workflow simple and modular, with one job per concern (lint, test, build, deploy) and `needs:` ordering so it fails fast.
+- A production deploy always needs a manual approval.
 
-- `.agents/project.yaml` → `stack:` - **CRÍTICO** - `app_root`, `package_manager`, los nombres de script (`scripts.lint`, `scripts.types`, `scripts.test`, `scripts.build`), `ci`, `hosting`
-- `package.json` de la app (en `{{stack.app_root}}`) - confirma que esos scripts existen
-- `.agents/project.yaml` → `environments` - URLs por ambiente; `.vercel/project.json` - proyecto de Vercel vinculado
-- `.context/SRS/architecture-specs.md` - Tech stack, requirements (sin SRS: `{{stack.hosting}}` + la sección `architecture` del mapa de API, `bun run context:map business-api-context --section architecture`)
-- `.eslintrc.js` o `eslint.config.js` - Configuración de linting
+## Step 1: analyze the project
 
-**Qué identificar:**
-
-1. **Scripts de la app disponibles** (rol null = la app no lo tiene: ese job no se agrega):
-   - lint: `{{stack.package_manager}} run {{stack.scripts.lint}}`
-   - test: `{{stack.package_manager}} run {{stack.scripts.test}}`
-   - build: `{{stack.package_manager}} run {{stack.scripts.build}}`
-
-2. **Testing framework:**
-   - Jest o Vitest
-   - ¿Tiene coverage configurado?
-
-3. **Hosting provider:**
-   - Vercel, Railway, Netlify, o custom
-   - URLs de staging y production
-
-### 3. Vercel Project (Si usa Vercel)
-
-**Información necesaria del usuario:**
-
-- Vercel Project ID
-- Vercel Org ID
-- Vercel Token (para GitHub Actions)
-
----
-
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS (MCP)
-
-### MCP Recomendados:
-
-1. **MCP Context7** - ALTAMENTE RECOMENDADO
-   - Consultar docs oficiales antes de escribir workflows
-   - Queries recomendadas:
-     - "GitHub Actions latest setup Node.js"
-     - "Vercel deployment GitHub Actions latest"
-     - "GitHub Actions secrets configuration"
-
-2. **NO se requieren otros MCP** para esta fase
-
-### Herramientas Locales:
-
-- Git instalado
-- GitHub CLI (opcional, para verificar secrets)
-- Acceso al repositorio GitHub
-
----
-
-## 🎯 OBJETIVO DE CI/CD SETUP
-
-Crear un workflow de GitHub Actions que:
-
-**Incluye:**
-
-- ✅ Se ejecuta automáticamente en push/PR a `<production>` y `<integration>`
-- ✅ **Linting:** Valida code style (ESLint + Prettier)
-- ✅ **Unit Tests:** Ejecuta tests y genera coverage
-- ✅ **Build:** Valida que el proyecto compila sin errores
-- ✅ **Deploy to Staging:** Despliega a Vercel staging cuando merge a `<integration>`
-- ✅ **Deploy to Production:** (Opcional) Despliega a Vercel production cuando merge a `<production>`
-- ✅ Notifica fallos claramente en PRs
-
-**NO incluye:**
-
-- ❌ Deploy automático a production sin aprobación (eso requiere estrategia adicional)
-- ❌ Integration/E2E tests (eso es QA, Test Automation, fuera de este skill)
-- ❌ Performance tests
-- ❌ Security scanning (opcional, puede agregarse después)
-
-**Resultado:** CI/CD automatizado que valida código y despliega a staging automáticamente.
-
----
-
-## 📤 OUTPUT GENERADO
-
-### GitHub Actions Workflow:
-
-- ✅ `.github/workflows/ci.yml` - Main CI/CD workflow
-- (Opcional) `.github/workflows/deploy-production.yml` - Production deployment workflow separado
-
-### Secrets Configurados en GitHub:
-
-- ✅ `VERCEL_TOKEN` - Token de Vercel API
-- ✅ `VERCEL_ORG_ID` - Organization ID de Vercel
-- ✅ `VERCEL_PROJECT_ID` - Project ID de Vercel
-- (Si aplica) Otros secrets específicos del proyecto
-
-### Documentación:
-
-- ✅ `.context/ci-cd-setup.md` - Documentación del workflow
-- ✅ README.md actualizado con badges de CI status
-
----
-
-## 🚨 RESTRICCIONES CRÍTICAS
-
-### ❌ NO HACER:
-
-- **NO hardcodear secrets** - Usar GitHub Secrets
-- **NO usar actions deprecados** - Verificar versiones con Context7
-- **NO ejecutar comandos en el repo del usuario** - Solo crear archivos de workflow
-- **NO hacer deploy a production sin protección** - Requiere aprobación manual
-- **NO reemplazar, renombrar ni borrar un workflow existente** - Paso 0: aditivo, con el OK del usuario
-- **NO crear workflows complejos innecesarios** - Keep it simple
-- **NO usar tokens personales** - Usar tokens de servicio
-
-### ✅ SÍ HACER:
-
-- **Usar Context7 MCP** - Verificar sintaxis de GitHub Actions
-- **Validar scripts existen** - Verificar en package.json antes de usarlos
-- **Crear workflow modular** - Separar jobs (test, build, deploy)
-- **Fallar rápido** - Si lint falla, no ejecutar tests
-- **Documentar secrets** - Explicar cómo obtenerlos
-- **Proporcionar instrucciones claras** - Cómo configurar en GitHub
-
----
-
-## 🔄 WORKFLOW
-
-El proceso se divide en 5 pasos ejecutados secuencialmente.
-
----
-
-## 📋 PASO 1: ANÁLISIS DEL PROYECTO
-
-**Objetivo:** Entender qué scripts y tecnologías usa el proyecto.
-
-### Paso 1.1: Verificar Git y GitHub
-
-**Acción:**
-
-```bash
-# Verificar repo Git
-git status
-
-# Verificar remote GitHub
-git remote -v
-
-# Verificar branches
-git branch -a
-```
-
-**Analizar:**
-
-- ¿El proyecto está en GitHub?
-- ¿Existen `<production>` y `<integration>` (`git_strategy.branches.*`)?
-- ¿Qué branch está activo?
-
----
-
-### Paso 1.2: Leer package.json
-
-**Acción:**
-
-Leer `package.json` completo
-
-**Identificar:**
-
-1. **Scripts disponibles:**
+1. Run `git status`, `git remote -v` and `git branch -a`. Is the project on GitHub, do `<production>` and `<integration>` exist, and which branch is active?
+2. Read the app's `package.json` and list the scripts it has. For example:
 
    ```json
    {
@@ -218,135 +61,47 @@ Leer `package.json` completo
    }
    ```
 
-2. **Si falta algún script:**
-   - El job de ese rol no se agrega, y se dice en el reporte
-   - Agregar un script al `package.json` de la app es un cambio aparte que propones al usuario, nunca un efecto lateral de esta guía; si lo aprueba, regístralo con `bun run agents:setup --stack`
+   A missing script means that role's job is not added, and the report says so. Adding a script to the app's `package.json` is a separate change you propose to the user, never a side effect of this guide. If they approve it, register it with `bun run agents:setup --stack`.
+3. Read `{{stack.hosting}}`, `.vercel/project.json` if present, and `.context/SRS/architecture-specs.md` when the project has an SRS. Identify the provider, the staging and production URLs, and the credentials needed.
 
----
-
-### Paso 1.3: Identificar Hosting Provider
-
-**Leer:** `{{stack.hosting}}` en `.agents/project.yaml`, `.vercel/project.json` (si existe), y `.context/SRS/architecture-specs.md` cuando el proyecto tiene SRS
-
-**Identificar:**
-
-- ¿Vercel, Railway, Netlify, o custom?
-- URLs de staging y production
-- Credenciales necesarias
-
-**Output al usuario:**
+Report the analysis to the user:
 
 ```markdown
-## 📊 Análisis Completado
+## Analysis completed
 
-### Git Repository:
+### Git repository
 
-- ✅ GitHub remote: https://github.com/[org]/[repo]
-- ✅ Branches: <production>, <integration>
+- GitHub remote: https://github.com/[org]/[repo]
+- Branches: <production>, <integration>
 
-### Scripts de la app disponibles:
+### App scripts available
 
-- ✅ `{{stack.package_manager}} run {{stack.scripts.lint}}` - lint
-- ✅ `{{stack.package_manager}} run {{stack.scripts.test}}` - unit tests
-- ✅ `{{stack.package_manager}} run {{stack.scripts.build}}` - build
+- `{{stack.package_manager}} run {{stack.scripts.lint}}` (lint)
+- `{{stack.package_manager}} run {{stack.scripts.test}}` (unit tests)
+- `{{stack.package_manager}} run {{stack.scripts.build}}` (build)
 
-### Hosting Provider:
+### Hosting provider
 
 - Provider: Vercel
 - Staging URL: https://[project]-staging.vercel.app
 - Production URL: https://[project].vercel.app
 
-### Workflow a crear:
+### Workflow to create
 
-1. CI job: lint → test → build
-2. Deploy to staging: cuando push a `<integration>` (null: Vercel despliega un Preview por PR, no hay job)
-3. (Opcional) Deploy to production: cuando push a `<production>`
+1. CI jobs: lint, test, build
+2. Deploy to staging on a push to `<integration>` (null: Vercel deploys a Preview per PR and there is no job)
+3. Optional: deploy to production on a push to `<production>`
 ```
 
----
+## Step 2: create the workflow
 
-## 🛠️ PASO 2: CREAR GITHUB ACTIONS WORKFLOW
-
-**Objetivo:** Crear archivo `.github/workflows/ci.yml` con workflow completo (solo cuando el Paso 0 encontró que la app no tiene CI; si ya existe un `ci.yml`, el workflow nuevo lleva otro nombre).
-
-### Paso 2.1: Crear Directorio
-
-**Acción:**
+Only when Step 0 found no CI. If a `ci.yml` already exists, the new workflow takes another name.
 
 ```bash
 mkdir -p .github/workflows
 ```
 
----
-
-### Paso 2.2: Crear Workflow CI
-
-**Archivo:** `.github/workflows/ci.yml`
-
-**Pseudocódigo de estructura:**
-
-```yaml
-name: CI/CD Pipeline
-
-# Triggers
-on:
-  push:
-    branches: [<production>, <integration>]
-  pull_request:
-    branches: [<production>, <integration>]
-
-# Jobs
-jobs:
-  # Job 1: Linting
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - checkout código
-      - setup Node.js (versión del proyecto)
-      - install dependencies
-      - run lint:check
-
-  # Job 2: Testing (needs: lint)
-  test:
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - checkout código
-      - setup Node.js
-      - install dependencies
-      - run tests
-      - (Opcional) upload coverage
-
-  # Job 3: Build (needs: test)
-  build:
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - checkout código
-      - setup Node.js
-      - install dependencies
-      - run build
-
-  # Job 4: Deploy Staging (needs: build, only on <integration>; omitido si es null)
-  deploy-staging:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/<integration>' && github.event_name == 'push'
-    steps:
-      - checkout código
-      - deploy to Vercel (usando secrets)
-```
-
----
-
-### Paso 2.3: Generar Workflow Completo
-
-**Consultar Context7:**
-
-- "GitHub Actions setup Node.js latest version"
-- "Vercel deployment GitHub Actions"
-
-**Template completo** (sustituye `<production>` / `<integration>` por `git_strategy.branches.*`; con integration null, quita esa rama de los triggers y el job `deploy-staging`; un rol de script null quita su job; corre desde `{{stack.app_root}}` con `working-directory` cuando no es `.`):
+Write `.github/workflows/ci.yml`. Substitute `<production>` and `<integration>` with `git_strategy.branches.*`. With integration null, remove that branch from the triggers and remove the `deploy-staging` job. A null script role removes its job. Run from `{{stack.app_root}}` with `working-directory` when it is not `.`.
 
 ```yaml
 name: CI/CD Pipeline
@@ -363,10 +118,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup runtime
-        uses: oven-sh/setup-bun@v2 # stack.package_manager = bun (v1); otro manager: actions/setup-node con su cache
+        uses: oven-sh/setup-bun@v2 # stack.package_manager = bun (v1); other manager: actions/setup-node with its cache
 
       - name: Install dependencies
         run: {{stack.package_manager}} install --frozen-lockfile
@@ -380,7 +135,7 @@ jobs:
     needs: lint
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup runtime
         uses: oven-sh/setup-bun@v2
@@ -392,7 +147,7 @@ jobs:
         run: {{stack.package_manager}} run {{stack.scripts.test}}
 
       - name: Generate coverage
-        run: {{stack.package_manager}} run test:coverage   # solo si la app tiene ese script
+        run: {{stack.package_manager}} run test:coverage   # only if the app has that script
         continue-on-error: true
 
       - name: Upload coverage
@@ -407,7 +162,7 @@ jobs:
     needs: test
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup runtime
         uses: oven-sh/setup-bun@v2
@@ -428,7 +183,7 @@ jobs:
       url: https://${{ secrets.VERCEL_PROJECT_NAME }}-staging.vercel.app
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
@@ -436,86 +191,59 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
           working-directory: ./
 ```
 
-**Escribir archivo completo.**
+The `needs:` chain makes a lint failure skip tests and build. Only the coverage step has `continue-on-error: true`, so a coverage failure never fails the workflow. The `environment:` block on the deploy job lets GitHub apply environment protection.
 
----
+## Step 3: secrets in GitHub
 
-## 🔐 PASO 3: CONFIGURAR SECRETS EN GITHUB
-
-**Objetivo:** Instruir al usuario cómo agregar secrets.
-
-### Paso 3.1: Obtener Credenciales de Vercel
-
-**Mostrar al usuario:**
+Show the user how to obtain and add each secret. The user types the values into GitHub, you never see them.
 
 ```markdown
-## 🔐 Configuración de Secrets
+## Secrets configuration
 
-Para que el workflow funcione, necesitas agregar estos secrets en GitHub:
+The workflow needs these three secrets in GitHub.
 
-### 1️⃣ VERCEL_TOKEN
+### 1. VERCEL_TOKEN
 
-**¿Cómo obtenerlo?**
-
-1. Ve a: https://vercel.com/account/tokens
-2. Click en "Create Token"
-3. Nombre: "GitHub Actions - [Proyecto]"
+1. Go to https://vercel.com/account/tokens
+2. Click "Create Token"
+3. Name: "GitHub Actions - [Project]"
 4. Scope: Full Account
-5. Expiration: No Expiration (o según política)
-6. Copia el token generado
+5. Expiration: No Expiration (or per your policy)
+6. Copy the generated token
 
----
+### 2. VERCEL_ORG_ID
 
-### 2️⃣ VERCEL_ORG_ID
+1. Go to https://vercel.com/[your-org]/settings
+2. Find "Team ID" or "Org ID" in Settings
+3. Copy the ID (format: `team_xxxxx`)
 
-**¿Cómo obtenerlo?**
+### 3. VERCEL_PROJECT_ID
 
-1. Ve a: https://vercel.com/[tu-org]/settings
-2. En la página de Settings, busca "Team ID" o "Org ID"
-3. Copia el ID (formato: `team_xxxxx`)
+1. Open your project in Vercel: https://vercel.com/[org]/[project]
+2. Click "Settings", then "General"
+3. Find "Project ID" and copy it
 
----
+### Add them to GitHub
 
-### 3️⃣ VERCEL_PROJECT_ID
-
-**¿Cómo obtenerlo?**
-
-1. Ve a tu proyecto en Vercel: https://vercel.com/[org]/[project]
-2. Click en "Settings"
-3. En "General", busca "Project ID"
-4. Copia el ID
-
----
-
-### ✅ Agregar Secrets a GitHub:
-
-1. Ve a tu repo: https://github.com/[org]/[repo]
-2. Click en "Settings" → "Secrets and variables" → "Actions"
-3. Click en "New repository secret"
-4. Agrega cada secret:
+1. Go to your repo: https://github.com/[org]/[repo]
+2. Settings, then "Secrets and variables", then "Actions"
+3. Click "New repository secret" and add each one:
 
    | Name                | Value                |
    | ------------------- | -------------------- |
-   | `VERCEL_TOKEN`      | [token copiado]      |
-   | `VERCEL_ORG_ID`     | [org ID copiado]     |
-   | `VERCEL_PROJECT_ID` | [project ID copiado] |
+   | `VERCEL_TOKEN`      | [token copied]       |
+   | `VERCEL_ORG_ID`     | [org ID copied]      |
+   | `VERCEL_PROJECT_ID` | [project ID copied]  |
 
-5. Verifica que los 3 secrets aparezcan en la lista
+4. Check that all three appear in the list
 ```
 
----
+## Step 4: validate the workflow
 
-## ✅ PASO 4: VALIDAR WORKFLOW
-
-**Objetivo:** Probar que el workflow funciona.
-
-### Paso 4.1: Commit y Push
-
-**Acción:**
+Commit and push, then check the run.
 
 ```bash
 git add .github/workflows/ci.yml
@@ -525,151 +253,57 @@ git commit -m "ci: add GitHub Actions CI/CD workflow"
 git push origin <integration>
 ```
 
----
+Then verify, and tell the user to verify, on https://github.com/[org]/[repo]/actions:
 
-### Paso 4.2: Verificar en GitHub
+- The "CI/CD Pipeline" workflow runs. Lint, Test and Build pass (green), and Deploy Staging runs only on a push to `<integration>`.
+- When a job fails, run its script locally (`{{stack.package_manager}} run {{stack.scripts.lint}}`, `{{stack.package_manager}} run {{stack.scripts.test}}` or `{{stack.package_manager}} run {{stack.scripts.build}}`), fix the errors and push again. For a failed deploy, check that the three secrets are set correctly and read the deploy logs in GitHub Actions.
 
-**Instrucciones al usuario:**
+## Step 5: document it
 
-```markdown
-## ✅ Validación del Workflow
+Create `.context/ci-cd-setup.md` for the team:
 
-### 1️⃣ Verificar que el workflow se ejecuta:
+````markdown
+# CI/CD Setup - [Project]
 
-1. Ve a: https://github.com/[org]/[repo]/actions
-2. Deberías ver el workflow "CI/CD Pipeline" ejecutándose
-3. Click en el workflow para ver detalles
+## GitHub Actions workflow
 
-### 2️⃣ Verificar cada job:
-
-- ✅ Lint: Debe pasar (verde)
-- ✅ Test: Debe pasar (verde)
-- ✅ Build: Debe pasar (verde)
-- ✅ Deploy Staging: Debe ejecutarse solo si push a `<integration>`
-
-### 3️⃣ Si algún job falla:
-
-**Lint fails:**
-
-- Ejecuta `{{stack.package_manager}} run {{stack.scripts.lint}}` localmente
-- Corrige los errores
-- Push nuevamente
-
-**Test fails:**
-
-- Ejecuta `{{stack.package_manager}} run {{stack.scripts.test}}` localmente
-- Corrige los tests fallidos
-- Push nuevamente
-
-**Build fails:**
-
-- Ejecuta `{{stack.package_manager}} run {{stack.scripts.build}}` localmente
-- Corrige los errores de build
-- Push nuevamente
-
-**Deploy fails:**
-
-- Verifica que los secrets estén correctamente configurados
-- Revisa los logs del deploy en GitHub Actions
-```
-
----
-
-## 📚 PASO 5: DOCUMENTACIÓN
-
-**Objetivo:** Documentar el CI/CD setup para el equipo.
-
-### Paso 5.1: Crear Documentación
-
-**Archivo:** `.context/ci-cd-setup.md`
-
-**Contenido:**
-
-```markdown
-# CI/CD Setup - [Proyecto]
-
-## GitHub Actions Workflow
-
-**Archivo:** `.github/workflows/ci.yml`
+File: `.github/workflows/ci.yml`
 
 ### Triggers
 
-El workflow se ejecuta automáticamente en:
-
-- ✅ Push a `<production>`
-- ✅ Push a `<integration>`
-- ✅ Pull requests a `<production>` o `<integration>`
+The workflow runs on a push to `<production>`, a push to `<integration>`, and a pull request to either.
 
 ### Jobs
 
-#### 1️⃣ Lint (🔍)
+1. Lint: runs ESLint and validates code style (about 30 seconds).
+2. Test: runs unit tests, generates a coverage report and optionally uploads it to Codecov (1 to 2 minutes).
+3. Build: runs the production build and validates that the project compiles (1 to 2 minutes).
+4. Deploy Staging: runs only on a push to `<integration>`, deploys to the Vercel staging environment at https://[project]-staging.vercel.app (about 30 seconds).
 
-- Ejecuta ESLint
-- Valida code style
-- Duración: ~30 segundos
+### Secrets
 
-#### 2️⃣ Test (🧪)
-
-- Ejecuta unit tests
-- Genera coverage report
-- Upload coverage a Codecov (opcional)
-- Duración: ~1-2 minutos
-
-#### 3️⃣ Build (🏗️)
-
-- Ejecuta build de producción
-- Valida que el proyecto compila
-- Duración: ~1-2 minutos
-
-#### 4️⃣ Deploy Staging (🚀)
-
-- **Solo ejecuta si:** Push a `<integration>`
-- Despliega a Vercel staging environment
-- URL: https://[project]-staging.vercel.app
-- Duración: ~30 segundos
-
-### Secrets Configurados
-
-| Secret              | Descripción               | Dónde obtenerlo                   |
+| Secret              | Description               | Where to get it                   |
 | ------------------- | ------------------------- | --------------------------------- |
-| `VERCEL_TOKEN`      | Token de API de Vercel    | https://vercel.com/account/tokens |
-| `VERCEL_ORG_ID`     | Organization ID de Vercel | Settings de Vercel                |
-| `VERCEL_PROJECT_ID` | Project ID de Vercel      | Settings del proyecto             |
+| `VERCEL_TOKEN`      | Vercel API token          | https://vercel.com/account/tokens |
+| `VERCEL_ORG_ID`     | Vercel organization ID    | Vercel settings                   |
+| `VERCEL_PROJECT_ID` | Vercel project ID         | Project settings                  |
 
-### Branch Strategy
+### Branch strategy
+
+```
+<production> (git_strategy.branches.production)
+  ^ merge after QA
+<integration> (git_strategy.branches.integration; null = PRs go straight to <production>)
+  ^ merge PRs here
+feature/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}
 ```
 
-<production> (git_strategy.branches.production)
-↑
-merge después de QA
-↑
-<integration> (git_strategy.branches.integration; null = los PRs van directo a <production>)
-↑
-merge PRs aquí
-↑
-feature/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}
+### From local to production
 
-````
-
-### Workflow Local → Staging → Production
-
-1. **Desarrollo:**
-   ```bash
-   git checkout -b feature/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}
-   # Implementar feature
-   git push origin feature/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}
-````
-
-2. **Pull Request a staging:**
-   - CI runs: lint → test → build
-   - Si todo pasa → merge
-   - Auto-deploy a staging
-
-3. **QA en staging:**
-   - QA valida en https://[project]-staging.vercel.app
-   - Si bugs → fix → repeat
-
-4. **Release a production:**
+1. Develop on a feature branch and push it.
+2. Open a pull request to the integration branch. CI runs lint, test and build. When green, merge, and staging deploys automatically.
+3. QA validates on https://[project]-staging.vercel.app. Bugs go back through a fix and repeat.
+4. Release to production:
 
    ```bash
    # <production> / <integration>: git_strategy.branches.* in .agents/project.yaml
@@ -679,208 +313,65 @@ feature/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}
    git push origin <production>
    ```
 
-   - CI runs nuevamente
-   - (Opcional) Auto-deploy a production
+   CI runs again, and production deploys automatically if you enabled that.
 
 ### Troubleshooting
 
-**Workflow fails en "Install dependencies":**
-
-- Verifica que `package-lock.json` esté commiteado
-- Usa `{{stack.package_manager}} install --frozen-lockfile` localmente para replicar
-
-**Deploy fails con "Invalid token":**
-
-- Verifica que `VERCEL_TOKEN` esté configurado en GitHub Secrets
-- Regenera el token en Vercel si es necesario
-
-**Coverage upload fails:**
-
-- Es opcional, no bloquea el workflow
-- Configura Codecov si quieres ver coverage online
-
+- "Install dependencies" fails: check that the lockfile is committed, and reproduce with `{{stack.package_manager}} install --frozen-lockfile` locally.
+- Deploy fails with "Invalid token": check that `VERCEL_TOKEN` is set in GitHub Secrets, and regenerate it in Vercel if needed.
+- Coverage upload fails: it is optional and does not block the workflow. Configure Codecov to see coverage online.
 ````
 
----
-
-### Paso 5.2: Actualizar README con Badge
-
-**Agregar al inicio del README.md:**
+Then add the badges at the top of `README.md`:
 
 ```markdown
-# [Proyecto]
+# [Project]
 
 [![CI/CD Pipeline](https://github.com/[org]/[repo]/actions/workflows/ci.yml/badge.svg)](https://github.com/[org]/[repo]/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/[org]/[repo]/branch/<integration>/graph/badge.svg)](https://codecov.io/gh/[org]/[repo])
-````
-
----
-
-## 🎉 REPORTE FINAL
-
-**Mostrar al usuario:**
-
-````markdown
-# ✅ CI/CD SETUP COMPLETADO
-
-## Archivos Creados:
-
-### 1. `.github/workflows/ci.yml`
-
-- ✅ Lint job configurado
-- ✅ Test job configurado
-- ✅ Build job configurado
-- ✅ Deploy staging job configurado
-
-### 2. `.context/ci-cd-setup.md`
-
-- ✅ Documentación completa del workflow
-- ✅ Instrucciones de troubleshooting
-- ✅ Branch strategy explicada
-
-### 3. README.md
-
-- ✅ Badge de CI status agregado
-- ✅ Badge de coverage agregado (opcional)
-
-## Próximos Pasos INMEDIATOS:
-
-### 1️⃣ Configurar Secrets en GitHub (AHORA)
-
-Sigue las instrucciones en "Paso 3" arriba para agregar:
-
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-
-### 2️⃣ Validar Workflow (AHORA)
-
-```bash
-# Push este commit para trigger el workflow
-git add .github/workflows/ci.yml .context/ci-cd-setup.md README.md   # rutas explícitas, nunca `git add .`
-git commit -m "ci: add GitHub Actions CI/CD workflow
-
-- Lint, test, build jobs
-- Auto-deploy to staging on integration-branch push
-- Documentation in .context/ci-cd-setup.md
-"
-# <integration> = git_strategy.branches.integration, <production> = git_strategy.branches.production (.agents/project.yaml)
-git push origin <integration>
-```
-````
-
-Luego verifica en: https://github.com/[org]/[repo]/actions
-
-### 3️⃣ Próxima Fase
-
-- ✅ CI/CD configurado
-- ⏭️ QA exploratorio (workflow de QA, fuera de este skill)
-  - Validar deployment en staging
-  - Ejecutar smoke tests
-  - Reportar bugs si existen
-
----
-
-**🎊 CI/CD automatizado exitosamente!**
-
-Ahora cada push a `<integration>` despliega automáticamente a staging.
-
-````
-
----
-
-## 📋 CHECKLIST INTERNO (NO MOSTRAR)
-
-**Validaciones antes de finalizar:**
-
-### Análisis:
-- [ ] Paso 0 resuelto: ningún workflow existente reemplazado, renombrado ni pisado
-- [ ] `stack:` leído; scripts confirmados en el `package.json` de la app; roles null sin job
-- [ ] Hosting provider identificado (`{{stack.hosting}}`)
-- [ ] Branches confirmadas desde `git_strategy.branches` (integration puede ser null)
-
-### Workflow:
-- [ ] Archivo `.github/workflows/ci.yml` creado
-- [ ] Lint job configurado
-- [ ] Test job configurado
-- [ ] Build job configurado
-- [ ] Deploy staging job configurado
-- [ ] Triggers correctos (push + PR)
-- [ ] Jobs dependencies correctas (needs:)
-
-### Secrets:
-- [ ] Instrucciones claras de cómo obtener cada secret
-- [ ] Formato de secrets documentado
-- [ ] Instrucciones de cómo agregar a GitHub
-
-### Documentación:
-- [ ] `.context/ci-cd-setup.md` creado
-- [ ] README.md actualizado con badge
-- [ ] Troubleshooting incluido
-- [ ] Branch strategy explicada
-
-### Validación:
-- [ ] Instrucciones de validación claras
-- [ ] Qué verificar en cada job
-- [ ] Cómo debuggear fallos
-
----
-
-## 💡 MEJORES PRÁCTICAS
-
-### **1. Fallar Rápido**
-
-```yaml
-jobs:
-  lint:
-    # Si lint falla, no ejecutar tests
-  test:
-    needs: lint  # Depende de lint
-  build:
-    needs: test  # Depende de test
-````
-
-### **2. Cache Dependencies**
-
-```yaml
-- uses: oven-sh/setup-bun@v2 # bun cachea su store; con setup-node, `cache:` del package manager de la app
 ```
 
-### **3. Environment Protection**
+## Final report
 
-```yaml
-deploy-staging:
-  environment:
-    name: staging
-    url: https://...
-```
+Tell the user what was created and what comes next:
 
-### **4. Continue on Error (Solo Coverage)**
+- Created: `.github/workflows/ci.yml` (lint, test, build and deploy staging jobs), `.context/ci-cd-setup.md` (workflow, troubleshooting, branch strategy) and the README badges.
+- Next, now: add the three secrets (Step 3), then push to trigger the workflow:
 
-```yaml
-- name: Generate coverage
-  run: {{stack.package_manager}} run test:coverage   # solo si la app tiene ese script
-  continue-on-error: true # No fallar workflow si coverage falla
-```
+  ```bash
+  git add .github/workflows/ci.yml .context/ci-cd-setup.md README.md   # explicit paths, never `git add .`
+  git commit -m "ci: add GitHub Actions CI/CD workflow
 
----
+  - Lint, test, build jobs
+  - Auto-deploy to staging on integration-branch push
+  - Documentation in .context/ci-cd-setup.md
+  "
+  # <integration> = git_strategy.branches.integration, <production> = git_strategy.branches.production (.agents/project.yaml)
+  git push origin <integration>
+  ```
 
-## 📚 REFERENCIAS
+- After that: check https://github.com/[org]/[repo]/actions, then the staging deploy in `staging-deploy.md`. Exploratory QA on staging is QA's workflow, outside this skill.
 
-**GitHub Actions:**
+Every push to `<integration>` now deploys to staging.
 
-- https://docs.github.com/en/actions/quickstart
-- https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+## With nobody at the keyboard
 
-**Vercel Deployment:**
+Follow `agentic-dev-core/references/decision-protocol.md` §5.2. In this guide the points that wait for a person are:
 
-- https://vercel.com/docs/deployments/overview
-- https://github.com/marketplace/actions/vercel-action
+- Step 0, an existing workflow: the proposal needs the user's OK. A supervised worker sends the proposal to its launcher, which holds the gate. A routine writes the proposed workflow or diff to its scratch directory, records it in the report and stops. It never edits an existing workflow without a brief that covers it.
+- Step 3, secrets: only a human can create and add them. Record which secrets are missing in the report and continue with the workflow file.
+- Step 4, commit and push: an outward action. Do it when a person asked for it or the delegating brief names it. Otherwise leave the files uncommitted and report that the push is pending.
 
-**Best Practices:**
+## Done when
 
-- https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+- Step 0 left every existing workflow untouched.
+- `stack:` was read, each script was confirmed in the app's `package.json`, and a null role has no job.
+- `.github/workflows/ci.yml` has the lint, test, build and deploy-staging jobs with correct `needs:` and triggers, using the branches from `git_strategy.branches` (integration may be null).
+- The user has instructions to obtain and add each secret, and to read each job's result.
+- `.context/ci-cd-setup.md` exists with troubleshooting and the branch strategy, and the README has its badge.
 
----
+## References
 
-**✅ CI/CD = Deployment automático + Validación continua + Confianza en el código**
+- GitHub Actions: https://docs.github.com/en/actions/quickstart and https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+- Vercel deployment: https://vercel.com/docs/deployments/overview and https://github.com/marketplace/actions/vercel-action
+- Hardening: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions

@@ -1,6 +1,6 @@
-# Deployment verification — wait for a deploy to be READY
+# Deployment verification: wait for a deploy to be READY
 
-The canonical pattern for "I just pushed; is my deploy live yet?" — without races, without grep, without ANSI corruption.
+The pattern for "I just pushed; is my deploy live yet?" without races, grep or ANSI corruption.
 
 ## The core script
 
@@ -21,13 +21,13 @@ done
 vercel inspect "$URL" --wait --timeout=10m
 ```
 
-Why this shape:
+Why it has this shape:
 
-- **`-m githubCommitSha=<sha>`** is the only filter that uniquely identifies "this commit's deploy". Branch filters mix old + new deploys; URL parsing is fragile.
-- **`--format json` + `jq`** sidesteps ANSI color codes and column-width truncation in the default human table.
-- **Outer poll loop** because Vercel takes 5–15 seconds after a push to register the deployment in `vercel ls`. Without the loop, the first call returns an empty array and the script aborts.
-- **`vercel inspect --wait`** blocks until terminal state. The default (no `--wait`) returns immediately with whatever state the deploy is in AT CALL TIME — usually `BUILDING`, which tells you nothing.
-- **`--timeout=10m`** because Next.js + Supabase builds occasionally exceed 5 minutes on first cold cache.
+- `-m githubCommitSha=<sha>` is the only filter that identifies this commit's deploy. Branch filters mix old and new deploys, and URL parsing is fragile.
+- `--format json` with `jq` sidesteps ANSI colour codes and the column truncation of the human table.
+- The outer loop exists because Vercel takes 5 to 15 seconds after a push to register the deployment in `vercel ls`. Without it the first call returns an empty array and the script aborts.
+- `vercel inspect --wait` blocks until a terminal state. Without `--wait` it returns the state at call time, usually `BUILDING`, which tells you nothing.
+- `--timeout=10m` covers Next.js + Supabase builds that occasionally pass 5 minutes on a cold cache.
 
 ## Stream the build log while waiting
 
@@ -35,14 +35,14 @@ Why this shape:
 vercel inspect "$URL" --wait --logs --timeout=10m
 ```
 
-`--logs` interleaves the build output line-by-line as the build proceeds. Use this when:
+`--logs` interleaves the build output line by line as the build proceeds. Use it when:
 
-- You expect the build to fail and want the error visible immediately, not after a 10-minute block.
-- You're debugging slow build phases (cache misses, regenerating `node_modules`, OpenAPI codegen).
+- You expect the build to fail and want the error at once, not after a 10-minute block.
+- You are debugging slow build phases (cache misses, rebuilding `node_modules`, OpenAPI codegen).
 
-If the build succeeds, the exit code is still 0 and the URL is ready to smoke-test.
+If the build succeeds the exit code is still 0 and the URL is ready to smoke-test.
 
-## Status filter values (UPPERCASE — exact)
+## Status filter values (UPPERCASE, exact)
 
 ```
 READY         — built and serving traffic
@@ -63,21 +63,21 @@ vercel ls -m githubCommitBranch=<branch> --status BUILDING --format json
 vercel ls --prod --status ERROR --format json | jq '.deployments[:5]'
 ```
 
-Lowercase variants (`ready`, `building`) return EMPTY with no error. Watch for this.
+Lowercase variants (`ready`, `building`) return an empty list with no error.
 
-## Anti-pattern — NEVER grep `vercel ls` output
+## Do not grep `vercel ls` output
 
 ```bash
-# DO NOT DO THIS
+# Fails: do not use
 URL=$(vercel ls | grep -oE "https://[^ ]+" | head -1)
 ```
 
-Two reasons it fails:
+It fails for two reasons:
 
-1. **ANSI color codes** wrap URLs in escape sequences. The regex above either misses the URL entirely or captures it with `\x1b[...]` prefixes / suffixes that are not valid URLs.
-2. **Old / new deploys collide.** Without a metadata filter, the top entry might be yesterday's preview for a sibling branch.
+1. ANSI colour codes wrap URLs in escape sequences, so the regex misses the URL or captures it with `\x1b[...]` prefixes and suffixes that are not valid URLs.
+2. Old and new deploys collide. With no metadata filter, the top entry may be yesterday's preview of a sibling branch.
 
-The correct shape is always `-m <key>=<value> --format json | jq`. The metadata filter narrows to YOUR deploy; JSON output is ANSI-free.
+The working shape is `-m <key>=<value> --format json | jq`. The metadata filter narrows the list to your deploy, and JSON output has no ANSI.
 
 ## Smoke test once READY
 
@@ -88,22 +88,22 @@ curl -sSf -o /dev/null -w "HTTP %{http_code}\n" "$URL"
 curl -sSf "$URL/api/health" | jq
 ```
 
-A `READY` deploy that returns 5xx on every route usually means an env var is missing on the Vercel scope — see `env-vars.md`.
+A `READY` deploy that returns 5xx on every route usually lacks an env var on that Vercel scope. See `env-vars.md`.
 
 ## Exit code semantics (for CI)
 
-| `vercel inspect --wait` exit code | Meaning                                  | CI action                                                                |
-| --------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------ |
-| 0                                 | READY                                    | Proceed to smoke test / promote / notify                                  |
-| non-zero                          | ERROR / CANCELED / TIMEOUT               | Fail the pipeline; capture `vercel inspect "$URL" --logs` in the artifact |
+| `vercel inspect --wait` exit code | Meaning | CI action |
+| --- | --- | --- |
+| 0 | READY | Proceed to smoke test, promote or notify |
+| non-zero | ERROR / CANCELED / TIMEOUT | Fail the pipeline; capture `vercel inspect "$URL" --logs` in the artifact |
 
 ## When the URL never shows up
 
-If the 60s poll loop completes with `URL=""`:
+If the 60-second poll loop ends with `URL=""`:
 
-1. **Vercel webhook didn't fire.** Check the GitHub Settings → Webhooks page for the Vercel webhook delivery. Re-deliver if it shows a 4xx/5xx.
-2. **Wrong branch in Vercel project settings.** If `staging` is set as the production branch in Vercel, a push to it builds a production deploy instead of a preview.
-3. **Vercel project not linked to the repo.** Check `.vercel/project.json` / `.vercel/repo.json` exist; if not, defer to `/deploy-to-vercel`.
+1. The Vercel webhook did not fire. Check the delivery list under GitHub Settings, Webhooks, and re-deliver if it shows a 4xx or 5xx.
+2. The Vercel project has the wrong production branch. If `staging` is set as the production branch in Vercel, a push to it builds a production deploy instead of a preview.
+3. The Vercel project is not linked to the repo. Check that `.vercel/project.json` or `.vercel/repo.json` exists; if not, defer to `/deploy-to-vercel`.
 
 ## Reference
 

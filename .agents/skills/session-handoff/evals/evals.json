@@ -25,6 +25,18 @@
       "category": "positive"
     },
     {
+      "name": "should-trigger-es-pr-mid-review",
+      "prompt": "Se me está llenando el contexto y la PR quedó a mitad de revisión. Continúa esto en otra sesión sin perder nada.",
+      "expected_behavior": "Activates session-handoff. Writes the handoff under <<PRIMARY_ROOT>>/.session/handoffs/ with all ten sections, records the PR number verbatim in section 7 as PERISHABLE with the measured time and the gh command that re-verifies it, then launches or prints the successor launch line for the same worktree and harness.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-es-fresh-session-migration",
+      "prompt": "Quiero que otra sesión retome esto exactamente donde quedamos: la migración está escrita pero sin aplicar. Haz el traspaso de sesión.",
+      "expected_behavior": "Activates session-handoff. Puts the unapplied migration in section 7 as PERISHABLE with the command that re-verifies it, splits section 8 into owner-decided and awaiting-owner-decision items, and states the next step of the migration as an instruction rather than an observation.",
+      "category": "positive"
+    },
+    {
       "name": "should-not-trigger-delegate-task",
       "prompt": "Dispatch a worker to implement UPEX-210 while I keep reviewing the other PR.",
       "expected_behavior": "Does NOT activate session-handoff. This is delegating a scoped task while the session continues (orchestration or a briefed subagent per AGENTS.md §3), not transferring the whole session.",

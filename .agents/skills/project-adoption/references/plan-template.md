@@ -1,7 +1,7 @@
 # Plan template: `.context/reports/project-adoption-plan.md`
 
-> Written in Phase 2 by `project-adoption`, approved by the user, executed in Phases 3-7, closed in Phase 9. The file is COMMITTED (`.context/reports/` is tracked) so the team reviews the adoption in the same PR as its writes. Never under `.context/PBI/`: that tree is the Jira cache.
-> Values below in `<angle brackets>` are filled from the Phase 1 facts; every fact carries its evidence path. A credential VALUE never appears in this file, only variable names.
+> `project-adoption` writes this file in Phase 2, the user approves it, Phases 3-7 execute it and Phase 9 closes it. It is committed (`.context/reports/` is tracked), so the team reviews the adoption in the same PR as its writes. It never lives under `.context/PBI/`, which is the Jira cache.
+> Values in `<angle brackets>` come from the Phase 1 facts, and every fact carries its evidence path. The file holds variable names only, never a credential value.
 
 ---
 
@@ -86,7 +86,7 @@ Required fields missing on the instance (never created here; fallback per `.agen
 
 ## 8. API contract
 
-<Spec at <url/path>, `api/openapi*` absent before adoption -> `bun run api:sync ...` | skipped: <reason>.>
+<Spec at <url/path>, `api/openapi*` absent before adoption: `bun run api:sync ...` | skipped: <reason>.>
 
 ## 9. App baseline (Phase 1)
 
@@ -96,6 +96,16 @@ Required fields missing on the instance (never created here; fallback per `.agen
 | lint | ... | ... | ... | ... |
 | types | ... | ... | ... | ... |
 | test | <run | not measured: reason> | ... | ... | ... |
+
+### Web platform (Phase 1.7)
+
+Baseline target: <Baseline Widely available | Baseline <year> | not answered (Discovery Gap)>.
+
+| Legacy pattern | Native replacement | Files | Effort |
+|---|---|---|---|
+| <pattern from `legacy-scan`> | <platform feature> | <paths> | <S/M/L> |
+
+A proposal for the team. This skill applies none of it.
 
 ## 10. Team decisions and team-owed prerequisites (never done by this skill)
 
@@ -110,7 +120,7 @@ Required fields missing on the instance (never created here; fallback per `.agen
 
 ## 11. Questions answered (verbatim)
 
-<Question -> answer, exactly as given in the Phase 1 questionnaire.>
+<Question: answer, exactly as given in the Phase 1 questionnaire.>
 
 ## 12. Discovery Gaps
 
@@ -139,7 +149,7 @@ A missing PRD / SRS is not a gap here: the business maps, dev guide and glossary
 - [ ] §4 every protected path stays the app's
 - [ ] §4 each framework skill row carries its own decision and approval
 - [ ] §7 instruction merge: apply / leave pending (tick the box in §7 to apply)
-- [ ] §10 team items are understood as NOT done by this run
+- [ ] §10 team items are understood as not done by this run
 - [ ] Nothing in this plan touches app code, the database, dependencies, CI, git history or Jira configuration
 ```
 
@@ -151,11 +161,11 @@ A missing PRD / SRS is not a gap here: the business maps, dev guide and glossary
 ## Results (<YYYY-MM-DD>)
 
 - Files written: <list, agentic surfaces only>
-- Verification (Phase 8): <step -> exit code>, app scripts <equal to baseline | difference named>
+- Verification (Phase 8): <step: exit code>, app scripts <equal to baseline | difference named>
 - Final signals: <table>
 - Gaps remaining: <list>
 - Team-owed items: <list from §10>
-- Next: /project-context refresh-all (fresh session) · /project-foundation Discovery-only (dev guide + glossary) · /git-flow-master Strategy Setup · optional /design-system extract, /testability-guide
+- Next: /project-context refresh-all (fresh session), /project-foundation Discovery-only (dev guide and glossary), /git-flow-master Strategy Setup, optionally /design-system extract and /testability-guide
 ```
 
 A later drift run (`Status: COMPLETED` and some signal `PENDING` again) appends `## Drift run <YYYY-MM-DD>` with its own small table and approval line; the closed sections above are never rewritten.

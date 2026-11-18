@@ -1,164 +1,141 @@
-# Acceptance Criteria Refinement Guide
+# Acceptance criteria refinement guide
 
-> **Purpose**: Help Product Managers, Product Owners, and developers turn vague story-level "what" into concrete, verifiable acceptance criteria (AC) with specific data, scenarios, and edge cases — _before_ code is written.
-
----
-
-## 0. Edit-time voice gate (re-validation, MANDATORY on EDIT)
-
-When refining EXISTING acceptance criteria (not a first-time write), run this gate BEFORE any surgical edit. Bad voice tends to compound through small edits, so the gate runs first and the rewrite (if needed) replaces the surgical pass.
-
-1. Read the current value of `{{jira.acceptance_criteria}}` via `bun run jira:sync-issues get <KEY>` (materializes `acceptance-criteria.md` + every other field file locally), then read that file. Do NOT use `acli view` — it omits custom fields entirely, so it will look empty even when the field is richly populated. (REST `GET .../issue/{KEY}?fields=...` is the low-level fallback.)
-2. Scan for **voice violations** (anti-pattern `I15` in `SKILL.md`): endpoint paths, HTTP status codes, DB table/column names, framework/library names, error-code identifiers, transaction or locking patterns, internal algorithms.
-3. Scan for **format violations** (anti-pattern `I17`): scenarios that are NOT wrapped in a ` ```gherkin ` fenced code block (plain text Given/When/Then is non-compliant).
-4. Scan for **persona violations** (anti-pattern `I19`): generic actors ("the user", "the system") inside scenarios; the persona must match `.context/PRD/user-personas.md`.
-5. If ANY violation is detected → do NOT do a surgical edit. Perform a FULL rewrite of the field from persona POV, with every scenario fenced as `gherkin`, and surface the before/after delta to the user before publishing the new value.
-6. Apply the heuristic: a criterion that breaks under a stack swap is implementation, not behavior — rewrite it as something the persona observes.
-
-A clean field (no violations on the scan) proceeds to the standard refinement workflow below.
+This guide helps product managers, product owners and developers turn the vague "what" of a story into verifiable acceptance criteria (AC), with specific data, scenarios and edge cases, before code is written.
 
 ---
 
-## What Are Acceptance Criteria?
+## 0. Edit-time voice gate
 
-Acceptance criteria are the bridge between a user story and "done". They define the precise, observable behavior the team agrees the system will exhibit when the story is complete.
+When you refine existing acceptance criteria (not a first write), run this gate before any surgical edit. Bad voice compounds through small edits, so the gate comes first, and a rewrite, when one is needed, replaces the surgical pass.
 
-Good AC answers three questions every reviewer will ask:
+1. Read the current value of `{{jira.acceptance_criteria}}` with `bun run jira:sync-issues get <KEY>`, which materializes `acceptance-criteria.md` and every other field file locally, then read that file. Do not use `acli view`: it omits custom fields entirely, so the field looks empty even when it is full. REST `GET .../issue/{KEY}?fields=...` is the low-level fallback.
+2. Scan for voice violations (anti-pattern `I15` in `SKILL.md`): endpoint paths, HTTP status codes, DB table or column names, framework or library names, error-code identifiers, transaction or locking patterns, internal algorithms.
+3. Scan for format violations (anti-pattern `I17`): scenarios that are not wrapped in a ` ```gherkin ` fenced code block. Plain-text Given/When/Then is non-compliant.
+4. Scan for persona violations (anti-pattern `I19`): generic actors ("the user", "the system") inside scenarios. The persona must match `.context/PRD/user-personas.md`.
+5. On any violation, do not edit surgically. Rewrite the whole field from the persona's point of view, with every scenario fenced as `gherkin`, and show the user the before and after before publishing the new value.
+6. Apply this test: a criterion that breaks under a stack swap is implementation, not behavior. Rewrite it as something the persona observes.
 
-- **What state must exist before the action?** (Given)
-- **What action does the user or system take?** (When)
-- **What outcome must be observable?** (Then)
+A field with no violations goes on to the standard refinement workflow below.
 
-If any of those three is vague, you do not have AC — you have a wish. The goal of AC refinement is to remove every "it depends" before the work enters a sprint.
+---
+
+## What acceptance criteria are
+
+Acceptance criteria are the bridge between a user story and "done". They define the observable behavior the team agrees the system will show when the story is complete.
+
+Good AC answer the three questions every reviewer asks:
+
+- What state must exist before the action? (Given)
+- What action does the user or system take? (When)
+- What outcome must be observable? (Then)
+
+If any of the three is vague, you have a wish, not AC. Refinement removes every "it depends" before the work enters a sprint.
 
 ### Where AC live in the issue tracker
 
-Acceptance criteria are stored in the `{{jira.acceptance_criteria}}` custom field. NEVER duplicate them into the issue description body — see `references/description-custom-field-dedup.md`. When writing the field via `[ISSUE_TRACKER_TOOL]`, follow the ADF guidance in `references/jira-publishing-gotchas.md`.
+AC are stored in the `{{jira.acceptance_criteria}}` custom field. Never duplicate them into the issue description body (see `references/description-custom-field-dedup.md`). When you write the field through `[ISSUE_TRACKER_TOOL]`, follow the ADF guidance in `references/jira-publishing-gotchas.md`.
 
-### Source-grounding rule
+### Source grounding
 
-NEVER invent acceptance criteria. Every AC must trace back to a concrete source: PRD, SRS, business map, or explicit user input. AC that cannot be grounded in one of those is a guess — flag it and ask before promoting.
+Never invent acceptance criteria. Every AC traces back to a concrete source: the PRD, the SRS, a business map or explicit user input. An AC with no such source is a guess, so flag it and ask before promoting it.
 
 ---
 
-## Understanding the Story Context
+## Understanding the story context
 
-Before refining AC, build a clear picture of where the story sits — both in the user's world and in the technical landscape. AC written without this grounding tend to drift toward the obvious and miss what actually matters.
+AC written without context drift toward the obvious and miss what matters. Before refining, place the story in the user's world and in the technical landscape.
 
-### Business Value & User Impact
+### Business value and user impact
 
 Identify:
 
-- **User persona affected**
-  - Primary persona — who uses this feature directly, and how it changes their day
-  - Secondary persona — anyone touched downstream (e.g., support, finance, admin)
-- **Business value**
-  - Value proposition — what the user gets out of it
-  - Business impact — which KPI / metric / outcome this contributes to
-- **User journey**
-  - Which journey is this story part of? Which step?
-  - What happens before it? What depends on it after?
+- The persona affected. The primary persona uses the feature directly, so note how it changes their day. A secondary persona is anyone touched downstream (support, finance, admin).
+- The business value: what the user gets, and which KPI, metric or outcome the story feeds.
+- The user journey: which journey and which step the story belongs to, what happens before it, and what depends on it afterwards.
 
-If you cannot fill in this paragraph in one or two sentences, the story scope is probably ambiguous — flag it before writing AC.
+If you cannot fill this in within a sentence or two, the story scope is probably ambiguous. Flag it before writing AC.
 
-### Technical Architecture — for grounding, not for inclusion
+### Technical architecture, for grounding only
 
-The inventory below feeds the AI's mental model of where the story sits. It does NOT belong inside the AC text itself. AC describes user-observable behavior (anti-pattern `I15` in `SKILL.md`); the impl-plan generated by `/sprint-development` describes the technical surface.
+The inventory below shapes your mental model of where the story sits. It does not go into the AC text. AC describe user-observable behavior (anti-pattern `I15` in `SKILL.md`), and the impl-plan generated by `/sprint-development` describes the technical surface.
 
-- **Frontend** — components, pages/routes, state changes the user will observe
-- **Backend** — API endpoints invoked, business services involved, side effects
-- **Database** — tables / records read or written, key fields, integrity rules
-- **External services** — third-party APIs, webhooks, email/SMS, payments
-- **Integration points** — every place where data crosses a boundary
+- Frontend: components, pages and routes, and the state changes the user will observe.
+- Backend: the API endpoints invoked, the business services involved, the side effects.
+- Database: tables and records read or written, key fields, integrity rules.
+- External services: third-party APIs, webhooks, email or SMS, payments.
+- Integration points: every place where data crosses a boundary.
 
-Why this matters for AC: a well-written `Then` clause names _the verifiable change from the persona's POV_ — the UI element they see, the message text shown to them, the artifact state they perceive. You cannot name those without knowing the underlying surface. The mistake is leaking the surface back into the AC text: write what the persona observes, keep the inventory in working memory.
+A good `Then` clause names the verifiable change from the persona's point of view: the UI element they see, the message text shown to them, the artifact state they perceive. You cannot name those without knowing the surface underneath. The mistake is leaking that surface back into the AC text, so keep the inventory in working memory.
 
 ---
 
-## Story Quality Analysis: Identifying Gaps & Ambiguities
+## Story quality analysis: gaps and ambiguities
 
-Before refining AC, audit the story as written. Most AC defects begin life as story defects.
+Most AC defects start as story defects, so audit the story as written before refining its AC.
 
-### Finding Ambiguities in Stories
+### Finding ambiguities
 
-Ambiguity is anything that two reasonable readers could interpret differently. Common patterns:
+An ambiguity is anything two reasonable readers could interpret differently. The common patterns:
 
-- **Vague verbs**: "the system handles invalid input" — handle how? Reject? Retry? Log? Show a message?
-- **Unspecified actors**: "the manager is notified" — by email? In-app? When?
-- **Subjective outcomes**: "the page loads quickly" — quickly meaning what? Under what conditions?
-- **Hidden assumptions**: "as a returning user" — returning since when? With what state?
-- **Either/or without rule**: "if appropriate, the user is shown..." — what makes it appropriate?
+- Vague verbs: "the system handles invalid input". Handles how? Rejects, retries, logs, shows a message?
+- Unspecified actors: "the manager is notified". By email, in-app? When?
+- Subjective outcomes: "the page loads quickly". Quickly meaning what, under what conditions?
+- Hidden assumptions: "as a returning user". Returning since when, with what state?
+- Either/or without a rule: "if appropriate, the user is shown...". What makes it appropriate?
 
-For every ambiguity found, capture:
+For each ambiguity, capture where it appears (which AC, which sentence), the specific question that resolves it, what you cannot validate until it is resolved, and your suggested clarification (a strong default beats an open question). If you find none, say so: "Story is clear and well-defined."
 
-- **Where in the story it appears** (which AC, which sentence)
-- **The specific question** that resolves it
-- **What you cannot validate** until it is resolved
-- **Your suggested clarification** (a strong default beats an open question)
+### Identifying missing information
 
-If you find **no** ambiguities, that is itself a finding — say so explicitly: "Story is clear and well-defined."
+Beyond what is unclear, look for what is absent. The critical gaps fall into four buckets:
 
-### Identifying Missing Information
+- Missing AC: a behavior is implied but not stated as a criterion.
+- Missing user-observable detail: the specific error message the persona sees, what happens to form state on a validation failure, what affordance appears next, what state the artifact lands in. Internal error codes, response shapes and table names do not belong here, because they go in the impl-plan generated by `/sprint-development`.
+- Missing business rule: eligibility, ordering, precedence, defaults.
+- Missing data context: what "valid" means for a field, and where its boundaries are.
 
-Beyond what is unclear, look for what is simply absent. Critical gaps fall into a few buckets:
+For each gap, document what is missing, why it is critical (which AC cannot be written without it), a concrete suggested addition, and the impact if it is not added (wasted dev cycles, unverifiable AC, a customer-visible bug).
 
-- **Missing AC** — a behavior is implied but not stated as a criterion
-- **Missing user-observable detail** — what specific error message the persona sees, what happens to form state on validation failure, what affordance appears next, what state the artifact lands in. NOT internal error codes / response shapes / table names — those belong in the impl-plan generated by `/sprint-development`, not in the AC.
-- **Missing business rule** — eligibility, ordering, precedence, defaults
-- **Missing data context** — what does "valid" mean for this field? What are the boundaries?
+### Edge cases not in the original story
 
-Document each gap with:
+Stories capture the happy path and one or two obvious negatives, so edge cases slip through. As you read, ask:
 
-- **What is missing**
-- **Why it is critical** (which AC cannot be written without it)
-- **Suggested addition** (concrete proposal, not just a question)
-- **Impact if not added** (what risk this introduces — wasted dev cycles, unverifiable AC, customer-visible bug)
-
-### Edge Cases NOT in Original Story
-
-Stories tend to capture the happy path and one or two obvious negatives. Edge cases often slip through. As you read the story, ask explicitly:
-
-- What happens at boundaries? (empty, max length, zero, negative, very large)
+- What happens at boundaries (empty, max length, zero, negative, very large)?
 - What happens with concurrent or repeated actions?
-- What happens on partial failures? (network drop mid-action, timeout, half-saved state)
-- What happens when prerequisites are missing or stale? (deleted record, expired session)
-- What happens for unusual users? (different role, locale, device, accessibility tooling)
+- What happens on partial failures (a network drop mid-action, a timeout, half-saved state)?
+- What happens when prerequisites are missing or stale (a deleted record, an expired session)?
+- What happens for unusual users (a different role, locale, device, accessibility tooling)?
 
-For each edge case found:
+For each edge case, record the scenario that triggers it, the expected behavior (your best inference, or "needs PO/Dev confirmation"), its criticality (High, Medium or Low), and the action: promote it to AC, leave it as test-only, or ask the PO.
 
-- **Scenario** — what triggers it
-- **Expected behavior** — your best inference (or "needs PO/Dev confirmation")
-- **Criticality** — High, Medium, or Low
-- **Action required** — promote to AC, leave as test-only, or ask the PO
+The decision rule: when an edge case is high-criticality and you can name a clear expected behavior, promote it to AC. Otherwise record it as a test-level concern, which is out of scope for this skill (see the QA boilerplate).
 
-> **Decision rule**: If the edge case is high-criticality _and_ you can name a clear expected behavior, promote it to AC. Otherwise, document it as a test-level concern (out of scope of this skill — see the QA boilerplate).
+### Clarity and specificity
 
-### Clarity & Specificity Validation
+A criterion is clear when one engineer reading it once would implement it the same way as another. Check:
 
-A criterion is clear when one engineer reading it once can implement it the same way as another engineer reading it once. Run this checklist:
+- [ ] AC name specific values, not vague qualifiers ("min 8 characters", not "secure password").
+- [ ] Expected results are concrete and observable from the persona's point of view (a UI element, the message text shown, a system response the persona perceives). HTTP status codes are not user-observable, so include one only when the persona is an API consumer (DevEx, an integration agent, a headless client). See anti-pattern `I15`.
+- [ ] Test data examples are provided, or point to where they live.
+- [ ] Error scenarios are spelled out from the persona's point of view: the message they see, where it appears, what happens to the affordance or form state. Internal error-code identifiers belong in the impl-plan.
+- [ ] Performance and NFR expectations are quantified where they apply (a response under 500 ms, for example).
+- [ ] No criterion depends on undocumented context ("after the usual setup").
 
-- [ ] AC names specific values, not vague qualifiers ("min 8 characters" not "secure password")
-- [ ] Expected results are concrete and observable from the persona's POV (UI element, message text shown to the user, system response the persona perceives). HTTP status codes are NOT user-observable — include them only when the persona is an API consumer (DevEx, integration agent, headless client). See anti-pattern `I15`.
-- [ ] Test data examples are provided (or pointers to where they live)
-- [ ] Error scenarios are spelled out from the persona's POV (what error message they see, where it appears, what happens to the affordance / form state). Internal error-code identifiers belong in the impl-plan, not the AC.
-- [ ] Performance / NFR expectations are quantified when applicable (response under 500ms, etc.)
-- [ ] No criterion depends on undocumented context ("after the usual setup")
-
-If any item fails, list the specific fix in plain language, e.g.: _"AC2 says 'show an error' — specify the exact text and which field it appears under."_
+When an item fails, write the fix in plain language, for example: _"AC2 says 'show an error'. Specify the exact text and which field it appears under."_
 
 ---
 
-## Refining Acceptance Criteria with Specific Data
+## Refining AC with specific data
 
-Once gaps are filled and ambiguities resolved, convert each AC into one or more concrete scenarios.
+Once the gaps are filled and the ambiguities resolved, turn each AC into one or more concrete scenarios.
 
-### Scenario Definition (Gherkin Format)
+### Scenario definition (Gherkin)
 
-Use **Given–When–Then** to keep scenarios concrete and reviewable. Each scenario describes a single behavior.
+Use Given, When, Then so scenarios stay concrete and reviewable. Each scenario describes one behavior.
 
-**Hard format rule (anti-pattern `I17` in `SKILL.md`)**: every scenario written to `{{jira.acceptance_criteria}}` MUST be wrapped in a fenced ` ```gherkin ` code block. Plain text Given/When/Then outside the fence is non-compliant on both create and edit. The fence is the only shape that renders monospaced + syntax-highlighted inside the Jira ADF view.
+The format rule is hard (anti-pattern `I17` in `SKILL.md`): every scenario written to `{{jira.acceptance_criteria}}` must be wrapped in a fenced ` ```gherkin ` code block, on create and on edit. Given/When/Then as plain text outside the fence is non-compliant. The fence is the only shape that renders monospaced and syntax-highlighted in the Jira ADF view.
 
-**Scenario template** (use this exact shape; the fence is part of the template):
+The scenario template, fence included:
 
 ````markdown
 ```gherkin
@@ -172,119 +149,128 @@ Scenario: <short descriptive name — what behavior is being captured>
 ```
 ````
 
-**Persona-observable discipline**: write each `Then` as something the named persona perceives (UI element, message text, artifact state) — not internal effects (status codes, table writes, error codes). Exception: when the persona is an API consumer (DevEx, integration agent, headless client), the API surface IS the UX, so endpoint paths and response shapes are valid observables for THAT persona only. See anti-pattern `I15`.
+Write each `Then` as something the named persona perceives (a UI element, message text, artifact state), not as an internal effect (status codes, table writes, error codes). The exception is a persona that is an API consumer (DevEx, an integration agent, a headless client). For them the API surface is the UX, so endpoint paths and response shapes are valid observables, for that persona only. See anti-pattern `I15`.
 
-**Concrete-data discipline**: not "valid email" but `"john@example.com"`. Not "an error appears" but `"Email format is invalid"` displayed under the email field. Concrete data forces the team to confront what "valid" actually means.
+Use concrete data. Not "valid email" but `"john@example.com"`. Not "an error appears" but `"Email format is invalid"` shown under the email field. Concrete data forces the team to decide what "valid" means.
 
-### Types of Scenarios
+### Types of scenario
 
-Aim for coverage across three kinds of scenario, not just the happy path:
+Cover three kinds, not only the happy path.
 
-**Happy path (positive):** the typical successful flow, with realistic input.
+The happy path (positive) is the typical successful flow with realistic input:
 
-```
+```gherkin
 Scenario: Successful login with valid credentials
-Given: a registered user with email "user@example.com" and password "Pass1234!"
-When:  the user submits the login form with those credentials
-Then:  the user is redirected to the dashboard
-       and a session cookie "sid" is set on the response
+
+  Given a registered user with email "user@example.com" and password "Pass1234!"
+   When the user submits the login form with those credentials
+   Then the user lands on the dashboard
+    And the user's name appears in the page header
 ```
 
-**Error / validation (negative):** invalid input, unauthorized access, business-rule violations.
+Error and validation scenarios (negative) cover invalid input, unauthorized access and business-rule violations:
 
-```
+```gherkin
 Scenario: Login fails with invalid email format
-Given: the login page is open
-When:  the user submits the form with email "notanemail" and any password
-Then:  no request is sent to /auth/login
-       and an error "Email format is invalid" appears under the email field
+
+  Given the login page is open
+   When the user submits the form with email "notanemail" and any password
+   Then the form is not submitted
+    And the error "Email format is invalid" appears under the email field
 ```
 
-**Boundary / edge case:** min/max values, empty input, concurrency, unusual states.
+Boundary and edge scenarios cover min and max values, empty input, concurrency and unusual states:
 
-```
+```gherkin
 Scenario: Password at the minimum allowed length is accepted
-Given: a registration form requiring 8+ character passwords
-When:  the user submits with a password of exactly 8 characters
-Then:  the account is created
-       and the response status is 201 Created
+
+  Given a registration form that requires passwords of 8 or more characters
+   When the user submits it with a password of exactly 8 characters
+   Then the account is created
+    And the user sees the welcome screen
 ```
 
-When an edge case scenario was identified during gap analysis (not in the original story), mark it explicitly as such — for example: `Source: identified during refinement — needs PO confirmation`.
+When a scenario came from the gap analysis and not from the original story, mark it, for example: `Source: identified during refinement, needs PO confirmation`.
 
-### AC Quality Patterns
+### AC quality patterns
 
-**INVEST applied to AC:**
+INVEST applied to AC:
 
-- **Independent** — each AC stands on its own; do not chain them with "and then if AC1, also AC2..."
-- **Negotiable** — wording can change in refinement; the _intent_ is fixed
-- **Valuable** — each AC ties back to user or business outcome (no busywork criteria)
-- **Estimable** — a developer can size the work without further questions
-- **Small** — one AC = one verifiable behavior; if it covers three things, split it
-- **Testable** — there is a clear pass/fail signal someone can observe
+- Independent: each AC stands on its own, with no chains like "and then if AC1, also AC2...".
+- Negotiable: the wording can change in refinement, and the intent is fixed.
+- Valuable: each AC ties back to a user or business outcome, with no busywork criteria.
+- Estimable: a developer can size the work without further questions.
+- Small: one AC is one verifiable behavior, so split an AC that covers three things.
+- Testable: there is a clear pass or fail signal someone can observe.
 
-**Specificity standards:**
+Specificity standards:
 
-- Replace qualitative words with quantitative ones (`fast` → `under 500 ms`)
-- Replace pronouns and "it" with the named element (`it` → `the error banner above the form`)
-- Replace ranges with examples (`a long string` → `a 256-character string`)
+- Replace qualitative words with quantitative ones (`fast` becomes `under 500 ms`).
+- Replace pronouns and "it" with the named element (`it` becomes `the error banner above the form`).
+- Replace ranges with examples (`a long string` becomes `a 256-character string`).
 
-**Verifiability standards:** every `Then` clause must reference something a person or test can directly observe — a piece of UI, a response body, a database record, an event emitted. If the only way to know it worked is "trust me, it worked," it is not verifiable.
-
----
-
-## AC Refinement Workflow
-
-### 3-Amigos Session Guide (Optional)
-
-When a story has more than one or two open questions, a brief 3-amigos conversation usually beats async ping-pong. The roles:
-
-- **PO / PM** — confirms intent, business rules, priorities, edge-case decisions
-- **Dev** — confirms feasibility, calls out hidden complexity, proposes implementation-level constraints
-- **QA / Tester** — confirms verifiability, surfaces edge cases the others missed
-
-The session output is a refined story with concrete AC, no open questions, and explicit edge-case decisions. Keep it timeboxed (15–30 min for a single story).
-
-When 3-amigos is _not_ needed: the story is small, clear, and the same team has done similar work before. Don't ceremonialize what can be a one-line Slack thread.
-
-### INVEST Criteria Applied to AC
-
-Walk through INVEST one more time after writing scenarios. Common failures:
-
-- **Independent fails** when AC2 says "after AC1" — split into two stories or fold into one AC
-- **Small fails** when an AC has multiple `Then` clauses that test different behaviors — split
-- **Testable fails** when `Then` references mood, satisfaction, or "good UX" — replace with observable signal
-
-### Ready for Development
-
-Use this checklist as the gate from refinement → sprint:
-
-- [ ] Every AC follows Given–When–Then with concrete data
-- [ ] Happy path, at least one error scenario, and known edge cases are covered
-- [ ] No AC depends on undocumented context
-- [ ] All ambiguities and gaps from analysis are resolved (or explicitly deferred)
-- [ ] PO has confirmed expected behavior for non-original edge cases
-- [ ] Dev has confirmed AC are estimable without further questions
-- [ ] Each AC is independently verifiable
+Verifiability: every `Then` clause must reference something a person or test can observe directly, such as a piece of UI, a response body, a database record or an emitted event. If the only way to know it worked is "trust me", it is not verifiable.
 
 ---
 
-## Common AC Pitfalls
+## AC refinement workflow
 
-- **The Wish List**: AC reads like a feature description, not testable conditions
-- **The Implementation Spec**: AC dictates how (use Redux, call endpoint X) instead of what
-- **The Vague Outcome**: `Then the user sees feedback` — what feedback? Where? In what state?
-- **The Hidden Conjunction**: one AC stuffs three behaviors via "and... and... and..."
-- **The Untestable Mood**: AC about "delight", "ease", "intuitive flow" without observable signal
-- **The Missing Negative**: only happy-path scenarios; nothing about invalid input or failure modes
-- **The Magic Data**: AC references "the usual test user" or "standard data" without saying what that means
-- **The Forgotten Boundary**: rules state ranges (1–100) but no AC covers 0, 1, 100, 101
+### 3-amigos session (optional)
+
+When a story has more than one or two open questions, a short 3-amigos conversation usually beats asynchronous ping-pong. The roles:
+
+- PO or PM: confirms intent, business rules, priorities and edge-case decisions.
+- Dev: confirms feasibility, calls out hidden complexity and proposes implementation-level constraints.
+- QA or tester: confirms verifiability and surfaces the edge cases the others missed.
+
+The output is a refined story with concrete AC, no open questions and explicit edge-case decisions. Timebox it to 15 to 30 minutes for one story. Skip the session when the story is small and clear and the same team has done similar work, because a one-line Slack thread does the job.
+
+### INVEST pass over the scenarios
+
+Walk through INVEST once more after writing the scenarios. The common failures:
+
+- Independent fails when AC2 says "after AC1". Split into two stories, or fold both into one AC.
+- Small fails when an AC has several `Then` clauses testing different behaviors. Split it.
+- Testable fails when a `Then` refers to mood, satisfaction or "good UX". Replace it with an observable signal.
+
+### Ready for development
+
+Use this checklist as the gate from refinement to sprint:
+
+- [ ] Every AC follows Given, When, Then with concrete data.
+- [ ] The happy path, at least one error scenario and the known edge cases are covered.
+- [ ] No AC depends on undocumented context.
+- [ ] Every ambiguity and gap from the analysis is resolved or explicitly deferred.
+- [ ] The PO has confirmed the expected behavior for edge cases that were not in the original story.
+- [ ] The dev has confirmed the AC are estimable without further questions.
+- [ ] Each AC is independently verifiable.
+
+### With nobody at the keyboard
+
+This guide has four confirmation points: the before and after of a voice-gate rewrite, a suggested clarification or promotion that needs an answer, the PO's confirmation of edge-case behavior, and the dev's confirmation of estimability. `agentic-dev-core/references/decision-protocol.md` says who holds each one.
+
+- A person is present: ask them, as described above.
+- A supervised worker: the conductor or launcher holds the gate. Report the delta or the open questions to it, and wait for its answer.
+- A routine with nobody: the delegating brief is the approval when it covers the decision. When it does not, refine locally (the analysis, the scenarios, the rewritten text), stop before publishing to Jira, and report what is waiting. In `/autonomous-delivery` discovery mode the dispatch is that brief: create within `discovery_definitions`, record the assumptions, and leave the veto to the operator (`../SKILL.md`, "With nobody at the keyboard").
 
 ---
 
-## Related References
+## Common AC pitfalls
 
-- See `story-refinement.md` for the full story-level INVEST checklist and 3-amigos protocol applied at the story (not AC) level
-- See `edge-cases-enumeration.md` for systematic edge-case discovery at the feature / epic level — useful when refining stories that sit inside a complex feature
-- See `epic-creation.md` for epic-level scope and AC patterns
-- For formal test case design (Gherkin scenarios → automated tests, parametrization, fixtures) — out of scope here
+- The wish list: AC read like a feature description, not testable conditions.
+- The implementation spec: AC dictate how (use Redux, call endpoint X) instead of what.
+- The vague outcome: `Then the user sees feedback`. What feedback, where, in what state?
+- The hidden conjunction: one AC stuffs three behaviors in with "and... and... and...".
+- The untestable mood: AC about "delight", "ease" or "intuitive flow" with no observable signal.
+- The missing negative: only happy-path scenarios, with nothing on invalid input or failure modes.
+- The magic data: AC refer to "the usual test user" or "standard data" without saying what that is.
+- The forgotten boundary: the rules state a range (1 to 100) but no AC covers 0, 1, 100 or 101.
+
+---
+
+## Related references
+
+- `story-refinement.md`: the story-level INVEST checklist and the 3-amigos protocol applied to the story, not the AC.
+- `edge-cases-enumeration.md`: systematic edge-case discovery at feature or epic level, useful for stories inside a complex feature.
+- `epic-creation.md`: epic-level scope and AC patterns.
+- Formal test case design (Gherkin scenarios to automated tests, parametrization, fixtures) is out of scope here.

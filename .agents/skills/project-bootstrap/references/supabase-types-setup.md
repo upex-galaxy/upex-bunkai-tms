@@ -1,163 +1,122 @@
-Actúa como Senior Backend Developer y TypeScript Expert.
+# Supabase types setup (add-on)
 
----
+This add-on sets up types generated from the Supabase schema, so every database query is fully type-safe: autocomplete for tables and columns, compile-time errors, and `Row`, `Insert` and `Update` types for each table. It is an infrastructure add-on of `project-bootstrap` and runs on a greenfield project and on an existing app.
 
-## 🎯 TAREA
+## Read the `stack:` block first
 
-**🔧 FEATURE: Supabase Types Setup (Fase 3 - Infrastructure)**
+On an existing app the guard's verdict is `existing-app` (`SKILL.md` → Phase 3). Before the first step, read `.agents/project.yaml` → `stack:` (contract: `.agents/README.md` → `stack`) and resolve every literal this reference writes through it:
 
-Configurar el sistema de **tipado auto-generado** desde Supabase para obtener type-safety completo en todas las queries de base de datos.
+- The example paths (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) are the greenfield default. Resolve them under `{{stack.app_root}}`. The types file is `{{stack.database.types_path}}`, and with `stack.framework: nextjs-pages` the API lives in `pages/api/`.
+- App commands are `{{stack.package_manager}} run <script>` with the script name from `stack.scripts`. A null script is skipped and said so, never invented. Dependencies install with that package manager, which is never changed.
+- What the app already has wins. An existing docs UI, error contract, auth scheme, Supabase client location or major version of a dependency (Zod, Next) is read and extended, never replaced or upgraded by this add-on. When they conflict, show the user both shapes.
+- The Supabase project ref is `environments.<env>.db_project_ref`, and any database touch follows `agentic-dev-core/references/db-change-doctrine.md`.
 
----
+## Required input
 
-## 🧭 PASO PREVIO: LEER EL BLOQUE `stack:`
+Read these files:
 
-Esta add-on corre igual en un proyecto greenfield y en una app existente (veredicto `existing-app` del guard de entrada, `SKILL.md` → Phase 3). Antes del primer paso, leer `.agents/project.yaml` → `stack:` (contrato: `.agents/README.md` → `stack`) y resolver con él todo lo que esta referencia escribe como literal:
+- `package.json`: the Supabase dependencies.
+- `src/lib/supabase/client.ts`: the current browser client, if there is one.
+- `src/lib/supabase/server.ts`: the current server client, if there is one.
+- `src/types/supabase.ts`: the current types, if they exist.
+- `.agents/project.yaml` → `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` of the active environment): the Supabase project ref.
 
-- Las rutas de ejemplo (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) son el default greenfield: se resuelven bajo `{{stack.app_root}}`; el archivo de tipos es `{{stack.database.types_path}}`; con `stack.framework: nextjs-pages` la API vive en `pages/api/`.
-- Los comandos de la app son `{{stack.package_manager}} run <script>` con el NOMBRE de `stack.scripts`; un script en `null` se salta y se dice, nunca se inventa. Las dependencias se instalan con ese package manager, sin cambiarlo.
-- Lo que la app ya tiene gana: una UI de docs, un contrato de error, un esquema de auth, la ubicación de los Supabase clients o la versión mayor de una dependencia (Zod, Next) se leen y se extienden, nunca se reemplazan ni se actualizan desde esta add-on. Un choque se le muestra al usuario con las dos formas.
-- El Supabase project ref es `environments.<env>.db_project_ref`; todo toque a la base sigue `agentic-dev-core/references/db-change-doctrine.md`.
+Preconditions, all required:
 
----
+- Supabase is configured (from `backend-setup.md`).
+- The tables exist in the database.
+- The Supabase project ID is known.
 
-## 📥 INPUT REQUERIDO
+## Tools
 
-### 1. Contexto del Proyecto
-
-**Leer estos archivos:**
-
-- `package.json` - Verificar dependencias de Supabase
-- `src/lib/supabase/client.ts` - Client actual (si existe)
-- `src/lib/supabase/server.ts` - Server client actual (si existe)
-- `src/types/supabase.ts` - Tipos actuales (si existen)
-- `.agents/project.yaml` → `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` del ambiente activo) - Supabase project ref
-
-### 2. Precondiciones
-
-**OBLIGATORIAS:**
-
-- ✅ Supabase configurado (de `backend-setup.md`)
-- ✅ Tablas creadas en la base de datos
-- ✅ Supabase Project ID conocido
-
----
-
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS
-
-### MCP Requeridos:
-
-1. **MCP Supabase** - Para verificar conexión y schema
-
-### CLIs Requeridos:
-
-- **Supabase CLI** - Para generar tipos (`supabase gen types`)
-
-**Verificar instalación:**
+The Supabase MCP checks the connection and the schema. The Supabase CLI generates the types (`supabase gen types`). Check that the CLI is installed:
 
 ```bash
 supabase --version
 ```
 
-**Si no está instalado:**
+If it is not installed:
 
 ```bash
 # macOS/Linux
 brew install supabase/tap/supabase
 
-# O con npm
+# Or with npm
 npm install -g supabase
 ```
 
----
+## Output
 
-## 📤 OUTPUT GENERADO
+Files:
 
-### Archivos:
+- `src/types/supabase.ts`: types generated from the schema.
+- `package.json`: the `db:types` script added.
+- `src/lib/supabase/client.ts`: updated with the `<Database>` generic.
+- `src/lib/supabase/server.ts`: updated with the `<Database>` generic.
 
-- ✅ `src/types/supabase.ts` - Tipos auto-generados desde schema
-- ✅ `package.json` - Script `db:types` agregado
-- ✅ `src/lib/supabase/client.ts` - Actualizado con generic `<Database>`
-- ✅ `src/lib/supabase/server.ts` - Actualizado con generic `<Database>`
+## Steps
 
-### Beneficios:
+### Phase 0: Check the preconditions
 
-- Type-safety en todas las queries
-- Autocompletado de tablas y columnas
-- Detección de errores en tiempo de compilación
-- Tipos Row, Insert, Update para cada tabla
+**Step 0.1: Check the Supabase CLI**
 
----
+Run `supabase --version` as in Tools above. When it is missing, show the install instructions.
 
-## 🛠️ PASOS DETALLADOS
+**Step 0.2: Get the project ID**
 
-### FASE 0: Verificación de Precondiciones
-
-**Paso 0.1: Verificar Supabase CLI**
-
-```bash
-supabase --version
-```
-
-**Si no está instalado:** Mostrar instrucciones de instalación.
-
-**Paso 0.2: Obtener Project ID**
-
-**Leer de `.agents/project.yaml`** (`.agents/instructions/agent-project-variables.md` §7: la identidad del proyecto vive en el yaml):
+Read it from `.agents/project.yaml` (`.agents/instructions/agent-project-variables.md` §7: the project's identity lives in the yaml):
 
 ```bash
 yq '.environments.<env>.db_project_ref' .agents/project.yaml
 ```
 
-**Si está en `null`, preguntar al usuario** (y guardarlo en ese campo con su OK):
+If it is `null`, ask the user (and, with their OK, save the answer in that field):
 
 ```
-¿Cuál es tu Supabase Project ID?
+What is your Supabase Project ID?
 
-Puedes encontrarlo en:
-https://supabase.com/dashboard/project/[TU_PROJECT]/settings/general
+You can find it at:
+https://supabase.com/dashboard/project/[YOUR_PROJECT]/settings/general
 
-El project ref tiene formato: xxxxxxxxxxxxxxxxxxxx (20 caracteres)
+The project ref has this format: xxxxxxxxxxxxxxxxxxxx (20 characters)
 ```
 
-**Guardar Project ID para uso posterior.**
+Keep the project ID for the later steps. With nobody to ask, see "With nobody at the keyboard".
 
----
+### Phase 1: Generate the Supabase types
 
-### FASE 1: Generar Tipos de Supabase
+**Step 1.0: Load the Supabase skills.** Load `/supabase` and `/supabase-postgres-best-practices` before generating. They cover the type generator, the `Database` type wiring and the schema the types mirror. If they are not installed, say so once, point at `bun setup` or at the single `bunx skills add` line from `PROJECT_LEVEL_SKILLS` in `cli/install.ts`, and continue (`agentic-dev-core/references/skill-composition-strategy.md` §3.5).
 
-**Paso 1.0: Load the Supabase skills.** Load `/supabase` + `/supabase-postgres-best-practices` before generating (they cover the type generator, the `Database` type wiring and the schema the types mirror). Not installed → say so once, point at `bun setup` or the single `bunx skills add` line from `PROJECT_LEVEL_SKILLS` in `cli/install.ts`, then continue (`agentic-dev-core/references/skill-composition-strategy.md` §3.5).
+**Step 1.1: Run the generation**
 
-**Paso 1.1: Ejecutar generación**
-
-Si `stack.scripts.db_types` no es `null`, la app ya tiene su script de generación: correr `{{stack.package_manager}} run {{stack.scripts.db_types}}` y saltar el Paso 3.2 (no se agrega un segundo script). Si es `null`, generar al archivo `{{stack.database.types_path}}` (default greenfield `src/types/supabase.ts`):
+When `stack.scripts.db_types` is not `null`, the app already has its generation script. Run `{{stack.package_manager}} run {{stack.scripts.db_types}}` and skip Step 3.2, because a second script must not be added. When it is `null`, generate into `{{stack.database.types_path}}` (greenfield default `src/types/supabase.ts`):
 
 ```bash
-# Reemplazar [PROJECT_ID] con el valor real
+# Replace [PROJECT_ID] with the real value
 bunx supabase gen types typescript --project-id [PROJECT_ID] > src/types/supabase.ts
 ```
 
-**Paso 1.2: Verificar archivo generado**
+**Step 1.2: Check the generated file**
 
 ```bash
-# Verificar que el archivo existe y tiene contenido
+# Check that the file exists and has content
 wc -l src/types/supabase.ts
 
-# Verificar estructura básica
+# Check the basic structure
 head -30 src/types/supabase.ts
 ```
 
-**Output esperado:**
+Expected output:
 
 ```
-✅ Tipos generados: src/types/supabase.ts
-   - Líneas: [número] (debe ser > 50)
-   - Contiene: Database type, Tables, Enums
+✅ Types generated: src/types/supabase.ts
+   - Lines: [number] (must be > 50)
+   - Contains: Database type, Tables, Enums
 ```
 
-**Paso 1.3: Verificar contenido**
+**Step 1.3: Check the content**
 
-El archivo debe contener:
+The file must contain:
 
 ```typescript
 export type Database = {
@@ -168,39 +127,35 @@ export type Database = {
         Insert: { ... }
         Update: { ... }
       }
-      // ... más tablas
+      // ... more tables
     }
   }
 }
 ```
 
-**Si el archivo está vacío o tiene error:**
+If the file is empty or has an error:
 
-1. Verificar conexión a Supabase
-2. Verificar que existen tablas en la DB
-3. Verificar Project ID correcto
+1. Check the connection to Supabase.
+2. Check that the tables exist in the DB.
+3. Check that the Project ID is right.
 
----
+### Phase 2: Update the Supabase clients
 
-### FASE 2: Actualizar Supabase Clients
+**Step 2.1: Check the current `client.ts`**
 
-**Paso 2.1: Verificar client.ts actual**
-
-Leer `src/lib/supabase/client.ts`:
-
-**Buscar si ya usa `<Database>`:**
+Read `src/lib/supabase/client.ts` and look for the `<Database>` generic:
 
 ```typescript
-// ✅ Correcto - ya tiene generic
+// ✅ Correct - already has the generic
 createBrowserClient<Database>(...)
 
-// ❌ Incorrecto - falta generic
+// ❌ Wrong - the generic is missing
 createBrowserClient(...)
 ```
 
-**Paso 2.2: Actualizar client.ts (si necesario)**
+**Step 2.2: Update `client.ts` (if needed)**
 
-**ANTES:**
+Before:
 
 ```typescript
 import { createBrowserClient } from '@supabase/ssr';
@@ -213,7 +168,7 @@ export function createClient() {
 }
 ```
 
-**DESPUÉS:**
+After:
 
 ```typescript
 import { createBrowserClient } from '@supabase/ssr';
@@ -227,20 +182,20 @@ export function createClient() {
 }
 ```
 
-**Paso 2.3: Actualizar server.ts (si necesario)**
+**Step 2.3: Update `server.ts` (if needed)**
 
-Aplicar el mismo patrón:
+Apply the same pattern:
 
 ```typescript
 import type { Database } from '@/types/supabase'
 
-// En la función createServerClient
+// In the createServerClient function
 return createServerClient<Database>(...)
 ```
 
-**Paso 2.4: Actualizar admin.ts (si existe)**
+**Step 2.4: Update `admin.ts` (if it exists)**
 
-Si existe `src/lib/supabase/admin.ts`:
+If `src/lib/supabase/admin.ts` exists:
 
 ```typescript
 import type { Database } from '@/types/supabase';
@@ -252,19 +207,17 @@ export const adminClient = createClient<Database>(
 );
 ```
 
----
+### Phase 3: Add the script to `package.json`
 
-### FASE 3: Agregar Script a package.json
-
-**Paso 3.1: Leer package.json**
+**Step 3.1: Read `package.json`**
 
 ```bash
 cat package.json | grep -A5 '"scripts"'
 ```
 
-**Paso 3.2: Agregar script db:types** (solo cuando `stack.scripts.db_types` es `null`; después, registrar el nombre nuevo con `bun run agents:setup --stack`)
+**Step 3.2: Add the `db:types` script** (only when `stack.scripts.db_types` is `null`; afterwards, register the new name with `bun run agents:setup --stack`)
 
-**Editar `package.json` para agregar:**
+Edit `package.json` to add:
 
 ```json
 {
@@ -276,116 +229,117 @@ cat package.json | grep -A5 '"scripts"'
 }
 ```
 
-**Paso 3.3: Verificar script**
+**Step 3.3: Check the script**
 
 ```bash
 bun run db:types
 ```
 
-**Output esperado:**
+Expected output:
 
 ```
-✅ Script db:types agregado
-✅ Ejecutable con: bun run db:types
+✅ db:types script added
+✅ Runnable with: bun run db:types
 ```
 
----
+### Phase 4: Final validation
 
-### FASE 4: Validación Final
-
-**Paso 4.1: TypeScript Check**
+**Step 4.1: TypeScript check**
 
 ```bash
 bun run types:check
-# O: npx tsc --noEmit
+# Or: npx tsc --noEmit
 ```
 
-**Si hay errores de tipos:**
+If there are type errors:
 
-- Verificar imports de `Database`
-- Verificar path alias `@/types/supabase`
-- Regenerar tipos si el schema cambió
+- Check the `Database` imports.
+- Check the path alias `@/types/supabase`.
+- Regenerate the types if the schema changed.
 
-**Paso 4.2: Verificar Type-Safety**
+**Step 4.2: Check type safety**
 
-Crear un query de prueba para validar autocompletado:
+Write a test query to confirm autocomplete works:
 
 ```typescript
-// En cualquier Server Component
+// In any Server Component
 const supabase = await createServer();
 
-// Debería tener autocompletado de tablas
+// It should autocomplete table names
 const { data } = await supabase
-  .from('profiles') // ← Autocompletado de tablas
-  .select('id, email'); // ← Autocompletado de columnas
+  .from('profiles') // ← table autocomplete
+  .select('id, email'); // ← column autocomplete
 ```
 
-**Output esperado:**
+Expected output:
 
 ```
 ✅ TypeScript check: PASSED
-✅ Autocompletado funcionando
-✅ Tipos Row/Insert/Update disponibles
+✅ Autocomplete working
+✅ Row/Insert/Update types available
 ```
 
----
+## With nobody at the keyboard
 
-## 📋 CHECKLIST FINAL
+The general rule and the per-gate table are in `SKILL.md` → "With nobody at the keyboard". For this add-on:
 
-### Archivos:
+- Project ID is `null` and nobody can answer: take it from the delegating brief when it gives one. Otherwise stop before Phase 1 and report the question, because there is nothing to generate types from.
+- Writing the ref to `.agents/project.yaml`: a supervised worker needs its conductor's OK, and a routine writes only a value its brief supplied. With neither, leave the yaml untouched and put the value in the report.
+- Supabase CLI missing: do not install it. Put the install instructions above in the report and stop, since the types cannot be generated without it.
 
-- [ ] `src/types/supabase.ts` existe y tiene tipos de todas las tablas
-- [ ] `src/lib/supabase/client.ts` usa `<Database>` generic
-- [ ] `src/lib/supabase/server.ts` usa `<Database>` generic
-- [ ] `package.json` tiene script `db:types`
+## Final checklist
 
-### Validaciones:
+Files:
 
-- [ ] `bun run types:check` pasa sin errores
-- [ ] `bun run db:types` regenera tipos correctamente
-- [ ] Autocompletado funciona en queries
+- [ ] `src/types/supabase.ts` exists and has the types of every table
+- [ ] `src/lib/supabase/client.ts` uses the `<Database>` generic
+- [ ] `src/lib/supabase/server.ts` uses the `<Database>` generic
+- [ ] `package.json` has the `db:types` script
 
----
+Validation:
 
-## 🎉 REPORTE FINAL
+- [ ] `bun run types:check` passes without errors
+- [ ] `bun run db:types` regenerates the types correctly
+- [ ] Autocomplete works in queries
+
+## Final report
 
 ````markdown
-# ✅ Supabase Types Setup Completado
+# Supabase types setup completed
 
-## Archivos Creados/Actualizados:
+## Files created/updated:
 
-- src/types/supabase.ts (generado)
-- src/lib/supabase/client.ts (actualizado)
-- src/lib/supabase/server.ts (actualizado)
-- package.json (script agregado)
+- src/types/supabase.ts (generated)
+- src/lib/supabase/client.ts (updated)
+- src/lib/supabase/server.ts (updated)
+- package.json (script added)
 
-## Tablas Tipadas:
+## Typed tables:
 
-- [listar tablas encontradas en el schema]
+- [list the tables found in the schema]
 
-## Comandos Disponibles:
+## Available commands:
 
-- `bun run db:types` - Regenerar tipos después de cambios en DB
+- `bun run db:types` - Regenerate the types after DB changes
 
-## Uso:
+## Usage:
 
 ```typescript
 import type { Database } from '@/types/supabase';
 
-// Tipo de una fila completa
+// Type of a full row
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
-// Tipo para insertar
+// Type for inserting
 type NewProfile = Database['public']['Tables']['profiles']['Insert'];
 
-// Tipo para actualizar (todo opcional)
+// Type for updating (everything optional)
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 ```
-````
 
-## Próximo Paso:
+## Next step:
 
-Regenerar tipos cada vez que modifiques el schema de la DB:
+Regenerate the types every time you change the DB schema:
 
 ```bash
 bun run db:types
@@ -393,47 +347,40 @@ bun run db:types
 
 ````
 
----
+## FAQ
 
-## ❓ PREGUNTAS FRECUENTES
+**When should I regenerate the types?** Every time the database schema changes (tables, columns or enums added or modified).
 
-**P: ¿Cuándo debo regenerar los tipos?**
-R: Cada vez que cambies el schema de la base de datos (agregar/modificar tablas, columnas, enums).
+**What if the script fails?** Check three things:
 
-**P: ¿Qué pasa si el script falla?**
-R: Verifica:
-1. Conexión a internet
-2. Project ID correcto
-3. Supabase CLI actualizado (`npm update -g supabase`)
+1. The internet connection.
+2. That the Project ID is right.
+3. That the Supabase CLI is up to date (`npm update -g supabase`).
 
-**P: ¿Los tipos incluyen funciones de PostgreSQL?**
-R: Sí, las funciones RPC también se tipan automáticamente.
+**Do the types include PostgreSQL functions?** Yes. RPC functions are typed automatically too.
 
-**P: ¿Puedo editar manualmente supabase.ts?**
-R: No recomendado. Los cambios se perderán al regenerar. Si necesitas tipos custom, créalos en otro archivo que importe de supabase.ts.
+**Can I edit `supabase.ts` by hand?** It is not recommended, because the next regeneration overwrites the changes. Put custom types in another file that imports from `supabase.ts`.
 
----
+## Maintenance
 
-## 🔄 MANTENIMIENTO
-
-**Después de cambios en el schema:**
+After a schema change:
 
 ```bash
-# 1. Regenerar tipos
+# 1. Regenerate the types
 bun run db:types
 
-# 2. Verificar TypeScript
+# 2. Check TypeScript
 bun run types:check
 
 # 3. Commit
 git add src/types/supabase.ts
 git commit -m "chore: regenerate supabase types"
-````
+```
 
-**Integración con CI/CD (opcional):**
+Optional CI/CD integration:
 
 ```yaml
-# En tu workflow de GitHub Actions
+# In your GitHub Actions workflow
 - name: Verify Supabase Types
   run: |
     bun run db:types

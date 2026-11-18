@@ -9,13 +9,13 @@
     {
       "name": "should-trigger-create-bug-from-cli",
       "prompt": "Create a Bug from acli — title 'Login button does nothing on Safari 17', parent {{PROJECT_KEY}}-123, project {{PROJECT_KEY}}, assign to me.",
-      "expected_behavior": "Activates acli skill. Loads references/workitem.md §create. Runs `acli jira workitem create --project {{PROJECT_KEY}} --type Bug --summary \"Login button does nothing on Safari 17\" --parent {{PROJECT_KEY}}-123 --assignee \"@me\"`. Reports the new bug key. Does NOT use Test / Test-Execution issue types (those are TMS-side and out of scope for this skill).",
+      "expected_behavior": "Activates acli skill. Loads references/workitem.md §create. Runs `acli jira workitem create --project {{PROJECT_KEY}} --type Bug --summary \"Login button does nothing on Safari 17\" --parent {{PROJECT_KEY}}-123 --assignee \"@me\"`. Reports the new bug key. Does not use Test or Test Execution issue types: this repo handles Story, Bug, Task and Epic only.",
       "category": "positive"
     },
     {
       "name": "should-trigger-fetch-story-details",
       "prompt": "Pull {{PROJECT_KEY}}-123 from Jira via acli — I need the ACs, scope and mockup link.",
-      "expected_behavior": "Activates acli skill. Loads references/workitem.md §view. Runs `acli jira workitem view {{PROJECT_KEY}}-123 --json` and pipes through jq to extract the relevant custom fields (`customfield_NNNN` placeholders). Notes that real custom-field IDs are workspace-specific and that the host repo's `<repo-core>/references/acli-integration.md` typically holds a slug → ID catalog.",
+      "expected_behavior": "Activates acli skill. Loads references/workitem.md §view. Runs `acli jira workitem view {{PROJECT_KEY}}-123 --json` and pipes through jq to extract the relevant custom fields (`customfield_NNNN` placeholders). Notes that real custom-field IDs are workspace-specific and that the repo's `agentic-dev-core/references/acli-integration.md` typically holds a slug → ID catalog.",
       "category": "positive"
     },
     {
@@ -26,7 +26,7 @@
     },
     {
       "name": "should-trigger-spanish-acli-trigger",
-      "prompt": "Necesito loguearme en acli para mi sitio de Atlassian — paso el token por env, ¿cómo es?",
+      "prompt": "Necesito loguearme en acli para mi sitio de Atlassian — paso el token por env, cómo es?",
       "expected_behavior": "Activates acli skill. Mirrors Spanish in conversation. Loads references/auth.md. Explains the API-token path: `echo \"$ATLASSIAN_API_TOKEN\" | acli jira auth login --site \"$(bun run --silent jira:url --slug)\" --email \"$ATLASSIAN_EMAIL\" --token`. Names the TWO env vars (ATLASSIAN_EMAIL, ATLASSIAN_API_TOKEN) and states that the site host is NOT an env var: it comes from .agents/project.yaml -> issue_tracker.atlassian_url, read via `bun run jira:url` (`--slug` for the bare host acli --site needs). Does NOT suggest interpolating an ATLASSIAN_URL shell variable, nor deriving the slug by stripping https:// off one. Notes that --token reads only from stdin (pipe/redirect/here-string).",
       "category": "positive"
     },
@@ -39,13 +39,31 @@
     {
       "name": "should-not-trigger-end-to-end-orchestrator",
       "prompt": "Implement {{PROJECT_KEY}}-123 — full sprint loop, plan to code to review to deploy.",
-      "expected_behavior": "Does NOT activate acli skill as the entry point. Should route to the host repo's end-to-end story-orchestrator workflow skill (e.g. a sprint-development / sprint-testing mega-orchestrator). That orchestrator will internally call acli for the Jira transitions (Ready For Dev → In Progress → In Review → Ready For QA), but the user-facing entry point is the orchestrator, not the CLI primitive.",
+      "expected_behavior": "Does NOT activate acli skill as the entry point. Should route to the end-to-end delivery workflow skill (sprint-development, or autonomous-delivery when unattended). That orchestrator will internally call acli for the Jira transitions (Ready For Dev → In Progress → In Review → Ready For QA), but the user-facing entry point is the orchestrator, not the CLI primitive.",
       "category": "negative"
     },
     {
       "name": "should-not-trigger-backlog-grooming",
       "prompt": "Seed the backlog with 30 stories from the PRD — refine ACs, INVEST check, ready-for-dev checklist.",
       "expected_behavior": "Does NOT activate acli skill as the entry point. Should route to a product-management / backlog-grooming workflow skill because this is backlog seeding + AC refinement, not raw CLI work. That workflow may delegate the bulk-create step to acli (`workitem create-bulk --from-csv`), but the orchestration, INVEST check, and Gherkin authoring belong to the workflow skill.",
+      "category": "negative"
+    },
+    {
+      "name": "should-trigger-search-bugs-spanish",
+      "prompt": "Desde la terminal, buscá todos los bugs abiertos de {{PROJECT_KEY}} y exportalos a CSV.",
+      "expected_behavior": "Activates acli skill. Uses `acli jira workitem search` with a JQL for open bugs, `--paginate` and a CSV output.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-view-acs-spanish",
+      "prompt": "Necesito ver los criterios de aceptación de {{PROJECT_KEY}}-123 sin abrir Jira, desde la consola.",
+      "expected_behavior": "Activates acli skill. Reads the work item with `acli jira workitem view` and reports the acceptance criteria.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-atlassian-mcp",
+      "prompt": "Configurá el servidor MCP de Atlassian en .mcp.json.",
+      "expected_behavior": "Does not activate acli. The Atlassian MCP is a different integration, documented in docs/mcp/.",
       "category": "negative"
     }
   ]

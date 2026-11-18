@@ -28,6 +28,20 @@
       "prompt": "Fresh Next.js project on plain Postgres (stack.database.provider: other) with a qa_inspector_ro role already created. Build the /qa page; credentials go to a Confluence page.",
       "expected_output": "Same flow as a fresh scaffold: DBHub with `type = \"postgres\"` as the only DB way (no Supabase MCP tab, because `stack.database.provider` is `other`), logged in as `qa_inspector_ro`; snapshot `db` field records the choice. Publishes through the Confluence adapter. No new dependency, no credential value in the page.",
       "files": []
+    },
+    {
+      "id": 5,
+      "name": "es-crear-pagina-qa-y-credenciales-en-jira",
+      "prompt": "Necesito la guía de testeabilidad para QA: armá la página /qa en nuestra app y publicá las credenciales de testing en un Epic de Jira. Las contraseñas están en el gestor de secretos, no las escribas en ningún lado.",
+      "expected_output": "Activates testability-guide. Reads `.agents/project.yaml` `stack:` first, runs pre-flight discovery and the testability score, asks Q1 to Q5 in one message with defaults (the Jira Epic is the default destination), generates the `/qa` page in the host framework's idiomatic location with a snapshot comment, builds the credentials body from the template with slot names only, and publishes it through the Jira Epic publisher after the security audit. No credential value appears in the page, the Epic body or the diff.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "es-regenerar-guia-tras-cambio-de-stack",
+      "prompt": "Cambiamos la autenticación del proyecto y la página /qa quedó desactualizada. Regenerá la guía de testeabilidad y actualizá las credenciales en Confluence.",
+      "expected_output": "Activates testability-guide. Reads the snapshot comment of the existing `/qa` page, re-runs discovery, diffs against the detected stack and finds the auth drift. Marks the run as a surgical patch, not a fresh scaffold, updates only the affected sections, refreshes the credentials body through the Confluence publisher after the security audit, and updates the snapshot comment and its content-hash. No credential value is written anywhere.",
+      "files": []
     }
   ]
 }

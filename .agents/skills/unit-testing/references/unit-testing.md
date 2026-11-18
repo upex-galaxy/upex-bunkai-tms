@@ -1,380 +1,225 @@
-Actúa como Senior QA Engineer y Test Automation Expert especializado en unit testing con el runner que la app ya usa (`stack.test_runner` en `.agents/project.yaml`: Vitest, Jest, Bun test, …).
+# Unit testing workflow
 
----
+This is the broad workflow behind `/unit-testing`: how to turn a story's implemented code into a focused set of unit tests. Run it during implementation or right after a story's code lands. Read it first when you do not yet know which specialised reference you need (`tdd-workflow.md`, `test-naming.md`, `mocking-patterns.md`, `test-coverage.md`). The goal is a suite that covers the functions carrying real logic, edge and error cases included, so refactors stay safe.
 
-## 🎯 TAREA
+## Inputs
 
-**FASE 7: UNIT TESTING (Durante Implementation)**
+### The story
 
-Crear unit tests para funciones y lógica de negocio implementadas en la story actual, asegurando cobertura de casos críticos y edge cases.
+Read all three when they exist:
 
-**Este prompt se ejecuta DURANTE o INMEDIATAMENTE DESPUÉS de implementar una story** en Fase 7: Implementation.
+- `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}/story.md`: what the story does and its acceptance criteria. Start here.
+- `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}/implementation-plan.md`: the technical plan and the modules it creates.
+- `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}/acceptance-test-plan.md`: acceptance test cases. Optional; present only when upstream planning produced it.
 
----
+From them you need three things: what the story does, which acceptance criteria it must meet, and which files it created or changed.
 
-## 📥 INPUT REQUERIDO
+### The implemented code
 
-### 1. Story Actual
+Take the files the story created or changed (`git diff --name-only` against the base branch) under `{{stack.app_root}}`, and within them the components, helpers, utilities and transformation or calculation functions.
 
-**Leer TODOS estos archivos:**
+The folders in the examples below (`src/lib/`, `src/utils/`) are illustrations. The adopted app may lay things out differently (a root `lib/`, monorepo packages), and its layout wins.
 
-- `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/story.md` - **CRÍTICO** - Descripción de la story, criterios de aceptación
-- `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/implementation-plan.md` - Plan técnico, módulos a crear
-- `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/acceptance-test-plan.md` - (Optional) Acceptance test cases, if available from upstream planning
+Sort the functions into three kinds:
 
-**Qué identificar:**
+1. Complex business logic: financial or mathematical calculations, data transformations, non-trivial validation, business algorithms.
+2. Critical functions: helpers reused in several places, formatting and parsing utilities, data validators.
+3. Functions that do not need unit tests: purely presentational React components, code that only calls APIs (that is an integration test), configuration and constants, trivial wrappers.
 
-1. **Funcionalidad implementada:** Qué hace la story
-2. **Criterios de aceptación:** Qué debe cumplir
-3. **Módulos creados:** Qué archivos se implementaron
+### The testing framework
 
-### 2. Código Implementado
+Read the `stack:` block of `.agents/project.yaml` first:
 
-**Buscar y analizar:**
+- `stack.test_runner`: the app's runner (`vitest`, `jest`, `bun`, `playwright`, `other`, `none`; `null` means none was chosen yet).
+- `stack.scripts.test`: the NAME of the test script in the app's `package.json`. The command is `{{stack.package_manager}} run {{stack.scripts.test}}`.
+- `stack.app_root`: where the app and its `package.json` live.
 
-- Los archivos que la story creó o cambió (`git diff --name-only` contra la rama base), bajo `{{stack.app_root}}`
-- Componentes, helpers, utilidades y funciones de transformación o cálculo entre esos archivos
+Then check the existing setup under `{{stack.app_root}}`: the runner config (`vitest.config.*`, `jest.config.*`, `bunfig.toml` and so on) for environment, setup files, aliases and coverage, and the existing `*.test.*` / `*.spec.*` files for their location (colocated, `__tests__/`, `tests/`) and naming. Answer three questions:
 
-Las carpetas de los ejemplos de abajo (`src/lib/`, `src/utils/`) son ilustrativas: la app adoptada puede tener otra estructura (`lib/` en la raíz, paquetes de un monorepo) y se respeta la suya.
+1. Does the runner in `stack.test_runner` match what the repo shows? If not, say so and run `bun run setup:doctor`, which reports the drift. Do not switch runners on your own.
+2. Is coverage configured?
+3. Which location and naming patterns do the tests use? New tests follow them.
 
-**Qué identificar:**
+## Tools
 
-1. **Funciones con lógica de negocio compleja:**
-   - Cálculos matemáticos o financieros
-   - Transformaciones de datos
-   - Validaciones complejas
-   - Algoritmos de negocio
+Context7 (the `library-docs` capability) is strongly recommended: read the official docs before writing tests. Useful queries are "<runner from stack.test_runner> latest best practices", "<runner> setup <stack.framework>", "React Testing Library latest API" and "<runner> mock functions examples". No other MCP is needed for this phase. Locally you need the runner from `stack.test_runner` and the package manager from `stack.package_manager`.
 
-2. **Funciones críticas:**
-   - Helpers reutilizables en múltiples partes
-   - Utilidades de formateo o parsing
-   - Validadores de datos
+## What the tests cover
 
-3. **Funciones que NO necesitan unit tests:**
-   - Componentes React simples (solo presentacionales)
-   - Código que solo llama APIs (eso es integration test)
-   - Configuraciones o constantes
-   - Wrappers triviales
+Cover:
 
-### 3. Testing Framework
+- functions with complex business logic, reusable helpers and utilities, data transformations and calculations;
+- happy paths, edge cases (limits, empty values, nulls) and error cases (invalid input);
+- every meaningful branch of the critical functions. Targets per code type are in `references/test-coverage.md` § Targets by code type, and coverage is a floor, not a goal (SKILL.md U6).
 
-**Leer primero el bloque `stack:` de `.agents/project.yaml`:**
+Leave out:
 
-- `stack.test_runner` - el runner de la app (`vitest`, `jest`, `bun`, `playwright`, `other`, `none`; `null` = todavía no se eligió)
-- `stack.scripts.test` - el NOMBRE del script de tests en el `package.json` de la app; el comando es `{{stack.package_manager}} run {{stack.scripts.test}}`
-- `stack.app_root` - dónde vive la app (y su `package.json`)
+- React component tests (component testing is a separate, optional layer);
+- API integration tests and E2E tests, which belong to other test layers;
+- trivial code without logic.
 
-**Después verificar el setup existente bajo `{{stack.app_root}}`:**
+The result is tested critical functions with high coverage, and confidence when refactoring.
 
-- La config del runner (`vitest.config.*`, `jest.config.*`, `bunfig.toml`, …) - entorno, setup files, aliases, coverage
-- Archivos `*.test.*` / `*.spec.*` existentes - ubicación (colocados, `__tests__/`, `tests/`) y naming actuales
+## Outputs
 
-**Qué identificar:**
+- Test files such as `src/lib/[module].test.ts` and `src/utils/[function].test.ts`, one per implemented module.
+- When no runner exists yet: `jest.config.js` or `vitest.config.ts`, and the test scripts in `package.json`.
+- A passing suite (100% pass rate) and a coverage report whose branch coverage is read against `references/test-coverage.md` § Targets by code type.
+- An updated `README.md` with the test command, when the project has one.
 
-1. ¿El runner de `stack.test_runner` coincide con lo que el repo muestra? Si no coincide, decirlo y correr `bun run setup:doctor` (reporta el drift); nunca cambiar de runner por cuenta propia
-2. ¿Existe configuración de coverage?
-3. ¿Qué patrones de ubicación y naming se usan? Los tests nuevos los siguen
+## Working rules
 
----
+The reason for each rule is in parentheses.
 
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS (MCP)
+- Test only functions with real logic (a suite full of trivial tests costs more than it protects). Skip simple UI components, and skip third-party code, which its authors already tested.
+- Verify behavior, not implementation (a test tied to the implementation breaks on every refactor).
+- Use descriptive variables instead of hardcoded values, and test names that say what is being tested.
+- Cover boundary values, empty values, `null`, `undefined`, invalid input and exceptions.
+- Use the AAA pattern: Arrange, Act, Assert.
+- Isolate external dependencies (APIs, DB, external services): inject at the seam first, and use `jest.mock` / `vi.mock` only when the seam is unavoidable. Do not mock without a reason.
+- Validate branch coverage per code type (`references/test-coverage.md`), never a global number as the goal.
+- Comment a test when its purpose is not obvious.
+- Run only commands that terminate (an interactive command blocks the run).
 
-### MCP Recomendados:
+## Step 1: Analyze the implemented code
 
-1. **MCP Context7** - ALTAMENTE RECOMENDADO
-   - Consultar docs oficiales antes de escribir tests
-   - Queries recomendadas:
-     - "<runner de stack.test_runner> latest best practices"
-     - "<runner> setup <stack.framework>"
-     - "React Testing Library latest API"
-     - "<runner> mock functions examples"
+Goal: decide which functions need unit tests.
 
-2. **NO se requieren otros MCP** para esta fase
+### Step 1.1: Read the story and the code
 
-### Herramientas Locales:
-
-- El runner de `stack.test_runner`
-- El package manager de `stack.package_manager`
-
----
-
-## 🎯 OBJETIVO DE UNIT TESTING
-
-Crear unit tests que:
-
-**Incluye:**
-
-- ✅ Testear funciones con lógica de negocio compleja
-- ✅ Testear helpers y utilidades reutilizables
-- ✅ Testear transformaciones de datos y cálculos
-- ✅ Cubrir casos felices (happy paths)
-- ✅ Cubrir edge cases (límites, vacíos, nulls)
-- ✅ Cubrir error cases (inputs inválidos)
-- ✅ Cubrir cada branch con significado de las funciones críticas (objetivos por tipo de código en `references/test-coverage.md` § Targets by code type; la cobertura es un piso, no una meta: SKILL.md U6)
-
-**NO incluye:**
-
-- ❌ Tests de componentes React (eso es component testing, opcional)
-- ❌ Tests de integración con APIs (out of scope — separate integration test layer)
-- ❌ Tests E2E (out of scope — separate E2E test layer)
-- ❌ Testear código trivial sin lógica
-
-**Resultado:** Funciones críticas testeadas con alta cobertura y confianza en refactorings.
-
----
-
-## 📤 OUTPUT GENERADO
-
-### Archivos de Tests:
-
-- ✅ `src/lib/[module].test.ts` - Unit tests para helpers/utilities
-- ✅ `src/utils/[function].test.ts` - Unit tests para funciones de transformación
-- ✅ (Más archivos según módulos implementados)
-
-### Configuración (Si no existe):
-
-- ✅ `jest.config.js` o `vitest.config.ts` - Configuración del testing framework
-- ✅ `package.json` - Scripts de test actualizados
-
-### Reports:
-
-- ✅ Tests pasando localmente (100% pass rate)
-- ✅ Coverage report generado (branch coverage leído contra `references/test-coverage.md` § Targets by code type)
-
-### Documentación:
-
-- ✅ README.md actualizado con comando de tests (si aplica)
-
----
-
-## 🚨 RESTRICCIONES CRÍTICAS
-
-### ❌ NO HACER:
-
-- **NO testear TODO** - Solo funciones con lógica compleja
-- **NO testear componentes UI triviales** - Focus en lógica de negocio
-- **NO testear código de terceros** - Ya está testeado por sus autores
-- **NO crear tests que solo verifican implementación** - Tests deben verificar comportamiento
-- **NO hardcodear valores** - Usa variables descriptivas
-- **NO ejecutar comandos interactivos** - Solo comandos que terminen
-- **NO mockear sin razón** - Solo mockea dependencias externas
-
-### ✅ SÍ HACER:
-
-- **Usar Context7 MCP** - Consultar docs de Jest/Vitest antes de escribir
-- **Identificar funciones críticas** - Analizar qué necesita tests
-- **Escribir tests descriptivos** - Nombres claros de qué testea
-- **Cubrir edge cases** - Valores límite, vacíos, nulls, undefined
-- **Cubrir error cases** - Inputs inválidos, excepciones
-- **Usar AAA pattern** - Arrange, Act, Assert
-- **Aislar dependencias externas** - APIs, DB, servicios externos: inyección en el seam primero, `jest.mock` / `vi.mock` solo si el seam es inevitable
-- **Validar cobertura** - Branch coverage por tipo de código (`references/test-coverage.md`), nunca un número global como meta
-- **Documentar tests complejos** - Comentarios si el test no es obvio
-
----
-
-## 🔄 WORKFLOW
-
-El proceso se divide en 5 pasos ejecutados secuencialmente.
-
----
-
-## 📋 PASO 1: ANÁLISIS DE CÓDIGO IMPLEMENTADO
-
-**Objetivo:** Identificar qué funciones necesitan unit tests.
-
-### Paso 1.1: Leer Story y Código
-
-**Acción:**
-
-1. Leer `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/story.md`
-2. Leer `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/implementation-plan.md`
-3. Buscar archivos implementados en esta story:
+1. Read `story.md`.
+2. Read `implementation-plan.md`.
+3. Find the files this story implemented:
    ```bash
-   # El AI puede usar grep/find para identificar módulos nuevos
+   # use grep/find to identify the new modules
    ```
 
-**Output interno (no mostrar):**
+Keep these working notes to yourself: the list of implemented files, the functions in each, and for each function whether it needs a test and why.
 
-- Lista de archivos implementados
-- Lista de funciones en cada archivo
-- Clasificación: ¿necesita test? ¿por qué?
+### Step 1.2: Classify the functions
 
----
+- Critical, needs a unit test: complex business logic, financial or mathematical calculations, data transformations, complex validation, reusable helpers.
+- Optional, a test is recommended but not critical: simple functions that are reused, basic formatters and parsers.
+- Do not test: purely presentational React components, code that only calls APIs, configuration and constants, trivial wrappers without logic.
 
-### Paso 1.2: Clasificar Funciones
+### Step 1.3: List the tests to write
 
-**Para cada función encontrada, clasificar en:**
-
-**🟢 CRÍTICA - Requiere unit test:**
-
-- Lógica de negocio compleja
-- Cálculos matemáticos o financieros
-- Transformaciones de datos
-- Validaciones complejas
-- Helpers reutilizables
-
-**🟡 OPCIONAL - Test recomendado pero no crítico:**
-
-- Funciones simples pero reutilizadas
-- Formatters y parsers básicos
-
-**🔴 NO TESTEAR:**
-
-- Componentes React solo presentacionales
-- Código que solo llama APIs
-- Configuraciones o constantes
-- Wrappers triviales sin lógica
-
----
-
-### Paso 1.3: Crear Lista de Tests a Implementar
-
-**Mostrar al usuario:**
+Show the user the list and continue; it needs no approval. Write it in the user's language. An example:
 
 ```markdown
-## 📊 Análisis de Funciones Implementadas
+## Analysis of the implemented functions
 
-### Archivos revisados:
+### Files reviewed:
 
 - src/lib/discount-calculator.ts
 - src/utils/format-currency.ts
-- src/components/PriceCard.tsx (solo UI - sin tests)
+- src/components/PriceCard.tsx (UI only, no tests)
 
-### Funciones CRÍTICAS que requieren unit tests:
+### CRITICAL functions that need unit tests:
 
 #### 1. `calculateDiscount()` - `src/lib/discount-calculator.ts`
 
-**Razón:** Lógica de negocio crítica (cálculo de precios)
-**Casos a testear:**
+**Reason:** critical business logic (price calculation)
+**Cases to test:**
 
-- ✅ Happy path: descuento aplicado correctamente
-- ✅ Edge case: orden de exactamente $100
-- ✅ Edge case: orden de $0
-- ✅ Error case: valores negativos
+- Happy path: discount applied correctly
+- Edge case: an order of exactly $100
+- Edge case: an order of $0
+- Error case: negative values
 
 #### 2. `formatCurrency()` - `src/utils/format-currency.ts`
 
-**Razón:** Helper reutilizable en múltiples componentes
-**Casos a testear:**
+**Reason:** helper reused across several components
+**Cases to test:**
 
-- ✅ Happy path: formato correcto con decimales
-- ✅ Edge case: valores muy grandes
-- ✅ Edge case: null/undefined
-- ✅ Diferentes monedas
+- Happy path: correct format with decimals
+- Edge case: very large values
+- Edge case: null/undefined
+- Different currencies
 
-### Funciones que NO necesitan tests:
+### Functions that do NOT need tests:
 
-- `PriceCard.tsx` - Componente presentacional (solo renderiza props)
+- `PriceCard.tsx` - presentational component (only renders props)
 ```
 
----
+## Setup (Step 2)
 
-## 🧪 PASO 2: SETUP DEL TESTING FRAMEWORK (Si no existe)
+Goal: make sure the app has a configured runner. This step runs only when `stack.test_runner` is `null` (a new project with no runner chosen). With any other value the app has already decided: use its runner, config and script as they are, and skip this step entirely. Never install a second runner next to the existing one and never swap one for another: two runners split the suite in two.
 
-**Objetivo:** Asegurar que el runner de la app está configurado correctamente.
-
-**Este paso corre SOLO cuando `stack.test_runner` es `null`** (proyecto nuevo, runner sin elegir). Con cualquier otro valor la app ya decidió: se usa su runner, su config y su script tal como están, y este paso se salta entero. Nunca se instala un segundo runner al lado del existente ni se reemplaza uno por otro.
-
-### Paso 2.1: Verificar Testing Framework
-
-**Acción:**
+### Step 2.1: Check the runner
 
 ```bash
-# Confirmar en el package.json de la app (bajo stack.app_root) que no hay runner
+# confirm in the app's package.json (under stack.app_root) that there is no runner
 grep -E '"(jest|vitest)"|bun test' {{stack.app_root}}/package.json
 ```
 
-**Si NO está instalado:**
+When none is installed:
 
-1. **Preguntar al usuario:**
-   "¿Qué testing framework prefieres?"
-   - a) Jest (más común, más plugins)
-   - b) Vitest (más rápido, mejor con Vite)
-
-2. **Consultar Context7:**
-   - "Jest setup Next.js latest"
-   - O "Vitest setup Next.js latest"
-
-3. **Instalar** con el package manager de la app:
+1. Ask the user: "Which testing framework do you prefer?", offering Jest (most common, most plugins) and Vitest (faster, better with Vite). With nobody to ask, take it as a technical call and report it as DECIDED with the option it beat (see `## With nobody at the keyboard` in SKILL.md and `agentic-dev-core/references/decision-protocol.md`).
+2. Look up the setup in Context7: "Jest setup Next.js latest" or "Vitest setup Next.js latest".
+3. Install it with the app's package manager:
    ```bash
    {{stack.package_manager}} add -D jest @types/jest ts-jest
-   # O: {{stack.package_manager}} add -D vitest
+   # or: {{stack.package_manager}} add -D vitest
    ```
 
----
+### Step 2.2: Create the config
 
-### Paso 2.2: Crear Configuración
-
-**Si no existe `jest.config.js` o `vitest.config.ts`:**
-
-**Pseudocódigo:**
+When neither `jest.config.js` nor `vitest.config.ts` exists:
 
 ```
-SI framework = Jest:
-  Crear jest.config.js con:
+IF framework = Jest:
+  Create jest.config.js with:
   - preset: ts-jest
   - testEnvironment: node
-  - collectCoverageFrom: src/**/*.ts (excluir .test.ts)
-  - coverageThreshold: SOLO por archivo para los critical paths que el equipo nombre explícitamente
-    (sin umbral global: `references/test-coverage.md` § Coverage in CI usa gates por delta en el PR)
+  - collectCoverageFrom: src/**/*.ts (exclude .test.ts)
+  - coverageThreshold: ONLY per file, for the critical paths the team names explicitly
+    (no global threshold: `references/test-coverage.md` § Coverage in CI gates on the delta of each PR)
 
-SI framework = Vitest:
-  Crear vitest.config.ts con:
+IF framework = Vitest:
+  Create vitest.config.ts with:
   - test.globals: true
   - test.environment: node
   - coverage.provider: v8
   - coverage.reporter: text, html
-  - coverage.thresholds: mismo criterio que Jest (solo critical paths nombrados, sin umbral global)
+  - coverage.thresholds: same rule as Jest (only named critical paths, no global threshold)
 ```
 
----
+### Step 2.3: Add the scripts
 
-### Paso 2.3: Agregar Scripts
-
-**Solo si `stack.scripts.test` es `null`**: un script que la app ya declara no se renombra ni se reemplaza. En el `package.json` de la app, agregar:
+Only when `stack.scripts.test` is `null`. A script the app already declares is never renamed or replaced. Add to the app's `package.json`:
 
 ```json
 {
   "scripts": {
-    "test": "jest", // O "vitest"
-    "test:watch": "jest --watch", // O "vitest --watch"
-    "test:coverage": "jest --coverage" // O "vitest --coverage"
+    "test": "jest", // or "vitest"
+    "test:watch": "jest --watch", // or "vitest --watch"
+    "test:coverage": "jest --coverage" // or "vitest --coverage"
   }
 }
 ```
 
-**Output:**
+Then record the choice in the `stack:` block with `bun run agents:setup --stack`, which detects the new runner and script and proposes the values with their evidence. Setup is done when:
 
-Después, registrar la elección en el bloque `stack:`: `bun run agents:setup --stack` (detecta el runner y el script nuevos y propone los valores con su evidencia).
+- the testing framework is configured;
+- the test scripts exist;
+- `stack.test_runner` and `stack.scripts.test` are recorded;
+- coverage is configured, with thresholds only on named critical paths and delta gates in CI.
 
-```
-✅ Testing framework configurado
-✅ Scripts de test agregados
-✅ stack.test_runner + stack.scripts.test registrados
-✅ Coverage configurado (umbrales solo en critical paths nombrados; gates por delta en CI)
-```
+## Step 3: Write the unit tests
 
----
+Goal: a test file for each critical function.
 
-## ✍️ PASO 3: ESCRIBIR UNIT TESTS
+### Step 3.1: Create the test files
 
-**Objetivo:** Crear tests para cada función crítica identificada.
+Use the naming convention the app's sibling tests already follow (see "The testing framework" above). With no precedent, colocate the test next to the module:
 
-### Paso 3.1: Crear Archivos de Test
+- `src/lib/discount-calculator.ts` -> `src/lib/discount-calculator.test.ts`
+- `src/utils/format-currency.ts` -> `src/utils/format-currency.test.ts`
 
-**Convención de naming:** la que ya usan los tests hermanos de la app (Paso 3 del input). Sin precedente, colocado junto al módulo:
+### Step 3.2: Structure each test (AAA)
 
-- `src/lib/discount-calculator.ts` → `src/lib/discount-calculator.test.ts`
-- `src/utils/format-currency.ts` → `src/utils/format-currency.test.ts`
-
----
-
-### Paso 3.2: Estructura de Tests (AAA Pattern)
-
-**Para cada función crítica:**
-
-**Template** (nombres en presente indicativo, `returns` y no `should return`: `references/test-naming.md` § Naming heuristics):
+Template for each critical function. Test names use the present indicative, `returns` and not `should return` (`references/test-naming.md` § Naming heuristics):
 
 ```typescript
 import { functionName } from './module';
@@ -415,11 +260,9 @@ describe('functionName', () => {
 });
 ```
 
----
+### Step 3.3: A complete example
 
-### Paso 3.3: Ejemplo Completo
-
-**Mostrar al usuario un ejemplo completo:**
+Show the user a complete example when it helps:
 
 ```typescript
 // src/lib/discount-calculator.test.ts
@@ -479,11 +322,9 @@ describe('calculateDiscount', () => {
 });
 ```
 
----
+### Step 3.4: Tests with external dependencies
 
-### Paso 3.4: Tests con dependencias externas (Si necesario)
-
-**Si la función depende de servicios externos, primero inyección de dependencias en el seam** (SKILL.md U7, `references/mocking-patterns.md` § Dependency injection makes mocking easier): la función recibe el cliente como parámetro y el test le pasa un fake explícito.
+When the function depends on an external service, inject the dependency at the seam first (SKILL.md U7, `references/mocking-patterns.md` § Dependency injection makes mocking easier). The function takes the client as a parameter, and the test passes an explicit fake.
 
 ```typescript
 // src/lib/user-service.ts
@@ -517,53 +358,32 @@ describe('getUserById', () => {
 });
 ```
 
-**Explicar al usuario:**
+Explain the approach to the user in four points:
 
-```markdown
-**🔧 Dependencias externas:**
+- When to replace a dependency: APIs, DB, filesystem, time and randomness, which are the real boundaries of the system.
+- How, in order: first dependency injection at the seam with an explicit fake; then `jest.mock()` / `vi.mock()` only when the seam is unavoidable (module-level side effects, a third-party SDK that cannot be injected).
+- What to assert: the observable result and error, not the chain of calls on the client (SKILL.md U1).
+- Why: fast unit tests that need no external services and are not coupled to the implementation.
 
-- **Cuándo reemplazarlas:** APIs, DB, filesystem, tiempo, aleatoriedad (límites reales del sistema)
-- **Cómo, en orden:** 1) inyección de dependencias en el seam + fake explícito; 2) `jest.mock()` / `vi.mock()` solo cuando el seam es inevitable (side effects a nivel de módulo, SDK de terceros que no se puede inyectar)
-- **Qué afirmar:** el resultado y el error observables, no la cadena de llamadas al cliente (SKILL.md U1)
-- **Por qué:** tests unitarios rápidos, sin servicios externos y sin acoplarse a la implementación
-```
+## Step 4: Validate the tests
 
----
+Goal: the tests pass and the coverage is adequate.
 
-## ✅ PASO 4: VALIDAR TESTS
-
-**Objetivo:** Asegurar que tests pasan y cobertura es adecuada.
-
-### Paso 4.1: Ejecutar Tests
+### Step 4.1: Run the tests
 
 ```bash
 [package-manager] run test
 ```
 
-**Verificar:**
+Check that every test passes (100% pass rate), that there are no import errors and that there are no critical warnings. When a test fails, read the error message, identify which test failed, and decide whether the test is wrong or the function has a bug. Fix it and run again.
 
-- ✅ Todos los tests pasan (100% pass rate)
-- ✅ No hay errores de importación
-- ✅ No hay warnings críticos
-
-**Si fallan tests:**
-
-1. Leer error message
-2. Identificar qué test falló
-3. Debuggear:
-   - ¿El test está mal escrito?
-   - ¿La función tiene un bug?
-4. Corregir y re-ejecutar
-
----
-
-### Paso 4.2: Validar Cobertura
+### Step 4.2: Validate coverage
 
 ```bash
 [package-manager] run test:coverage
 ```
 
-**Analizar reporte:**
+Read the report:
 
 ```
 ----------------------|---------|----------|---------|---------|
@@ -574,41 +394,29 @@ utils/format-currency.ts   | 95     | 87.5     | 100     | 95      |
 ----------------------|---------|----------|---------|---------|
 ```
 
-**Validaciones:**
+Check three things:
 
-- ✅ Funciones críticas: branch coverage dentro del rango de su tipo de código (`references/test-coverage.md` § Targets by code type), y ningún error path sin test
-- ✅ Branch coverage: cubrir todos los if/else
-- ✅ Functions coverage: todas las funciones exportadas testeadas
+- Critical functions: branch coverage within the range for their code type (`references/test-coverage.md` § Targets by code type), and no error path left untested.
+- Branch coverage: every if/else is covered.
+- Function coverage: every exported function is tested.
 
-**Si cobertura baja:**
+When coverage is low, list the uncovered branches, add tests for the ones that have behavior of their own (no filler tests to raise the number: SKILL.md U6), and run coverage again.
 
-1. Identificar los branches no cubiertos
-2. Agregar tests para los que tienen comportamiento propio (no tests de relleno para subir el número: SKILL.md U6)
-3. Re-ejecutar coverage
+### Step 4.3: Check test quality
 
----
+Before moving on, confirm:
 
-### Paso 4.3: Validar Calidad de Tests
+- [ ] Tests have descriptive names.
+- [ ] The AAA pattern is used.
+- [ ] Happy paths and edge cases are tested.
+- [ ] Error cases are tested.
+- [ ] External dependencies are replaced by injection at the seam, with `jest.mock` / `vi.mock` only where the seam is unavoidable.
+- [ ] Tests are independent (no order dependence).
+- [ ] Tests are fast (under 1 second each).
 
-**Checklist de calidad:**
+## Step 5: Document how to run the tests
 
-- [ ] ¿Tests tienen nombres descriptivos?
-- [ ] ¿Se usa AAA pattern (Arrange, Act, Assert)?
-- [ ] ¿Se testean casos felices Y edge cases?
-- [ ] ¿Se testean error cases?
-- [ ] ¿Dependencias externas reemplazadas por inyección en el seam, con `jest.mock` / `vi.mock` solo donde el seam es inevitable?
-- [ ] ¿Tests son independientes (no dependen de orden)?
-- [ ] ¿Tests son rápidos (< 1 segundo cada uno)?
-
----
-
-## 📚 PASO 5: DOCUMENTACIÓN
-
-**Objetivo:** Documentar cómo ejecutar tests.
-
-### Paso 5.1: Actualizar README (Si aplica)
-
-**Si el proyecto tiene README.md, agregar sección:**
+When the project has a `README.md`, add a section like this one:
 
 ````markdown
 ## 🧪 Running Tests
@@ -623,37 +431,35 @@ utils/format-currency.ts   | 95     | 87.5     | 100     | 95      |
 {{stack.package_manager}} run {{stack.scripts.test}} --watch
 {{stack.package_manager}} run {{stack.scripts.test}} --coverage
 ```
-````
 
 ### Coverage Requirements
 
 - Coverage is a floor, not a target: CI gates on the coverage delta of each PR, not on a global number
 - All critical paths must be tested
-
 ````
 
----
+## Final report
 
-## 🎉 REPORTE FINAL
+Show the user a report like this one, in the user's language:
 
-**Mostrar al usuario:**
+````markdown
+# Unit tests completed
 
-```markdown
-# ✅ UNIT TESTS COMPLETADOS
-
-## Tests Creados:
+## Tests created:
 
 ### 1. `src/lib/discount-calculator.test.ts`
-- ✅ 8 test cases
-- ✅ 100% coverage
-- ✅ Happy paths, edge cases, error cases cubiertos
+
+- 8 test cases
+- 100% coverage
+- Happy paths, edge cases and error cases covered
 
 ### 2. `src/utils/format-currency.test.ts`
-- ✅ 6 test cases
-- ✅ 95% coverage
-- ✅ Diferentes monedas testeadas
 
-## Métricas:
+- 6 test cases
+- 95% coverage
+- Different currencies tested
+
+## Metrics:
 
 - **Total tests:** 14
 - **Pass rate:** 100% (14/14 passing)
@@ -663,88 +469,51 @@ utils/format-currency.ts   | 95     | 87.5     | 100     | 95      |
   - Functions: 100%
   - Lines: 97%
 
-## Comandos:
+## Commands:
 
 ```bash
 # Run tests
 {{stack.package_manager}} run {{stack.scripts.test}}
 
-# Watch mode (útil durante desarrollo)
+# Watch mode (useful during development)
 {{stack.package_manager}} run {{stack.scripts.test}} --watch
 
 # Coverage report
 {{stack.package_manager}} run {{stack.scripts.test}} --coverage
+```
+
+## Next steps:
+
+1. Unit tests are done.
+2. Continue with the implementation of features.
+3. Integration / E2E tests are handled separately (out of scope for this skill)
 ````
 
-## Próximos Pasos:
+## Before you finish
 
-1. ✅ Tests unitarios completados
-2. ⏭️ Continuar con implementación de features
-3. ⏭️ Integration / E2E tests are handled separately (out of scope for this skill)
+- [ ] The story and the implemented code were read, the critical functions identified and the trivial ones dropped.
+- [ ] A runner is configured (set up only when `stack.test_runner` was `null`), and the test scripts exist in `package.json`.
+- [ ] Test files exist, follow the naming convention, use AAA and cover happy, edge and error cases, with mocks only where needed.
+- [ ] Every test passes, branch coverage of the critical functions was read against `references/test-coverage.md` (a floor, not a goal), there are no critical warnings and each test runs in under 1 second.
+- [ ] The README is updated when it applies, and the final report was shown to the user.
 
----
+## Best practices
 
-**🎊 Funciones críticas testeadas con alta cobertura!**
+### 1. Descriptive test names
 
-````
+Bad:
 
----
-
-## 📋 CHECKLIST INTERNO (NO MOSTRAR)
-
-**Validaciones antes de finalizar:**
-
-### Análisis:
-- [ ] Story actual leída y comprendida
-- [ ] Código implementado analizado
-- [ ] Funciones críticas identificadas
-- [ ] Funciones triviales descartadas
-
-### Setup:
-- [ ] Testing framework instalado (Jest/Vitest)
-- [ ] Configuración creada
-- [ ] Scripts de test agregados a package.json
-- [ ] Coverage configurado
-
-### Tests:
-- [ ] Archivos .test.ts creados
-- [ ] Convención de naming seguida
-- [ ] AAA pattern usado
-- [ ] Happy paths cubiertos
-- [ ] Edge cases cubiertos
-- [ ] Error cases cubiertos
-- [ ] Mocks usados apropiadamente
-
-### Validación:
-- [ ] Todos los tests pasan (100%)
-- [ ] Branch coverage de funciones críticas leído contra `references/test-coverage.md` (piso, no meta)
-- [ ] No hay warnings críticos
-- [ ] Tests son rápidos (< 1s cada uno)
-
-### Documentación:
-- [ ] README actualizado (si aplica)
-- [ ] Reporte final mostrado al usuario
-
----
-
-## 💡 MEJORES PRÁCTICAS
-
-### **1. Test Names Descriptivos**
-
-❌ Mal:
 ```typescript
 it('test 1', () => { ... })
-````
+```
 
-✅ Bien:
+Good:
 
 ```typescript
 it('applies 10% discount for orders over $100', () => { ... })
 ```
 
----
-
-### **2. AAA Pattern (Arrange, Act, Assert)**
+### 2. AAA pattern (Arrange, Act, Assert)
 
 ```typescript
 it('formats USD amount with thousands separator', () => {
@@ -760,11 +529,9 @@ it('formats USD amount with thousands separator', () => {
 });
 ```
 
----
+### 3. Test isolation
 
-### **3. Test Isolation**
-
-❌ Mal (tests dependen de orden):
+Bad (tests depend on order):
 
 ```typescript
 let user;
@@ -776,7 +543,7 @@ it('deletes user', () => {
 });
 ```
 
-✅ Bien (cada test es independiente):
+Good (each test is independent):
 
 ```typescript
 it('creates user', () => {
@@ -791,44 +558,38 @@ it('deletes user', () => {
 });
 ```
 
----
+### 4. Mock only what you need
 
-### **4. Mock Solo lo Necesario**
-
-❌ Mal (mockear lo que estás testeando):
+Bad (mocking the unit under test):
 
 ```typescript
-jest.mock('./discount-calculator'); // NO mockear la unidad bajo test
+jest.mock('./discount-calculator'); // do NOT mock the unit under test
 ```
 
-✅ Bien (inyectar la dependencia externa en el seam):
+Good (inject the external dependency at the seam):
 
 ```typescript
 const client = fakeClient({ data: { id: '1', name: 'Ana' }, error: null });
 expect(await getUserById('1', client)).toEqual({ id: '1', name: 'Ana' });
 ```
 
-`jest.mock('@/lib/supabase/client')` queda para cuando el seam es inevitable (SKILL.md U7).
+`jest.mock('@/lib/supabase/client')` is for when the seam is unavoidable (SKILL.md U7).
 
----
+## References
 
-## 📚 REFERENCIAS
-
-**Jest Documentation:**
+Jest documentation:
 
 - https://jestjs.io/docs/getting-started
 - https://jestjs.io/docs/expect
 
-**Vitest Documentation:**
+Vitest documentation:
 
 - https://vitest.dev/guide/
 - https://vitest.dev/api/
 
-**Testing Best Practices:**
+Testing best practices:
 
 - https://kentcdodds.com/blog/common-mistakes-with-react-testing-library
 - https://testingjavascript.com/
 
----
-
-**✅ Unit tests = Confianza en refactorings + Documentación viva del comportamiento esperado**
+Unit tests give confidence when refactoring, and they double as living documentation of the expected behavior.

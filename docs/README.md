@@ -6,7 +6,7 @@ Bienvenido a la documentación de **agentic-dev-boilerplate**.
 
 Esta documentación está orientada a **humanos** — para aprender conceptos, entender metodologías y seguir guías paso a paso.
 
-> **Nota**: Para el contexto **operativo** que la AI carga cada sesión, consulta `AGENTS.md` y `CONTEXT.md` en la raíz del repo (`CLAUDE.md` es solo un shim de una línea, `@AGENTS.md`, para que Claude Code llegue al mismo archivo). `AGENTS.md` es el núcleo que carga siempre; el detalle vive en una sección por tema bajo `.agents/instructions/`, que la AI lee a pedido cuando el router o una línea `ROUTE:` del hook la nombra. El resto del comportamiento de la AI vive en skills (`.agents/skills/`, leídas por Claude Code, OpenCode y Codex) No hay archivos de comando: una skill se invoca por su nombre más un modo (`/project-context data` en Claude Code; "cargá `project-context`, modo `data`" en OpenCode y Codex). Decisión en [ADR-0006](../.context/ADR/ADR-0006-skill-plus-mode-invocation.md).
+> **Nota**: Para el contexto **operativo** que la AI carga cada sesión, consulta `AGENTS.md` y `CONTEXT.md` en la raíz del repo (`CLAUDE.md` es solo un shim de una línea, `@AGENTS.md`, para que Claude Code llegue al mismo archivo). `AGENTS.md` es el núcleo que carga siempre; el detalle vive en una sección por tema bajo `.agents/instructions/`, que la AI lee a pedido cuando el router o una línea `ROUTE:` del hook la nombra. El resto del comportamiento de la AI vive en skills (`.agents/skills/`, leídas por cada harness: Claude Code, OpenCode, Codex y Pi) No hay archivos de comando: una skill se invoca por su nombre más un modo (`/project-context data` en Claude Code; "cargá `project-context`, modo `data`" en OpenCode y Codex, `/skill:project-context data` en Pi). Decisión en [ADR-0006](../.context/ADR/ADR-0006-skill-plus-mode-invocation.md).
 
 ---
 
@@ -14,7 +14,7 @@ Esta documentación está orientada a **humanos** — para aprender conceptos, e
 
 | Documento                                                                                             | Descripción                                                                                                                                                                                                            |
 | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Una fuente, tres harnesses](https://upex-galaxy.github.io/agentic-dev-boilerplate/harnesses.es.html) | Cómo el mismo repositorio corre en Claude Code, OpenCode y Codex desde una sola fuente: qué es canónico, qué se genera, y qué pasa al actualizar un proyecto creado antes del cambio. Página publicada, con diagramas. |
+| [Una fuente, todos los harnesses](https://upex-galaxy.github.io/agentic-dev-boilerplate/harnesses.es.html) | Cómo el mismo repositorio corre en cada harness (Claude Code, OpenCode, Codex y Pi) desde una sola fuente: qué es canónico, qué se genera, y qué pasa al actualizar un proyecto creado antes del cambio. Página publicada, con diagramas. |
 | [Docs hub](https://upex-galaxy.github.io/agentic-dev-boilerplate/)                               | Hub publicado: la página de inicio y un deck por skill de flujo, más la doctrina del núcleo.                                                                                                                             |
 | [ADR-0002](../.context/ADR/ADR-0002-multi-harness-single-source.md)                                   | Registro de la decisión (contexto, alternativas descartadas, consecuencias). En inglés.                                                                                                                                |
 
@@ -31,7 +31,7 @@ docs/
 ├── setup/                        # Guías de configuración (incluye Jira lado dev)
 │   └── mcp/                      # Primer MCP y guías por harness
 │
-├── mcp/                          # Configuración MCP de los tres harnesses + bloques opt-in
+├── mcp/                          # Configuración MCP de cada harness + bloques opt-in
 │
 ├── workflows/                    # Flujos de trabajo
 │   ├── environments.md           # Ambientes dev, staging, prod
@@ -110,7 +110,7 @@ Corré `bun run onboarding`: abre `onboarding.html`, el recorrido de empezá ac�
 
 ### 4. Usar Skills y Modos
 
-El comportamiento operativo (cómo crear historias, cómo planificar, cómo ejecutar el sprint) vive en skills bajo `.agents/skills/`, la única copia que leen Claude Code, OpenCode y Codex. Cada skill se invoca por su nombre, más un modo cuando tiene varios: `/project-context data` en Claude Code, o "cargá `project-context`, modo `data`" en OpenCode y Codex. Una skill multi-modo lista sus modos en su propia sección `## Mode routing`. El catálogo de skills es `.agents/skills/REGISTRY.md` (lo genera `bun run skills:registry`).
+El comportamiento operativo (cómo crear historias, cómo planificar, cómo ejecutar el sprint) vive en skills bajo `.agents/skills/`, la única copia que leen Claude Code, OpenCode, Codex y Pi. Cada skill se invoca por su nombre, más un modo cuando tiene varios: `/project-context data` en Claude Code, `/skill:project-context data` en Pi, o "cargá `project-context`, modo `data`" en OpenCode y Codex. Una skill multi-modo lista sus modos en su propia sección `## Mode routing`. El catálogo de skills es `.agents/skills/REGISTRY.md` (lo genera `bun run skills:registry`).
 
 ---
 
@@ -120,8 +120,8 @@ El comportamiento operativo (cómo crear historias, cómo planificar, cómo ejec
 | ----------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `docs/`                             | Humanos   | Aprendizaje, tutoriales, referencia                                                                                                                           |
 | `.context/`                         | AI        | Memoria persistente del proyecto (PRD, SRS, PBI, ADR). Los business maps viven en las skills `business-*-context` y se leen con `bun run context:map <skill>` |
-| `.agents/skills/`                   | AI        | Workflows ejecutables: la única copia, leída por los tres harnesses                                                                                           |
-| `.claude/`, `.opencode/`, `.codex/` | AI        | Adapters por harness (hook, MCP). Generado solo `.claude/skills`; nunca una segunda copia del contenido                                                       |
+| `.agents/skills/`                   | AI        | Workflows ejecutables: la única copia, leída por cada harness                                                                                                |
+| `.claude/`, `.opencode/`, `.codex/`, `.pi/` | AI | Adapters por harness (hook, MCP). Generado solo `.claude/skills`; nunca una segunda copia del contenido                                                       |
 | `AGENTS.md`                         | AI        | Núcleo operativo (L0) cargado en cada sesión, en cualquier harness, con el router a `.agents/instructions/`                                                   |
 | `.agents/instructions/`             | AI        | Una sección por tema (git, PBI, herramientas, variables...), leída a pedido; `agent-project.md` guarda las reglas propias del proyecto                               |
 | `CLAUDE.md`                         | AI        | Shim de una línea (`@AGENTS.md`) para Claude Code. Generado, nunca lleva prosa                                                                                |

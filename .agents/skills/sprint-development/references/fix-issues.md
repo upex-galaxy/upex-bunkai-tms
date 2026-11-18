@@ -1,246 +1,157 @@
-Actúa como Senior Full-Stack Developer y Debugging Expert.
+# Fix issues
 
----
+Debug and fix errors in the implementation of **STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}**. The same loop serves a build or runtime error, a review finding and a red CI run: reproduce it, diagnose the cause, fix it, validate. Every fix is a new commit, because pushed history is never rewritten (Critical Rule #5, `AGENTS.md`).
 
-## 🎯 TAREA
+## Step 1: Reproduce and understand the error
 
-Debuggear y corregir errores en la implementación de **STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}**.
+Read the whole error and do not assume what it says. Collect:
 
----
+1. What error occurs: the complete message, the stack trace, the file and line.
+2. When it occurs:
+   - during the build (`{{stack.package_manager}} run {{stack.scripts.build}}`)
+   - during dev (`{{stack.package_manager}} run {{stack.scripts.dev}}`)
+   - in the browser (runtime)
+   - on the server (API or backend)
+3. How to reproduce it: the exact steps and the data or inputs used. An error you cannot reproduce on demand is one you cannot confirm fixed.
 
-## 🐛 PROCESO DE DEBUGGING
-
-### Paso 1: Reproducir y Entender el Error
-
-**Información a recopilar:**
-
-1. **¿Qué error ocurre?**
-   - Mensaje de error completo
-   - Stack trace
-   - Archivo y línea
-
-2. **¿Cuándo ocurre?**
-   - Durante build (`{{stack.package_manager}} run {{stack.scripts.build}}`)
-   - Durante dev (`{{stack.package_manager}} run {{stack.scripts.dev}}`)
-   - En navegador (runtime)
-   - En servidor (API/backend)
-
-3. **¿Cómo reproducir?**
-   - Pasos exactos
-   - Datos/inputs usados
-
-**Output:**
-
-```markdown
-## 🐛 Error Identificado
-
-**Tipo:** [Build error / Runtime error / TypeScript error / etc.]
-
-**Mensaje:**
-```
-
-[Copiar mensaje de error completo]
-
-```
-
-**Ubicación:**
-- Archivo: `[ruta]`
-- Línea: [número]
-
-**Cómo reproducir:**
-1. [Paso 1]
-2. [Paso 2]
-3. [Resultado: error]
-```
-
----
-
-### Paso 2: Investigación y Diagnóstico
-
-**Analiza posibles causas:**
-
-1. **Revisa el código en la ubicación del error**
-2. **Consulta Context7 MCP si es error de biblioteca externa**
-   - Ejemplo: Error de Next.js → buscar en docs oficiales
-3. **Revisa guidelines:**
-   - `references/error-handling.md`
-   - `references/code-standards.md`
-
-**Causas comunes:**
-
-- ❌ Tipo TypeScript incorrecto
-- ❌ Import mal escrito
-- ❌ Variable undefined
-- ❌ API call sin error handling
-- ❌ Missing dependency
-
-**Output:**
-
-```markdown
-## 🔍 Diagnóstico
-
-**Causa raíz:** [Descripción]
-
-**Por qué ocurre:** [Explicación]
-
-**Solución propuesta:** [Descripción de cómo corregir]
-```
-
----
-
-### Paso 3: Aplicar Corrección
-
-**Implementa la solución:**
-
-1. Modifica el código
-2. Explica el cambio
-3. Valida que corrige el error
-
-**Output:**
+Output:
 
 ````markdown
-## ✅ Corrección Aplicada
+## Error identified
 
-**Archivo:** `[ruta]`
+**Type:** [Build error / Runtime error / TypeScript error / etc.]
 
-**Cambio:**
-[Descripción del cambio]
+**Message:**
 
-**Código antes:**
-
-```typescript
-[Código con error]
 ```
-````
-
-**Código después:**
-
-```typescript
-[Código corregido]
+[Paste the complete error message]
 ```
 
-**Por qué funciona:** [Explicación]
+**Location:**
 
+- File: `[path]`
+- Line: [number]
+
+**How to reproduce:**
+
+1. [Step 1]
+2. [Step 2]
+3. [Result: error]
 ````
 
----
+## Step 2: Investigate and diagnose
 
-### Paso 4: Validación
+Analyze the possible causes:
 
-**Valida que el error está resuelto:**
+1. Review the code at the error location, and what was modified just before the error appeared.
+2. Check Context7 MCP when the error comes from an external library (for example, a Next.js error: search the official docs).
+3. Review the guidelines in `references/error-handling.md` and `references/code-standards.md`.
 
-1. **Build exitoso:**
-```bash
-{{stack.package_manager}} run {{stack.scripts.build}}
-````
+Common causes: a wrong TypeScript type, a mistyped import, an undefined variable, an API call without error handling, a missing dependency.
 
-- ✅ Sin errores TypeScript
-- ✅ Sin errores de linting
-
-2. **Prueba manual:**
-   - Reproduce los pasos que causaban el error
-   - Verifica que ahora funciona
-
-**Output:**
+Output:
 
 ```markdown
-## ✅ Validación
+## Diagnosis
 
-**Build:** ✅ Exitoso
+**Root cause:** [Description]
 
-**Prueba manual:**
+**Why it happens:** [Explanation]
 
-- ✅ [Paso 1] - Funciona
-- ✅ [Paso 2] - Funciona
-- ✅ Error ya no ocurre
-
-**Próximo paso:** Continuar implementación o pasar a Code Review
+**Proposed solution:** [How to fix it]
 ```
 
----
+## Step 3: Apply the fix
 
-## ⚠️ Tipos de Errores Comunes
+1. Modify the code.
+2. Explain the change.
+3. Validate that it fixes the error.
 
-### 1. Error de TypeScript
+Output:
 
-**Síntoma:** `Type 'X' is not assignable to type 'Y'`
+`````markdown
+## Fix applied
 
-**Solución:**
+**File:** `[path]`
 
-- Verifica tipos en interfaces/types
-- Consulta Context7 MCP para tipos correctos de biblioteca
-- Usa type guards si necesario
+**Change:**
+[Description of the change]
 
-### 2. Error de Import
+**Code before:**
 
-**Síntoma:** `Cannot find module 'X'`
+```typescript
+[Code with the error]
+```
 
-**Solución:**
+**Code after:**
 
-- Verifica ruta del import
-- Instala dependency si falta: `{{stack.package_manager}} add [paquete]`
-- Verifica alias de paths (si usa `@/` o similar)
+```typescript
+[Fixed code]
+```
 
-### 3. Error de Runtime (Navegador)
+**Why it works:** [Explanation]
+`````
 
-**Síntoma:** Error en console del navegador
+## Step 4: Validate
 
-**Solución:**
+Check that the error is resolved.
 
-- Revisa stack trace
-- Valida que datos existen antes de acceder
-- Agrega error handling (try-catch)
+1. The build succeeds, with no TypeScript errors and no linting errors:
 
-### 4. Error de Build
+   ```bash
+   {{stack.package_manager}} run {{stack.scripts.build}}
+   ```
 
-**Síntoma:** Build falla
+2. Manual test: repeat the steps that caused the error and verify that they work now.
 
-**Solución:**
-
-- Lee mensaje completo
-- Verifica configuración (next.config.js, tsconfig.json)
-- Consulta Context7 MCP para framework específico
-
----
-
-## 🎯 EJEMPLO DE USO
+Output:
 
 ```markdown
-Tengo este error en STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}:
+## Validation
 
-**Error:**
+**Build:** succeeded
+
+**Manual test:**
+
+- [Step 1] - works
+- [Step 2] - works
+- The error no longer occurs
+
+**Next step:** Continue the implementation or move to code review
 ```
 
-Type 'undefined' is not assignable to type 'EntityType[]'
-at EntityList.tsx:15
+When the error persists or turns out to be complex, ask for help or revisit the architecture of the solution. A supervised worker asks its conductor. A routine records what it tried in the run report and stops fixing that error there (`agentic-dev-core/references/decision-protocol.md`).
 
-```
+## Common error types
 
-**Proceso:**
-1. Analiza el error
-2. Diagnostica la causa
-3. Propón solución
-4. Implementa la corrección
-5. Valida que funciona
+### 1. TypeScript error
 
-**Importante:**
-- Consulta Context7 MCP si no estás seguro
-- Sigue code standards al corregir
-- Valida con build + prueba manual
+Symptom: `Type 'X' is not assignable to type 'Y'`
 
-(Donde EntityType y EntityList se reemplazan según el dominio del proyecto. Ejemplos: Mentor[]/MentorList en MYM, Product[]/ProductList en SHOP)
-```
+- Check the types in the interfaces and types.
+- Check Context7 MCP for the library's correct types.
+- Use type guards when needed.
 
----
+### 2. Import error
 
-## 💡 Tips de Debugging
+Symptom: `Cannot find module 'X'`
 
-1. **Lee el error completo** - No asumas
-2. **Reproduce consistentemente** - Entiende cuándo/por qué ocurre
-3. **Consulta docs oficiales** - Usa Context7 MCP
-4. **Revisa cambios recientes** - ¿Qué se modificó antes del error?
-5. **Valida la corrección** - Build + prueba manual
+- Check the import path.
+- Install the dependency when it is missing: `{{stack.package_manager}} add [package]`.
+- Check the path aliases (when the app uses `@/` or similar).
 
----
+### 3. Runtime error (browser)
 
-**Nota:** Si el error persiste o es complejo, considera solicitar ayuda o revisar la arquitectura de la solución.
+Symptom: an error in the browser console.
+
+- Read the stack trace.
+- Validate that the data exists before accessing it.
+- Add error handling (try-catch).
+
+### 4. Build error
+
+Symptom: the build fails.
+
+- Read the whole message.
+- Check the configuration (next.config.js, tsconfig.json).
+- Check Context7 MCP for the specific framework.

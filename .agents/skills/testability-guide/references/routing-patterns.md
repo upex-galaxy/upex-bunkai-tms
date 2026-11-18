@@ -1,6 +1,6 @@
-# Routing Patterns
+# Routing patterns
 
-> **Purpose**: Per-framework file location for the new `/qa` page + redirect mechanism for the old route (Q4 = yes).
+> **Purpose**: Where the new `/qa` page file lives in each framework, and how to redirect the old route (Q4 = yes).
 >
 > **When to read**: Phase 4 of `SKILL.md`, after pre-flight detected the framework.
 
@@ -10,21 +10,21 @@
 
 | Framework            | Page file path                                                   | Notes                                                                            |
 | -------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Next.js App Router   | `app/qa/page.tsx`                                                | Default for modern Next.js. Add `metadata` export with the page title.           |
+| Next.js App Router   | `app/qa/page.tsx`                                                | Default for modern Next.js. Add a `metadata` export with the page title.         |
 | Next.js Pages Router | `pages/qa.tsx`                                                   | Legacy Next.js. Use `Head` for the page title.                                   |
 | Remix                | `app/routes/qa.tsx`                                              | Default route convention.                                                        |
 | Astro                | `src/pages/qa.astro`                                             | Static by default; mark interactive sections with `client:load` if they need JS. |
-| SvelteKit            | `src/routes/qa/+page.svelte`                                     | Use a `+page.ts` only if data loading is needed (none required for this page).   |
+| SvelteKit            | `src/routes/qa/+page.svelte`                                     | Add a `+page.ts` only if data loading is needed (this page needs none).          |
 | Vite + React Router  | beside other route components, plus a `<Route path="/qa">` entry | Register in the router config file the host already uses.                        |
 | Nuxt                 | `pages/qa.vue`                                                   | Layout: host default.                                                            |
 
-If the host framework is none of these → STOP and ask the user where to put the page. Do not invent.
+When the host framework is none of these, ask the user where the page goes instead of inventing a location. With nobody at the keyboard, write the page nowhere, list the framework and the question in the run report, and stop that step.
 
 ---
 
 ## Redirect mechanism for the old route (Q4 = yes)
 
-The pre-flight detected one of `/guide`, `/docs`, `/onboarding`, `/integration` overlapping with `/qa`. Replace its content with a server-side redirect (faster, no client-side flash). Fall back to client-side only if the framework cannot do server-side redirects in this context.
+Pre-flight found one of `/guide`, `/docs`, `/onboarding` or `/integration` overlapping with `/qa`. Replace its content with a server-side redirect (faster, no client-side flash). Fall back to client-side only when the framework cannot redirect on the server in this context.
 
 ### Next.js (App or Pages Router)
 
@@ -38,7 +38,7 @@ async redirects() {
 }
 ```
 
-Permanent (`true`) → 308. Use `false` (307) only if the team wants to preserve the option to revert without cache pollution.
+`permanent: true` gives a 308. Use `false` (307) only when the team wants to keep the option of reverting without cache pollution.
 
 ### Remix
 
@@ -51,7 +51,7 @@ export const loader = () => redirect('/qa', 301);
 
 ### Astro
 
-In `src/pages/guide.astro` (or `src/pages/guide.ts` for endpoint redirect):
+In `src/pages/guide.astro` (or `src/pages/guide.ts` for an endpoint redirect):
 
 ```ts
 export const GET = () => new Response(null, { status: 301, headers: { Location: '/qa' } });
@@ -78,7 +78,7 @@ routeRules: {
 }
 ```
 
-### Client-side fallback (only if the host config does not support server-side)
+### Client-side fallback (only when the host config does not support a server-side redirect)
 
 In the old route's component:
 
@@ -94,13 +94,13 @@ export default function GuideRedirect() {
 }
 ```
 
-Pick `useEffect` + `router.replace` (history-replacing) over `router.push` (history-appending) so the back button still works.
+Pick `useEffect` with `router.replace` (history-replacing) over `router.push` (history-appending), so the back button still works.
 
 ---
 
 ## Keep the old route reachable for one release cycle
 
-Even when redirecting, do NOT delete the old route's file. External bookmarks, internal Slack pins, and CI links may point at it. The redirect lets them keep working. Schedule removal in a follow-up cycle (the skill records this in the audit trail).
+Even when redirecting, leave the old route's file in place. External bookmarks, internal Slack pins and CI links may point at it, and the redirect keeps them working. Schedule its removal for a follow-up cycle (the skill records this in the audit trail).
 
 ---
 
@@ -115,4 +115,4 @@ Even when redirecting, do NOT delete the old route's file. External bookmarks, i
 | SvelteKit            | `<svelte:head><title>…</title></svelte:head>`                                 |
 | Nuxt                 | `useHead({ title: 'Software Testability Guide for QA' })`                     |
 
-The visible page H1 ALWAYS reads `Software Testability Guide for QA` regardless of language (only translated when Q5 demands it).
+The visible page H1 always reads `Software Testability Guide for QA`, whatever the page language (it is translated only when Q5 demands it).

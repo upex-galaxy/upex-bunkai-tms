@@ -1,18 +1,18 @@
-# DESIGN.md spec — condensed reference
+# DESIGN.md spec, condensed reference
 
 > **Source**: `https://github.com/google-labs-code/design.md` (Apache-2.0)
 > **Fallback**: `https://stitch.withgoogle.com/docs/design-md/specification`
 > **Fetched**: 2026-05-10
-> **Schema status**: `alpha` (active development — re-fetch periodically)
+> **Schema status**: `alpha` (active development, re-fetch periodically)
 > **Audience**: the LLM authoring DESIGN.md from scratch (Path E of `/design-system`).
-> **Do not pedagogize** — this is a reference card, not a tutorial.
+> This is a reference card, not a tutorial.
 
 ---
 
 ## 1. Schema version
 
-- Top-level `version` key is **optional**; current canonical value is `"alpha"`.
-- Omit `version` and downstream tools assume `alpha`. Why: writing `version: alpha` is cosmetic but recommended for future-proofing diff/lint output.
+- The top-level `version` key is optional, and the current value is `"alpha"`.
+- Without `version`, downstream tools assume `alpha`. Writing `version: alpha` is cosmetic but recommended, so diff and lint output stays stable when the schema moves.
 
 ---
 
@@ -37,8 +37,8 @@ components:
 
 ### Required color roles (lint flags absence)
 
-- `primary` — REQUIRED. The linter raises `missing-primary` (warning) if absent.
-- Recommended roles (omit at risk of poor downstream rendering): `secondary`, `tertiary`, `neutral`, `background`, `text`, `border`, `success`, `warning`, `error`.
+- `primary` is required. The linter raises `missing-primary` (warning) when it is absent.
+- Recommended roles (leaving them out risks poor downstream rendering): `secondary`, `tertiary`, `neutral`, `background`, `text`, `border`, `success`, `warning`, `error`.
 
 ### Recommended typography roles
 
@@ -47,16 +47,16 @@ components:
 
 ### Spacing scale (convention)
 
-- Keys: `xs`, `sm`, `md`, `lg`, `xl`, `2xl`. Values are dimensions or unitless numbers (interpreted as px when bare).
+- Keys: `xs`, `sm`, `md`, `lg`, `xl`, `2xl`. Values are dimensions or unitless numbers (bare numbers are read as px).
 
 ### Rounded scale (convention)
 
-- Keys: `sm`, `md`, `lg`, `full`. `full` typically `9999px` for pills.
+- Keys: `sm`, `md`, `lg`, `full`. `full` is typically `9999px`, for pills.
 
 ### Components
 
-- Free-form keyspace. Common: `button`, `input`, `card`, `modal`, `chip`, `nav`.
-- Inside each: token references like `{colors.primary}`, `{rounded.md}`, `{spacing.md}`.
+- The keyspace is free-form. Common names: `button`, `input`, `card`, `modal`, `chip`, `nav`.
+- Inside each one, use token references such as `{colors.primary}`, `{rounded.md}`, `{spacing.md}`.
 
 ---
 
@@ -69,7 +69,7 @@ components:
 | **Token Reference** | curly-brace path | `{colors.primary}`, `{typography.body-md}` |
 | **Typography**      | object           | see below                                  |
 
-### Typography object — full shape
+### Typography object, full shape
 
 ```yaml
 fontFamily: <string> # required
@@ -81,13 +81,13 @@ fontFeature: <string> # OpenType features, e.g., "ss01"
 fontVariation: <string> # variable-font axes
 ```
 
-Why all fields exist: downstream exporters (Tailwind, DTCG) map each to a CSS / token property. Omitted fields default to browser/exporter defaults.
+All these fields exist because downstream exporters (Tailwind, DTCG) map each one to a CSS or token property. An omitted field falls back to the browser or exporter default.
 
 ---
 
-## 4. Section order (prescribed, omittable, NOT reorderable)
+## 4. Section order (prescribed, omittable, not reorderable)
 
-Sections use `##` headings. The lint rule `section-order` warns on reorder.
+Sections use `##` headings. The lint rule `section-order` warns on a reorder.
 
 1. **Overview** (alias: `Brand & Style`)
 2. **Colors**
@@ -98,13 +98,13 @@ Sections use `##` headings. The lint rule `section-order` warns on reorder.
 7. **Components**
 8. **Do's and Don'ts**
 
-**Why order matters**: downstream agents and humans read sequentially — Overview frames intent before tokens land; Components reference everything above. Reordering breaks contextual reasoning.
+The order matters because downstream agents and humans read sequentially: Overview frames the intent before the tokens land, and Components references everything above it. A reorder breaks that context.
 
-**Omission rule**: any section may be omitted IF no tokens of that kind exist in the frontmatter. The `missing-sections` lint rule (info severity) flags optional sections absent when tokens exist.
+Any section may be omitted when the frontmatter has no tokens of that kind. The `missing-sections` lint rule (info severity) flags optional sections that are absent while tokens exist.
 
 ---
 
-## 5. Verbatim example — "Heritage" (from Google Labs README)
+## 5. Verbatim example, "Heritage" (from the Google Labs README)
 
 ```md
 ---
@@ -147,13 +147,13 @@ The palette is rooted in high-contrast neutrals and a single accent color.
 - **Neutral (#F7F5F2):** Warm limestone foundation, softer than pure white.
 ```
 
-Use this example as the structural template when generating new systems. The brevity is intentional — DESIGN.md is meant to be scannable.
+Use this example as the structural template when generating a new system. Its brevity is intentional: a DESIGN.md is meant to be scannable.
 
 ---
 
 ## 6. Lint rules (`npx @google/design.md lint`)
 
-The linter executes seven rules at fixed severity. Always run after generation.
+The linter runs the rules below at fixed severities. Run it after every generation.
 
 | Rule                 | Severity | Purpose                                                             |
 | -------------------- | -------- | ------------------------------------------------------------------- |
@@ -166,13 +166,13 @@ The linter executes seven rules at fixed severity. Always run after generation.
 | `missing-sections`   | info     | Optional sections absent when tokens exist                          |
 | `token-summary`      | info     | Summary of token counts per section                                 |
 
-**Operational rules**:
+How to act on each severity:
 
-- `error` severity → must fix before shipping (exit non-zero).
-- `warning` severity → fix unless explicitly justified.
-- `info` severity → advisory; safe to ignore.
+- `error`: fix it before shipping (the command exits non-zero).
+- `warning`: fix it unless there is an explicit justification.
+- `info`: advisory, safe to ignore.
 
-**Why contrast-ratio is a warning, not an error**: brand can require off-spec pairs (e.g., warning-on-warning). The linter surfaces, the author decides. Document any deliberate AA bypass in the Do's and Don'ts section.
+`contrast-ratio` is a warning and not an error because a brand can require off-spec pairs (for example warning-on-warning). The linter surfaces the pair and the author decides. Document any deliberate AA bypass in the Do's and Don'ts section.
 
 ---
 
@@ -184,20 +184,20 @@ The linter executes seven rules at fixed severity. Always run after generation.
 | `css-tailwind`  | CSS `@theme { ... }` block with custom properties for Tailwind v4 | Drop into `globals.css`                                  |
 | `dtcg`          | W3C Design Tokens Community Group format JSON                     | Hand off to Figma / Style Dictionary / any DTCG consumer |
 
-Why three targets: covers the two dominant Tailwind versions plus the cross-tool industry standard. The `/project-bootstrap` skill consumes `json-tailwind` or `css-tailwind` depending on the project's Tailwind version.
+The three targets cover the two dominant Tailwind versions plus the cross-tool industry standard. The `/project-bootstrap` skill consumes `json-tailwind` or `css-tailwind` depending on the project's Tailwind version.
 
 ---
 
 ## 8. Authoring discipline (the five non-negotiables)
 
-1. **Frontmatter is the source of truth**. Markdown body explains; tokens decide.
-2. **Never invent token paths**. `{colors.foo}` must resolve to a defined token.
-3. **Colors are CSS colors; author in hex**. The spec accepts any CSS color format and the linter converts to sRGB only for the contrast check, keeping the original for export. Authored paths (B-E) write hex for readability; the `extract` mode copies the live format verbatim (`oklch()`, `hsl()`) so the file matches the code. `calc(...)` is NOT a valid dimension: compute it.
-4. **Dimensions carry units**. `8px`, not `8`. Exception: spacing scale accepts bare numbers, but prefer units for clarity.
-5. **Component tokens reference, don't redefine**. A button's `backgroundColor` should be `{colors.primary}`, not `"#1A1C1E"` — otherwise rebrand breaks.
+1. **Frontmatter is the source of truth.** The Markdown body explains and the tokens decide.
+2. **Never invent token paths.** `{colors.foo}` must resolve to a defined token.
+3. **Colors are CSS colors, authored in hex.** The spec accepts any CSS color format, and the linter converts to sRGB only for the contrast check, keeping the original for export. Authored paths (B-E) write hex for readability. The `extract` mode copies the live format verbatim (`oklch()`, `hsl()`) so the file matches the code. `calc(...)` is not a valid dimension: compute it.
+4. **Dimensions carry units.** Write `8px`, not `8`. The spacing scale accepts bare numbers, but prefer units for clarity.
+5. **Component tokens reference, they don't redefine.** A button's `backgroundColor` should be `{colors.primary}`, not `"#1A1C1E"`, otherwise a rebrand breaks it.
 
 ---
 
 ## 9. Re-fetch cadence
 
-Schema is `alpha`. Re-fetch `https://raw.githubusercontent.com/google-labs-code/design.md/main/README.md` quarterly or when `npx @google/design.md lint` surfaces unfamiliar rules. Update this asset in-place; do NOT branch into versioned files (skill-creator convention: one canonical reference per topic).
+The schema is `alpha`. Re-fetch `https://raw.githubusercontent.com/google-labs-code/design.md/main/README.md` quarterly, or when `npx @google/design.md lint` surfaces unfamiliar rules. Update this asset in place and do not branch into versioned files (one canonical reference per topic, the skill-creator convention).

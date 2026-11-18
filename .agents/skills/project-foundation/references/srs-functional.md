@@ -1,52 +1,52 @@
-Actúa como Software Architect y Business Analyst.
+Turn each PRD user story into formal Functional Requirements, as a software architect and business analyst would.
 
 **Input:**
 
-- PRD completo: [usar .context/PRD/mvp-scope.md]
-- User Stories: [listar todas las User Stories del PRD]
+- Full PRD: [use .context/PRD/mvp-scope.md]
+- User Stories: [list every user story in the PRD]
 
-**Genera archivo: functional-specs.md**
+**Generate file: functional-specs.md**
 
-Mapea cada User Story del PRD a Functional Requirements (FR):
+Map each PRD user story to Functional Requirements (FR).
 
-**Formato por FR:**
+**Format per FR:**
 
-**FR-[NUM]: [Feature] debe permitir [acción específica]**
+**FR-[NUM]: [Feature] must allow [specific action]**
 
-- **Relacionado a:** Epic X, US Y.Z (del PRD)
-- **Input:** [Datos de entrada esperados - tipos, formatos, validaciones]
-- **Processing:** [Lógica de negocio - qué hace el sistema con el input]
-- **Output:** [Resultado esperado - formato de respuesta, datos retornados]
-- **Validations:** [Reglas de validación - qué debe cumplir el input]
+- **Related to:** Epic X, US Y.Z (from the PRD)
+- **Input:** [expected input data: types, formats, validations]
+- **Processing:** [business logic: what the system does with the input]
+- **Output:** [expected result: response format, returned data]
+- **Validations:** [validation rules: what the input must satisfy]
 
-**Ejemplo:**
+**Example:**
 
-**FR-001: El sistema debe permitir registro de usuarios con email**
+**FR-001: The system must allow user registration with an email**
 
-- **Relacionado a:** EPIC-001 (User Authentication), US 1.1
+- **Related to:** EPIC-001 (User Authentication), US 1.1
 - **Input:**
-  - email (string, formato RFC 5321, max 254 chars)
-  - password (string, min 8 chars, al menos 1 mayúscula, 1 número)
+  - email (string, RFC 5321 format, max 254 chars)
+  - password (string, min 8 chars, at least 1 uppercase letter and 1 number)
 - **Processing:**
-  - Validar formato de email
-  - Validar fortaleza de password
-  - Verificar que email no existe en DB
-  - Hash password con bcrypt
-  - Crear usuario en tabla users
-  - Enviar email de verificación
+  - Validate the email format
+  - Validate the password strength
+  - Check that the email does not exist in the DB
+  - Hash the password with bcrypt
+  - Create the user in the users table
+  - Send a verification email
 - **Output:**
-  - Success: User object con id, email, created_at
-  - Error: Código de error + mensaje descriptivo
+  - Success: user object with id, email, created_at
+  - Error: error code + descriptive message
 - **Validations:**
-  - Email único en sistema
-  - Password cumple policy de seguridad
-  - Email válido según RFC
+  - Email is unique in the system
+  - Password meets the security policy
+  - Email is valid per the RFC
 
-**Restricciones:**
+**Constraints:**
 
-- Mapeo 1:1 con User Stories del PRD
-- FRs numerados secuencialmente (FR-001, FR-002, etc.)
-- Específicos y no ambiguos
-- Incluir validaciones de negocio
+- 1:1 mapping with the PRD user stories
+- FRs numbered sequentially (FR-001, FR-002, and so on)
+- Specific and unambiguous
+- Include business validations
 
-**Formato:** Markdown estructurado, listo para copiar a .context/SRS/functional-specs.md
+**Format:** structured Markdown, ready to copy into `.context/SRS/functional-specs.md`

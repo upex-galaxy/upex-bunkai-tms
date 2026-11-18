@@ -40,6 +40,12 @@ import { playwrightBrowsersInstalled, playwrightCacheCandidates } from './lib/pl
 import { formatBytes, freeBytes, isLocalSource, parseVersion, reachable, readJson, runCmd, versionAtLeast, worktreeInfo } from './lib/probes.ts';
 import { BRAND } from './lib/ui/brand.ts';
 
+/** First Bun that ships `bun check` (the built-in type checker the `types:check` script runs). */
+const MIN_BUN: [number, number, number] = [1, 4, 3];
+
+/** Node the hooks run on: lint-staged and the scaffolder bundle need Node 22. */
+const MIN_NODE: [number, number, number] = [22, 0, 0];
+
 export type Verdict = 'clear' | 'warn' | 'block';
 
 export interface PreflightCheck extends Check {
@@ -76,8 +82,8 @@ const T = {
     tools: 'Herramientas',
     net: 'Red',
     machine: 'Esta máquina',
-    bunMsg: 'Instala Bun 1.0 o más nuevo: <code>curl -fsSL https://bun.sh/install | bash</code>.',
-    nodeMsg: 'Los hooks de tu agente corren con Node. Instala Node 18+ (nodejs.org o <code>brew install node</code>). La actualización sigue sin él.',
+    bunMsg: 'Instala Bun 1.4.3 o más nuevo: <code>curl -fsSL https://bun.sh/install | bash</code>.',
+    nodeMsg: 'Los hooks de tu agente corren con Node. Instala Node 22+ (nodejs.org o <code>brew install node</code>). La actualización sigue sin él.',
     gitMissing: 'git no está instalado. El actualizador necesita git 2.25 o más nuevo.',
     gitOld: (v: string): string => `Tu git es ${v}. El actualizador necesita 2.25+: <code>brew upgrade git</code> / <code>apt install git</code>.`,
     ghMissing: 'El actualizador descarga el boilerplate con GitHub CLI. Instálalo (cli.github.com) y corre <code>gh auth login</code>.',
@@ -99,8 +105,8 @@ const T = {
     tools: 'Tools',
     net: 'Network',
     machine: 'This machine',
-    bunMsg: 'Install Bun 1.0 or newer: <code>curl -fsSL https://bun.sh/install | bash</code>.',
-    nodeMsg: 'Your agent\'s hooks run on Node. Install Node 18+ (nodejs.org or <code>brew install node</code>). The update continues without it.',
+    bunMsg: 'Install Bun 1.4.3 or newer: <code>curl -fsSL https://bun.sh/install | bash</code>.',
+    nodeMsg: 'Your agent\'s hooks run on Node. Install Node 22+ (nodejs.org or <code>brew install node</code>). The update continues without it.',
     gitMissing: 'git is not installed. The updater needs git 2.25 or newer.',
     gitOld: (v: string): string => `Your git is ${v}. The updater needs 2.25+: <code>brew upgrade git</code> / <code>apt install git</code>.`,
     ghMissing: 'The updater downloads the boilerplate with GitHub CLI. Install it (cli.github.com) and run <code>gh auth login</code>.',
@@ -137,7 +143,7 @@ export async function runUpPreflight(o: UpPreflightOptions): Promise<PreflightRe
 
   // Tools
   const bunV = process.versions.bun ?? '';
-  checks.push(versionAtLeast(parseVersion(bunV), [1, 0, 0])
+  checks.push(versionAtLeast(parseVersion(bunV), MIN_BUN)
     ? { id: 'bun', group: L.tools, label: 'Bun', value: bunV, state: 'ok', neededBy: 'fetch' }
     : { id: 'bun', group: L.tools, label: 'Bun', value: bunV || '-', state: 'block', msg: L.bunMsg, neededBy: 'fetch' });
 
@@ -145,7 +151,7 @@ export async function runUpPreflight(o: UpPreflightOptions): Promise<PreflightRe
   // images built on Bun alone have none (preflight.md asks block for setup).
   const node = runCmd('node', ['--version'], { timeoutMs: 2000 });
   const nodeV = parseVersion(node.stdout);
-  checks.push(node.ok && versionAtLeast(nodeV, [18, 0, 0])
+  checks.push(node.ok && versionAtLeast(nodeV, MIN_NODE)
     ? { id: 'node', group: L.tools, label: 'Node', value: node.stdout.replace(/^v/, ''), state: 'ok', neededBy: 'apply' }
     : { id: 'node', group: L.tools, label: 'Node', value: node.ok ? node.stdout : '-', state: 'warn', msg: L.nodeMsg, neededBy: 'apply' });
 
@@ -253,14 +259,14 @@ const S = {
     agents: 'Agentes de IA',
     net: 'Red',
     machine: 'Esta máquina',
-    bunMsg: 'Instala Bun 1.0 o más nuevo: <code>curl -fsSL https://bun.sh/install | bash</code> (macOS/Linux).',
-    nodeMsg: 'Los hooks de tu agente corren con Node. Instala Node 18+ (nodejs.org o <code>brew install node</code>) y vuelve a comprobar.',
+    bunMsg: 'Instala Bun 1.4.3 o más nuevo: <code>curl -fsSL https://bun.sh/install | bash</code> (macOS/Linux).',
+    nodeMsg: 'Los hooks de tu agente corren con Node. Instala Node 22+ (nodejs.org o <code>brew install node</code>) y vuelve a comprobar.',
     gitMissing: 'git no está instalado. Instálalo (git-scm.com) y vuelve a comprobar.',
     gitIdentity: 'git no sabe quién eres, y lo necesita para tu primer commit y para subir a GitHub: <code>git config --global user.name "Tu nombre"</code> y <code>git config --global user.email tu@correo</code>.',
     repoMissing: (scaffolder: string): string => `No hay un <code>package.json</code> aquí. Corre <code>bun setup</code> desde la raíz del proyecto, o crea uno con <code>npx ${scaffolder}</code>.`,
     repoUnknown: (name: string): string => `Este proyecto se llama "${name}" y no tiene la marca de un proyecto creado desde el boilerplate. Si lo creaste con el scaffolder, está bien: la instalación deja la marca al terminar.`,
     templateCopy: 'Este proyecto todavía tiene la configuración del propio boilerplate (vino con "Use this template"). Empezamos desde una plantilla limpia antes de preguntar nada.',
-    harnessNone: 'No encontramos ningún agente de IA. Instala al menos uno: Claude Code (<code>npm i -g @anthropic-ai/claude-code</code>), Codex u OpenCode, y vuelve a comprobar.',
+    harnessNone: 'No encontramos ningún agente de IA. Instala al menos uno: Claude Code (<code>npm i -g @anthropic-ai/claude-code</code>), Codex, OpenCode o Pi, y vuelve a comprobar.',
     agentFound: 'encontrado',
     agentMissing: 'no encontrado',
     agentOptional: 'No hace falta: elige solo los que usa tu equipo.',
@@ -282,6 +288,9 @@ const S = {
     free: 'libres',
     sudoMsg: 'En Linux, Chromium necesita paquetes del sistema. Corre una vez: <code>sudo bunx playwright install-deps chromium</code>. El navegador en sí se instala sin sudo.',
     envPerms: 'permisos corregidos a 600',
+    pythonMissing: (fix: string): string => `Solo para las páginas de evidencia (<code>/evidence-artifact</code>): Python 3.9 o más nuevo, y después Pillow: <code>${fix}</code>. La instalación no lo necesita.`,
+    pythonOld: (v: string): string => `Tu Python es ${v} y las páginas de evidencia necesitan 3.9 o más nuevo. La instalación no lo necesita.`,
+    pillowMissing: (fix: string): string => `Las páginas de evidencia (<code>/evidence-artifact</code>) necesitan Pillow: <code>${fix}</code>. La instalación no lo necesita.`,
     clear: (n: number, s: string): string => `Todo listo: ${n} comprobaciones en ${s} s.`,
     warn: (n: number): string => `Nada bloquea. ${n} aviso(s): revisa las filas marcadas; el paso que afectan se salta o queda pendiente.`,
     block: (n: number): string => `${n} cosa(s) impiden empezar. Arréglalas y vuelve a comprobar; no se cambió nada.`,
@@ -291,14 +300,14 @@ const S = {
     agents: 'AI agents',
     net: 'Network',
     machine: 'This machine',
-    bunMsg: 'Install Bun 1.0 or newer: <code>curl -fsSL https://bun.sh/install | bash</code> (macOS/Linux).',
-    nodeMsg: 'Your agent\'s hooks run on Node. Install Node 18+ (nodejs.org or <code>brew install node</code>) and check again.',
+    bunMsg: 'Install Bun 1.4.3 or newer: <code>curl -fsSL https://bun.sh/install | bash</code> (macOS/Linux).',
+    nodeMsg: 'Your agent\'s hooks run on Node. Install Node 22+ (nodejs.org or <code>brew install node</code>) and check again.',
     gitMissing: 'git is not installed. Install it (git-scm.com) and check again.',
     gitIdentity: 'git does not know who you are, and needs to for your first commit and the GitHub push: <code>git config --global user.name "Your name"</code> and <code>git config --global user.email you@example.com</code>.',
     repoMissing: (scaffolder: string): string => `There is no <code>package.json</code> here. Run <code>bun setup</code> from the project root, or create one with <code>npx ${scaffolder}</code>.`,
     repoUnknown: (name: string): string => `This project is called "${name}" and has no marker of a project made from the boilerplate. If the scaffolder created it, that is fine: the install leaves the marker when it finishes.`,
     templateCopy: 'This project still carries the boilerplate\'s own settings (it came with "Use this template"). We start from a clean template before asking anything.',
-    harnessNone: 'No AI agent was found. Install at least one: Claude Code (<code>npm i -g @anthropic-ai/claude-code</code>), Codex or OpenCode, and check again.',
+    harnessNone: 'No AI agent was found. Install at least one: Claude Code (<code>npm i -g @anthropic-ai/claude-code</code>), Codex, OpenCode or Pi, and check again.',
     agentFound: 'found',
     agentMissing: 'not found',
     agentOptional: 'Not needed: pick only the ones your team uses.',
@@ -320,6 +329,9 @@ const S = {
     free: 'free',
     sudoMsg: 'On Linux Chromium needs system packages. Run once: <code>sudo bunx playwright install-deps chromium</code>. The browser itself installs without sudo.',
     envPerms: 'permissions fixed to 600',
+    pythonMissing: (fix: string): string => `Only for the evidence pages (<code>/evidence-artifact</code>): Python 3.9 or newer, then Pillow: <code>${fix}</code>. The install does not need it.`,
+    pythonOld: (v: string): string => `Your Python is ${v} and the evidence pages need 3.9 or newer. The install does not need it.`,
+    pillowMissing: (fix: string): string => `The evidence pages (<code>/evidence-artifact</code>) need Pillow: <code>${fix}</code>. The install does not need it.`,
     clear: (n: number, s: string): string => `All set: ${n} checks in ${s} s.`,
     warn: (n: number): string => `Nothing blocks. ${n} warning(s): see the marked rows; the step each one affects is skipped or left pending.`,
     block: (n: number): string => `${n} thing(s) stop the start. Fix them and check again; nothing was changed.`,
@@ -347,6 +359,37 @@ export function readYamlScalars(text: string): { atlassianUrl: string | null, se
 
 function truthyEnv(v: string | undefined): boolean {
   return v === '1';
+}
+
+/**
+ * Python 3.9+ with Pillow, the evidence builder's interpreter. Twin of
+ * `pythonCandidates` / `pillowInstall` in `cli/lib/evidence-page/python.ts`,
+ * which this file cannot import: its graph is `node:*` only, and the sibling
+ * boilerplate has no evidence pages (`BRAND.prereqs` leaves the row out there).
+ * Information only: nothing in the install needs it.
+ */
+export function pythonCheck(run: typeof runCmd, platform: string, lang: Lang): PreflightCheck {
+  const L = S[lang];
+  const candidates = platform === 'win32' ? [['py', '-3'], ['python3'], ['python']] : [['python3'], ['python']];
+  const fix = platform === 'win32' ? 'py -m pip install pillow' : 'python3 -m pip install pillow';
+  // Same words as `pillowInstall`: a Homebrew or distro Python refuses a bare pip install (PEP 668).
+  const hint = platform === 'win32'
+    ? fix
+    : platform === 'darwin'
+      ? `${fix} (Homebrew Python: brew install pillow, or a venv)`
+      : `${fix} (a distro Python: your package manager's python3-pil, or a venv)`;
+  const row = { id: 'python', group: L.tools, label: 'Python + Pillow', neededBy: 'evidence' };
+  for (const argv of candidates) {
+    const probe = run(argv[0], [...argv.slice(1), '-c', 'import sys; print("%d.%d" % sys.version_info[:2]); import PIL'], { timeoutMs: 5000 });
+    const v = parseVersion(probe.stdout.split('\n')[0] ?? '');
+    if (v === null) { continue; }
+    const version = `${v[0]}.${v[1]}`;
+    if (!versionAtLeast(v, [3, 9, 0])) { return { ...row, value: version, state: 'info', msg: L.pythonOld(version) }; }
+    return probe.ok
+      ? { ...row, value: version, state: 'ok' }
+      : { ...row, value: `${version}, no Pillow`, state: 'info', msg: L.pillowMissing(hint), fix };
+  }
+  return { ...row, value: '-', state: 'info', msg: L.pythonMissing(hint), fix };
 }
 
 function onPath(run: typeof runCmd, bin: string): boolean {
@@ -379,13 +422,13 @@ export async function runSetupPreflight(o: SetupPreflightOptions): Promise<Prefl
 
   // Tools
   const bunV = process.versions.bun ?? '';
-  checks.push(versionAtLeast(parseVersion(bunV), [1, 0, 0])
+  checks.push(versionAtLeast(parseVersion(bunV), MIN_BUN)
     ? { id: 'bun', group: L.tools, label: 'Bun', value: bunV, state: 'ok', neededBy: 'install' }
     : { id: 'bun', group: L.tools, label: 'Bun', value: bunV || '-', state: 'block', msg: L.bunMsg, neededBy: 'install' });
 
   const node = run('node', ['--version'], { timeoutMs: 2000 });
   const nodeV = parseVersion(node.stdout);
-  checks.push(node.ok && versionAtLeast(nodeV, [18, 0, 0])
+  checks.push(node.ok && versionAtLeast(nodeV, MIN_NODE)
     ? { id: 'node', group: L.tools, label: 'Node', value: node.stdout.replace(/^v/, ''), state: 'ok', neededBy: 'team' }
     : { id: 'node', group: L.tools, label: 'Node', value: node.ok ? node.stdout : '-', state: 'block', msg: L.nodeMsg, neededBy: 'team' });
 
@@ -444,19 +487,22 @@ export async function runSetupPreflight(o: SetupPreflightOptions): Promise<Prefl
       : { id: 'op', group: L.tools, label: '1Password CLI', value: '-', state: 'warn', msg: L.opMissing, neededBy: 'creds', fix: 'op signin' });
   }
 
+  if (BRAND.prereqs?.includes('python')) { checks.push(pythonCheck(run, platform, o.lang)); }
+
   // AI agents: at least one, or there is nothing to configure.
   const home = env.HOME ?? env.USERPROFILE ?? '';
   const claude = onPath(run, 'claude') || (home !== '' && existsSync(join(home, '.claude')));
   const opencode = onPath(run, 'opencode') || (home !== '' && existsSync(join(home, '.config', 'opencode')));
   const codex = onPath(run, 'codex') || existsSync(join(o.cwd, '.codex', 'config.toml'));
+  const pi = onPath(run, 'pi') || (home !== '' && existsSync(join(home, '.pi', 'agent')));
   const agentRow = (id: string, label: string, found: boolean): PreflightCheck => found
     ? { id, group: L.agents, label, value: L.agentFound, state: 'ok', neededBy: 'team' }
     : { id, group: L.agents, label, value: L.agentMissing, state: 'info', msg: L.agentOptional, neededBy: 'team' };
-  if (!claude && !opencode && !codex) {
-    checks.push({ id: 'harness', group: L.agents, label: 'Claude Code / Codex / OpenCode', value: '-', state: 'block', msg: L.harnessNone, neededBy: 'team' });
+  if (!claude && !opencode && !codex && !pi) {
+    checks.push({ id: 'harness', group: L.agents, label: 'Claude Code / Codex / OpenCode / Pi', value: '-', state: 'block', msg: L.harnessNone, neededBy: 'team' });
   }
   else {
-    checks.push(agentRow('agent-claude', 'Claude Code', claude), agentRow('agent-codex', 'Codex', codex), agentRow('agent-opencode', 'OpenCode', opencode));
+    checks.push(agentRow('agent-claude', 'Claude Code', claude), agentRow('agent-codex', 'Codex', codex), agentRow('agent-opencode', 'OpenCode', opencode), agentRow('agent-pi', 'Pi', pi));
   }
 
   // This machine
@@ -569,7 +615,7 @@ export function depsPresent(cwd: string): boolean {
 export async function runSetupGate(o: { cwd: string, lang: Lang, write?: (s: string) => void, install?: () => number }): Promise<number> {
   const write = o.write ?? ((s: string) => { process.stdout.write(s); });
   const es = o.lang === 'es';
-  if (!versionAtLeast(parseVersion(process.versions.bun ?? ''), [1, 0, 0])) {
+  if (!versionAtLeast(parseVersion(process.versions.bun ?? ''), MIN_BUN)) {
     write(`✖ ${plainMsg(S[o.lang].bunMsg)}\n`);
     return 2;
   }

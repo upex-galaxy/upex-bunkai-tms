@@ -11,7 +11,7 @@
  * component is a unit of the system, and a filter is only as useful as it
  * discriminates.
  *
- * `acli` cannot touch components (`acli/SKILL.md` §Hard limits), so this speaks
+ * `acli` cannot touch components (`acli/SKILL.md`, "What `acli` cannot do"), so this speaks
  * the REST API directly — the same escape hatch `jira-attach-media.ts` uses.
  *
  * WHY A PLAN FILE, NOT AUTODETECTION: deriving modules from a codebase is a

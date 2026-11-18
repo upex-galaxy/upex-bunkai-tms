@@ -52,6 +52,20 @@
     },
     {
       "id": 8,
+      "prompt": "Mapeá el dominio de la app: quiero el mapa de datos de negocio. Usamos el schema vivo de Supabase de staging.",
+      "expected_output": "Mode data, resolved from a Spanish prompt by meaning: reads the `stack:` block, reads the schema through [DB_TOOL] against the active env (staging), checks CREATE or UPDATE with `bun run context:map business-data-context --list`, and writes only business-data-context's references/business-data-map.html with a discovery-gaps section. Replies in Spanish, writes the file in English.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "Armame el inventario de features y la matriz CRUD del sistema. El mapa de datos ya está generado.",
+      "expected_output": "Mode features, resolved from a Spanish prompt by meaning: loads only references/features.md, reads the data map through `bun run context:map business-data-context` as a soft cross-link, builds the feature catalog and CRUD matrix, and writes only business-feature-context's references/business-feature-map.html with a discovery-gaps section. In UPDATE mode it regenerates only stale sections and waits for approval. Replies in Spanish, writes the file in English.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 10,
       "prompt": "How do I write a unit test for the price calculator with bun test?",
       "expected_output": "Does not trigger project-context; this is unit-testing work.",
       "should_trigger": false,

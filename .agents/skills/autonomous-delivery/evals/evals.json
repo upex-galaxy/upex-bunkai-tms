@@ -7,6 +7,18 @@
       "category": "positive"
     },
     {
+      "name": "should-trigger-spanish-nightly-story-run",
+      "prompt": "Rutina nocturna: corré /autonomous-delivery story y tomá vos mismo la próxima historia que esté desbloqueada, sin esperar a nadie.",
+      "expected_behavior": "Activates autonomous-delivery in `story` mode with nobody present: lock, audit against git, select one unblocked story, dispatch /sprint-development, close and report. Never asks a person to confirm anything.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-spanish-overnight-bug-run",
+      "prompt": "Lanzá la corrida desatendida de bugs de esta noche con /autonomous-delivery bug, y que deje el reporte para cuando volvamos.",
+      "expected_behavior": "Activates autonomous-delivery in `bug` mode: up to 3 bugs strictly sequential, each fully closed before the next, run report left in the session folder and the configured report channel. A question only a person can answer goes into the escalation log and ends the run cleanly.",
+      "category": "positive"
+    },
+    {
       "name": "should-run-greenfield-unchanged",
       "prompt": "Run /autonomous-delivery bug on this project scaffolded from the boilerplate (main-integration, integration: staging, stack block at its schema defaults).",
       "expected_behavior": "Every ancestry and base check runs against `origin/staging` exactly as before; the live ledger is read through the DB MCP (`list_migrations`); the dispatched /sprint-development verifies with `bun run lint:check`, `bun run types:check`, `bun run test`. The migration gate is unchanged under `migrations: confirm`.",

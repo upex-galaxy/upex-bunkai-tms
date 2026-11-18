@@ -1,45 +1,45 @@
-# Env-var management — sync `.env` ↔ Vercel scopes
+# Env-var management: sync `.env` and Vercel scopes
 
-Vercel stores env vars per **environment** (Production / Preview / Development). The CLI is the only sane way to bulk-sync these against your local `.env` — the dashboard is one-key-at-a-time and lossy on copy-paste.
+Vercel stores env vars per environment (Production, Preview, Development). The CLI is the practical way to bulk-sync them against your local `.env`; the dashboard takes one key at a time and loses values on copy-paste.
 
 ## Scope vocabulary
 
-| CLI flag value  | Dashboard label | Triggered for                                                                   |
-| --------------- | --------------- | ------------------------------------------------------------------------------- |
-| `production`    | Production      | The production branch (`git_strategy.branches.production`)                      |
-| `preview`       | Preview         | Every other branch: feature branches, the integration branch, hotfixes          |
-| `development`   | Development     | Local `vercel dev` / `vercel env pull` to `.env.local`                          |
+| CLI flag value | Dashboard label | Used for |
+| --- | --- | --- |
+| `production` | Production | The production branch (`git_strategy.branches.production`) |
+| `preview` | Preview | Every other branch: feature branches, the integration branch, hotfixes |
+| `development` | Development | Local `vercel dev` and `vercel env pull` to `.env.local` |
 
-Use the **lowercase CLI form** in scripts. Dashboard labels are display-only.
+Use the lowercase CLI form in scripts. Dashboard labels are display-only.
 
-## The canonical env-var set for this boilerplate
+## The env-var set for this boilerplate
 
-`.env.example` is the source of truth for the key set. Every app-runtime key it declares MUST exist in BOTH `production` and `preview` scopes before a deploy will run successfully. The mapping below is a snapshot to read alongside it; a key in `.env.example` that the table does not name follows the row of its family:
+`.env.example` is the source of truth for the key set. Every app-runtime key it declares must exist in both `production` and `preview` before a deploy can run. The table below is a snapshot to read alongside it. A key in `.env.example` that the table does not name follows the row of its family.
 
-| Key                                | Scope             | Source / notes                                                                                                                                          |
-| ---------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_APP_URL`              | production + preview | Production: custom domain. Preview: leave blank (Vercel injects `VERCEL_URL`) or use `https://${VERCEL_URL}`. Local: `http://localhost:3000`.        |
-| `NEXT_PUBLIC_SUPABASE_URL`         | production + preview | Different Supabase project per env (staging vs prod). Browser-exposed.                                                                                  |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`    | production + preview | Browser-exposed. Legacy anon key.                                                                                                                       |
-| `SUPABASE_URL`                     | production + preview | Server-side mirror of `NEXT_PUBLIC_SUPABASE_URL`. Some Supabase libs require both spellings.                                                            |
-| `SUPABASE_ANON_KEY`                | production + preview | Server-side mirror of the public anon key.                                                                                                              |
-| `SUPABASE_PUBLISHABLE_KEY`         | production + preview | New-style publishable key. Browser-safe.                                                                                                                |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | production + preview | Browser-side copy of the publishable key, read by the Supabase browser client. NOT provisioned by the integration: set it by hand.                  |
-| `SUPABASE_SECRET_KEY`              | production + preview | New-style secret. **Server-only — never `NEXT_PUBLIC_`.**                                                                                              |
-| `SUPABASE_SERVICE_ROLE_KEY`        | production + preview | Legacy service-role. **Server-only.** Bypasses RLS — guard it.                                                                                          |
-| `SUPABASE_JWT_SECRET`              | production + preview | Used to verify / sign custom JWTs.                                                                                                                      |
-| `POSTGRES_HOST`                    | production + preview | `db.<project-ref>.supabase.co`                                                                                                                          |
-| `POSTGRES_USER`                    | production + preview | Usually `postgres`                                                                                                                                       |
-| `POSTGRES_PASSWORD`                | production + preview | Supabase DB password                                                                                                                                     |
-| `POSTGRES_DATABASE`                | production + preview | Usually `postgres`                                                                                                                                       |
-| `POSTGRES_URL`                     | production + preview | Pooled URL (port 6543)                                                                                                                                  |
-| `POSTGRES_URL_NON_POOLING`         | production + preview | Direct URL (port 5432)                                                                                                                                  |
-| `POSTGRES_PRISMA_URL`              | production + preview | Pooled + `pgbouncer=true` — required if using Prisma                                                                                                    |
-| `TAVILY_API_KEY`                   | production + preview *(optional)* | Only if app code calls Tavily at runtime. Devtime MCP-only usage does NOT need this in Vercel.                                                          |
-| `ATLASSIAN_*`, `N8N_*`             | (skip)            | Devtime / agent-side only. Do NOT push these to Vercel scopes unless app code reads them at runtime.                                                    |
-| `SUPABASE_ACCESS_TOKEN`            | (skip)            | Supabase MCP admin-scope PAT — devtime only.                                                                                                            |
+| Key | Scope | Source / notes |
+| --- | --- | --- |
+| `NEXT_PUBLIC_APP_URL` | production + preview | Production: custom domain. Preview: leave blank (Vercel injects `VERCEL_URL`) or use `https://${VERCEL_URL}`. Local: `http://localhost:3000`. |
+| `NEXT_PUBLIC_SUPABASE_URL` | production + preview | Different Supabase project per env (staging vs prod). Browser-exposed. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | production + preview | Browser-exposed. Legacy anon key. |
+| `SUPABASE_URL` | production + preview | Server-side mirror of `NEXT_PUBLIC_SUPABASE_URL`. Some Supabase libs require both spellings. |
+| `SUPABASE_ANON_KEY` | production + preview | Server-side mirror of the public anon key. |
+| `SUPABASE_PUBLISHABLE_KEY` | production + preview | New-style publishable key. Browser-safe. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | production + preview | Browser-side copy of the publishable key, read by the Supabase browser client. The integration does not provision it: set it by hand. |
+| `SUPABASE_SECRET_KEY` | production + preview | New-style secret. Server-only, never `NEXT_PUBLIC_`. |
+| `SUPABASE_SERVICE_ROLE_KEY` | production + preview | Legacy service-role key. Server-only. Bypasses RLS, so guard it. |
+| `SUPABASE_JWT_SECRET` | production + preview | Used to verify and sign custom JWTs. |
+| `POSTGRES_HOST` | production + preview | `db.<project-ref>.supabase.co` |
+| `POSTGRES_USER` | production + preview | Usually `postgres` |
+| `POSTGRES_PASSWORD` | production + preview | Supabase DB password |
+| `POSTGRES_DATABASE` | production + preview | Usually `postgres` |
+| `POSTGRES_URL` | production + preview | Pooled URL (port 6543) |
+| `POSTGRES_URL_NON_POOLING` | production + preview | Direct URL (port 5432) |
+| `POSTGRES_PRISMA_URL` | production + preview | Pooled + `pgbouncer=true`. Required if using Prisma. |
+| `TAVILY_API_KEY` | production + preview *(optional)* | Only if app code calls Tavily at runtime. Devtime MCP-only usage does not need it in Vercel. |
+| `ATLASSIAN_*`, `N8N_*` | (skip) | Devtime and agent-side only. Do not push these to Vercel scopes unless app code reads them at runtime. |
+| `SUPABASE_ACCESS_TOKEN` | (skip) | Supabase MCP admin-scope PAT, devtime only. |
 
-> **Shortcut:** Vercel + Supabase have a first-party integration that auto-injects ALL `SUPABASE_*`, `NEXT_PUBLIC_SUPABASE_*`, and `POSTGRES_*` vars into both scopes at once. See the "Copy Snippet" tip in `.env.example`. When that integration is wired, `vercel env pull` is the source of truth — your local `.env` mirrors Vercel, not the other way around.
+> **Shortcut:** the first-party Vercel + Supabase integration injects every `SUPABASE_*`, `NEXT_PUBLIC_SUPABASE_*` and `POSTGRES_*` var into both scopes at once. See the "Copy Snippet" tip in `.env.example`. Once the integration is wired, `vercel env pull` is the source of truth and your local `.env` mirrors Vercel, not the other way round.
 
 ## Read what Vercel has
 
@@ -86,7 +86,7 @@ for KEY in $(comm -23 <(echo "$LOCAL_KEYS") <(echo "$REMOTE_KEYS")); do
 done
 ```
 
-> **Always diff before bulk-pushing.** A blind push will overwrite Vercel values that were intentionally different from your local (e.g. staging vs local Supabase URLs).
+> Diff before you bulk-push. A blind push overwrites Vercel values that were different on purpose, such as the staging Supabase URL against the local one.
 
 ## Remove a key
 
@@ -97,19 +97,20 @@ vercel env rm NEXT_PUBLIC_APP_URL preview production    # multiple scopes
 
 ## Triggering a redeploy after env changes
 
-Env mutations do NOT automatically redeploy. To pick up new values:
+Env changes do not redeploy by themselves. To pick up new values, do one of these:
 
-- Push a no-op commit to the relevant branch, OR
-- `vercel deploy --no-wait` from the linked directory, OR
-- Dashboard → Deployments → "Redeploy" on the latest entry, with "Use existing Build Cache" UNCHECKED if env vars are read at build time (most `NEXT_PUBLIC_*` cases).
+- Push a no-op commit to the relevant branch.
+- Run `vercel deploy --no-wait` from the linked directory.
+- Use the dashboard: Deployments, "Redeploy" on the latest entry, with "Use existing Build Cache" unchecked when the vars are read at build time (most `NEXT_PUBLIC_*` cases).
 
 ## Hard rules
 
-- **NEVER commit `.env.local`** produced by `vercel env pull`. It's in `.gitignore` for a reason.
-- **NEVER open `.env` / `.env.local` or print a value to diff or push** (Critical Rule #1). Diff NAMES; move values through the loader subprocess above (`agentic-dev-core/references/secret-hygiene.md`).
-- **NEVER put service-role / secret keys in `NEXT_PUBLIC_*` names.** Anything `NEXT_PUBLIC_` is bundled into the browser JS. The boilerplate's `NEXT_PUBLIC_SUPABASE_*` keys are deliberately the public publishable (or legacy anon) key only.
-- **NEVER push `ATLASSIAN_*`, `N8N_*`, `SUPABASE_ACCESS_TOKEN` to Vercel scopes** unless runtime app code reads them. These are devtime/agent-side credentials; they have no business sitting in production runtime env.
-- **Always re-run `vercel whoami` and check `.vercel/project.json` `orgId`** before bulk-pushing. A misrouted push to the wrong team's project is the most common foot-gun.
+- Keep `.env.local` out of every commit. `vercel env pull` produces it and `.gitignore` excludes it for a reason.
+- Never open `.env` or `.env.local`, and never print a value to diff or push it (Critical Rule #1). Diff names, and move values through the loader subprocess above (`agentic-dev-core/references/secret-hygiene.md`).
+- Keep service-role and secret keys out of `NEXT_PUBLIC_*` names, because anything `NEXT_PUBLIC_` is bundled into the browser JS. The boilerplate's `NEXT_PUBLIC_SUPABASE_*` keys are deliberately the public publishable (or legacy anon) key only.
+- Keep `ATLASSIAN_*`, `N8N_*` and `SUPABASE_ACCESS_TOKEN` out of Vercel scopes unless runtime app code reads them. They are devtime and agent-side credentials with no business in production runtime env.
+- Re-run `vercel whoami` and check the `orgId` in `.vercel/project.json` before a bulk push. Pushing to the wrong team's project is the most common mistake.
+- Treat `vercel env add` and `vercel env rm` on `production` as outward actions: run them when a person asked or the delegating brief covers them (`SKILL.md`, "Who approves what"). A routine with neither does the diff, lists the missing keys and stops.
 
 ## Reference
 

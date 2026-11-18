@@ -25,7 +25,7 @@ import type { Harness, HarnessSelection } from './harness-selection.ts';
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, normalize, relative, resolve } from 'node:path';
 
-import { validateEslintBlockWiring, validateHookCompatibility, validateMcpParityFindings } from './agent-compatibility-contracts.ts';
+import { validateEslintBlockWiring, validateHookCompatibility, validateMcpParityFindings, validateOxlintWiring } from './agent-compatibility-contracts.ts';
 import { declaredHarnesses, skippedHarnessNotes } from './harness-selection.ts';
 
 export const CLAUDE_INSTRUCTIONS_SHIM = '@AGENTS.md\n';
@@ -127,15 +127,24 @@ export const COMPATIBILITY_GROUP_LABEL: Record<CompatibilityErrorGroup, string> 
   alias: 'Claude skills alias (.claude/skills)',
   commands: 'Commands shadowing a skill (.claude/commands, .opencode/commands)',
   hooks: 'Hook adapters',
-  mcp: 'MCP parity (.mcp.json, opencode.jsonc, .codex/config.toml)',
-  lint: 'Lint config wiring (eslint.config.js <- eslint.config.base.js)',
+  mcp: 'MCP parity (.mcp.json, opencode.jsonc, .codex/config.toml, .pi/mcp.json)',
+  lint: 'Lint config wiring (eslint.config.js <- eslint.config.base.js, .oxlintrc.json <- .oxlintrc.base.json)',
 };
+
+/**
+ * The files named by the "file missing" errors: what a declared harness lacks.
+ * `agents:compat` cannot make them; `bun sync` delivers what upstream ships.
+ */
+export function missingHarnessFiles(errors: readonly string[]): string[] {
+  const found = errors.flatMap(error => /^(?:Hook compatibility file missing|MCP config missing for \w+): (\S+)/.exec(error)?.[1] ?? []);
+  return [...new Set(found)];
+}
 
 /** Classify one error message by its wording (the messages are ours). */
 export function compatibilityErrorGroup(message: string): CompatibilityErrorGroup {
   // An MCP config error names its file even when the parser's message lacks
   // the word (e.g. a placeholder Codex refuses).
-  if (/\bMCP\b|\.mcp\.json|opencode\.jsonc|\.codex\/config\.toml/.test(message)) { return 'mcp'; }
+  if (/\bMCP\b|\.mcp\.json|opencode\.jsonc|\.codex\/config\.toml|\.pi\/mcp\.json/.test(message)) { return 'mcp'; }
   if (/eslint\.config/i.test(message)) { return 'lint'; }
   if (/command shadows skill/i.test(message)) { return 'commands'; }
   if (/skills alias|\.claude\/skills/i.test(message)) { return 'alias'; }
@@ -408,6 +417,7 @@ export function checkAgentCompatibility(
   // Independent of the canonical sources: a missing skills dir must not hide an
   // unwired lint block. Never throws (an unreadable config is not a finding).
   errors.push(...validateEslintBlockWiring(paths.root));
+  errors.push(...validateOxlintWiring(paths.root));
 
   const result = (status: CompatibilityCheck['alias']['status']): CompatibilityCheck => ({
     ok: errors.length === 0,

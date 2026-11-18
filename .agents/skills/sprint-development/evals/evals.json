@@ -31,6 +31,18 @@
       "category": "positive"
     },
     {
+      "name": "should-trigger-spanish-implement-story",
+      "prompt": "Implementá la historia UPEX-412 de punta a punta: plan, código, PR y deploy a staging.",
+      "expected_behavior": "Activates sprint-development in single-story mode and runs the five-stage pipeline in order: Stage 1 plan, Stage 2 implementation with verification, Stage 3 code review, Stage 4 staging deploy. Stops before Stage 5, which needs QA green and a person's approval.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-spanish-process-sprint",
+      "prompt": "Procesá el sprint 7 completo, historia por historia, y avisame cuando una quede lista para QA.",
+      "expected_behavior": "Activates sprint-development in batch-sprint mode. Checks `.context/reports/SPRINT-7-DEVELOPMENT.md` first and generates it when missing, then loops Stages 1 to 4 per ticket. Stage 5 is never part of the loop.",
+      "category": "positive"
+    },
+    {
       "name": "should-accept-business-maps-without-prd-srs",
       "prompt": "Implement BK-42 on our adopted app. We never wrote a PRD or SRS; the business maps, dev guide and glossary are generated.",
       "expected_behavior": "Pre-requisites pass on the business-maps form: `.context/PRD/` and `.context/SRS/` hold only their READMEs, but `bun run context:map business-data-context` prints sections. No fast-fail and no suggestion to write a PRD or SRS. Stage 1 reads the architecture record from `business-api-context` `architecture` + `business-data-context` `overview` + `.context/business/project-dev-guide.md` and `.context/ADR/`; data model from the data map's `entities` / `access-control` / `migrations`; the API contract from the app's OpenAPI spec when present, else `auth-model` / `journey-<slug>` and the feature map's `route-inventory`; UI copy from the glossary and the live UI. A placeholder map the story needs is a `missing_input` that recommends `/project-context <mode>`.",
@@ -87,7 +99,7 @@
     {
       "name": "should-not-overwrite-an-existing-ci-workflow",
       "prompt": "Set up CI for this project (first time). The repo already has .github/workflows/ci.yml running lint and build on main.",
-      "expected_behavior": "Follows references/ci-cd-setup.md Paso 0: the existing `ci.yml` is never replaced, renamed or written over. It reports what the workflow covers, and proposes only the missing jobs (types, test, the integration deploy) as a NEW workflow with its own name or as a diff to approve; nothing is written without the user's OK.",
+      "expected_behavior": "Follows references/ci-cd-setup.md Step 0: the existing `ci.yml` is never replaced, renamed or written over. It reports what the workflow covers, and proposes only the missing jobs (types, test, the integration deploy) as a NEW workflow with its own name or as a diff to approve; nothing is written without the user's OK.",
       "category": "positive"
     },
     {

@@ -1,0 +1,52 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-verify-deploy-by-sha",
+      "prompt": "I just pushed to the integration branch. Wait until my deploy is live on Vercel and tell me when it's READY.",
+      "expected_behavior": "Activates vercel-cli. Finds the deployment with vercel ls -m githubCommitSha=<sha> --format json and jq, retries while the webhook registers, then runs vercel inspect <url> --wait --timeout=10m and reports the exit code. Never greps the plain vercel ls output.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-sync-env-names",
+      "prompt": "Sync the keys from .env.example to the Vercel Preview scope, some are missing there.",
+      "expected_behavior": "Activates vercel-cli and reads references/env-vars.md. Runs vercel whoami and checks .vercel/project.json, diffs key NAMES from .env.example against vercel env ls preview --format json, and moves values through the varlock subprocess by name. Never opens .env or prints a value.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-es-logs-build-fallo",
+      "prompt": "Falló el build en Vercel, puedes mostrarme los logs del deploy para ver qué pasó?",
+      "expected_behavior": "Activates vercel-cli and reads references/debugging.md. Runs vercel inspect <url> --logs for the build log, checks the state field to separate build from runtime, and maps the error to the common causes (missing env var, type error, module not found).",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-es-rollback-produccion",
+      "prompt": "Producción está rota después del último deploy, haz rollback al deploy anterior de Vercel.",
+      "expected_behavior": "Activates vercel-cli and reads references/rollback.md. Finds the previous READY production deploy with vercel ls --prod --status READY --format json. Because rollback is an outward action, runs vercel rollback only when the person or the delegating brief asked for it; otherwise reports the candidate deploy and stops. Notes that a rollback cannot undo DB migrations.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-link-state",
+      "prompt": "Is this repo linked to a Vercel project? Check without changing anything.",
+      "expected_behavior": "Activates vercel-cli and reads references/linking.md. Checks for .vercel/project.json or .vercel/repo.json by reading the files, and uses vercel whoami as the only probe. Does not run vercel ls, vercel project inspect or vercel link.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-choose-deploy-method",
+      "prompt": "I have never deployed this app. Which way should I deploy it to Vercel, and can you link it for the first time?",
+      "expected_behavior": "Does not activate vercel-cli. Defers to the community deploy-to-vercel skill, which owns deploy method selection and the first-time link.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-netlify-deploy",
+      "prompt": "Deploy this site to Netlify and set the environment variables there.",
+      "expected_behavior": "Does not activate vercel-cli. Netlify is out of scope for a Vercel CLI cookbook.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-supabase-env-values",
+      "prompt": "What is the value of SUPABASE_URL for staging? Look it up in the database dashboard.",
+      "expected_behavior": "Does not activate vercel-cli. Supabase is the source of truth for those values and Vercel only mirrors them; the question belongs to the Supabase MCP.",
+      "category": "negative"
+    }
+  ]
+}

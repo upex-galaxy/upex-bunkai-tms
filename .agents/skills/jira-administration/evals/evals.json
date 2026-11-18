@@ -1,0 +1,58 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-components-reconcile",
+      "prompt": "Our Jira Components are a mess and don't match the app's modules. Reconcile them against the real app.",
+      "expected_behavior": "Activates jira-administration in mode components and loads references/components.md only. Loads /acli, derives modules from the app source and the backlog, reads the live component list with --list, authors the plan file, runs the dry run and waits for explicit approval before --apply.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-instance-migration",
+      "prompt": "We moved to a new Atlassian site and the Jira URL changed. Repoint the repo and refresh the catalogs.",
+      "expected_behavior": "Activates jira-administration in mode instance-migration and loads references/instance-migration.md only. Phase 0 detects the source from .agents/project.yaml and the acli session, asks for the target, confirms both hosts in one line and waits before editing anything.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-components-with-args",
+      "prompt": "sync Jira components for BK against ../bunkai",
+      "expected_behavior": "Activates jira-administration in mode components with the key BK and the target repo ../bunkai forwarded unchanged, and still stops for approval after the dry run.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-es-migracion",
+      "prompt": "Hay que repuntar el repo a otro Jira: cambió el sitio de Atlassian y ya no coinciden los IDs de los custom fields.",
+      "expected_behavior": "Activates jira-administration in mode instance-migration, starts at Phase 0 by detecting the source instance, and plans the catalog regeneration (jira:sync-fields, jira:sync-workflows, jira:sync-link-types) after the audit is approved.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-es-componentes",
+      "prompt": "Sincroniza los componentes de Jira con los módulos reales de la aplicación, por favor.",
+      "expected_behavior": "Activates jira-administration in mode components, reads the live component list before proposing a plan, and writes nothing until the user approves the plan table.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-routine-without-brief-mode",
+      "prompt": "Routine run with no person present: the brief says only 'fix Jira' and names no mode.",
+      "expected_behavior": "Activates jira-administration, does not guess a mode, reports that the brief names none and stops without any Jira write, login or push.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-issue-operation",
+      "prompt": "Set the Component field to Checkout on {{PROJECT_KEY}}-123 and move it to In Review.",
+      "expected_behavior": "Does not activate jira-administration. This is a ticket operation for the acli skill.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-catalog-refresh",
+      "prompt": "Refresh the Jira field catalog: nothing changed on the instance, I only added a custom field.",
+      "expected_behavior": "Does not activate jira-administration. A routine catalog refresh with no instance change runs the bun run jira:sync-fields script directly.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-first-time-setup",
+      "prompt": "Connect this fresh repo to my Jira for the first time and fill in the credentials.",
+      "expected_behavior": "Does not activate jira-administration. First-time Jira setup follows docs/setup/README.md, section Jira (lado dev), and agentic-dev-onboard.",
+      "category": "negative"
+    }
+  ]
+}

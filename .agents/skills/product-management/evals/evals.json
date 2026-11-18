@@ -31,6 +31,18 @@
       "category": "positive"
     },
     {
+      "name": "should-trigger-epic-creation-es",
+      "prompt": "Crea una épica para el módulo de facturación y descompónla en historias con sus dependencias.",
+      "expected_behavior": "Activates product-management in epic-creation mode (workflow C). Runs Phase 0 and writes the plan, reads epic-creation.md, drafts the stories as tracer bullets and quizzes the PM before creating anything in Jira, then runs dependency discovery and linking. With nobody present the quiz answers go into the run report as assumptions.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-sprint-report-es",
+      "prompt": "Dame el reporte de sprint: qué historias están en curso, cuáles bloqueadas y cuánto falta.",
+      "expected_behavior": "Activates product-management in read-only sprint-reporting mode (workflow G). Reads sprint-report.md, gathers state through [ISSUE_TRACKER_TOOL] and renders the status report inline. Creates no session directory and changes nothing in Jira.",
+      "category": "positive"
+    },
+    {
       "name": "should-not-trigger-implementation",
       "prompt": "Implement UPEX-123. The story is refined and ready to code.",
       "expected_behavior": "Does NOT activate product-management. Should route to /sprint-development because the request is per-story implementation. product-management refines stories BEFORE coding; sprint-development takes refined stories and codes them.",

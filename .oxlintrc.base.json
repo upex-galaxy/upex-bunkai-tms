@@ -1,0 +1,109 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "jsPlugins": ["./guard-eslint-plugin.js"],
+  "categories": {
+    "correctness": "off"
+  },
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "test-results",
+    "playwright-report",
+    "allure-results",
+    "allure-report",
+    "reports",
+    "cli/legacy/**",
+    "**/*.min.js",
+    "**/*.md",
+    ".github/**",
+    "api/openapi-types.ts",
+    "src/types/supabase.ts",
+    ".claude/worktrees/**",
+    ".claude/skills/**",
+    ".agents/skills/**",
+    "docs/mcp/**"
+  ],
+  "overrides": [
+    {
+      "files": ["cli/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "../scripts/**",
+                  "../../scripts/**",
+                  "../../../scripts/**",
+                  "../../../../scripts/**",
+                  "../packages/**",
+                  "../../packages/**",
+                  "../../../packages/**",
+                  "../../../../packages/**",
+                  "../api/**",
+                  "../../api/**",
+                  "../../../api/**",
+                  "../../../../api/**",
+                  "../src/**",
+                  "../../src/**",
+                  "../../../src/**",
+                  "../../../../src/**",
+                  "../config/**",
+                  "../../config/**",
+                  "../../../config/**",
+                  "../../../../config/**",
+                  "../tests/**",
+                  "../../tests/**",
+                  "../../../tests/**",
+                  "../../../../tests/**",
+                  "@/*",
+                  "@api/*",
+                  "@schemas/*",
+                  "@utils/*"
+                ],
+                "message": "cli/ must be import-closed: the updater re-execs the new cli/ before other components are synced, so an import that escapes cli/ breaks `bun sync` for repos more than one release behind. Move the shared module into cli/lib/ instead."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "rules": {
+        "guard/layer-imports": "error",
+        "guard/feature-door": "error"
+      }
+    },
+    {
+      "files": [
+        "src/features/**/*.ts",
+        "src/features/**/*.tsx",
+        "src/adapters/**/*.ts",
+        "src/adapters/**/*.tsx"
+      ],
+      "rules": {
+        "max-params": [
+          "error",
+          {
+            "max": 2
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/**/*.ts", "src/features/**/*.tsx"],
+      "rules": {
+        "max-lines": [
+          "error",
+          {
+            "max": 400,
+            "skipBlankLines": true,
+            "skipComments": true
+          }
+        ]
+      }
+    }
+  ]
+}

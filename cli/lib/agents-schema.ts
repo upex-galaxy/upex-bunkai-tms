@@ -36,6 +36,16 @@
  *     gets `--auto`'d away. The leaf SET is compared against each environment
  *     the project declares; the environment NAMES never are.
  *
+ * WHICH FILE CARRIES WHAT (ADR-0021). `.agents/project.yaml` is imported into
+ * every Claude Code session start (`@.agents/project.yaml` in the ROUTER), so it
+ * carries VALUES ONLY. `.agents/project.schema.yaml` is the documented template:
+ * its header and every explanatory comment are authored there, by hand. What
+ * flows between the two is values, downward: `generateSchema` splices the
+ * maintainer's methodology values into the schema's commented skeleton, blanks
+ * identity, substitutes the git-strategy safety values, and leaves every comment
+ * where it is. A project's yaml is seeded and back-filled from the schema with
+ * the comments stripped (`stripYamlComments`).
+ *
  * The 2-level walk in `updater-parity.ts` stays exactly where it is: it is
  * right for MCP registries and permission blocks, where depth 3 really is
  * noise. It is wrong for THIS file, where a large share of the key paths sit
@@ -49,19 +59,22 @@ import { isMap, isScalar, isSeq, parseDocument } from 'yaml';
 // WHAT THIS MODULE GOVERNS
 // ============================================================================
 
-/** The project's real, filled identity file. Never overwritten by the sync. */
+/** The project's real, filled identity file, values only. Never overwritten by the sync. */
 export const SCHEMA_SOURCE = '.agents/project.yaml';
 
-/** The generated, committed template the diff compares a project against. */
+/**
+ * The documented, committed template the diff compares a project against: its
+ * comments are authored here, its values synced from `SCHEMA_SOURCE`.
+ */
 export const SCHEMA_FILE = '.agents/project.schema.yaml';
 
 /**
  * Per-file deep-walk configuration. A file ABSENT here keeps the 2-level
  * `configEntries` walk in `updater-parity.ts`, which is deliberate:
  * `.agents/jira-required.yaml` has the same drift problem but a much richer
- * shape (`required` / `optional` / `unmapped` / `work_types` / `link_types`),
- * and giving it a naive deep walk would produce a truncated row nobody can act
- * on. It needs its own wildcards and it is a follow-up, not a freebie.
+ * shape (`required` / `optional` / `unmapped` / `work_types` / `link_types`,
+ * 45 KB), and giving it a naive deep walk would produce a truncated row nobody
+ * can act on. It needs its own wildcards and it is a follow-up, not a freebie.
  */
 export const DEEP_WALK: Readonly<Record<string, { readonly wildcards: readonly string[] }>> = {
   [SCHEMA_SOURCE]: { wildcards: ['environments'] },
@@ -113,10 +126,10 @@ export function isSchemaOwner(packageJsonText: string): boolean {
  * maintainers' chosen standing push authorization and their ruleset notes,
  * and `git-flow-master` never offers Strategy Setup.
  *
- * It lives in the header on purpose: `withSchemaHeader` drops that block, so
- * the schema never carries it, and the scaffolder writes its own header, so a
- * consumer's yaml never carries it either. The leak gate refuses a schema that
- * does, which catches it if it is ever moved below the header.
+ * It is the first line of the maintainer copy and the only comment that file
+ * keeps. The schema has its own hand-authored header, and every seed writes
+ * `CONSUMER_YAML_HEADER`, so neither the template nor a consumer's yaml ever
+ * carries it. The leak gate refuses a schema that does.
  */
 export const MAINTAINER_SENTINEL = '# MAINTAINER COPY:';
 
@@ -162,24 +175,19 @@ export function classifyProjectYaml(yamlText: string, originUrl: string | null):
 /**
  * The header a CONSUMER's `.agents/project.yaml` opens with. Twin of the one
  * in `packages/create-agentic-dev/src/prepare.ts`, which is a separately
- * published package and cannot import from here: keep the two identical (a
- * test reads both).
+ * published package and cannot import from here: keep the two identical.
  */
-export const CONSUMER_YAML_HEADER = `# Project configuration consumed by AI agents (Claude Code, OpenCode, Codex)
-# when they encounter {{VAR_NAME}} references in skills, templates and docs.
-# Variable names are snake_case; the AI maps {{PROJECT_NAME}} -> project.project_name lexically.
-# Edit values manually, or run \`bun run agents:setup\` for an interactive walkthrough.
-# Every unfilled field is \`null\` plus a TODO comment with a concrete example.
-#
-# \`bun run agents:schema --project\` lists the keys upstream has added since this
-# project was scaffolded; \`bun sync\` offers to insert them, one prompt per block.
+export const CONSUMER_YAML_HEADER = `# Project configuration read by AI agents. VALUES ONLY: every key is documented in
+# .agents/project.schema.yaml, the template this file was seeded from. Edit by hand or
+# run \`bun run agents:setup\`. \`bun run agents:schema --project\` lists keys added upstream.
 `;
 
 /**
- * A consumer's `.agents/project.yaml`, seeded from the schema: the generated
- * banner swapped for `CONSUMER_YAML_HEADER`, everything else verbatim. Same
- * transform as `seedProjectYamlFromSchema` in the scaffolder. `null` when the
- * text is not the shape the generator emits.
+ * A consumer's `.agents/project.yaml`, seeded from the schema: the schema's
+ * banner swapped for `CONSUMER_YAML_HEADER`, every comment stripped, every value
+ * verbatim. Same transform as `seedProjectYamlFromSchema` in the scaffolder.
+ * `null` when the text is not the shape the schema has (a leading comment
+ * banner, then content), or when stripping would change a value.
  */
 export function seedFromSchema(schemaText: string): string | null {
   const lines = schemaText.split('\n');
@@ -187,7 +195,93 @@ export function seedFromSchema(schemaText: string): string | null {
   while (i < lines.length && lines[i].startsWith('#')) { i += 1; }
   while (i < lines.length && lines[i].trim() === '') { i += 1; }
   if (i === 0 || i >= lines.length) { return null; }
-  return `${CONSUMER_YAML_HEADER}\n${lines.slice(i).join('\n')}`;
+  const body = lines.slice(i).join('\n');
+  const lean = stripYamlComments(body);
+  if (!sameValues(body, lean)) { return null; }
+  return `${CONSUMER_YAML_HEADER}\n${lean}`;
+}
+
+// ============================================================================
+// THE COMMENT STRIPPER — schema text in, values-only text out
+// ============================================================================
+// LINT.IfChange(strip-yaml-comments)
+
+/**
+ * The index where a YAML comment starts on `line`, or -1. A `#` opens a comment
+ * only at the start of the line or after whitespace, and never inside a quoted
+ * scalar; a quote opens a scalar only where a token can start, so the
+ * apostrophe in `it's` is not one.
+ */
+function commentStart(line: string): number {
+  let quote: string | null = null;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (quote !== null) {
+      if (quote === '"' && ch === '\\') { i += 1; continue; }
+      if (ch === quote) {
+        // `''` inside a single-quoted scalar is an escaped quote, not the end.
+        if (quote === '\'' && line[i + 1] === '\'') { i += 1; continue; }
+        quote = null;
+      }
+      continue;
+    }
+    const prev = i === 0 ? ' ' : line[i - 1];
+    if ((ch === '"' || ch === '\'') && /[\s[{,:]/.test(prev)) { quote = ch; continue; }
+    if (ch === '#' && /\s/.test(prev)) { return i; }
+  }
+  return -1;
+}
+
+/**
+ * YAML text with every comment removed and its values untouched: whole-line
+ * comments dropped, trailing comments cut with the whitespace before them,
+ * block scalars (`>` / `|`) passed through verbatim, blank lines kept only as
+ * one separator before each top-level key. Line-based and dependency-free on
+ * purpose: the scaffolder package has no `yaml` dependency and carries a twin
+ * (`stripYamlComments` in `packages/create-agentic-dev/src/prepare.ts`, kept
+ * identical by a test). Callers here verify the result with `sameValues`.
+ */
+export function stripYamlComments(text: string): string {
+  const out: string[] = [];
+  let scalarIndent = -1;
+  let pendingBlanks = 0;
+  for (const line of text.split('\n')) {
+    const indent = line.length - line.trimStart().length;
+    if (scalarIndent >= 0) {
+      if (line.trim() === '') { pendingBlanks += 1; continue; }
+      if (indent > scalarIndent) {
+        for (; pendingBlanks > 0; pendingBlanks -= 1) { out.push(''); }
+        out.push(line);
+        continue;
+      }
+      scalarIndent = -1;
+    }
+    pendingBlanks = 0;
+    const cut = commentStart(line);
+    const kept = (cut === -1 ? line : line.slice(0, cut)).trimEnd();
+    if (kept.trim() === '') { continue; }
+    if (indent === 0 && /^[\w"']/.test(kept) && out.length > 0) { out.push(''); }
+    out.push(kept);
+    if (/:\s*[|>][-+\d]*$/.test(kept) || /^\s*-\s+[|>][-+\d]*$/.test(kept)) { scalarIndent = indent; }
+  }
+  return `${out.join('\n')}${text.endsWith('\n') ? '\n' : ''}`;
+}
+// LINT.ThenChange(packages/create-agentic-dev/src/prepare.ts)
+
+/**
+ * Whether two YAML texts hold the same data. The stripper's proof: removing a
+ * comment may never change a value, so every caller compares before it writes.
+ */
+export function sameValues(a: string, b: string): boolean {
+  const parse = (text: string): string | null => {
+    try {
+      const doc = parseDocument(text);
+      return doc.errors.length > 0 ? null : JSON.stringify(doc.toJS());
+    }
+    catch { return null; }
+  };
+  const left = parse(a);
+  return left !== null && left === parse(b);
 }
 
 // ============================================================================
@@ -420,9 +514,8 @@ export function locateLeaf(text: string, path: readonly string[]): Located | nul
 /**
  * What happens to one leaf on its way into the schema.
  *
- *  - `blank`   the value becomes `null`; the comment is kept, with its
- *              `TODO: ` prefix restored when this repo dropped it.
- *  - `keep`    value and comment travel untouched.
+ *  - `blank`   the value becomes `null`.
+ *  - `keep`    the value travels untouched.
  *  - `generic` upstream supplies a replacement, because this repo's own
  *              answer is meaningless or misleading downstream.
  *
@@ -437,10 +530,6 @@ export type RuleKind = 'blank' | 'keep' | 'generic';
 export interface GenericRule {
   /** Raw YAML text for the value, spliced in place of the current one. */
   value: string
-  /** Replacement for the trailing `# ...` comment; `undefined` keeps it. */
-  trailingComment?: string
-  /** Replacement for the comment block above the key; `undefined` keeps it. */
-  leadingComment?: string
   /** Why this repo's answer must not travel. Read by nobody; kept for the next maintainer. */
   why: string
 }
@@ -467,7 +556,6 @@ export const GENERIC_RULES: Readonly<Record<string, GenericRule>> = {
   },
   'git_strategy.protected': {
     value: '[main]',
-    trailingComment: '# branches that are never force-pushed and never rewritten (AGENTS.md Critical Rule #5). Add the integration branch here too when the strategy has one.',
     why: 'the shipped comment asserts THIS repo\'s standing push authorization as if it were every project\'s',
   },
   // SAFETY. The two rules below deliberately ship a value DIFFERENT from this
@@ -491,17 +579,14 @@ export const GENERIC_RULES: Readonly<Record<string, GenericRule>> = {
   // Strategy Setup raises both to the project's real answer when it runs.
   'git_strategy.policy.direct_push_to_protected': {
     value: 'confirm',
-    trailingComment: '# forbidden | confirm | allowed. Ships `confirm` because meta.strategy_source is `inherited`: until Strategy Setup runs, nobody has authorized a direct push here.',
     why: 'this repo grants itself standing push authorization; a fresh project has authorized nothing',
   },
   'git_strategy.policy.admin_bypass': {
     value: 'false',
-    trailingComment: '# true only when the push credential is on the host ruleset\'s bypass list. While false, a "Bypassed rule violations" line from the remote is a real finding, not noise.',
     why: 'a fact about this repo\'s admin credential, and a dangerous default for a project that has none',
   },
   'git_strategy.policy.require_pr_reviews': {
     value: '1',
-    trailingComment: '# required approving reviews on a protected branch. Reconcile against the host with `bun run git:policy verify`.',
     why: 'the shipped comment cites this repo\'s ruleset id and the date it was verified',
   },
   'git_strategy.policy.accepted_divergences': {
@@ -522,10 +607,41 @@ export const GENERIC_RULES: Readonly<Record<string, GenericRule>> = {
   },
   'git_strategy.meta.strategy_source': {
     value: 'inherited',
-    leadingComment: '# Did anyone actually CHOOSE this strategy, or is it just the shipped default?\n# `strategy:` above is never null, so its value alone cannot answer that. Strategy\n# Setup flips this to `chosen` when the questionnaire actually runs.',
     why: 'the shipped comment records the maintainer\'s own dated confirmation',
   },
 };
+
+/**
+ * Blocks that are each project's own CONFIGURATION, not methodology, so a
+ * value that differs from upstream's is not reported by `changedDefaults`.
+ * Owner decision 4 (ADR-0025) warns on METHODOLOGY leaves; these hold the
+ * project's push policy, its protected files, its secret manager, its
+ * harnesses, its application stack and its automation identity, and a warning on every
+ * `bun sync` about them would be noise that teaches people to ignore the rest.
+ *
+ * A pattern matches the path it names and everything below it (`stack.*`
+ * covers `stack.database.engine`), segment by segment.
+ */
+export const CHANGED_DEFAULTS_EXEMPT: readonly string[] = [
+  'updater.*',
+  'secrets.*',
+  'git_strategy.*',
+  'harnesses',
+  // DEV's own per-project blocks: the app's real stack, the vars:check
+  // allowlist of keys read outside {{VAR}}, and the live-UI identity contract.
+  'stack.*',
+  'external_consumers',
+  'testing.automation_identity.*',
+];
+
+/** Whether a leaf sits under a `CHANGED_DEFAULTS_EXEMPT` pattern. */
+export function isChangedDefaultExempt(path: string): boolean {
+  const segments = path.split('.');
+  return CHANGED_DEFAULTS_EXEMPT.some((pattern) => {
+    const depth = pattern.split('.').length;
+    return segments.length >= depth && matchesPattern(segments.slice(0, depth).join('.'), pattern);
+  });
+}
 
 /**
  * The leaves that are THIS repo's identity, blanked whatever value they hold.
@@ -560,7 +676,7 @@ export const IDENTITY_PATHS: readonly string[] = [
   'testing.automation_identity.scope',
   'autonomous_delivery.automation_gh_account',
   'environments.*.*',
-  // Which harnesses THIS repo runs on: the boilerplate checks all three, a
+  // Which harnesses THIS repo runs on: the boilerplate checks every harness, a
   // project declares its own or leaves it null to detect (ADR-0013).
   'harnesses',
 ];
@@ -641,36 +757,15 @@ export const FILLED_ELSEWHERE: Readonly<Record<string, string>> = {
   'harnesses': 'the agent selection of `bun setup` (`recordHarnessSelection` in cli/install.ts; null = detect from the files present, ADR-0013)',
 };
 
-/**
- * Placeholders whose comment is documentation, never a TODO: blanking one
- * keeps its comment exactly as written.
- */
-const NO_TODO_PREFIX: ReadonlySet<string> = new Set(['frontend.design_md_path']);
-
-/**
- * The trailing comment a blanked identity leaf gets back.
- *
- * A filled project drops the `TODO: ` prefix from the comment it answered
- * (that is what a filled field looks like in a consumer repo, and may be in
- * this one). The template must still show it, so it is restored here, and
- * only here: a comment already carrying it is left alone, and an optional
- * field (`NO_TODO_PREFIX`) never had one.
- */
-function placeholderComment(path: string, comment: string): string {
-  if (NO_TODO_PREFIX.has(path)) { return comment; }
-  if (/^#\s*TODO:/.test(comment)) { return comment; }
-  return comment.replace(/^#\s*/, '# TODO: ');
-}
-
 // ============================================================================
 // IDENTITY LEAK GATE
 // ============================================================================
 
 /**
- * Patterns that must never appear in the generated schema, in a value or in a
- * comment. This is the gate that catches the NEXT leak, the one no rule
- * anticipated: a maintainer pastes a real date or a real host into a comment,
- * `agents:schema` regenerates happily, and the number ships to every consumer.
+ * Patterns that must never appear in the schema, in a value or in a comment.
+ * This is the gate that catches the NEXT leak, the one no rule anticipated: a
+ * maintainer pastes a real date or a real host into a schema comment, the
+ * values sync happily, and the number ships to every consumer.
  *
  * Kept deliberately small and specific. A broad pattern that fires on
  * legitimate prose gets suppressed, and a suppressed gate is not a gate.
@@ -714,6 +809,62 @@ export function findValueLeaks(schemaText: string, values: readonly string[]): I
   return leaks;
 }
 
+/**
+ * The bare identity TOKENS this repo's yaml implies, for a schema COMMENT that
+ * names the project without quoting a whole value: the project name (5+
+ * characters, any case), the project key (exact case, whole word), and the
+ * project's own host labels (6+ characters: `acmeware` out of
+ * `acmeware.vercel.app`). A host's last
+ * label is its TLD and, on a host of three labels or more, the one before it
+ * is the provider's domain (`vercel`, `atlassian`), which the template's own
+ * examples name; neither is a token. Loopback hosts are skipped.
+ *
+ * Deliberately not every identity leaf: an environment name (`staging`), a
+ * CLI (`bun xray`) or a loopback URL is template vocabulary the schema's
+ * examples use, and a gate that refused the clean template would be routed
+ * around.
+ */
+export function identityTokens(sourceText: string): Array<{ token: string, re: RegExp }> {
+  const walk = yamlLeafWalk(sourceText);
+  if (!walk) { return []; }
+  const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const word = (text: string, flags: string): RegExp => new RegExp(`(?<![\\w-])${escape(text)}(?![\\w-])`, flags);
+  const tokens = new Map<string, RegExp>();
+  const name = walk.entries.get('project.project_name');
+  if (typeof name === 'string' && name.trim().length >= 5) { tokens.set(name.trim(), word(name.trim(), 'i')); }
+  const key = walk.entries.get('project.project_key');
+  if (typeof key === 'string' && key.trim() !== '') { tokens.set(key.trim(), word(key.trim(), '')); }
+  for (const [path, value] of walk.entries) {
+    if (typeof value !== 'string' || !isIdentityPath(path)) { continue; }
+    const v = value.trim();
+    let host: string | null = null;
+    if (/^https?:\/\//.test(v)) {
+      try { host = new URL(v).hostname; }
+      catch { host = null; }
+    }
+    else if (/^[a-z\d-]+(?:\.[a-z\d-]+)+$/i.test(v)) { host = v; }
+    if (host === null || host === 'localhost' || /^[\d.]+$/.test(host)) { continue; }
+    const labels = host.split('.');
+    const own = labels.length >= 3 ? labels.slice(0, -2) : labels.slice(0, -1);
+    for (const label of own) {
+      if (label.length >= 6) { tokens.set(label, word(label, 'i')); }
+    }
+  }
+  return [...tokens].map(([token, re]) => ({ token, re }));
+}
+
+/** Every line of the schema that names one of `identityTokens`, in a value or a comment. */
+export function findTokenLeaks(schemaText: string, tokens: ReadonlyArray<{ token: string, re: RegExp }>): IdentityLeak[] {
+  const leaks: IdentityLeak[] = [];
+  const lines = schemaText.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    for (const { token, re } of tokens) {
+      if (re.test(lines[i])) { leaks.push({ line: i + 1, pattern: `an identity token of this repo (${token})`, text: lines[i].trim() }); }
+    }
+  }
+  return leaks;
+}
+
 /** Every identity pattern found in the generated schema, with its line. */
 export function findIdentityLeaks(schemaText: string): IdentityLeak[] {
   const leaks: IdentityLeak[] = [];
@@ -727,15 +878,22 @@ export function findIdentityLeaks(schemaText: string): IdentityLeak[] {
 }
 
 // ============================================================================
-// GENERATION
+// GENERATION — values flow down into the documented skeleton
 // ============================================================================
 
 export interface GenerateResult {
   schema: string
-  /** Paths whose value or comment the generator replaced. */
+  /** Placeholder paths: `null` in the schema, for the consumer to fill. */
   blanked: string[]
+  /** Paths whose value comes from `GENERIC_RULES`, not from this repo. */
   generic: string[]
-  /** Set when generation refused: a parse failure, a bad splice, or a leak. */
+  /** Paths whose value this run spliced into the schema (empty = already in sync). */
+  changed: string[]
+  /** Key paths `project.yaml` has and the schema does not document. */
+  undocumented: string[]
+  /** Key paths the schema documents and `project.yaml` lacks. */
+  unseeded: string[]
+  /** Set when generation refused: a parse failure, a key mismatch, a bad splice, or a leak. */
   error: string | null
   leaks: IdentityLeak[]
 }
@@ -745,135 +903,146 @@ function segments(path: string): string[] {
   return path.split('.');
 }
 
+/** The parsed value of a raw YAML value text, as `GENERIC_RULES` writes it. */
+function parseRuleValue(raw: string): unknown {
+  return (parseDocument(`v: ${raw}\n`).toJS() as { v: unknown }).v;
+}
+
+function sameJson(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+}
+
 /**
- * Derive the schema from the real `.agents/project.yaml`.
+ * Sync the schema's VALUES from the real `.agents/project.yaml`, leaving every
+ * comment, the header and the formatting of untouched values exactly as the
+ * schema has them (ADR-0021).
  *
- * Generate DOWNWARD, never upward. Hand-authoring the schema and validating
- * the real file against it gives cleaner decoupling on paper and recreates the
- * drift one level up in practice, with no gate that could catch it, because
- * nothing else would know what the true schema is. The boilerplate's yaml
- * stays the parent; what TRAVELS is the schema.
+ * The schema is the documented skeleton: keys and comments are authored there.
+ * The values still come DOWN from the maintainer's yaml, because the
+ * methodology defaults have one home: hand-maintaining them in the schema too
+ * would recreate the drift one level up, with nothing to sync the two. So each
+ * schema leaf gets `null` (identity, or a null in the source), the
+ * `GENERIC_RULES` safety value, or the source's own value; a leaf is spliced
+ * only when its parsed value differs, which is what keeps a clean run a no-op.
  *
- * Wildcarded blocks are NOT collapsed in the generated text: the schema keeps
- * whichever environments the boilerplate ships, because they are the exemplar
- * a human edits. The wildcard lives in the DIFF, which is where a project's
- * own environment names matter.
+ * Key parity is LITERAL in both directions, `environments` included: the
+ * schema's environments mirror the maintainer's, and a wildcard would hide a
+ * dropped one. A key on one side only refuses generation with the path, since
+ * an undocumented key is exactly what this split exists to prevent.
  */
-export function generateSchema(sourceText: string): GenerateResult {
-  const walk = yamlLeafWalk(sourceText);
-  if (!walk) {
-    return { schema: '', blanked: [], generic: [], leaks: [], error: `${SCHEMA_SOURCE} does not parse as a YAML mapping` };
+export function generateSchema(sourceText: string, schemaText: string): GenerateResult {
+  const fail = (error: string, extra: Partial<GenerateResult> = {}): GenerateResult => ({
+    schema: '',
+    blanked: [],
+    generic: [],
+    changed: [],
+    undocumented: [],
+    unseeded: [],
+    leaks: [],
+    ...extra,
+    error,
+  });
+
+  const source = yamlLeafWalk(sourceText);
+  if (!source) { return fail(`${SCHEMA_SOURCE} does not parse as a YAML mapping`); }
+  const skeleton = yamlLeafWalk(schemaText);
+  if (!skeleton) { return fail(`${SCHEMA_FILE} does not parse as a YAML mapping`); }
+
+  const undocumented = [...source.entries.keys()].filter(k => !skeleton.entries.has(k));
+  const unseeded = [...skeleton.entries.keys()].filter(k => !source.entries.has(k));
+  if (undocumented.length > 0 || unseeded.length > 0) {
+    const parts = [
+      undocumented.length > 0 ? `${undocumented.length} key path(s) in ${SCHEMA_SOURCE} that ${SCHEMA_FILE} does not document (${undocumented.slice(0, 5).join(', ')})` : '',
+      unseeded.length > 0 ? `${unseeded.length} key path(s) in ${SCHEMA_FILE} that ${SCHEMA_SOURCE} lacks (${unseeded.slice(0, 5).join(', ')})` : '',
+    ].filter(Boolean);
+    return fail(parts.join('; '), { undocumented, unseeded });
   }
 
   const edits: SpliceEdit[] = [];
   const blanked: string[] = [];
   const generic: string[] = [];
-  const containers = new Set(walk.containers);
+  const changed: string[] = [];
+  const containers = new Set(skeleton.containers);
 
-  for (const [path, value] of walk.entries) {
+  for (const [path, have] of skeleton.entries) {
     if (containers.has(path)) { continue; }
+    const value = source.entries.get(path);
     const kind = ruleFor(path, value);
-    if (kind === 'keep') { continue; }
+    if (kind === 'generic') { generic.push(path); }
+    const want = kind === 'blank' ? null : kind === 'generic' ? parseRuleValue(GENERIC_RULES[path].value) : value;
+    if (want === null) { blanked.push(path); }
+    if (sameJson(have, want)) { continue; }
 
-    if (kind === 'blank' && value === null) {
-      // Already the placeholder, so there is nothing to splice and no reason
-      // to pay for a locate. Recorded so the report can say what the consumer
-      // must fill.
-      blanked.push(path);
-      continue;
+    const located = locateLeaf(schemaText, segments(path));
+    if (!located) { return fail(`cannot locate ${path} in ${SCHEMA_FILE}`); }
+    let text: string;
+    if (kind === 'keep') {
+      // The source's own spelling, from just past its colon: a block
+      // collection keeps its line break and indent, a scalar its leading space.
+      const from = locateLeaf(sourceText, segments(path));
+      if (!from) { return fail(`cannot locate ${path} in ${SCHEMA_SOURCE}`); }
+      text = sourceText.slice(from.afterKey, from.value[1]);
     }
-
-    const located = locateLeaf(sourceText, segments(path));
-    if (!located) {
-      return { schema: '', blanked: [], generic: [], leaks: [], error: `cannot locate ${path} in ${SCHEMA_SOURCE}` };
+    else {
+      text = ` ${kind === 'blank' ? 'null' : GENERIC_RULES[path].value}`;
     }
-
-    if (kind === 'blank') {
-      // An identity leaf this repo filled: back to `null`, and its comment
-      // back to the TODO the template shows.
-      blanked.push(path);
-      edits.push({ range: located.value, text: 'null' });
-      if (located.trailingComment) {
-        const comment = sourceText.slice(...located.trailingComment);
-        const restored = placeholderComment(path, comment);
-        if (restored !== comment) { edits.push({ range: located.trailingComment, text: restored }); }
-      }
-      continue;
+    // From just past the key's colon, so a value that used to be a block
+    // collection comes back onto the key's line instead of leaving a lonely
+    // `[]` beneath it. The comment on the KEY's line is the schema's
+    // documentation and must survive the splice in every shape:
+    //  - schema block (`key: # doc` + items below): the range starts at the
+    //    colon and would swallow `# doc`, so it is put back;
+    //  - schema inline (`key: [] # doc`) becoming a block: the comment would
+    //    land after the block's last item, so it is moved onto the key's line;
+    //  - inline to inline: the comment sits after the range and stays.
+    const lineEnd = schemaText.indexOf('\n', located.afterKey);
+    const valueOnLaterLine = lineEnd !== -1 && located.value[0] > lineEnd;
+    let range: TextRange = [located.afterKey, located.value[1]];
+    let keyComment: string | null = null;
+    if (valueOnLaterLine) {
+      const tail = schemaText.slice(located.afterKey, lineEnd);
+      const hash = commentStart(tail);
+      if (hash !== -1) { keyComment = tail.slice(hash).trimEnd(); }
     }
-
-    const rule = GENERIC_RULES[path];
-    generic.push(path);
-
-    // A one-line replacement for a value that used to be a block collection
-    // goes back onto the key's own line, whitespace and all: replacing only
-    // the value leaves `accepted_divergences:` with a lonely `[]` beneath it.
-    const wasOnNextLine = sourceText.slice(located.afterKey, located.value[0]).includes('\n');
-    const inline = !rule.value.includes('\n') && wasOnNextLine;
-    edits.push(inline
-      ? { range: [located.afterKey, located.value[1]] as TextRange, text: ` ${rule.value}` }
-      : { range: located.value, text: rule.value });
-    if (rule.trailingComment !== undefined && located.trailingComment) {
-      edits.push({ range: located.trailingComment, text: rule.trailingComment });
+    else if (text.startsWith('\n') && located.trailingComment) {
+      keyComment = schemaText.slice(...located.trailingComment).trimEnd();
+      range = [located.afterKey, located.trailingComment[1]];
     }
-    if (rule.leadingComment !== undefined && located.leadingComment) {
-      const indented = rule.leadingComment.split('\n').map(l => `${located.indent}${l}`).join('\n');
-      edits.push({ range: located.leadingComment, text: `${indented}\n` });
+    if (keyComment !== null) {
+      text = text.startsWith('\n') ? ` ${keyComment}${text}` : `${text} ${keyComment}`;
     }
+    edits.push({ range, text });
+    changed.push(path);
   }
 
   let schema: string;
-  try { schema = applySplices(sourceText, edits); }
-  catch (err) {
-    return { schema: '', blanked, generic, leaks: [], error: err instanceof Error ? err.message : String(err) };
-  }
-
-  schema = withSchemaHeader(schema);
+  try { schema = applySplices(schemaText, edits); }
+  catch (err) { return fail(err instanceof Error ? err.message : String(err)); }
 
   // Re-parse to verify: invariant 1's second half. A splice that produced text
-  // which no longer parses, or which lost a key, is a corrupted template and
-  // must never reach disk.
+  // which no longer parses, lost a key, or did not land the value it meant to
+  // is a corrupted template and must never reach disk.
   const after = yamlLeafWalk(schema);
-  if (!after) {
-    return { schema: '', blanked, generic, leaks: [], error: 'the generated schema does not parse — splice produced invalid YAML' };
-  }
-  const lost = [...walk.entries.keys()].filter(k => !after.entries.has(k));
-  if (lost.length > 0) {
-    return { schema: '', blanked, generic, leaks: [], error: `the generated schema lost ${lost.length} key path(s): ${lost.slice(0, 5).join(', ')}` };
+  if (!after) { return fail('the generated schema does not parse — splice produced invalid YAML'); }
+  const lost = [...skeleton.entries.keys()].filter(k => !after.entries.has(k));
+  if (lost.length > 0) { return fail(`the generated schema lost ${lost.length} key path(s): ${lost.slice(0, 5).join(', ')}`); }
+  for (const path of changed) {
+    const kind = ruleFor(path, source.entries.get(path));
+    const want = kind === 'blank' ? null : kind === 'generic' ? parseRuleValue(GENERIC_RULES[path].value) : source.entries.get(path);
+    if (!sameJson(after.entries.get(path), want)) { return fail(`the splice at ${path} did not produce the intended value`); }
   }
 
-  const leaks = [...findIdentityLeaks(schema), ...findValueLeaks(schema, distinctiveValues(sourceText))];
+  const leaks = [
+    ...findIdentityLeaks(schema),
+    ...findValueLeaks(schema, distinctiveValues(sourceText)),
+    ...findTokenLeaks(schema, identityTokens(sourceText)),
+  ];
   if (leaks.length > 0) {
     const first = leaks[0];
-    return { schema: '', blanked, generic, leaks, error: `${SCHEMA_FILE} would carry ${leaks.length} identity leak(s); first at line ${first.line}: ${first.pattern}` };
+    return fail(`${SCHEMA_FILE} would carry ${leaks.length} identity leak(s); first at line ${first.line}: ${first.pattern}`, { leaks });
   }
 
-  return { schema, blanked, generic, leaks: [], error: null };
-}
-
-const SCHEMA_HEADER = `# GENERATED by \`bun run agents:schema\` from ${SCHEMA_SOURCE}. DO NOT EDIT BY HAND.
-#
-# This is the TEMPLATE a consumer project is compared against, not a file any
-# project reads at runtime. \`bun sync\` diffs a project's own
-# ${SCHEMA_SOURCE} against this one and reports the key paths upstream has
-# added since that project was scaffolded; \`bun run setup:doctor\` reports the
-# same thing as a diagnosis, and the scaffolder seeds a new project's
-# ${SCHEMA_SOURCE} from it. Values here are methodology defaults or \`null\`
-# placeholders — never the maintainer's identity, which \`agents:schema\`
-# refuses to emit.
-#
-# To change it: edit ${SCHEMA_SOURCE}, then run \`bun run agents:schema\`.
-# \`bun run agents:schema:check\` fails the commit when the two disagree.
-`;
-
-/** Prepend the generated-file banner, replacing the source's own header. */
-function withSchemaHeader(text: string): string {
-  // The source opens with its own comment block addressed to a human editing
-  // a real project. Replace exactly that leading run of comment lines; the
-  // first non-comment line starts the content.
-  const lines = text.split('\n');
-  let i = 0;
-  while (i < lines.length && (lines[i].startsWith('#') || lines[i].trim() === '')) { i += 1; }
-  return `${SCHEMA_HEADER}\n${lines.slice(i).join('\n')}`;
+  return { schema, blanked, generic, changed, undocumented: [], unseeded: [], leaks: [], error: null };
 }
 
 // ============================================================================
@@ -881,13 +1050,8 @@ function withSchemaHeader(text: string): string {
 // ============================================================================
 
 /**
- * The comparable shape of a schema: key paths plus whether each is a TODO
+ * The comparable shape of a schema: key paths plus whether each is a `null`
  * placeholder the consumer must fill.
- *
- * Compared as paths-plus-marking, never as bytes. A byte-exact gate is
- * brittle against comment rewording, and a gate that fires on a typo fix is a
- * gate people route around. Reword a comment freely; add or remove a key and
- * it fires.
  */
 export function schemaKeyPaths(text: string): Map<string, boolean> | null {
   const walk = yamlLeafWalk(text);
@@ -903,26 +1067,28 @@ export function schemaKeyPaths(text: string): Map<string, boolean> | null {
 
 export interface SchemaGateResult {
   ok: boolean
-  /** Paths in the source that the committed schema lacks. */
-  missing: string[]
-  /** Paths the committed schema has that the source does not. */
-  extra: string[]
-  /** Paths present in both whose required/optional marking disagrees. */
-  remarked: string[]
+  /** Key paths `project.yaml` has and the schema does not document. */
+  undocumented: string[]
+  /** Key paths the schema documents and `project.yaml` lacks. */
+  unseeded: string[]
+  /** Leaf paths whose committed value differs from what the source dictates. */
+  stale: string[]
   error: string | null
 }
 
-/** Whether the committed schema still matches what the source would generate. */
+/**
+ * Whether the committed schema is a FIXPOINT of generation: regenerating it
+ * from the source changes nothing. Comments are the schema's own, so a
+ * rewording never fires; a key on one side only, or a value out of sync with
+ * the source (a methodology default changed in one file, an identity value
+ * typed into the template), does.
+ */
 export function checkSchema(sourceText: string, committedSchema: string): SchemaGateResult {
-  const generated = generateSchema(sourceText);
-  if (generated.error) { return { ok: false, missing: [], extra: [], remarked: [], error: generated.error }; }
-  const want = schemaKeyPaths(generated.schema);
-  const have = schemaKeyPaths(committedSchema);
-  if (!want || !have) { return { ok: false, missing: [], extra: [], remarked: [], error: `${SCHEMA_FILE} does not parse` }; }
-  const missing = [...want.keys()].filter(k => !have.has(k));
-  const extra = [...have.keys()].filter(k => !want.has(k));
-  const remarked = [...want.keys()].filter(k => have.has(k) && have.get(k) !== want.get(k));
-  return { ok: missing.length === 0 && extra.length === 0 && remarked.length === 0, missing, extra, remarked, error: null };
+  const generated = generateSchema(sourceText, committedSchema);
+  if (generated.error) {
+    return { ok: false, undocumented: generated.undocumented, unseeded: generated.unseeded, stale: [], error: generated.error };
+  }
+  return { ok: generated.changed.length === 0, undocumented: [], unseeded: [], stale: generated.changed, error: null };
 }
 
 // ============================================================================
@@ -966,7 +1132,8 @@ export function schemaExemptions(projectText: string): string[] {
  * is silent, because that is the project's own extension and reporting it
  * would read as an instruction to delete it.
  *
- * Values are never compared. Every value in a real project file is either its
+ * Values are never compared HERE (a changed methodology default is listed by
+ * `changedDefaults`, never treated as a gap). Every value in a real project file is either its
  * identity or its chosen methodology, and both are the project's business.
  */
 export function projectDelta(projectText: string, schemaText: string): ProjectDelta {
@@ -997,14 +1164,71 @@ export function projectDelta(projectText: string, schemaText: string): ProjectDe
 }
 
 // ============================================================================
+// CHANGED DEFAULTS — a project's methodology values vs upstream's, warn only
+// ============================================================================
+
+export interface ChangedDefault {
+  path: string
+  yours: unknown
+  upstream: unknown
+}
+
+/**
+ * The methodology leaves where a project's value differs from upstream's
+ * default, for `bun sync` and `setup:doctor` to LIST. Owner decision
+ * (2026-11-02): a changed default is reported, never written back, because the
+ * project may have chosen it on purpose, and the insert-only promise of
+ * `applyInsertions` covers existing values too.
+ *
+ * Only `keep` leaves count, judged by upstream's value: identity (blanked in
+ * the template), `GENERIC_RULES` leaves and the per-project configuration in
+ * `CHANGED_DEFAULTS_EXEMPT` are the project's own answer by design, and a
+ * `null` upstream value is a placeholder, not a default. A key
+ A key
+ * the project lacks is a gap (`projectDelta`), not a change, and a block in
+ * `updater.schema_exempt` is silent here as well.
+ */
+export function changedDefaults(projectText: string, schemaText: string): { changed: ChangedDefault[], error: string | null } {
+  const project = yamlLeafWalk(projectText);
+  if (!project) { return { changed: [], error: `the project's ${SCHEMA_SOURCE} does not parse; nothing was compared` }; }
+  const schema = yamlLeafWalk(schemaText);
+  if (!schema) { return { changed: [], error: `${SCHEMA_FILE} does not parse; nothing was compared` }; }
+
+  const exempt = new Set(schemaExemptions(projectText));
+  const containers = new Set(schema.containers);
+  const changed: ChangedDefault[] = [];
+  for (const [path, upstream] of schema.entries) {
+    if (containers.has(path) || !project.entries.has(path)) { continue; }
+    if (exempt.has(schema.blockOf.get(path) ?? '')) { continue; }
+    if (isChangedDefaultExempt(path)) { continue; }
+    if (ruleFor(path, upstream) !== 'keep') { continue; }
+    const yours = project.entries.get(path);
+    if (!sameJson(yours, upstream)) { changed.push({ path, yours, upstream }); }
+  }
+  return { changed, error: null };
+}
+
+/** One value as a reader writes it in YAML: `null`, `auto`, `4`, `[a, b]`. */
+function showValue(value: unknown): string {
+  if (value === null || value === undefined) { return 'null'; }
+  if (Array.isArray(value) && value.every(v => v === null || typeof v !== 'object')) { return `[${value.map(showValue).join(', ')}]`; }
+  if (typeof value === 'object') { return JSON.stringify(value); }
+  return String(value);
+}
+
+/** `<path>: yours <x>, upstream default <y>`, the line both reports print. */
+export function describeChangedDefault(change: ChangedDefault): string {
+  return `${change.path}: yours ${showValue(change.yours)}, upstream default ${showValue(change.upstream)}`;
+}
+
+// ============================================================================
 // INSERTION — at the schema's position, never at EOF
 // ============================================================================
 
 /**
  * The full text of one pair: its leading comment block through the newline
  * after its trailing comment. This is the unit that gets lifted out of the
- * schema and spliced into a project, because a key without the comment that
- * explains it is a key nobody fills.
+ * schema (and stripped of its comments before it reaches a project).
  */
 export function pairExtent(text: string, path: readonly string[]): { start: number, end: number } | null {
   const located = locateLeaf(text, path);
@@ -1065,12 +1289,10 @@ export function planInsertions(
   projectText: string,
   schemaText: string,
   paths: readonly string[],
-  release: string | null = null,
 ): InsertionPlan {
   const project = yamlLeafWalk(projectText);
   if (!project) { return { edits: [], inserted: [], skipped: [], error: `the project's ${SCHEMA_SOURCE} does not parse; nothing was planned` }; }
-  const schema = yamlLeafWalk(schemaText);
-  if (!schema) { return { edits: [], inserted: [], skipped: [], error: `${SCHEMA_FILE} does not parse; nothing was planned` }; }
+  if (!yamlLeafWalk(schemaText)) { return { edits: [], inserted: [], skipped: [], error: `${SCHEMA_FILE} does not parse; nothing was planned` }; }
 
   const edits: SpliceEdit[] = [];
   const inserted: string[] = [];
@@ -1098,8 +1320,12 @@ export function planInsertions(
   for (const target of lifted) {
     const extent = pairExtent(schemaText, target.split('.'));
     if (!extent) { skipped.push({ path: target, reason: `not found in ${SCHEMA_FILE}` }); continue; }
-    let block = schemaText.slice(extent.start, extent.end);
-    if (release) { block = markRelease(block, release, isUnsetValue(schema.entries.get(target))); }
+    // Values only (ADR-0021): the schema's comments document the key there,
+    // and are never copied into the project's values-only file. Stripping may
+    // never change what the block holds; a block it would change is skipped.
+    const documented = schemaText.slice(extent.start, extent.end);
+    let block = stripYamlComments(documented);
+    if (!sameValues(documented, block)) { skipped.push({ path: target, reason: 'stripping its comments would change a value' }); continue; }
 
     const siblings = schemaSiblings(schemaText, target);
     const index = siblings.indexOf(target);
@@ -1144,45 +1370,6 @@ export function planInsertions(
   }
 
   return { edits, inserted, skipped, error: null };
-}
-
-/**
- * Stamp the release that brought a key, above its first line.
- *
- * The version comes from UPSTREAM'S `package.json` — the copy being applied —
- * because the marker answers "which release brought this key", which is an
- * upstream fact. The project's own version and the lock cursor are different
- * numbers that answer different questions.
- *
- * The marker is a courtesy for whoever reads the diff. It is NOT the
- * machine-checkable state, because the moment someone fills the value without
- * deleting the comment it lies. The durable signal is the TODO-plus-null pair,
- * which `bun run agents:schema --project` reads.
- *
- * It says `unset` only when the inserted value IS unset (see `isUnsetValue`).
- * A schema key that ships a real default (a model id, a number, a map of
- * modes) arrives WITH that value, and calling it unset sends the reader
- * looking for a gap that is not there.
- */
-function markRelease(block: string, release: string, unset: boolean): string {
-  const firstContent = block.split('\n').find(l => l.trim() !== '') ?? '';
-  const indent = /^(\s*)/.exec(firstContent)?.[1] ?? '';
-  const state = unset ? 'unset' : 'upstream default';
-  return `${indent}# NEW in ${release} — added by \`bun sync\`, ${state}. See .agents/README.md.\n${block}`;
-}
-
-/**
- * Whether an inserted value carries nothing to keep: null, an empty or blank
- * string, an empty list or map, or a block whose every leaf is one of those.
- * A block with at least one real leaf counts as a default, since the reader
- * gets that value without typing it.
- */
-export function isUnsetValue(value: unknown): boolean {
-  if (value === null || value === undefined) { return true; }
-  if (typeof value === 'string') { return value.trim() === ''; }
-  if (Array.isArray(value)) { return value.length === 0; }
-  if (isPlainObject(value)) { return Object.values(value).every(isUnsetValue); }
-  return false;
 }
 
 /**

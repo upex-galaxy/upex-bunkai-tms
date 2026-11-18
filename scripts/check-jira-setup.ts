@@ -593,7 +593,7 @@ function printHumanReport(
         if (exp.description) { console.log(`    Purpose: ${exp.description.trim().split('\n')[0]}`); }
       }
       else if (r.scope === 'unmapped') {
-        const exp = r.expected as UnmappedEntry;
+        const exp = r.expected;
         console.log(`  - ${r.slug} (unmapped)`);
         const desc = (exp.description ?? '').trim().split('\n')[0];
         if (desc) { console.log(`    ${desc}`); }
@@ -612,8 +612,8 @@ function printHumanReport(
     console.log('');
   }
 
-  const exitCode = missing.filter(r => r.scope === 'required').length > 0
-    || mismatch.filter(r => r.scope === 'required').length > 0
+  const exitCode = missing.some(r => r.scope === 'required')
+    || mismatch.some(r => r.scope === 'required')
     ? 1
     : 0;
   console.log(`Exit: ${exitCode} (${exitCode === 0 ? 'no missing required fields' : 'required fields missing or mismatched'})`);

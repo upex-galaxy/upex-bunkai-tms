@@ -1,23 +1,22 @@
 # Error Handling
 
-> **Para**: Fases 6-7 (Implementation + Code Review)
-> **Propósito**: Manejo consistente de errores en todo el proyecto
->
-> **Existing conventions win**: where the app already has an error-handling shape (its own error classes, result types, logger), follow it; these patterns are the default for an app that has none (`../SKILL.md` → `## Stack parameters`).
+The default error-handling pattern for Stage 2 (implementation) and Stage 3 (code review): typed errors, structured responses, retries and logs with context.
+
+Where the app already has an error-handling shape (its own error classes, result types, logger), follow it. These patterns are the default for an app that has none (`../SKILL.md`, section `## Stack parameters`).
 
 ---
 
-## 🎯 Principios
+## Principles
 
-1. **NO hardcodear fallbacks** - Usar configuración
-2. **Structured error responses** - Formato consistente
-3. **Custom error classes** - Errores tipados
-4. **Retry logic** - Para operaciones fallidas
-5. **Strategic logging** - Logging con contexto
+1. No hardcoded fallbacks. Read them from configuration.
+2. Structured error responses in one consistent format.
+3. Custom error classes, so errors are typed.
+4. Retry logic for operations that can fail transiently.
+5. Logging with context.
 
 ---
 
-## 🏗️ Custom Error Classes
+## Custom error classes
 
 ```typescript
 // lib/errors.ts
@@ -58,9 +57,9 @@ export class NotFoundError extends AppError {
 
 ---
 
-## ✅ Uso Correcto
+## Correct usage
 
-### API Routes (Next.js)
+### API routes (Next.js)
 
 ```typescript
 // app/api/users/[id]/route.ts
@@ -85,14 +84,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
       );
     }
 
-    // Error inesperado
+    // Unexpected error
     logger.error('Unexpected error in GET /api/users/[id]', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 ```
 
-### Client-side
+### Client side
 
 ```typescript
 // lib/api-client.ts
@@ -122,7 +121,7 @@ async function fetchUser(id: string): Promise<User> {
 
 ---
 
-## 🔄 Retry Logic
+## Retry logic
 
 ```typescript
 // lib/retry.ts
@@ -154,7 +153,7 @@ export async function withRetry<T>(
   throw lastError!;
 }
 
-// Uso
+// Usage
 const user = await withRetry(() => fetchUser(userId), {
   maxRetries: 3,
   delay: 1000,
@@ -164,7 +163,7 @@ const user = await withRetry(() => fetchUser(userId), {
 
 ---
 
-## 📝 Logging Estratégico
+## Logging with context
 
 ```typescript
 // lib/logger.ts
@@ -177,7 +176,7 @@ export const logger = pino({
   },
 });
 
-// Uso
+// Usage
 logger.info('User logged in', { userId, timestamp: Date.now() });
 logger.error('Payment failed', {
   userId,
@@ -189,41 +188,45 @@ logger.error('Payment failed', {
 
 ---
 
-## ⚠️ Qué NO Hacer
+## What to avoid
 
-### ❌ NO silenciar errores
+### Swallowed errors
+
+A silent `catch` hides the failure until it shows up as bad data.
 
 ```typescript
-// ❌ MAL
+// BAD
 try {
   await dangerousOperation();
 } catch (error) {
-  // Silenciado - muy peligroso!
+  // silenced
 }
 
-// ✅ BIEN
+// GOOD
 try {
   await dangerousOperation();
 } catch (error) {
   logger.error('Operation failed', error);
-  throw error; // Re-throw si no puedes manejar
+  throw error; // re-throw if you cannot handle it
 }
 ```
 
-### ❌ NO hardcodear mensajes
+### Hardcoded messages
 
 ```typescript
-// ❌ MAL
+// BAD
 throw new Error('User not found');
 
-// ✅ BIEN
+// GOOD
 throw new NotFoundError('User');
 ```
 
-### ❌ NO exponer detalles internos
+### Internal details in responses
+
+A response that names hosts or ports tells an attacker where to look. Log the detail and return a generic message.
 
 ```typescript
-// ❌ MAL
+// BAD
 return Response.json(
   {
     error: 'Database connection failed at 192.168.1.1:5432',
@@ -231,7 +234,7 @@ return Response.json(
   { status: 500 }
 );
 
-// ✅ BIEN
+// GOOD
 logger.error('DB connection failed', { host, port });
 return Response.json(
   {
@@ -240,8 +243,3 @@ return Response.json(
   { status: 503 }
 );
 ```
-
----
-
-**Última actualización**: 2025-10-29
-**Fase**: Implementation (Fase 6)

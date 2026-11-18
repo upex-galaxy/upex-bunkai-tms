@@ -1,29 +1,24 @@
-# Spec Compliance Matrix — Stage 3 AC↔evidence traceability gate
+# Spec compliance matrix: the Stage 3 gate from acceptance criteria to evidence
 
-> Reference for sprint-development Stage 3 (Code Review).
-> Cited from: `SKILL.md` end-of-Stage-3, before merge to staging.
+Reference for sprint-development Stage 3 (code review). `SKILL.md` cites it at the end of Stage 3, before the merge to the integration branch.
 
 ## Purpose
 
-Formalize the link between **every Acceptance Criterion (AC) scenario in the story** and **the evidence that proves it works**. The matrix is the reviewer's checklist for "does this PR really implement what was specified?" — at the row level, not just the diff level.
+The matrix links every acceptance criterion (AC) scenario in the story to the evidence that proves it works. It is the reviewer's checklist for "does this PR implement what was specified?" at the row level, not only the diff level.
 
-Permissive by design: not every AC is tractable as a unit test or even an automated test at all. A working development loop must accept multiple evidence types — automated test, manual verification, exempt with justified reason, or covered-by-review. The matrix names the four shapes explicitly so reviewers stop pretending unit-test coverage means AC coverage, and so reviewers stop blocking PRs on ACs that genuinely cannot be tested in dev.
+It is permissive on purpose. Not every AC can be a unit test, or an automated test at all, so a working loop accepts four shapes of evidence: an automated test, manual verification, an exemption with a justified reason, or approval by a human reviewer. Naming the four stops reviewers from treating unit-test coverage as AC coverage, and from blocking PRs on ACs that cannot be tested in dev.
 
-The gate is simple: **no row may sit at `uncovered` when the PR merges**. Anything else (covered / manual / exempt / review-approved) is a valid mitigation as long as the evidence is real.
-
----
+The gate is one rule: no row may sit at `uncovered` when the PR merges. Anything else is a valid mitigation as long as the evidence is real.
 
 ## When the matrix is generated
 
-At the **end of Stage 3 (Code Review)**, after the static review checklist passes and before the PR is merged into the integration branch (`git_strategy.branches.integration`). The reviewer subagent (or orchestrator, when reviewing inline) produces it. It lands in the **PR body** (the durable copy, and the one the merge gate reads); a working copy also lands at `.session/sprint-development/<KEY>/compliance-matrix.md` (session scratch, beside `progress.md`) with topic_key `pbi/{ticket}/compliance-matrix`.
+At the end of Stage 3, after the static review checklist passes and before the PR merges into the integration branch (`git_strategy.branches.integration`). The reviewer subagent produces it, or the orchestrator when reviewing inline. It lands in the PR body, which is the durable copy and the one the merge gate reads. A working copy goes to `.session/sprint-development/<KEY>/compliance-matrix.md` (session scratch, beside `progress.md`) with topic_key `pbi/{ticket}/compliance-matrix`.
 
-If the matrix exposes any `uncovered` row, the PR loops back to Stage 2 with a TODO list (add test, add manual evidence, or reclassify with a real reason). The matrix is never green-lit by hand-waving; the reviewer either edits one of the cells with a real evidence pointer or writes a concrete `exempt:<reason>`.
+When any row is `uncovered`, the PR loops back to Stage 2 with a TODO list: add a test, add manual evidence, or reclassify with a real reason. The matrix is never green-lit by hand-waving. The reviewer either fills a cell with a real evidence pointer or writes a concrete `exempt:<reason>`.
 
----
+## Matrix format
 
-## Matrix format (verbatim)
-
-One row per AC scenario. Scenarios come from the story's Gherkin AC (Jira `acceptance_criteria` field, or the story's delta spec at `.context/specs/changes/<KEY>/spec.md` as fallback, `product-management/references/delta-specs.md`). The row count of the matrix MUST equal the scenario count of the story; missing rows are themselves a defect.
+One row per AC scenario. Scenarios come from the story's Gherkin AC: the Jira `acceptance_criteria` field, or the story's delta spec at `.context/specs/changes/<KEY>/spec.md` as the fallback (`product-management/references/delta-specs.md`). The matrix has exactly as many rows as the story has scenarios. A missing row is itself a defect.
 
 ```
 | AC scenario (Gherkin)                          | covered_by                          | evidence                              | status           |
@@ -31,24 +26,18 @@ One row per AC scenario. Scenarios come from the story's Gherkin AC (Jira `accep
 | <Scenario one-liner from Given/When/Then>      | <type:id>                           | <link or path>                        | <status>         |
 ```
 
-Column rules:
+- **AC scenario (Gherkin)**: a short, recognizable one-line summary, such as `Scenario: User logs in with valid email + password`. Quote the scenario header verbatim where you can, and do not paraphrase.
+- **covered_by**: one of the four `type:id` shapes below, exactly one per row.
+- **evidence**: a concrete pointer the reader can follow without guessing (file path and line, URL, doc path, reviewer handle).
+- **status**: one of the five values below, derived mechanically from `covered_by`.
 
-- **AC scenario (Gherkin)**: a one-line summary of the Gherkin scenario. Keep it short and recognizable — e.g. `Scenario: User logs in with valid email + password`. Do NOT paraphrase; quote the scenario header verbatim where possible.
-- **covered_by**: one of the four `type:id` shapes below. Exactly one type per row; never combine.
-- **evidence**: a concrete, navigable pointer (file path + line, URL, doc path, reviewer handle). Reviewers MUST be able to click/follow this without guessing.
-- **status**: one of the five status values below, mechanically derived from `covered_by`.
+## Valid `covered_by` values
 
----
-
-## `covered_by` valid values
-
-Four shapes, four prefixes. Every row picks exactly one.
+Four prefixes. Every row picks exactly one.
 
 ### `test:<id>`
 
-Automated test (unit / integration / E2E) covers the scenario. The id is a navigable test pointer — file path + test name or line, or a test framework id.
-
-Examples:
+An automated test (unit, integration or E2E) covers the scenario. The id is a navigable pointer: file path plus test name or line, or a test-framework id.
 
 ```
 test:tests/auth/login.spec.ts:42
@@ -56,13 +45,11 @@ test:tests/integration/payment.test.ts::"refunds within 30 days"
 test:e2e/checkout.spec.ts:cart-empty
 ```
 
-The reviewer checks: does this test actually exercise the scenario, or is it a different code path that happens to pass? If the test name and assertions don't map back to the Gherkin Given/When/Then, the row is NOT `test:` — it's `uncovered`.
+The reviewer checks that the test exercises the scenario, and is not a different code path that happens to pass. When the test name and assertions do not map back to the Given/When/Then, the row is `uncovered`, not `test:`.
 
 ### `manual:<evidence-path>`
 
-Manual verification was performed and recorded. The path points to a markdown file, screenshot, video, or session log captured during exploratory testing or smoke check. Plain "I tried it" is not enough — there must be a persisted artifact.
-
-Examples:
+Manual verification was performed and recorded. The path points to a markdown file, screenshot, video or session log captured during exploratory testing or a smoke check. "I tried it" is not enough: the artifact must persist.
 
 ```
 manual:https://github.com/<org>/<repo>/pull/<n>#issuecomment-<id>
@@ -70,138 +57,110 @@ manual:jira:UPEX-123/attachment/login-flow.mp4
 manual:https://staging.example.com/_test-runs/2026-05-06-login.html
 ```
 
-The reviewer checks: does the evidence actually show the Given/When/Then playing out? A screenshot of the login form is not evidence that 2FA challenges fire — the screenshot must show the 2FA challenge.
+The reviewer checks that the evidence shows the Given/When/Then playing out. A screenshot of the login form does not show that a 2FA challenge fires. The screenshot must show the challenge.
 
 ### `exempt:<reason>`
 
-The AC scenario cannot or should not be tested in dev. The reason MUST be specific. Vague reasons ("not testable", "out of scope", "low priority") are rejected at review and the row falls back to `uncovered`.
+The scenario cannot or should not be tested in dev, and the reason is specific. Vague reasons ("not testable", "out of scope", "low priority") are rejected at review and the row falls back to `uncovered`.
 
 Acceptable shapes:
 
-- Production-only behavior the dev environment cannot reproduce (real payment provider, real SMS gateway, real geo-IP lookup).
-- Hardware or third-party dependency unavailable to dev (camera capture, GPS, paywall partner sandbox).
-- Performance/load assertion that requires production-scale traffic.
-- Compliance/audit scenarios that ride on infrastructure (CDN signing, edge cache TTL).
-
-Examples:
+- Production-only behavior dev cannot reproduce (real payment provider, real SMS gateway, real geo-IP lookup).
+- A hardware or third-party dependency dev does not have (camera capture, GPS, a partner's paywall sandbox).
+- A performance or load assertion that needs production-scale traffic.
+- Compliance or audit scenarios that ride on infrastructure (CDN signing, edge cache TTL).
 
 ```
-exempt:not feasible to test in dev — Stripe live-mode webhooks unavailable
-exempt:requires production traffic to validate — covered by post-deploy synthetic monitor
-exempt:depends on third-party SMS provider — verified in staging smoke after deploy
+exempt:not feasible to test in dev, Stripe live-mode webhooks unavailable
+exempt:requires production traffic to validate, covered by post-deploy synthetic monitor
+exempt:depends on third-party SMS provider, verified in staging smoke after deploy
 ```
 
-The reviewer checks: is the reason genuinely outside dev's reach, or is it just "I didn't want to write the test"? If the latter, the row is NOT exempt — fix it.
+The reviewer asks whether the reason is outside dev's reach or just "I didn't want to write the test". In the second case the row is not exempt, and the fix is to cover it.
 
 ### `review-approved:<reviewer>`
 
-A human reviewer confirmed correctness through code reading without test or manual evidence. Reserved for: trivial changes (rename, comment fix, config tweak), wiring-only diffs that are obvious by inspection, or scenarios where adding a test costs more than the AC is worth.
-
-Examples:
+A human reviewer confirmed correctness by reading the code, with no test or manual evidence. It is reserved for trivial changes (a rename, a comment fix, a config tweak), wiring-only diffs that are obvious by inspection, and scenarios where a test would cost more than the AC is worth.
 
 ```
 review-approved:@alice
 review-approved:@bob (confirmed config wiring + env var name)
 ```
 
-The reviewer checks: did a real human actually read the code path and certify it, or did someone tag themselves to skip the work? Self-approval is suspicious; cross-team review-approved entries are stronger.
-
----
+The reviewer checks that a real human read the code path and certified it, rather than someone tagging themselves to skip the work. Self-approval is suspicious, and a cross-team approval is stronger. Because it needs a person who is not the author, a run with nobody present cannot produce this value. It uses a test, manual or exempt row, and otherwise leaves the row `uncovered`.
 
 ## Status legend
 
-Five values. Mechanically derived from `covered_by`:
-
 | Status            | Derived from prefix     | Meaning                                                              |
 | ----------------- | ----------------------- | -------------------------------------------------------------------- |
-| `covered`         | `test:`                 | Automated test asserts the scenario; CI proves it on every run.      |
+| `covered`         | `test:`                 | An automated test asserts the scenario; CI proves it on every run.   |
 | `manual`          | `manual:`               | Manual verification done with persisted evidence; not in CI.         |
-| `exempt`          | `exempt:`               | Scenario cannot/should not be tested in dev; reason is specific.     |
-| `review-approved` | `review-approved:`      | Code review confirmed correctness; no test/manual evidence.          |
-| `uncovered`       | (no prefix / blank row) | No evidence at all. **Blocks merge.** Must be reclassified or fixed. |
+| `exempt`          | `exempt:`               | The scenario cannot or should not be tested in dev; reason is specific. |
+| `review-approved` | `review-approved:`      | Code review confirmed correctness; no test or manual evidence.       |
+| `uncovered`       | (no prefix / blank row) | No evidence at all. **Blocks merge.** Reclassify or fix it.          |
 
-`uncovered` is the only blocking state. The other four are valid mitigations and the PR can merge with any mix of them — including 100% `exempt` if every reason is real (rare, but possible for, say, an infrastructure-only story).
-
----
+`uncovered` is the only blocking state. The other four are valid mitigations, and a PR can merge with any mix of them, including 100% `exempt` when every reason is real (rare, but possible for an infrastructure-only story).
 
 ## Algorithm
 
-The reviewer subagent walks each AC scenario in order and applies these steps:
+The reviewer walks each AC scenario in order:
 
-1. **Read all AC scenarios** for the story. Source-of-truth order: (1) Jira `acceptance_criteria` custom field, (2) the delta spec at `.context/specs/changes/<KEY>/spec.md` (committed tree, `product-management/references/delta-specs.md`; never under the `.context/PBI/` cache), (3) story description fallback. Every Given/When/Then block is one row.
-2. **For each scenario, ask: is there an automated test that exercises it?** Walk the diff + the existing test suite. If yes, mark `covered_by: test:<id>`, `status: covered`. The test must assert the scenario's outcome, not just the same code path.
-3. **If no test exists, ask: is there manual evidence on file?** Look in the PR comments, the Jira attachments and the working folder `.session/sprint-development/<KEY>/evidence/`. If a markdown / screenshot / video shows the scenario passing, mark `covered_by: manual:<evidence-pointer>`, `status: manual`; the pointer names the durable copy (PR comment or Jira attachment), never only the local working file.
-4. **If no evidence and the scenario is impractical to test in dev**, write a specific `exempt:<reason>`. Vague reasons are rejected. Mark `status: exempt`. The PR comment should also state how the scenario will be verified post-deploy (synthetic monitor, staging smoke, prod observability, etc.).
-5. **If a human reviewer has read the code and certifies correctness**, mark `covered_by: review-approved:<@reviewer>`, `status: review-approved`. The reviewer handle must be a real person who actually read the diff — not the author.
-6. **Else** mark `status: uncovered`. This is a blocker. Generate a TODO and loop back to Stage 2 to add a test, add manual evidence, or reclassify with a real reason.
+1. **Read all AC scenarios.** Source of truth, in order: the Jira `acceptance_criteria` field; the delta spec at `.context/specs/changes/<KEY>/spec.md` (committed tree, `product-management/references/delta-specs.md`, never under the `.context/PBI/` cache); the story description. Every Given/When/Then block is one row.
+2. **Look for an automated test.** Walk the diff and the existing suite. If a test asserts the scenario's outcome (not just the same code path), mark `covered_by: test:<id>`, `status: covered`.
+3. **Otherwise look for manual evidence.** Check the PR comments, the Jira attachments and the working folder `.session/sprint-development/<KEY>/evidence/`. If a markdown file, screenshot or video shows the scenario passing, mark `covered_by: manual:<evidence-pointer>`, `status: manual`. The pointer names the durable copy (PR comment or Jira attachment), never only the local working file.
+4. **If the scenario is impractical to test in dev**, write a specific `exempt:<reason>` and mark `status: exempt`. The PR comment also says how the scenario will be verified after deploy (synthetic monitor, staging smoke, production observability).
+5. **If a human reviewer has read the code and certifies it**, mark `covered_by: review-approved:<@reviewer>`, `status: review-approved`. The handle must be a real person who read the diff, not the author.
+6. **Otherwise** mark `status: uncovered`. This is a blocker: write a TODO and loop back to Stage 2.
 
-The matrix is complete when (a) every AC scenario has a row, and (b) no row is `uncovered`.
+The matrix is complete when every AC scenario has a row and no row is `uncovered`.
 
----
+## Example (2FA login story)
 
-## Concrete example (2FA login story)
-
-Story `UPEX-512: User can log in with email + 2FA challenge`, with four Gherkin scenarios in the Jira AC field. Stage 3 reviewer produces:
+Story `UPEX-512: User can log in with email + 2FA challenge`, with four Gherkin scenarios in the Jira AC field. The Stage 3 reviewer produces:
 
 ```
 | AC scenario (Gherkin)                                 | covered_by                                                             | evidence                                                            | status            |
 | ----------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------- |
 | User logs in with valid email + password              | test:tests/auth/login.spec.ts::"valid-credentials-yields-2fa-prompt"   | tests/auth/login.spec.ts:42                                         | covered           |
 | Email validation prompts user when format is invalid  | manual:.context/PBI/epics/EPIC-UPEX-100-<epic>/stories/STORY-UPEX-512-<slug>/manual-evidence.md#email-validation       | screenshot + DOM dump in manual-evidence.md, captured 2026-05-06    | manual            |
-| Concurrent login attempts are rate-limited (5/min)    | exempt:requires production traffic — verified by post-deploy synthetic monitor `auth-rate-limit-probe` | https://monitors.example.com/auth-rate-limit-probe                  | exempt            |
+| Concurrent login attempts are rate-limited (5/min)    | exempt:requires production traffic, verified by post-deploy synthetic monitor `auth-rate-limit-probe` | https://monitors.example.com/auth-rate-limit-probe                  | exempt            |
 | Logout clears session and redirects to /login         | review-approved:@alice (confirmed `clearSession()` wiring + redirect)  | PR #347 comment thread, alice's review block                        | review-approved   |
 ```
 
-Reviewer sign-off: 4/4 rows have evidence, 0 `uncovered`. PR can merge. The `exempt` row is followed up by a synthetic monitor link so the gap is closed in prod, not ignored.
-
-If instead row 4 had read `covered_by: review-approved:@author` (the PR author certifying their own work), the reviewer rejects it — self-approval doesn't count — and that row falls to `uncovered`, blocking merge.
-
----
+Sign-off: 4 of 4 rows have evidence and none is `uncovered`, so the PR can merge. The `exempt` row has a synthetic monitor link, so the gap is closed in production and not ignored. Had row 4 read `review-approved:@author` (the PR author certifying their own work), the reviewer would reject it, the row would fall to `uncovered`, and the merge would be blocked.
 
 ## Gate behavior
 
-**The PR cannot merge if any row is `uncovered`.** No exceptions. The reviewer either edits the matrix (by adding evidence or reclassifying with a real reason) or hands the PR back to Stage 2 with concrete TODOs.
+The PR cannot merge while any row is `uncovered`. Ways to clear one, strongest first:
 
-Acceptable mitigations to clear an `uncovered` row, in priority order:
+1. **Add an automated test** that asserts the scenario. The row becomes `covered` and the scenario gets regression protection.
+2. **Add manual evidence** (screenshot, video, session log) and persist it on the PR (comment) or the Jira issue (attachment). The working copy sits in `.session/sprint-development/<KEY>/evidence/`. The row becomes `manual`.
+3. **Reclassify to `exempt:<specific reason>`** when the scenario cannot be tested in dev. Name the third-party, infrastructure or scale dependency, and pair it with a post-deploy verification plan.
+4. **Get a real human review-approval** from someone other than the author. Use it sparingly, for trivial diffs.
 
-1. **Add an automated test** that asserts the scenario. This is the strongest mitigation — promotes the row to `covered` and locks in regression protection.
-2. **Add manual evidence** (screenshot, video, session log) and persist it on the PR (comment) or the Jira issue (attachment); the working copy sits in `.session/sprint-development/<KEY>/evidence/`. Promotes the row to `manual`.
-3. **Reclassify to `exempt:<specific reason>`** if the scenario genuinely cannot be tested in dev. Reason MUST be concrete — name the third-party / infra / scale dependency. Should be paired with a post-deploy verification plan (synthetic monitor, staging smoke, prod observability).
-4. **Get a real human review-approval** from someone other than the author. Promotes the row to `review-approved`. Use sparingly; reserve for trivial diffs.
-
-If none of these are achievable, the AC itself may be wrong — loop back to Stage 1 and re-spec the story.
-
----
+If none of these is achievable, the AC itself may be wrong: loop back to Stage 1 and re-spec the story.
 
 ## Common pitfalls
 
-- **Vague exempt reasons.** "Not testable" or "out of scope" don't pass review. Name the specific dependency (third-party SMS provider, production-only payment webhook, hardware sensor, prod-scale traffic). If the reason isn't specific, the row is `uncovered`, not `exempt`.
-- **Self-approval as `review-approved:@author`.** Author tagging themselves doesn't count. The reviewer handle must be someone who actually read the diff and is willing to put their name on the certification.
-- **Pretending review-approved when there was no real review.** If the row says `review-approved:@alice` but Alice never commented on the PR, that's fraud. The matrix loses all value the moment people stop being honest about it. When in doubt, downgrade to `uncovered` and fix it.
-- **Missing scenarios.** The matrix MUST have one row per AC scenario. If the story has six scenarios and the matrix has four, the matrix is incomplete — even if all four rows are `covered`. Reviewers count rows against the Jira AC field, not against test count.
-- **Mapping a test to the wrong scenario.** A test that exercises the same function but a different scenario doesn't count. Read the assertions against the Given/When/Then before marking `covered`.
-- **Treating manual evidence as a screenshot of the form.** Evidence must show the scenario's outcome — the 2FA prompt firing, the validation error rendering, the redirect happening. A screenshot of the empty login page proves nothing.
-- **Skipping the matrix on "tiny PRs."** Even a one-line fix has an AC behind it. The matrix takes 30 seconds for a one-line fix; skipping it normalizes skipping it on bigger PRs too.
-
----
+- **Vague exempt reasons.** "Not testable" or "out of scope" do not pass. Name the dependency (third-party SMS provider, production-only payment webhook, hardware sensor, production-scale traffic). A reason that is not specific makes the row `uncovered`.
+- **Self-approval as `review-approved:@author`.** The handle must belong to someone who read the diff and will put their name on the certification.
+- **Claiming review-approved with no real review.** If the row says `review-approved:@alice` but Alice never commented on the PR, the matrix is false, and it loses its value the moment people stop being honest about it. When in doubt, downgrade to `uncovered` and fix it.
+- **Missing scenarios.** Six scenarios and four rows is an incomplete matrix even when all four rows are `covered`. Count rows against the Jira AC field, not against the test count.
+- **Mapping a test to the wrong scenario.** A test that exercises the same function but a different scenario does not count. Read the assertions against the Given/When/Then before marking `covered`.
+- **Manual evidence that shows the form, not the outcome.** The evidence must show the 2FA prompt firing, the validation error rendering, the redirect happening. A screenshot of the empty login page proves nothing.
+- **Skipping the matrix on tiny PRs.** Even a one-line fix has an AC behind it, and the matrix takes 30 seconds.
 
 ## Hand-off
 
-If the matrix exposes one or more `uncovered` rows after the reviewer has tried the four mitigations:
+When rows are still `uncovered` after the four mitigations, loop back to **Stage 2 (Implementation)** with `references/fix-issues.md` and a TODO list naming each uncovered scenario and its remediation (add test, add manual evidence, or reclassify). Re-run the Stage 2 verification (lint, types and tests, capped at 3 attempts) once the new evidence lands, then re-enter Stage 3, regenerate the matrix and re-check the gate.
 
-- Loop back to **Stage 2 (Implementation)** with `references/fix-issues.md` and a TODO list naming each uncovered scenario plus the chosen remediation (add-test / add-manual-evidence / reclassify).
-- Re-run Stage 2 verification (lint + types + tests cap=3) once the new evidence lands.
-- Re-enter Stage 3, re-generate the matrix, and re-check the gate.
-
-If the matrix exposes a scenario that nobody can figure out how to verify at all — not test, not manual, not exempt-with-monitor — the AC itself is suspect. Loop back to **Stage 1 (Planning)** and revise the spec, or hand off to `/product-management` to re-refine the AC with the 3-amigos.
-
----
+When nobody can work out how to verify a scenario at all (not by test, not manually, not exempt with a monitor), the AC itself is suspect. Loop back to **Stage 1 (Planning)** and revise the spec, or hand off to `/product-management` to re-refine the AC with the three amigos.
 
 ## Persistence
 
 The matrix lives in two places:
 
-- **In the PR body** so reviewers see it without leaving GitHub. This copy is the durable, canonical one, and the merge gate reads it there: it survives a fresh clone and is what a future reader (or a different machine) can actually see.
-- **In the session folder** at `.session/sprint-development/<KEY>/compliance-matrix.md` (at `<<PRIMARY_ROOT>>`, beside `progress.md`), topic_key `pbi/{ticket}/compliance-matrix`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`. It is working scratch: nothing downstream may depend on it existing; the engram-saved observation and the PR copy are what persist. Never under the gitignored `.context/PBI/` cache, whose story folders hold only Jira-synced files and `[LOCAL]` disposables (`.agents/instructions/agent-local-context-pbi.md` §9).
+- **The PR body**, so reviewers see it without leaving GitHub. This copy is the durable, canonical one and the merge gate reads it there: it survives a fresh clone and is what a future reader on another machine can see.
+- **The session folder**, `.session/sprint-development/<KEY>/compliance-matrix.md` (at `<<PRIMARY_ROOT>>`, beside `progress.md`), topic_key `pbi/{ticket}/compliance-matrix`. It is auto-generated, so `capture_prompt: false` (`agentic-dev-core/references/topic-key-conventions.md`). It is working scratch and nothing downstream may depend on it existing. The engram observation and the PR copy are what persist. Never put it under the gitignored `.context/PBI/` cache, whose story folders hold only Jira-synced files and `[LOCAL]` disposables (`.agents/instructions/agent-local-context-pbi.md` §9).
 
-Both copies should agree while the session one exists. If they drift, the PR copy is canonical: regenerate the session copy from it, never the other way around.
+While the session copy exists, both should agree. If they drift, the PR copy wins: regenerate the session copy from it, never the other way around.

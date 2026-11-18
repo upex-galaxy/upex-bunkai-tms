@@ -1,162 +1,98 @@
-Actúa como Senior Backend Developer, API Architect, y Next.js Expert.
+# API routes setup
 
----
+Phase 3 (infrastructure) add-on of `project-bootstrap`. It creates the base structure for custom API endpoints in Next.js: routes organized by domain, Zod validation patterns, standardized error handling, Supabase integration and, optionally, registration in OpenAPI.
 
-## 🎯 TAREA
+The add-on is done when the helpers and the example endpoints exist, `bun run types:check` passes, `/api/health` answers, and protected endpoints require auth (see the checklist).
 
-**🔧 FEATURE: API Routes Setup (Fase 3 - Infrastructure)**
+## Read the `stack:` block first
 
-Crear la **estructura base de custom API endpoints** en Next.js con:
+The add-on runs the same way on a greenfield project and on an existing app (verdict `existing-app` of the entry guard, `SKILL.md` Phase 3). Before the first step, read `.agents/project.yaml` `stack:` (contract: `.agents/README.md`, section `stack`) and resolve every literal in this file against it.
 
-- Organización por dominios
-- Patterns de validación con Zod
-- Error handling estandarizado
-- Integración con Supabase
-- (Opcional) Registro en OpenAPI
+- The example paths (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) are the greenfield defaults. Resolve them under `{{stack.app_root}}`. The generated types file is `{{stack.database.types_path}}`. With `stack.framework: nextjs-pages` the API lives in `pages/api/`.
+- App commands are `{{stack.package_manager}} run <script>`, with the script NAME taken from `stack.scripts`. A script set to `null` is skipped and the report says so; do not invent one. Install dependencies with that package manager and do not switch it.
+- What the app already has wins. An existing docs UI, error contract, auth scheme, Supabase client location or major version of a dependency (Zod, Next) is read and extended, never replaced or upgraded by this add-on. When the app and this file disagree, show the user both shapes (see "With nobody at the keyboard").
+- The Supabase project ref is `environments.<env>.db_project_ref`. Any touch to the database follows `agentic-dev-core/references/db-change-doctrine.md`.
 
----
+## Inputs
 
-## 🧭 PASO PREVIO: LEER EL BLOQUE `stack:`
+Read these files:
 
-Esta add-on corre igual en un proyecto greenfield y en una app existente (veredicto `existing-app` del guard de entrada, `SKILL.md` → Phase 3). Antes del primer paso, leer `.agents/project.yaml` → `stack:` (contrato: `.agents/README.md` → `stack`) y resolver con él todo lo que esta referencia escribe como literal:
+- `.context/SRS/functional-specs.md` for the functional requirements.
+- `.context/SRS/architecture-specs.md` for the architecture and the planned endpoints.
+- `.context/PRD/mvp-scope.md` for the MVP features.
+- `src/lib/supabase/server.ts` for the existing server client.
+- `src/lib/openapi/`, the OpenAPI system, if it exists.
 
-- Las rutas de ejemplo (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) son el default greenfield: se resuelven bajo `{{stack.app_root}}`; el archivo de tipos es `{{stack.database.types_path}}`; con `stack.framework: nextjs-pages` la API vive en `pages/api/`.
-- Los comandos de la app son `{{stack.package_manager}} run <script>` con el NOMBRE de `stack.scripts`; un script en `null` se salta y se dice, nunca se inventa. Las dependencias se instalan con ese package manager, sin cambiarlo.
-- Lo que la app ya tiene gana: una UI de docs, un contrato de error, un esquema de auth, la ubicación de los Supabase clients o la versión mayor de una dependencia (Zod, Next) se leen y se extienden, nunca se reemplazan ni se actualizan desde esta add-on. Un choque se le muestra al usuario con las dos formas.
-- El Supabase project ref es `environments.<env>.db_project_ref`; todo toque a la base sigue `agentic-dev-core/references/db-change-doctrine.md`.
+Extract three things: the project domains (to organize the endpoints), the endpoints the SRS and the MVP scope call for, and the integrations (Stripe, email, and so on).
 
----
+Tools: the Context7 MCP, to confirm the Next.js APIs. Dependencies that must already be present: `zod` (validation) and `@supabase/ssr` (auth).
 
-## 📥 INPUT REQUERIDO
+## Mode detection
 
-### 1. Contexto del Proyecto
-
-**Leer estos archivos:**
-
-- `.context/SRS/functional-specs.md` - Requerimientos funcionales
-- `.context/SRS/architecture-specs.md` - Arquitectura y endpoints planeados
-- `.context/PRD/mvp-scope.md` - Features del MVP
-- `src/lib/supabase/server.ts` - Server client existente
-- `src/lib/openapi/` - (Si existe) Sistema OpenAPI
-
-### 2. Información a Extraer
-
-- **Dominios del proyecto** → Para organizar endpoints
-- **Endpoints necesarios** → Según SRS y MVP scope
-- **Integraciones** → Stripe, email, etc.
-
----
-
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS
-
-### MCP Requeridos:
-
-1. **MCP Context7** - Para verificar APIs de Next.js
-
-### Dependencias Existentes (verificar):
-
-- `zod` - Para validación
-- `@supabase/ssr` - Para auth
-
----
-
-## 🔀 DETECCIÓN DE MODO
-
-**Ejecutar análisis para determinar modo:**
+Run the analysis to pick the mode:
 
 ```bash
-# Verificar si existe OpenAPI setup
+# Check whether the OpenAPI setup exists
 ls -la src/lib/openapi/registry.ts 2>/dev/null
 
-# Verificar SRS para endpoints planeados
+# Check the SRS for planned endpoints
 grep -i "endpoint\|api\|route" .context/SRS/functional-specs.md | head -10
 ```
 
-**Resultado:**
+| Condition                                           | Mode         |
+| --------------------------------------------------- | ------------ |
+| No detailed SRS, or few planned endpoints           | **PARTIAL**  |
+| SRS with defined endpoints plus an existing OpenAPI | **FULL**     |
 
-| Condición                                        | Modo         |
-| ------------------------------------------------ | ------------ |
-| No hay SRS detallado o pocos endpoints planeados | **PARCIAL**  |
-| SRS con endpoints definidos + OpenAPI existente  | **COMPLETO** |
+PARTIAL mode creates, under `src/app/api/`:
 
-### Modo PARCIAL:
+- The folder structure by domain.
+- An example endpoint with validation.
+- The error-handling utilities.
+- The patterns documented in code. With OpenAPI present, endpoints appear in `/api/docs` (Scalar).
 
-- Crea estructura de carpetas base
-- Un endpoint de ejemplo con patterns
-- Documentación de convenciones
+FULL mode adds:
 
-### Modo COMPLETO (adicional):
+- Endpoints according to the SRS, every domain implemented.
+- Zod schemas registered in OpenAPI, by domain.
 
-- Crea endpoints según SRS
-- Integración con OpenAPI registry
-- Schemas Zod por dominio
+## Steps
 
----
+### Phase 0: analysis
 
-## 📤 OUTPUT GENERADO
+**Step 0.1: identify the domains**
 
-### Modo PARCIAL:
+Read `.context/SRS/` and `.context/PRD/` to identify the main domains. Typical ones:
 
-**Estructura (`src/app/api/`):**
+- `auth`: custom authentication
+- `users`: user management
+- `stripe`: payments (webhook, checkout, connect)
+- `email`: sending email
+- `cron`: scheduled jobs
+- `[project-specific domain]`, according to the project
 
-- ✅ Estructura de carpetas por dominio
-- ✅ Endpoint de ejemplo con validación
-- ✅ Utilities de error handling
-
-**Documentación:**
-
-- ✅ Patterns documentados en código
-- ✅ (Si OpenAPI) Endpoints auto-documentados en `/api/docs` (Scalar)
-
-### Modo COMPLETO (adicional):
-
-- ✅ Endpoints según SRS
-- ✅ Schemas Zod registrados en OpenAPI
-- ✅ Todos los dominios implementados
-
----
-
-## 🛠️ PASOS DETALLADOS
-
-### FASE 0: Análisis
-
-**Paso 0.1: Identificar dominios**
-
-Leer `.context/SRS/` y `.context/PRD/` para identificar los dominios principales.
-
-**Ejemplos de dominios típicos:**
-
-- `auth` - Autenticación custom
-- `users` - Gestión de usuarios
-- `stripe` - Pagos (webhook, checkout, connect)
-- `email` - Envío de emails
-- `cron` - Jobs programados
-- `[dominio-específico]` - Según el proyecto
-
-**Paso 0.2: Verificar OpenAPI**
+**Step 0.2: check for OpenAPI**
 
 ```bash
-ls -la src/lib/openapi/registry.ts 2>/dev/null && echo "OpenAPI existe" || echo "Sin OpenAPI"
+ls -la src/lib/openapi/registry.ts 2>/dev/null && echo "OpenAPI exists" || echo "No OpenAPI"
 ```
 
-Si existe OpenAPI, los endpoints se registrarán automáticamente.
+If OpenAPI exists, Phase 4 registers the endpoints in it.
 
----
+### Phase 1: create the folder structure
 
-### FASE 1: Crear Estructura de Carpetas
-
-**Paso 1.1: Estructura recomendada**
+**Step 1.1: recommended structure**
 
 ```bash
 mkdir -p src/app/api
 ```
 
-**Estructura por dominio:**
+Structure by domain:
 
 ```
 src/app/api/
 ├── openapi/
-│   └── route.ts              # (De openapi-setup)
+│   └── route.ts              # (From openapi-setup)
 ├── health/
 │   └── route.ts              # GET - Health check
 ├── stripe/
@@ -175,17 +111,15 @@ src/app/api/
 ├── cron/
 │   └── [job-name]/
 │       └── route.ts          # POST - Cron job endpoint
-└── [dominio]/
+└── [domain]/
     ├── route.ts              # Collection: GET (list), POST (create)
     └── [id]/
         └── route.ts          # Item: GET, PATCH, DELETE
 ```
 
----
+### Phase 2: create the API utilities
 
-### FASE 2: Crear Utilities de API
-
-**Paso 2.1: Crear helper de responses**
+**Step 2.1: response helpers**
 
 ```typescript
 // src/lib/api/responses.ts
@@ -221,7 +155,7 @@ export function serverError(message = 'Internal server error') {
 }
 ```
 
-**Paso 2.2: Crear helper de auth**
+**Step 2.2: auth helper**
 
 ```typescript
 // src/lib/api/auth.ts
@@ -254,11 +188,9 @@ export async function requireAuth() {
 }
 ```
 
----
+### Phase 3: create the example endpoints
 
-### FASE 3: Crear Endpoint de Ejemplo
-
-**Paso 3.1: Health check endpoint**
+**Step 3.1: health check**
 
 ```typescript
 // src/app/api/health/route.ts
@@ -281,7 +213,7 @@ export async function GET() {
 }
 ```
 
-**Paso 3.2: Endpoint con validación (ejemplo completo)**
+**Step 3.2: endpoint with validation (full example)**
 
 ```typescript
 // src/app/api/example/route.ts
@@ -304,9 +236,9 @@ import { getAuthenticatedUser } from '@/lib/api/auth';
 // ============================================================================
 // Validation Schemas
 // ============================================================================
-// PARCIAL (sin OpenAPI): schema local, como acá.
-// COMPLETO (con OpenAPI): NO redefinir — importar de @/types/example (Single
-// Source of Truth): `import { CreateExampleSchema } from '@/types/example'`.
+// PARTIAL (no OpenAPI): a local schema, as here.
+// FULL (with OpenAPI): do NOT redefine it. Import it from @/types/example (single
+// source of truth): `import { CreateExampleSchema } from '@/types/example'`.
 
 const CreateExampleSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -363,7 +295,7 @@ export async function POST(request: NextRequest) {
     const validation = CreateExampleSchema.safeParse(body);
 
     if (!validation.success) {
-      // Zod v4: usar `.issues` (`.errors` fue removido; `.issues` funciona en v3 y v4)
+      // Zod v4: use `.issues` (`.errors` was removed; `.issues` works in v3 and v4)
       const firstError = validation.error.issues[0];
       return validationError(firstError.path.join('.'), firstError.message);
     }
@@ -395,19 +327,17 @@ export async function POST(request: NextRequest) {
 }
 ```
 
----
+### Phase 4 (FULL mode): OpenAPI integration
 
-### FASE 4: (COMPLETO) Integración con OpenAPI
+Run this phase only if `openapi-setup` has been executed.
 
-**Solo si `openapi-setup` fue ejecutado.**
+**Step 4.1: define the schema in `src/types/` and register the path**
 
-**Paso 4.1: Definir el schema en `src/types/` (FUENTE DE VERDAD) y registrar el path**
-
-> Patrón Single Source of Truth (ver `openapi-setup.md`): el schema vive en `src/types/`, NO en `src/lib/openapi/schemas/`. El archivo de `schemas/` SOLO registra paths. El route handler (`route.ts`) y el registro de paths importan el MISMO schema desde `@/types`.
+The schema lives in `src/types/` (single source of truth, see `openapi-setup.md`, section "Single source of truth"), never in `src/lib/openapi/schemas/`, which only registers paths. The route handler (`route.ts`) and the path registration import the SAME schema from `@/types`.
 
 ```typescript
-// src/types/example.ts (FUENTE DE VERDAD)
-import { z } from '@/lib/openapi/zod'; // instancia única extendida — nunca 'zod' si usás .openapi()
+// src/types/example.ts (SOURCE OF TRUTH)
+import { z } from '@/lib/openapi/zod'; // single extended instance: never 'zod' if you use .openapi()
 
 export const ExampleSchema = z
   .object({
@@ -430,11 +360,11 @@ export type CreateExample = z.infer<typeof CreateExampleSchema>;
 ```
 
 ```typescript
-// src/lib/openapi/schemas/example.ts (SOLO REGISTRA PATHS)
+// src/lib/openapi/schemas/example.ts (ONLY REGISTERS PATHS)
 
 import { registry } from '../registry';
 import { z } from '../zod';
-import { ExampleSchema, CreateExampleSchema } from '@/types/example'; // ← importa de types, NO define aquí
+import { ExampleSchema, CreateExampleSchema } from '@/types/example'; // ← imports from types, does NOT define here
 
 // Register endpoints
 registry.registerPath({
@@ -492,29 +422,25 @@ registry.registerPath({
 });
 ```
 
-**Paso 4.2: Actualizar barrel export**
+**Step 4.2: update the barrel export**
 
 ```typescript
 // src/lib/openapi/schemas/index.ts
 
 export * from './common';
-export * from './example'; // Agregar
+export * from './example'; // Add
 ```
 
----
+### Phase 5 (FULL mode): endpoints from the SRS
 
-### FASE 5: Crear Endpoints Según SRS
+For each domain identified in Phase 0:
 
-**Solo en modo COMPLETO.**
+1. Create the folder `src/app/api/[domain]/`.
+2. Create `route.ts` with the collection operations (GET list, POST create).
+3. Create `[id]/route.ts` with the item operations (GET, PATCH, DELETE).
+4. With OpenAPI present, register the schemas and endpoints.
 
-**Para cada dominio identificado en FASE 0:**
-
-1. Crear carpeta en `src/app/api/[dominio]/`
-2. Crear `route.ts` con operaciones collection (GET list, POST create)
-3. Crear `[id]/route.ts` con operaciones item (GET, PATCH, DELETE)
-4. (Si OpenAPI) Registrar schemas y endpoints
-
-**Pattern para endpoints de Stripe:**
+Pattern for a Stripe webhook:
 
 ```typescript
 // src/app/api/stripe/webhook/route.ts
@@ -551,7 +477,7 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-**Pattern para Cron jobs:**
+Pattern for a cron job:
 
 ```typescript
 // src/app/api/cron/[job-name]/route.ts
@@ -579,144 +505,132 @@ export async function POST(request: NextRequest) {
 }
 ```
 
----
+### Phase 6: check the documentation
 
-### FASE 6: Verificar Documentación
+Endpoint documentation is automatic:
 
-**Nota:** La documentación de endpoints se maneja automáticamente:
+- Endpoints: if you ran `openapi-setup.md`, they are documented at `/api/docs` (Scalar UI).
+- Authentication: documented in `.context/api-auth.md` (generated by `backend-setup.md`).
 
-- **Endpoints**: Si ejecutaste `openapi-setup.md`, los endpoints se documentan automáticamente en `/api/docs` (Scalar UI)
-- **Autenticación**: Documentada en `.context/api-auth.md` (generado por `backend-setup.md`)
+**Step 6.1: check the OpenAPI integration**
 
-**Paso 6.1: Verificar integración OpenAPI**
-
-Si OpenAPI está configurado, los endpoints creados con schemas en `src/lib/openapi/schemas/` aparecerán automáticamente en la documentación interactiva.
+With OpenAPI configured, endpoints whose schemas are registered in `src/lib/openapi/schemas/` appear in the interactive documentation.
 
 ```bash
-# Verificar que la documentación se actualiza
+# Check that the documentation updates
 curl http://localhost:3000/api/openapi | jq '.paths | keys'
 ```
 
-**Paso 6.2: Patterns documentados en código**
+**Step 6.2: patterns documented in code**
 
-Los patterns de API ya están documentados en el código:
+The API patterns are documented in the code itself:
 
-- `src/lib/api/responses.ts` - Error handling helpers
-- `src/lib/api/auth.ts` - Authentication helpers
-- Comentarios JSDoc en cada endpoint
+- `src/lib/api/responses.ts`: error-handling helpers
+- `src/lib/api/auth.ts`: authentication helpers
+- JSDoc comments on every endpoint
 
----
+## Checklist
 
-## 📋 CHECKLIST FINAL
+PARTIAL mode:
 
-### Modo PARCIAL:
+- [ ] `src/lib/api/responses.ts` created
+- [ ] `src/lib/api/auth.ts` created
+- [ ] `src/app/api/health/route.ts` created
+- [ ] Example endpoint with the patterns
+- [ ] Documentation checked (OpenAPI or code)
 
-- [ ] `src/lib/api/responses.ts` creado
-- [ ] `src/lib/api/auth.ts` creado
-- [ ] `src/app/api/health/route.ts` creado
-- [ ] Endpoint de ejemplo con patterns
-- [ ] Verificar documentación (OpenAPI o código)
+FULL mode, in addition:
 
-### Modo COMPLETO (adicional):
+- [ ] Endpoints per domain according to the SRS
+- [ ] Schemas registered in OpenAPI
+- [ ] Stripe webhook configured (if it applies)
+- [ ] Cron endpoints configured (if they apply)
 
-- [ ] Endpoints por dominio según SRS
-- [ ] Schemas registrados en OpenAPI
-- [ ] Stripe webhook configurado (si aplica)
-- [ ] Cron endpoints configurados (si aplica)
+Validations:
 
-### Validaciones:
+- [ ] `bun run types:check` passes
+- [ ] `/api/health` returns the status
+- [ ] Protected endpoints require auth
 
-- [ ] `bun run types:check` pasa
-- [ ] `/api/health` retorna status
-- [ ] Endpoints protegidos requieren auth
+## Final report
 
----
+Write the report in English. The template is a four-backtick block because it contains a fenced tree:
 
-## 🎉 REPORTE FINAL
+````markdown
+# API routes setup completed
 
-```markdown
-# ✅ API Routes Setup Completado
+## Mode: [PARTIAL/FULL]
 
-## Modo: [PARCIAL/COMPLETO]
+## Structure created:
 
-## Estructura Creada:
 ```
-
 src/app/api/
 ├── health/route.ts
-├── openapi/route.ts (de openapi-setup)
-└── [dominios según proyecto]
+├── openapi/route.ts (from openapi-setup)
+└── [domains according to the project]
 
 src/lib/api/
 ├── responses.ts
 └── auth.ts
-
 ```
 
-## Endpoints Implementados:
+## Endpoints implemented:
 | Method | Path | Auth |
 |--------|------|------|
 | GET | /api/health | No |
-[Listar todos]
+[List all of them]
 
-## Patterns Establecidos:
-- ✅ Validación con Zod
-- ✅ Error handling centralizado
-- ✅ Auth helper para endpoints protegidos
-- ✅ Integración con Supabase
+## Patterns established:
+- Validation with Zod
+- Centralized error handling
+- Auth helper for protected endpoints
+- Supabase integration
 
-## Próximos Pasos:
-1. Implementar endpoints específicos del negocio
-2. Registrar en OpenAPI (si aplica)
-3. Agregar tests de API
-```
+## Next steps:
+1. Implement the business-specific endpoints
+2. Register them in OpenAPI (if it applies)
+3. Add API tests
+````
 
----
+## With nobody at the keyboard
 
-## ❓ PREGUNTAS FRECUENTES
+A supervised worker sends these questions to its conductor, which holds the gate. A routine with nobody takes the paths below (`agentic-dev-core/references/decision-protocol.md` §5.2).
 
-**P: ¿Debo crear un endpoint para cada operación CRUD?**
-R: No necesariamente. Si Supabase REST API cubre tus necesidades, úsalo directamente. Crea endpoints custom solo para lógica compleja.
+- The app and this file disagree (error contract, auth scheme, Supabase client location, major version): the app's form wins, as the `stack:` section says. Extend it, do not replace it, and report both shapes.
+- The SRS names no endpoints: run PARTIAL mode, which needs no decision, and say in the report that the SRS gave nothing to implement.
 
-**P: ¿Cuándo usar endpoints custom vs Supabase directo?**
-R: Usa endpoints custom para:
+## Questions that come up
 
-- Integración con servicios externos (Stripe, email)
-- Lógica de negocio compleja
-- Operaciones que tocan múltiples tablas
+**Do I need an endpoint for every CRUD operation?** No. If the Supabase REST API covers the need, use it directly. Create custom endpoints for complex logic only.
+
+**When do I use a custom endpoint instead of Supabase directly?** For:
+
+- Integrations with external services (Stripe, email)
+- Complex business logic
+- Operations that touch several tables
 - Webhooks
 - Cron jobs
 
-**P: ¿Cómo pruebo endpoints protegidos?**
-R: Opciones:
+**How do I test protected endpoints?** Three options:
 
-1. Login via web → copiar cookie → usar en Postman
-2. Crear endpoint de testing con API key
-3. Usar Playwright con login automatizado
+1. Log in through the web app, copy the cookie, and use it in Postman.
+2. Create a testing endpoint with an API key.
+3. Use Playwright with an automated login.
 
-**P: ¿Puedo ejecutar este prompt de nuevo?**
-R: Sí. Detectará la estructura existente y agregará nuevos endpoints sin sobrescribir.
+**Can I run this add-on again?** Yes. It detects the existing structure and adds new endpoints without overwriting.
 
----
+## Related add-ons
 
-## 🔗 INTEGRACIÓN CON OTROS FEATURES
+With `openapi-setup`: endpoints are registered in OpenAPI when their schemas follow the single-source pattern (`src/types/` for the schema, `src/lib/openapi/schemas/` for the path).
 
-### Con `openapi-setup`:
-
-Los endpoints se pueden registrar automáticamente si creas schemas en `src/lib/openapi/schemas/`.
-
-### Con `supabase-types-setup`:
-
-Usa los tipos de `@/types/supabase` para type-safety en queries:
+With `supabase-types-setup`: use the types from `@/types/supabase` for type safety in queries:
 
 ```typescript
 import type { Database } from '@/types/supabase';
 type Example = Database['public']['Tables']['examples']['Row'];
 ```
 
-### Con `env-url-setup`:
-
-Usa `buildUrl()` para generar URLs de callback:
+With `env-url-setup`: use `buildUrl()` to generate callback URLs:
 
 ```typescript
 import { buildUrl } from '@/lib/urls';

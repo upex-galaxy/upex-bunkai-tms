@@ -19,6 +19,18 @@
       "category": "positive"
     },
     {
+      "name": "should-trigger-two-axis-spec-review",
+      "prompt": "Revisá el PR #88 de mi compañero contra el ticket UPEX-412: quiero saber si cumple lo pedido y si respeta los estándares.",
+      "expected_behavior": "Activates pr-review-lead. Asks strictness first, loads the ticket's acceptance criteria and plan, runs one Spec reviewer and one Standards reviewer in fresh contexts with the briefs of review-pr.md ## Two-axis review, tags each finding with its axis without merging the reports, and checks the new tests for lying tests (LT-1 and LT-2 with Spec, LT-3 with Standards). Posts nothing.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-external-pr-hold-posting",
+      "prompt": "Dale feedback a este PR de un repo externo, acme/shop-app#9, y no publiques nada hasta que yo te diga.",
+      "expected_behavior": "Activates pr-review-lead. Asks strictness, probes acme/shop-app for its own doctrine, presents the findings checkpoint and drafts the feedback, then holds: nothing reaches GitHub until the user gives an explicit go on the final draft. The draft carries no AI-generated marker.",
+      "category": "positive"
+    },
+    {
       "name": "should-trigger-ui-fidelity-check",
       "prompt": "Dame feedback de este PR que cambia el dashboard; quiero saber si respeta el diseño.",
       "expected_behavior": "Activates pr-review-lead. Reads DESIGN.md and, when present, .context/design/master-design-plan.md; treats the current live UI plus design tokens as the reference (Critical Rule #14 LIVE-UI-FIRST), flags only divergences from both that carry no §5 ratification, and does not flag a PR that follows the improved live UI where the mockup differs.",

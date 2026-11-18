@@ -1,45 +1,57 @@
 {
   "evals": [
     {
-      "name": "should-trigger-fresh-bootstrap",
+      "name": "should-trigger-edit-agents-md",
+      "prompt": "I want to add a rule to AGENTS.md about how the agent names branches. Where does it go?",
+      "expected_behavior": "Activates agentic-dev-core and reads references/instructions-doctrine.md. Walks the section 2 decision tree: a branch-naming rule is not an every-turn rule, so it does not go in AGENTS.md; the git section is a pointer and git-flow-master owns the policy. Closes with bun run instructions:check.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-new-skill",
+      "prompt": "I am adding a new skill to this repo. What frontmatter does it need and which sections must the body have?",
+      "expected_behavior": "Activates agentic-dev-core and reads references/skill-scaffold.md. Explains the frontmatter keys, the metadata.kind vocabulary, the required sections for the skill's kind, the invocation class that fixes the description form, and the Definition of Done. Builds the draft through skill-creator.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-docs-follow-through",
+      "prompt": "I renamed a package.json script and removed a skill mode. Which docs do I have to update before merging?",
+      "expected_behavior": "Activates agentic-dev-core and reads references/docs-follow-through.md. Names both triggers (a script rename and a retired skill mode), lists the surfaces to patch (README, INSTALLER, CONTEXT, docs, decks, Pages home), runs docs:check and agents:compat:check, and runs the report-only drift sweep when cli/, scripts/ or the instructions changed.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-brief-subagent-es",
+      "prompt": "Voy a mandar a un subagente a migrar tres módulos, cómo le armo el briefing?",
+      "expected_behavior": "Activates agentic-dev-core and reads references/briefing-template.md and references/dispatch-patterns.md. Builds the 7-component briefing and picks the dispatch pattern (Single, Sequential, Parallel or Background) for three independent modules.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-edit-instructions-es",
+      "prompt": "Quiero agregar una regla nueva a una sección de .agents/instructions, en qué archivo va y qué tengo que correr después?",
+      "expected_behavior": "Activates agentic-dev-core and reads references/instructions-doctrine.md. Places the sentence with the section 2 decision tree, adds labelled prompts to the router eval fixture when a trigger changes, and closes with bun run instructions:check. Replies in Spanish.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-fresh-bootstrap",
       "prompt": "Initialize a new project repo with the boilerplate. I just cloned this and want the foundation files in place.",
-      "expected_behavior": "Activates agentic-dev-core. Runs the 7-step bootstrap: confirms target repo, writes .agents/project.yaml from the template, copies scripts/ (lint-vars, jira-sync-fields, jira-check), writes AGENTS.md and AGENTS.md from boilerplate templates, seeds .agents/jira-required.yaml and .agents/jira-fields.json placeholder, updates package.json scripts, runs bun run vars:check to verify, and reports the file list. Does not touch product or infra concerns.",
-      "category": "positive"
-    },
-    {
-      "name": "should-trigger-foundation-only",
-      "prompt": "Bootstrap framework foundation in this empty repo — no product or infra yet, just the AI-driven workflow files.",
-      "expected_behavior": "Activates agentic-dev-core. Walks the 7-step bootstrap and explicitly stays scoped to foundation files (.agents/, AGENTS.md, AGENTS.md, scripts/, package.json wiring). Does NOT scaffold backend/frontend (that is /project-bootstrap) and does NOT define the PRD (that is /project-foundation). Hands off to those skills at the end if the user asks.",
-      "category": "positive"
-    },
-    {
-      "name": "should-trigger-regenerate-agents-md",
-      "prompt": "Regenerate AGENTS.md from the latest template. The upstream changed and I want my copy refreshed.",
-      "expected_behavior": "Activates agentic-dev-core in idempotent re-run mode. Detects that .agents/project.yaml already exists, skips the placeholder seeding, and only re-renders AGENTS.md (and AGENTS.md if user confirms) from the current boilerplate template, preserving project-specific values from .agents/project.yaml. Reports diff summary.",
-      "category": "positive"
-    },
-    {
-      "name": "should-trigger-clone-orientation",
-      "prompt": "Acabo de clonar este repo, qué corro primero para dejarlo listo?",
-      "expected_behavior": "Activates agentic-dev-core as the entry point. Explains the bootstrap flow briefly, then runs the 7-step pathway: project.yaml, scripts/, AGENTS.md, jira-required.yaml manifest, jira-fields.json placeholder, package.json scripts, vars:check validation. Suggests /project-foundation and /project-bootstrap as next steps once the foundation is green.",
-      "category": "positive"
+      "expected_behavior": "Does NOT activate agentic-dev-core as a bootstrap action: it is a passive reference host and creates no files. Routes to the install path that matches the starting point (create-agentic-dev for a new project, create-agentic-dev --adopt then /project-adoption for an existing app) and then /project-foundation and /project-bootstrap.",
+      "category": "negative"
     },
     {
       "name": "should-not-trigger-memory-refresh",
       "prompt": "Refresh memory facts for this session — I changed my email and want it picked up.",
-      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to Engram memory (or, for a repo doc fact, the docs follow-through in agentic-dev-core/references/docs-follow-through.md) because the request is about memory facts (not the foundation bootstrap). agentic-dev-core never touches user memory; it only writes repo-level scaffolding files.",
+      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to Engram memory (or, for a repo doc fact, the docs follow-through in agentic-dev-core/references/docs-follow-through.md) because the request is about memory facts. agentic-dev-core never touches user memory.",
       "category": "negative"
     },
     {
       "name": "should-not-trigger-backend-scaffold",
       "prompt": "Setup the backend with DB schemas, types, error handling and API base.",
-      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to /project-bootstrap (backend-setup.md reference) because the request is infrastructure scaffolding, not foundation files. agentic-dev-core only seeds AGENTS.md/.agents/, never application code.",
+      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to /project-bootstrap (backend-setup.md reference) because the request is infrastructure scaffolding. agentic-dev-core hosts doctrine and writes no application code.",
       "category": "negative"
     },
     {
       "name": "should-not-trigger-prd-definition",
       "prompt": "Define the PRD for this product — executive summary, personas, MVP scope.",
-      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to /project-foundation (phase-2-prd references) because the request is foundational product definition. agentic-dev-core's scope is mechanical bootstrap of framework files, not product strategy.",
+      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to /project-foundation (phase-2-prd references) because the request is foundational product definition, not shared doctrine.",
       "category": "negative"
     }
   ]

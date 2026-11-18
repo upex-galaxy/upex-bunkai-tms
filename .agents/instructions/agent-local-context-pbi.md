@@ -2,7 +2,7 @@
 id: local-context-pbi
 title: "Local context (PBI cache)"
 load_when: "reading or writing anything under .context/PBI/, syncing Jira issues, resuming a story session, or deciding where story state or evidence lives"
-triggers: ["\\bPBI\\b", "\\.context/PBI", "jira:sync", "context:hydrate", "\\bjira\\b", "\\bepic\\b", "[ée]pica", "acceptance criteria", "criterios de aceptaci", "implementation plan", "\\bresume\\b", "retoma"]
+triggers: ["\\bPBI\\b", "\\.context/PBI", "jira:sync", "context:hydrate", "\\bjira\\b", "\\bepic\\b", "acceptance criteria", "implementation plan", "\\bresume\\b"]
 paths: [".context/PBI/"]
 ---
 
@@ -12,23 +12,25 @@ paths: [".context/PBI/"]
 
 ## 9. LOCAL CONTEXT (PBI)
 
-> **`.context/PBI/` is a GITIGNORED CACHE of Jira, owned by `scripts/sync-jira-issues.ts`.** Module = Epic (1:1) for the epics this pipeline creates; an adopted tracker keeps the epic shape it already has. Jira is the source of truth; local `.md` files are a **read-only cache**. NEVER hand-write a Jira-mirrored file: author the plan/content, push it to the Jira field (or fallback), then run the sync. Rebuild the whole tree with `bun run context:hydrate`; on a large or adopted project pull only what the work touches (`pull --epic <KEY>`, `--story <KEY>`, `jql`, below), and the adoption itself never hydrates (`/project-adoption`).
->
-> **WHY NOT COMMITTED**: synced content regenerates. Two sessions re-syncing at different times produce conflicting commits of the same generated text; a 3-way merge over a full-file rewrite is meaningless. Jira already IS the versioned, shared, cloud-hosted copy — committing the cache duplicates the database into git and buys nothing.
+`.context/PBI/` is a gitignored cache of Jira, owned by `scripts/sync-jira-issues.ts`. Jira is the source of truth, and a module is an Epic (1:1) for the epics this pipeline creates (an adopted tracker keeps the epic shape it already has). Local `.md` files are a read-only copy. A hand-written Jira-mirrored file is overwritten on the next sync, so author the plan or content, push it to the Jira field (or the fallback below), then run the sync.
 
-**THREE TIERS** — every path under `.context/PBI/` is exactly one of these. Check before creating any file:
+`bun run context:hydrate` rebuilds the whole tree. On a large or adopted project, pull only what the work touches (`pull --epic <KEY>`, `--story <KEY>`, `jql`, below). The adoption itself never hydrates (`/project-adoption`).
+
+The cache is not committed because it regenerates. Two sessions re-syncing at different times would produce conflicting commits of the same generated text, and a 3-way merge over a full-file rewrite means nothing. Jira is already the versioned, shared, cloud-hosted copy, so committing the cache would duplicate the database into git.
+
+**Three tiers.** Every path under `.context/PBI/` is exactly one of these, so check before creating a file:
 
 | Tier | Source of truth | In git? | Recovered by |
 |---|---|---|---|
 | `[SYNC]` | Jira | No | `bun run context:hydrate` |
 | `[COMMIT]` | This repo | **Yes** | `git checkout` |
-| `[LOCAL]` | Nothing durable | No | Not recovered — disposable by design |
+| `[LOCAL]` | Nothing durable | No | Not recovered, disposable by design |
 
-`[LOCAL]` files (`context.md`, `progress.md`, `evidence/`) MAY be hand-written, but **NOTHING downstream may depend on one existing**: they live only on the machine that made them. Durable session state → `.session/sprint-development/<KEY>/progress.md` (the resume contract already reads it, NOT the PBI copy); durable evidence → Jira (attachment / comment).
+A `[LOCAL]` file (`context.md`, `progress.md`, `evidence/`) may be hand-written, but nothing downstream may depend on it existing, because it lives only on the machine that made it. Durable session state goes in `.session/sprint-development/<KEY>/progress.md` (the resume contract reads that one, not the PBI copy), and durable evidence goes in Jira as an attachment or comment.
 
-**GITIGNORE LADDER** (in `.gitignore`): `.context/PBI/*` → `!.context/PBI/README.md` → `!.context/PBI/templates/`. NEVER collapse it to a plain `.context/PBI/` — git cannot re-include a file whose parent dir is excluded, so a collapse silently drops the committed exceptions. Verify any change with `git check-ignore -v` on `README.md` (must NOT be ignored) and on a `stories/.../story.md` (must be ignored). <!-- binds-in-section: only edits of the PBI ladder in `.gitignore`, which route here -->
+**Gitignore ladder.** `.gitignore` holds `.context/PBI/*`, then `!.context/PBI/README.md`, then `!.context/PBI/templates/`. Keep all three lines: git cannot re-include a file whose parent directory is excluded, so collapsing the ladder to a plain `.context/PBI/` silently drops the committed exceptions. After any change, run `git check-ignore -v` on `README.md` (it must not be ignored) and on a `stories/.../story.md` (it must be ignored). <!-- binds-in-section: only edits of the PBI ladder in `.gitignore`, which route here -->
 
-**Canonical tree** (Epic-centric; `<KEY>` = Jira key, `<slug>` from summary):
+**Canonical tree** (Epic-centric; `<KEY>` is the Jira key, `<slug>` comes from the summary):
 
 ```
 .context/PBI/
@@ -49,20 +51,21 @@ paths: [".context/PBI/"]
   test-plans/ test-executions/ test-sets/ preconditions/   [SYNC - Xray container issues (jira-xray); description holds the ATP/ATR body]
 ```
 
-**`[SYNC]` files = forbidden to hand-write** (overwritten on every sync: NO file is hard-protected; Jira is the source of truth). The dev/feature implementation plan is authored, **pushed to its Jira field** (`spec_implementation_plan` / `feature_implementation_plan`), then read back from the synced `implementation-plan.md` / `feature-implementation-plan.md`. **Rule of thumb**: file mirrors a Jira field → read the synced copy, never author it locally. File holds info NOT in Jira → decide its tier: another machine or a later session needs it → it does NOT belong here (Jira field/comment, or `.session/`); only this machine, this work → `[LOCAL]`.
+**What to author and what to read.** No `[SYNC]` file is protected: each is overwritten on every sync. The dev or feature implementation plan is written, pushed to its Jira field (`spec_implementation_plan` or `feature_implementation_plan`), then read back from the synced `implementation-plan.md` or `feature-implementation-plan.md`. The rule of thumb: a file that mirrors a Jira field is read from the synced copy and never authored locally. A file that holds information Jira does not have needs a tier. If another machine or a later session needs it, it does not belong here (use a Jira field or comment, or `.session/`). If only this machine needs it for this work, it is `[LOCAL]`.
 
-**COLD CLONE**: a fresh clone has an almost-empty `.context/PBI/` (this README + `templates/`) — the intended state, not a broken checkout. `bun run context:hydrate` (= `jira:sync-issues pull --include-comments`) rebuilds the cache. Requires `ATLASSIAN_EMAIL` / `ATLASSIAN_API_TOKEN` in `.env`; host from `.agents/project.yaml` → `issue_tracker.atlassian_url` (`agent-project-variables.md` §7).
+**Cold clone.** A fresh clone has an almost empty `.context/PBI/` (the README and `templates/`). That is the intended state, not a broken checkout. `bun run context:hydrate` (the same as `jira:sync-issues pull --include-comments`) rebuilds the cache. It needs `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` in `.env`, and the host comes from `.agents/project.yaml` → `issue_tracker.atlassian_url` (`agent-project-variables.md` §7).
 
-> Sprint-level cross-ticket aggregate → `.context/reports/SPRINT-{N}-DEVELOPMENT.md` (generated by `/sprint-development` batch). Lifecycle → `.context/reports/README.md`.
+> The sprint-level cross-ticket aggregate is `.context/reports/SPRINT-{N}-DEVELOPMENT.md`, generated by the `/sprint-development` batch. Its lifecycle is in `.context/reports/README.md`.
 >
-> The business maps are NOT part of this tree nor of `.context/`: they are synthesis, held as HTML in the business map context skills and read with `bun run context:map <skill>` (`agentic-dev-core/references/business-context-maps.md`). A story reads the sections its aspect touches; nothing under `.context/PBI/` copies them.
+> The business maps are not part of this tree or of `.context/`. They are synthesis, held as HTML in the business map context skills and read with `bun run context:map <skill>` (`agentic-dev-core/references/business-context-maps.md`). A story reads the sections its aspect touches, and nothing under `.context/PBI/` copies them.
 
-**DETAILED READS via the script** (replaces `acli view` for custom fields: `acli view` returns null for custom fields):
-- `bun run jira:sync-issues get <KEY> --include-comments` → one issue, ALL custom fields + comments → read the generated `.md`.
-- `bun run jira:sync-issues jql "<query>"` → batch. `pull --epic <KEY>` / `--story <KEY>` → scoped.
+**Detailed reads through the script.** `acli view` returns null for custom fields, so the script replaces it:
 
-**FALLBACK**: if a custom field a prompt must fill is absent from the instance, write the content as a structured Jira comment (`## <label>`) per `.agents/jira-required.yaml` → `fallback:`. The sync then emits a pointer stub for that field's `.md`. Never block on a missing field.
+- `bun run jira:sync-issues get <KEY> --include-comments` fetches one issue with all its custom fields and comments; read the generated `.md`.
+- `bun run jira:sync-issues jql "<query>"` fetches a batch, and `pull --epic <KEY>` or `--story <KEY>` scopes a pull.
 
-**ENTRY POINT**: invoke `/sprint-development`: syncs the ticket (`jira:sync-issues get`), explains story, loads the synced PBI, drives plan → code → review → deploy.
+**Fallback.** When a custom field a prompt must fill is absent from the instance, write the content as a structured Jira comment (`## <label>`) per `.agents/jira-required.yaml` → `fallback:`. The sync then emits a pointer stub for that field's `.md`. A missing field never blocks the work.
 
-**RESUME SESSION**: `/sprint-development` Phase 0 resume contract: reads `.session/sprint-development/<JIRA-KEY>/progress.md` (per `.agents/skills/agentic-dev-core/references/session-management.md`), surfaces last completed phase, offers resume / restart / abort; the synced story folder + engram supply the content context.
+**Entry point.** `/sprint-development` syncs the ticket (`jira:sync-issues get`), explains the story, loads the synced PBI and drives plan, code, review and deploy.
+
+**Resuming a session.** The `/sprint-development` Phase 0 resume contract reads `.session/sprint-development/<JIRA-KEY>/progress.md` (per `.agents/skills/agentic-dev-core/references/session-management.md`), reports the last completed phase and offers resume, restart or abort. The synced story folder and Engram supply the content context. With nobody at the keyboard, the "With nobody at the keyboard" section of `agent-ticket-work.md` says who answers that offer.

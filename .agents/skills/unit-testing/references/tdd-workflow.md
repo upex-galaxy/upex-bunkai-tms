@@ -1,10 +1,12 @@
-# TDD Workflow (Test-Driven Development)
+# TDD workflow
+
+Source: https://github.com/mattpocock/skills (skills/engineering/tdd), MIT, (c) 2026 Matt Pocock. Adapted by UPEX Galaxy.
 
 ## Overview
 
-TDD = test before code, in tight Red-Green-Refactor cycles. Goal: fast feedback while you build, plus a safety net that lets you refactor without fear. TDD shines on pure logic and bug fixes; it's a poor fit for UI tweaks and integration glue.
+TDD means writing the test before the code, in tight red-green-refactor cycles. It gives fast feedback while you build and a safety net that lets you refactor without fear. It pays off on pure logic and bug fixes, and it is a poor fit for UI tweaks and integration glue.
 
-## When to TDD vs after-the-fact
+## When to TDD and when to test after
 
 | Scenario                                          | TDD or after?                                             |
 | ------------------------------------------------- | --------------------------------------------------------- |
@@ -15,52 +17,70 @@ TDD = test before code, in tight Red-Green-Refactor cycles. Goal: fast feedback 
 | Integration glue (DB query wrappers, API clients) | After-the-fact (mostly covered by integration tests)      |
 | Performance-critical code                         | TDD with benchmarks alongside assertions                  |
 | Throwaway scripts / one-off migrations            | Skip                                                      |
-| Bug fixes                                         | TDD: write the failing test that reproduces the bug FIRST |
+| Bug fixes                                         | TDD: write the failing test that reproduces the bug first |
 
-Rule of thumb: if the function has branches, math, or string parsing — TDD it. If it's mostly orchestration of other things — write the test after, or rely on a higher-level test.
+Rule of thumb: if the function has branches, math or string parsing, TDD it. If it mostly orchestrates other things, write the test after, or rely on a higher-level test.
 
-## The Red-Green-Refactor Cycle
+## Seams first
 
-### 1. RED — write a failing test
+Before the first test, write down the seams under test and, for each, one line on what a test there catches and what it misses. No test is written at a seam you did not name. Work in vertical slices: one test, the least code that passes it, then the next, each cycle responding to what the last one showed. The first cycle is a tracer bullet through the whole path. Expected values come from a literal, a worked example or the spec, never from the code under test.
 
-Write the smallest test that captures one slice of behavior. Run it. Confirm it fails for the **right reason** (assertion failure), not a setup error (import failure, undefined function). A test that's red because the file doesn't compile gives you no information.
+A person doing standalone TDD may confirm the seams. A worker or `/autonomous-delivery` takes them from the story plan (`## Technical Decisions` in `sprint-development/references/story-plan.md`). When the plan names none, pick the highest existing seam, record it in `progress.md` and go on. It never waits for a confirmation.
 
-If the test passes immediately on the first run, that's a smell — either the behavior already exists, or your test isn't actually exercising the new code. Investigate before continuing.
+## The red-green-refactor cycle
 
-### 2. GREEN — make it pass with minimum code
+### 1. RED: write a failing test
 
-Write the simplest code that makes the test pass. Constants and hardcoded returns are fine at this stage. Resist the urge to write the "real" implementation upfront — let it emerge across multiple cycles. Don't write code for tests that don't exist yet.
+Write the smallest test that captures one slice of behavior. Run it and confirm it fails for the **right reason** (an assertion failure), not a setup error such as an import failure or an undefined function. A test that is red because the file does not compile tells you nothing. The first test goes through the seam you named, with its expected value taken from an independent source (see Seams first).
 
-If you can't make it green in 5-10 minutes, the slice is too big. Step back, narrow the test, retry.
+If the test passes on its first run, either the behavior already exists or the test does not exercise the new code. Find out which before continuing.
 
-### 3. REFACTOR — clean up
+### 2. GREEN: make it pass with minimum code
 
-Now that the test is green, refactor freely. Extract helpers, rename variables, deduplicate. Tests catch regressions. Stop refactoring when no obvious smell remains — perfection is not the goal.
+Write the simplest code that makes the test pass. Constants and hardcoded returns are fine at this stage. Let the real implementation emerge across several cycles instead of writing it upfront, and write no code for tests that do not exist yet.
 
-Critical: refactor only when green. Refactoring while red means you're losing the safety net exactly when you need it most.
+If you cannot get to green in 5 to 10 minutes, the slice is too big. Narrow the test and retry.
+
+### 3. REFACTOR: clean up
+
+With the test green, refactor freely: extract helpers, rename variables, deduplicate. The tests catch regressions. Stop when no obvious smell remains, because perfection is not the goal.
+
+Refactor only on green. Refactoring on red removes the safety net exactly when you need it.
 
 ### Cycle pace
 
-Aim for 5-10 minute cycles. If a cycle takes >30 minutes, the slice is too big — break it down into smaller behavioral steps. The cadence itself is part of TDD's value: short cycles = many checkpoints = low risk per change.
+Aim for cycles of 5 to 10 minutes. A cycle that takes more than 30 minutes means the slice is too big, so break it into smaller behavioral steps. Short cycles give many checkpoints and keep the risk of each change low.
+
+## Lying tests (LT-1 to LT-3)
+
+A green test is evidence only if it could have been red. Check every new assertion for three lies. Other skills point here (`/sprint-development` review, `/pr-review-lead`), so the IDs and the heading stay as they are.
+
+| ID | Check | Severity |
+| --- | --- | --- |
+| LT-1 | Tautological: the expected value is computed the way the code computes it (the same formula, the same helper), or compared to the input the test just set with no round trip through the product. It passes by construction. Take expected values from a literal, a worked example or the spec. A server echoing the payload you sent is a legitimate round trip, since the product produced the value. | MAJOR |
+| LT-2 | Cannot fail: no product change turns it red. Examples: `toBeDefined()` as the only check, an assertion inside an `if` or swallowed by `try/catch`, a missing `await` on an assertion. Ask which product change would break it, and treat "none" as a finding. | BLOCKER |
+| LT-3 | Structure-sensitive: it breaks on a refactor that keeps behavior, as with call counts, private state or a whole-object snapshot where two fields matter. Assert what a caller sees. | MAJOR |
+
+This is a review rule, so nothing in it waits for a person.
 
 ## Composability with sprint-development
 
-When you're in the middle of `/sprint-development` Stage 2 (Implementation):
+During `/sprint-development` Stage 2 (Implementation):
 
-- Hit a function that's pure logic? → TDD it: invoke `/unit-testing` for the slice, then return.
-- Bug fix? → Write the failing reproducer first (TDD), then fix.
-- Complex branching logic with edge cases? → TDD instead of guessing the cases later.
+- A pure-logic function: TDD it by invoking `/unit-testing` for the slice, then return.
+- A bug fix: write the failing reproducer first, then fix.
+- Complex branching with edge cases: TDD it instead of guessing the cases later.
 
-The hand-off is symmetric — sprint-development's implementation prompt knows to dispatch to `/unit-testing` when TDD is appropriate, and `/unit-testing` returns control once the slice is green and refactored.
+The hand-off is symmetric. The implementation prompt dispatches to `/unit-testing` when TDD fits, and `/unit-testing` returns control once the slice is green and refactored.
 
 ## Common TDD anti-patterns
 
-- **Waterfall tests**: Writing all tests first, then all code. That's not TDD, that's plan-test-then-code. You miss the design feedback that small cycles provide.
-- **Skipping the RED check**: A "test" that "passes" without being implemented is a false signal. Always confirm red first.
-- **Refactoring while red**: You lose the safety net at the worst possible moment.
-- **Implementation-detail tests**: Tests that assert on internal field names, private methods, or call counts. Refactor-hostile.
-- **Not running tests after every tiny change**: Defeats the cycle. Use watch mode.
-- **Big-bang green**: Writing 50 lines to pass one test. The test isn't driving the design — fix the slice size.
+- **Waterfall tests.** Writing all the tests first, then all the code, is plan-then-code, not TDD, and you lose the design feedback small cycles give.
+- **Skipping the red check.** A "test" that passes before the feature exists is a false signal. Confirm red first.
+- **Refactoring while red.** You lose the safety net at the worst moment.
+- **Implementation-detail tests.** Assertions on internal field names, private methods or call counts break on refactors (LT-3).
+- **Not running the tests after every small change.** It defeats the cycle, so use watch mode.
+- **Big-bang green.** Fifty lines to pass one test means the test is not driving the design. Fix the slice size.
 
 ## Example walkthrough
 
@@ -80,7 +100,7 @@ export function applyDiscount(amount: number, percent: number) {
 }
 ```
 
-Run → green. Commit checkpoint.
+Run it: green. Commit checkpoint.
 
 **Cycle 2 (RED → GREEN)**
 
@@ -98,7 +118,7 @@ export function applyDiscount(amount: number, percent: number) {
 }
 ```
 
-Run → both pass. Green.
+Run them: both pass. Green.
 
 **Cycle 3 (RED → GREEN → REFACTOR)**
 
@@ -108,13 +128,13 @@ it('throws on negative amount', () => {
 });
 ```
 
-Red. Add guard, run → green. Refactor: rename `percent` to `percentOff` for clarity, run tests → still green. Done.
+Red. Add guard, run it: green. Refactor: rename `percent` to `percentOff` for clarity, run the tests: still green. Done.
 
 Three cycles, three behaviors, full coverage of the cases you care about.
 
 ## Related references
 
-- See `unit-testing.md` for general testing principles + project conventions
-- See `test-naming.md` for naming the tests you'll write
-- See `mocking-patterns.md` for handling dependencies during TDD
-- See `test-coverage.md` for measuring what you're missing
+- `unit-testing.md`: general testing principles and project conventions.
+- `test-naming.md`: naming the tests you write.
+- `mocking-patterns.md`: handling dependencies during TDD.
+- `test-coverage.md`: measuring what you are missing.

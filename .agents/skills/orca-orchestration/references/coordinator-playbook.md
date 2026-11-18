@@ -1,38 +1,44 @@
-# Coordinator Playbook — The Conductor's Full Cycle
+# Coordinator Playbook: The Conductor's Full Cycle
 
-> Loaded by: `orca-orchestration` in CONDUCTOR mode.
-> Grammar source: LOAD the stubs in `orchestration.orchestrator_skills` (`.agents/project.yaml`)
-> alongside this skill, then ask the binary only for a DEEP topic a stub points at. This file
-> carries the ORDER, the repo-specific decisions and the traps — not the vendor reference.
-> Every command below was checked against the live schema (`orca agent-context --json`).
-> Re-check with `orca agent-context --json` after any upgrade before trusting a flag.
+> Loaded by `orca-orchestration` in CONDUCTOR mode.
+> Load the stubs in `orchestration.orchestrator_skills` (`.agents/project.yaml`) alongside this
+> skill, and ask the binary only for a deep topic a stub points at. This file carries the order,
+> the repo-specific decisions and the traps, not the vendor reference. Every command below was
+> checked against the live schema (`orca agent-context --json`); re-check it after any upgrade
+> before trusting a flag.
 
 ---
 
 ## 0 · Before anything
 
-1. Run the gate (`SKILL.md` §The gate). State A or B → fall back, do not continue this playbook.
-2. Ask the binary for the grammar, now and not earlier.
+1. Run the gate (`SKILL.md` §The gate). In state A or B, fall back and stop reading this playbook.
+2. Ask the binary for the grammar now, not earlier.
 3. Create the orchestration scope on disk: `.session/orchestration/<slug>/`, where `<slug>` names the
-   run (`sprint-42-dev`, `auth-module-refactor`, `bug-burn-sprint-42`). Everything the
-   fleet needs to survive a crash lives there, in the PRIMARY checkout, cited by absolute path.
-4. Seed `run.md`, `roster.md`, `COMMON.md` and `launch.txt` from `templates/`. When the run belongs to
-   one workflow skill, `launch.txt` lives in that skill's scope instead and this scope does not get
-   a copy (`references/launch-seam.md` §2.1).
+   run (`sprint-42-dev`, `auth-module-refactor`, `bug-burn-sprint-42`). Everything the fleet needs
+   to survive a crash lives there, in the PRIMARY checkout, cited by absolute path.
+4. Seed `run.md`, `roster.md`, `COMMON.md` and `launch.txt` from `templates/`. When the run belongs
+   to one workflow skill, `launch.txt` lives in that skill's scope instead and this scope does not
+   get a copy (`references/launch-seam.md` §2.1).
 
-**Everything written inside a worktree dies with the worktree.** Fleet state belongs in the primary
-checkout, and a worker reaches it by absolute path in its prompt — never by a relative path, never by
-a path inside its own worktree.
+Everything written inside a worktree dies with it. Fleet state belongs in the primary checkout, and
+a worker reaches it by an absolute path in its prompt, never a relative one and never a path inside
+its own worktree.
 
 ---
 
-## 1 · The cycle, in order — the NATIVE path (supervised, the default)
+## 1 · The cycle, in order: the NATIVE path (supervised, the default)
 
-**Supervision comes from the launch, and only from the launch.** The runtime decides "is this an
-agent" from the argv IT started, never from the running process, so a terminal created with our own
-command line can never be adopted: `worker-start --terminal <handle>` answers `agent_unconfigured`
-on a terminal whose agent is demonstrably alive on screen (measured three ways, gotcha G44). There is
-exactly one supervised launch, and it is the native one.
+Supervision comes from the launch and nowhere else. The runtime decides "is this an agent" from the
+argv it started, never from the running process, so a terminal created with our own command line
+cannot be adopted: `worker-start --terminal <handle>` answers `agent_unconfigured` on a terminal
+whose agent is alive on screen (measured three ways, gotcha G44). The one supervised launch is the
+native one.
+
+Naming the worker is part of the launch. The task spec opens with the token
+`/<workflow-skill> <label> fleet worker` (step 2), the conductor renames the tab as soon as the
+handle exists (step 4b), and readiness is not confirmed until the screen shows `<label>--<handle>`
+(step 5). A tab still titled `worker-<task id>`, or a harness-generated session title, means a step
+was skipped.
 
 ```bash
 # 1 · once per run: create the Run (a namespace + a home inbox; it schedules nothing)
@@ -44,83 +50,88 @@ orca terminal rename --terminal "$ORCA_TERMINAL_HANDLE" --title "conductor · <s
 # 2 · write the BRIEFS first, then one Task per worker, BEFORE launching anything.
 #     The spec is not a label. On the native path the runtime injects it as the worker's FIRST
 #     PROMPT, so the worker is already executing it before step 6's prompt exists (G58). It must
-#     therefore be self-sufficient: the scope, the brief's ABSOLUTE path, the continuation
-#     sentence, and anything that has to be right from the first action — the session-title
-#     token and the no-stopping clause included. Which is why the briefs are written first:
-#     the spec cites them by path.
+#     be self-sufficient: the scope, the brief's ABSOLUTE path, the continuation sentence, and
+#     anything that has to be right from the first action, the session-title token and the
+#     no-stopping clause included. That is why the briefs come first: the spec cites them by path.
 orca orchestration task-create --display-name '<label>' --spec '/<workflow-skill> <label> fleet worker. Read <ABS>/.session/orchestration/<slug>/COMMON.md then <ABS>/.session/orchestration/<slug>/W-<label>.md and execute your brief. Run every stage without returning to the prompt until worker_done is sent; stage boundaries are not checkpoints. Channel: {{MESSAGE_VERB}}. No heartbeats. ROUTE-SCOPE: <section ids>' --json </dev/null
 #     <label> is the worker's ROSTER LABEL, [<KEY>-]<slug>, kebab-case, single hyphens inside
 #       (`TK-123-add-google-auth`; a kebab slug such as `volatile-impl` with no ticket; the bare issue
-#       key for a /sprint-development worker). The worker's NAME is <label>--<handle>, composed once the
-#       terminal exists: the session name, the tab title, the roster `Name` column and the `Session:`
-#       trailer (session-identity.md §2b). The handle does not exist yet here, so the display name is
-#       the label. One token, no extra words between it and `fleet worker`, or the identity hook does
-#       not recognise it.
+#       key for a /sprint-development worker). The worker's NAME is <label>--<handle>, composed once
+#       the terminal exists (session-identity.md §2b); the display name here is the label because
+#       the handle does not exist yet. One token, no extra words between it and `fleet worker`, or
+#       the identity hook does not recognise it.
 #     --display-name is the worker row's label in the app; without it the row shows the spec's first
 #       line. Read it back as `.display_name` (snake_case; `.title` does not exist, G49).
 #     --deps <json_array> exists but the element shape is undocumented: do not use it yet (G8)
-#     Measured cost of a thin spec (G58): a worker ran most of its steps on a one-line framing
-#     before the brief reached it, and its commits carried the harness-derived session
-#     label instead of the fleet one — unfixable once pushed (Critical Rule #5).
+#     Cost of a thin spec (G58): a worker ran most of its steps on a one-line framing before the
+#       brief reached it, and its commits carried the harness-derived session label. Unfixable once
+#       pushed (Critical Rule #5).
 
 # 3 · placement
-#   same checkout  → nothing to create
-#   worktree       → create it JUST before launching; one created half an hour earlier is born stale
+#   same checkout  -> nothing to create
+#   worktree       -> create it JUST before launching; one created half an hour earlier is born stale
 orca worktree create --repo id:<repoId> --name <label> --no-parent --setup run --json </dev/null
 git -C <wt> fetch origin
 git -C <wt> merge --ff-only origin/<base>
-git -C <wt> rev-parse --short HEAD          # MUST equal origin/<base>; never mask this with `|| true`
+git -C <wt> rev-parse --short HEAD          # must equal origin/<base>; do not mask this with `|| true`
 bun run worktree:provision <wt>             # references/provisioning.md
 
-# 4 · LAUNCH natively → supervised, with the preamble injected by the runtime
+# 4 · LAUNCH natively: supervised, with the preamble injected by the runtime
 orca orchestration worker-start --task <task_id> --worktree <current|id:<repoId>::<path>> \
-  --agent <claude|codex|opencode> --model <full-model-id> --effort <level> --json </dev/null
+  --agent <claude|codex|opencode|pi> --model <full-model-id> --effort <level> --json </dev/null
 #     Model and effort: the worker tier's {{DEFAULT_MODEL}} / {{DEFAULT_EFFORT}}, unless an
 #       `orchestration.model_overrides` entry for tier worker matches the brief's topics, or the user
 #       said otherwise (the user always wins). A full model id, never an alias (G29).
-#     → the dispatch id; the receipt does NOT carry the terminal handle (G78). Read it from
-#       `orca orchestration worker-list --run <run_id> --json </dev/null` as `agentTerminalHandle` and
-#       record BOTH in roster.md, with the worker's Name `<label>--<handle>`.
+#     The receipt is the dispatch id and does NOT carry the terminal handle (G78). Read the handle
+#       from `orca orchestration worker-list --run <run_id> --json </dev/null` as
+#       `agentTerminalHandle` and record both in roster.md, with the worker's Name `<label>--<handle>`.
 #       (Lost them? worker-show --dispatch <id>, or terminal list --worktree <sel>.)
 
-# 4b · name the TAB with the worker's full name. The runtime titles every worker tab
+# 4b · name the TAB with the worker's full name now. The runtime titles every worker tab
 #     `worker-<task id>` and has no flag to change that (G71). The worker renames its own tab as its
 #     first action (worker-contract.md §Session naming); the conductor issues the same rename too,
-#     because a worker that has not reached its first action yet leaves the tab unnamed. It is the
-#     only verb that does it, and it types nothing into the agent.
+#     because a worker that has not reached that action yet leaves the tab unnamed. This verb types
+#     nothing into the agent.
 orca terminal rename --terminal <handle> --title "<label>--<handle>" --json </dev/null
-#     The tab label lands only once the app window has opened that tab, and `terminal list` /
-#     `terminal show` report a different field, so they cannot confirm it (G72). Repeat the same
-#     rename in every liveness sweep (§5); confirm on the tab itself.
+#     The label lands only once the app window has opened the tab, and `terminal list` /
+#       `terminal show` report a different field, so they cannot confirm it (G72). Repeat the rename
+#       in every liveness sweep (§5) and confirm on the screen (step 5).
 #     --effort requires --model; neither combines with --terminal. --name names a NEW WORKTREE,
 #       not the session: there is no session-name flag on this path (see §1b).
 #     Prerequisites, both invisible from here: the agent's per-machine default arguments must carry
 #       the flag of `orchestration.permission_modes.worker` (bypass by default; the per-harness flag
 #       is in references/orca-machine-setup.md §3.1, never an edits-only mode, and `auto` is not
-#       non-interactive), and credentials must reach the worker: on every host the MCP
-#       servers read the worktree's `.env` through the `.env` loader (`varlock run --filter`);
-#       CLIs carry their own auth, nothing is exported into the shell (G45). references/orca-machine-setup.md §3.
+#       non-interactive), and credentials must reach the worker: on every host the MCP servers read
+#       the worktree's `.env` through the `.env` loader (`varlock run --filter`); CLIs carry their
+#       own auth, and nothing is exported into the shell (G45). references/orca-machine-setup.md §3.
 
-# 5 · verify readiness AND credentials on the worker's screen, before sending it any work
+# 5 · verify readiness on the worker's screen before sending it any work: name, credentials, mode
 orca terminal read --terminal <handle> --screen --json </dev/null
-#     want: the agent's status footer (model, effort) AND evidence credentials loaded
-#     (an MCP tool listed as connected, or the worker's own first probe). No credentials → fix the machine, do not dispatch work to it.
-#     Also the PERMISSION MODE, against `orchestration.permission_modes.worker`: the status bar
-#     (Claude Code shows its bypass indicator) or the process argv (`ps -o args= -p <pid>`, the pid
-#     from `orca worktree ps`). A mismatch means the app's per-agent default arguments are wrong:
-#     fix them (orca-machine-setup.md §3.1) and relaunch BEFORE dispatching any work; record the
-#     verified mode in the roster's `Mode` column. A worker in `auto` stalls on a prompt nobody sees
-#     after 3 consecutive or 20 total classifier blocks; an edits-only mode stalls on its first Bash.
-#     Also the SESSION NAME in the status bar. Claude Code: the identity hook composed it from the
-#     prompt token plus the handle; the bar reads `<label>--<handle>`. Codex, OpenCode v2.2 and Pi
-#     have no hook that can: drive the TUI with `terminal send --enter --text '/rename <label>--<handle>'`
-#     (Pi: `/name <label>--<handle>`) once the screen shows it ready, then read the bar back.
-#     OpenCode v1 (`/rename` opens a dialog, no argument) or any harness that cannot be renamed: the
-#     roster `Name` column is the only record of the name, mark it `(roster only)`, give the worker
-#     that name for its `Session:` trailer, and say so once in the run report. A worker cannot run
-#     `/rename` on itself, so never leave it to the brief.
+#     want, all read off the screen and none assumed from a receipt:
+#     (a) NAME. The tab and the session name in the status bar both read `<label>--<handle>`.
+#         Claude Code and Pi: the identity hook or adapter composed it from the prompt token plus
+#         the handle. Codex and an OpenCode whose `/rename` takes an argument have no hook that
+#         can: once the screen shows the TUI
+#         ready, `terminal send --enter --text '/rename <label>--<handle>'`, then read the bar back. A name that still reads `worker-<task id>`,
+#         a generated title or a bare label is a failed step: rename again and re-read before
+#         dispatching. An OpenCode whose `/rename` opens a dialog and takes no argument, or any
+#         harness that cannot be renamed: the roster `Name` column is the only record, so mark it
+#         `(roster only)`, give the worker that name for its `Session:` trailer and say so once in
+#         the run report. A worker cannot run `/rename` on itself, so the brief cannot carry this.
+#     (b) READINESS. The agent's status footer (model, effort).
+#     (c) CREDENTIALS. An MCP tool listed as connected, or the worker's own first probe. No
+#         credentials: fix the machine and dispatch no work until the screen shows them.
+#     (d) PERMISSION MODE, against `orchestration.permission_modes.worker`: the status bar (Claude
+#         Code shows its bypass indicator) or the process argv (`ps -o args= -p <pid>`, the pid from
+#         `orca worktree ps`). A mismatch means the app's per-agent default arguments are wrong: fix
+#         them (orca-machine-setup.md §3.1) and relaunch before dispatching, and record the verified
+#         mode in the roster's `Mode` column. A worker in `auto` stalls on a prompt nobody sees after
+#         3 consecutive or 20 total classifier blocks; an edits-only mode stalls on its first Bash.
+#     A Pi worker also starts on the model in its OWN config: `--model` and `--effort` (so
+#       `default_model` and `model_overrides`) never reach it, and `worker-read` reports `model: null`.
+#       Read the model on its status bar and, when it differs, `terminal send --enter --text '/model <provider/id>'`.
 
-# 6 · send the prompt — the ONE verb that reaches a running session (G46).
+# 6 · send the prompt: the ONE verb that reaches a running session (G46).
 #     On the NATIVE path the spec already delivered this text, so step 6 is a reinforcement
 #     and a no-op when the spec carried everything. On the fallback path it is the whole
 #     payload. Keep the two byte-identical: the path nobody exercises is the one that breaks.
@@ -131,14 +142,13 @@ orca terminal send --terminal <handle> --enter \
   --json </dev/null
 #     The prompt MUST OPEN with `/<workflow-skill> <label> fleet worker`: that token is what the
 #     identity hook turns into the session name `<label>--<handle>` on Claude Code (there is no name
-#     flag here),
-#     and what the workflow skill reads to know it is a fleet worker. Everything after it is the
-#     brief pointer, the continuation sentence and, LAST, the `ROUTE-SCOPE:` sentence that tells the
-#     prompt hook which instruction sections to route (launch-seam.md §2.1b).
-#     On `agent_prompt_stalled`: the text is usually ALREADY queued. Read the screen or
+#     flag here), and what the workflow skill reads to know it is a fleet worker. Everything after
+#     it is the brief pointer, the continuation sentence and, LAST, the `ROUTE-SCOPE:` sentence that
+#     tells the prompt hook which instruction sections to route (launch-seam.md §2.1b).
+#     On `agent_prompt_stalled` the text is usually ALREADY queued. Read the screen or
 #     `worktree ps` before resending, or the worker gets the message twice (G52).
 
-# 7 · board card — ONE fleet-level card per worktree (§3)
+# 7 · board card: ONE fleet-level card per worktree (§3)
 orca worktree set --worktree <sel> --display-name "<slug> · round <N>" \
   --workspace-status in-progress \
   --comment "<slug> · round <N> · <n> workers · run <run_id> · roster: <ABS>/.session/orchestration/<slug>/roster.md" \
@@ -147,8 +157,8 @@ orca worktree set --worktree <sel> --display-name "<slug> · round <N>" \
 # 8 · wait INSIDE the turn, one waiter, rolling, ack in the same command that re-arms (§4)
 orca orchestration check --run <run_id> --wait --types worker_done,escalation,question \
   --timeout-ms 540000 --json </dev/null
-#     process the WHOLE batch → reply to every question → decide each terminal's fate → only then:
-orca orchestration check --run <run_id> --ack <delivery_id> --wait --types … --timeout-ms 540000 --json </dev/null
+#     process the WHOLE batch, reply to every question, decide each terminal's fate, only then:
+orca orchestration check --run <run_id> --ack <delivery_id> --wait --types ... --timeout-ms 540000 --json </dev/null
 
 # 9 · close immediately (verify integration first: git cherry / PR / tracker state)
 orca terminal read --terminal <handle> --screen --json </dev/null   # READ THE COST FOOTER FIRST (G54)
@@ -157,38 +167,37 @@ orca orchestration worker-release --dispatch <dispatch_id> --json </dev/null
 orca worktree rm --worktree id:<repoId>::<path> --force --json </dev/null && git worktree prune
 ```
 
-**`</dev/null` on every scripted call.** The binary reads stdin when stdin is attached, and inside a
-loop or a background shell that read never returns: the command hangs with no output, which is
-indistinguishable from slow work. Measured (G4): a loop creating tasks blocked on the FIRST call for
-minutes; with `</dev/null` every call finished in seconds.
+Put `</dev/null` on every scripted call. The binary reads stdin when it is attached, and inside a
+loop or a background shell that read never returns: the command hangs with no output, which looks
+like slow work (G4: a task-creating loop blocked for minutes on its first call, and finished in
+seconds with `</dev/null`).
 
-**Steps 3-4-5-6 are ONE indivisible operation.** Splitting them is how a worker ends up sitting
-idle: it has happened, once for hours (G32).
+Steps 3 to 6 (including 4b) are one indivisible operation. Splitting them is how a worker ends up
+idle (once for hours, G32) or unnamed.
 
 ---
 
 ## 1b · What the native path costs, and the custom-argv fallback
 
-The native launch is the only supervised one, and it is not free. What it gives up, and what to do
-about each:
+The native launch is the only supervised one, and it gives up some things:
 
 | Given up | Consequence | Compensation |
 |---|---|---|
-| the session-name flag, and any say over the tab title | the roster, the board card and the `Session:` commit trailer all key off the name, and the runtime titles the tab `worker-<task id>` (G71) | the prompt opens with `/<workflow-skill> <label> fleet worker` and the identity hook names a Claude Code session `<label>--<handle>` from it plus `ORCA_TERMINAL_HANDLE`; the conductor sends the rename verb to Codex, OpenCode v2.2 and Pi (step 5); the worker renames its own tab first and the conductor re-issues it (step 4b, §5). `references/session-identity.md` §2b |
+| the session-name flag, and any say over the tab title | the roster, the board card and the `Session:` commit trailer all key off the name, and the runtime titles the tab `worker-<task id>` (G71) | the prompt token and the identity hook (the adapter on Pi) name the session; the conductor renames the tab (step 4b, §5) and types the rename verb on Codex and an OpenCode whose `/rename` takes an argument (step 5). `references/session-identity.md` §2b |
 | environment variables in the launch line | a worker cannot be marked as a fleet worker by an exported variable | the brief and the prompt token carry it. `sprint-development` detects worker mode from them, not from the environment |
 | the prompt in the launch itself | the worker starts idle at its prompt | step 6: `terminal send` immediately after readiness. Until it lands, the worker has nothing to do |
 | a launch line that also loads the env file | MCP servers on every host load the worktree's `.env` themselves through the `.env` loader (a `.env` change needs a session restart); a CLI inside any worker depends on the MACHINE having it logged in, and nothing reports either gap | step 5: verify credentials on screen BEFORE dispatching work (G45) |
 
-**The custom-argv path** (`terminal create --command '<the line from launch.txt>'` plus
-`terminal wait --for tui-idle`) keeps exactly one role: it is the shape of the line a HUMAN pastes
-when there is no runtime, and the shape the conductor uses when it deliberately wants an unsupervised
-terminal it will drive by hand. On that path, and permanently:
+The custom-argv path (`terminal create --command '<the line from launch.txt>'` plus
+`terminal wait --for tui-idle`) has one role: it is the shape of the line a HUMAN pastes when there
+is no runtime, and the shape the conductor uses when it deliberately wants an unsupervised terminal
+it will drive by hand. On that path:
 
-- there is no supervision and no adoption. Do not attempt `worker-start --terminal` (G44).
-- a dispatch id is still available: the plain `dispatch` form creates a real dispatch row without
-  injecting anything (G48), and `dispatch-show --task <id> --preamble` prints the preamble — **in
-  text mode only, `--json` returns the object without it** (G47). Write that text to a file in the
-  conductor's scope and send the worker a one-line pointer to it with `terminal send`.
+- there is no supervision and no adoption, so do not attempt `worker-start --terminal` (G44).
+- a dispatch id is still available: the plain `dispatch` form creates a dispatch row without
+  injecting anything (G48), and `dispatch-show --task <id> --preamble` prints the preamble in text
+  mode only (`--json` omits it, G47). Write that text to a file in the conductor's scope and send
+  the worker a one-line pointer to it with `terminal send`.
 - `escalation` from such a terminal is REJECTED and the refusal comes back as a `status` message
   (G53). The brief tells those workers to send blockers as `status` with the subject prefixed
   `BLOCKED:`.
@@ -198,9 +207,10 @@ terminal it will drive by hand. On that path, and permanently:
 ```bash
 # unsupervised, by choice or because no native path is available on this machine
 orca terminal create --worktree <sel> --title "<label>" --command '<launch.txt line, verbatim>' --json </dev/null
-#     the handle comes back only now: rename the tab to `<label>--<handle>` (step 4b) once it does
+#     the handle comes back only now: rename the tab to `<label>--<handle>` (step 4b) once it does,
+#     and read the name back off the screen (step 5)
 orca terminal wait --terminal <handle> --for tui-idle --timeout-ms 180000 --json </dev/null
-orca orchestration dispatch --task <task_id> --to <handle> --json </dev/null             # → dispatch id, no injection
+orca orchestration dispatch --task <task_id> --to <handle> --json </dev/null             # dispatch id, no injection
 orca orchestration dispatch-show --task <task_id> --preamble </dev/null > <ABS>/.session/orchestration/<slug>/preamble-<label>.md
 #     NOTE the missing --json: this one call prints the preamble in TEXT mode only (G47)
 orca terminal send --terminal <handle> --enter --text '<one-line pointer to the preamble file and the brief>' --json </dev/null
@@ -210,7 +220,7 @@ orca terminal send --terminal <handle> --enter --text '<one-line pointer to the 
 
 ## 2 · The files a Run is made of
 
-All under `.session/orchestration/<slug>/` (gitignored, tier LOCAL — nothing downstream may depend
+All under `.session/orchestration/<slug>/` (gitignored, tier LOCAL: nothing downstream may depend
 on one existing on another machine):
 
 | File | Owner | What it holds |
@@ -226,8 +236,8 @@ on one existing on another machine):
 | `kickoff.md` | conductor | the handoff pointer for the next conductor |
 | `reports/<label>.md` | that worker | the long report; `worker_done` points at it |
 
-**One owner per file.** Two writers on one file in a same-checkout fleet is the collision this rule
-exists to prevent. A worker writes exactly one file: its own report.
+Each file has one owner, because two writers on one file in a same-checkout fleet collide. A worker
+writes exactly one file: its own report.
 
 The roster is what makes the phrasebook possible. One row per worker:
 
@@ -235,14 +245,13 @@ The roster is what makes the phrasebook possible. One row per worker:
 | label | KEY | name | task_id | dispatch_id | terminal | worktree | agent | model | mode | resume | status |
 ```
 
-Without `dispatch_id` you cannot address a supervised worker; without `terminal` you cannot steer or
-nudge one at all; without the `name` and the `resume` command you cannot bring it back after a
-crash. `name` is `<label>--<handle>`, the session name, tab title and `Session:` trailer at once;
-`mode` is the permission mode verified at readiness (§1 step 5). In a same-checkout fleet the roster
-is the ONLY place that per-worker recovery exists,
-because the board card is fleet-level there (§3). Update the row the moment any of those values is
-issued, not at the end of the round. Add the worker's cost to its row when you read the footer at
-close (gotcha G54): it is unreadable a second later.
+Without `dispatch_id` you cannot address a supervised worker, without `terminal` you cannot steer or
+nudge one, and without the `name` and the `resume` command you cannot bring it back after a crash.
+`name` is `<label>--<handle>`, the session name, tab title and `Session:` trailer at once; `mode` is
+the permission mode verified at readiness (§1 step 5). In a same-checkout fleet the roster is the
+only place per-worker recovery exists, because the board card is fleet-level there (§3). Update the
+row the moment any of those values is issued, not at the end of the round, and add the worker's cost
+when you read the footer at close (G54): it is unreadable a second later.
 
 ---
 
@@ -258,11 +267,10 @@ Workspace status ids match the board columns (defaults `todo`, `in-progress`, `i
 `completed`; a project with custom columns uses its own ids). Map them to the workflow's own stages,
 and say which mapping you used in `run.md` so a second conductor reads the board the same way.
 
-The comment is not "what I am doing". It is **how a dead session is recovered**. Which means the card
-has two shapes, decided by the topology, because the card is per-WORKTREE and a same-checkout fleet
-has one worktree for N workers (gotcha G50).
+The comment is how a dead session is recovered, not a description of what you are doing. The card
+is per-WORKTREE and a same-checkout fleet has one worktree for N workers (G50), so it has two shapes.
 
-**One worker per worktree** — the card carries that worker's whole recovery block:
+One worker per worktree: the card carries that worker's whole recovery block.
 
 ```
 <KEY> · Stage 2 execution
@@ -271,44 +279,41 @@ branch <branch>
 brief <ABS>/.session/orchestration/<slug>/W-<label>.md
 ```
 
-**N workers in one checkout** — one FLEET-level card, and per-worker recovery lives in the roster,
-which the card points at by absolute path:
+N workers in one checkout: one FLEET-level card, with per-worker recovery in the roster, which the
+card points at by absolute path.
 
 ```
 <slug> · round <N> · <n> workers · run <run_id> · roster: <ABS>/.session/orchestration/<slug>/roster.md
 ```
 
-The roster row is what makes that indirection safe, so it must carry, per worker, the name
-and the exact resume command for its harness. A fleet card that points at a roster with no resume
-column is a card that recovers nothing.
-
-Whoever opens the card can resume that exact session, directly or one hop away. Set the card at
+The roster row makes that indirection safe, so it carries each worker's name and the exact resume
+command for its harness; a card that points at a roster with no resume column recovers nothing.
+Whoever opens the card can then resume that exact session, directly or one hop away. Set the card at
 launch and at every round boundary, not only at the end.
 
 ---
 
 ## 4 · Waiting, and the three ways it goes wrong
 
-- **A wait is ROLLING, not one long block.** The harness caps a foreground command at 600 s while a
+- A wait is rolling, not one long block. The harness caps a foreground command at 600 s while a
   round runs tens of minutes, so a single `--timeout-ms 1800000` is killed mid-wait and a timeout
-  becomes indistinguishable from a dead mailbox (gotcha G51). Wait at **`--timeout-ms 540000`** and
+  becomes indistinguishable from a dead mailbox (gotcha G51). Wait at `--timeout-ms 540000` and
   re-arm, with the verified ack in the SAME command, as many times as the round needs. A longer
-  single wait is acceptable only as a background job the harness itself tracks and notifies on; it is
-  never a shell `&`. The runtime's own mailbox notice remains the primary wake-up signal — the rolling
-  wait is what keeps the conductor's turn open, not what discovers the mail.
-- **One actionable waiter per Run.** A waiter started as a shell background job holds the slot with
+  single wait is acceptable only as a background job the harness itself tracks and notifies on,
+  never a shell `&`. The runtime's mailbox notice stays the primary wake-up signal; the rolling wait
+  only keeps the conductor's turn open.
+- One actionable waiter per Run. A waiter started as a shell background job holds the slot with
   nobody listening, and `check` then answers with a "waiter exists" failure instead of a batch. A
-  silent mailbox and a blocked one look identical from the conductor's side. Recover by finding and
-  killing the stale `orchestration check` process, then re-arm.
-- **An unacknowledged batch replays forever and hides everything behind it.** Delivery is FIFO: while
-  a batch is unacknowledged, `check` keeps returning that same batch and newer messages queue behind
-  it, invisible. Worse: because the mailbox already counted as having unread mail, **the runtime does
-  not emit a new notice** (it notifies on empty → non-empty). Measured (G2): an ack inside a
-  compound command exited non-zero, nobody checked, and messages piled up for hours.
-- **Never build a monitor.** The runtime injects a notice into the conductor's session when mail
-  arrives. A homemade monitor competes with that notice, can null it, arrives late by construction,
-  and triggers on echoes — the conductor's own messages are visible on the worker's screen, so a
-  grep for a completion token reads them back as a report.
+  silent mailbox and a blocked one look identical. Recover by finding and killing the stale
+  `orchestration check` process, then re-arm.
+- An unacknowledged batch replays forever and hides everything behind it. Delivery is FIFO: while
+  a batch is unacknowledged, `check` keeps returning it and newer messages queue behind it, and the
+  runtime emits no new notice because it notifies only on empty to non-empty. Measured (G2): an ack
+  inside a compound command exited non-zero, nobody checked, and messages piled up for hours.
+- Do not build a monitor. The runtime injects a notice into the conductor's session when mail
+  arrives. A homemade monitor competes with it, arrives late, and triggers on echoes: the
+  conductor's own messages are visible on the worker's screen, so a grep for a completion token
+  reads them back as a report.
 - `check --wait` emits JSON keepalive lines to stderr every 15 s; filter with
   `jq 'select(._keepalive|not)'` when merging streams. A keepalive is not a heartbeat message.
 
@@ -323,65 +328,66 @@ Answering a blocking question uses the message id from the pending batch
 (`orca orchestration reply --id <msg_id> --body "<text>" --json </dev/null`). A reply body has been
 observed arriving empty on the worker side; when a reply carries substance, duplicate it with
 `orca terminal send --terminal <handle> --text '<same text>' --enter --json </dev/null` and say in
-the body that you did — **only while the text still fits in a sentence or two.** Past that, the
-duplicate is prose through the lossy verb (hard rule 4): write the answer to a file in the Run scope
-and send the one-line pointer instead, then have the worker state the decision back in its own words
+the body that you did, but only while the text still fits in a sentence or two. Past that, the
+duplicate is prose through the lossy verb (hard rule 4): write the answer to a file in the Run scope,
+send the one-line pointer instead, and have the worker state the decision back in its own words
 before it acts on it.
 
 **An escalation is relayed, never sat on.** A worker sends you everything that needs a person: what
 `agentic-dev-core/references/decision-protocol.md` §5 escalates (§5.1 applied) and every error or
 blocker it could not clear inside its brief (`references/worker-contract.md` rule 16). For each one:
 
-1. **A technical call inside the approved plan** → decide it yourself, reply, and report it as
-   DECIDED with the option it beat. That is not the human's to answer.
-2. **Anything else** → relay it to the human, informed (what the record says, the options with value
-   and cost, one recommendation): the end-of-turn sweep for a small item, the `mkd` deck for a heavy
-   one, at once when it blocks the worker
+1. A technical call inside the approved plan is yours: decide it, reply, and report it as DECIDED
+   with the option it beat. It is not the human's to answer.
+2. Anything else goes to the human, informed (what the record says, the options with value and cost,
+   one recommendation): the end-of-turn sweep for a small item, the `mkd` deck for a heavy one, at
+   once when it blocks the worker
    (`agentic-dev-core/references/decision-elicitation-doctrine.md` §0, §1, §7). A product question
    under `decision_authority.product: decide` goes to the scored decision subagent of
-   `decision-protocol.md` §5.1 instead; an unattended routine conductor (`/autonomous-delivery`)
-   parks the item and reports it, because nobody is there to relay to.
-3. **Reply by the message id** from the pending batch (`reply --id`, above), so the worker's blocking
+   `decision-protocol.md` §5.1 instead. An unattended routine conductor (`/autonomous-delivery`)
+   never waits for a person: it parks the item and reports it, because nobody is there to relay to.
+3. Reply by the message id from the pending batch (`reply --id`, above), so the worker's blocking
    `ask` resolves, and record the question and the answer in the run's decision file: an owner
    answer goes to the run's decision log (`.session/decisions/<slug>-<date>.json`, or the log the
    workflow keeps), the record `agentic-dev-core/references/decision-protocol.md` §6 writes and §2
-   searches first.
+   searches first. The conductor's own calls go to the run's decision log (`SKILL.md` `## Decision log`); owner
+   answers stay in the decision file above.
 
 A worker that reports it asked the human directly (the human typed into its session, or its brief
-granted it) gets the same record entry. **A middle conductor** (one another conductor launched, G77)
-is a worker of this rule: it relays upward to its own launcher the same way, and only the session the
+granted it) gets the same record entry. A middle conductor (one another conductor launched, G77) is
+a worker of this rule: it relays upward to its own launcher the same way, and only the session the
 human types into asks the human.
 
-**Mail is not a nudge — and a nudge is not the message.** `orchestration send --to <terminal handle>`
+**Mail is not a nudge, and a nudge is not the message.** `orchestration send --to <terminal handle>`
 queues mail that a working agent never reads, because nothing tells it to run `check`, and it returns
-`ok: true` exactly like the call that works (gotcha G46). The only verb that reaches a RUNNING session
-is `terminal send`. That does NOT make it the channel: the message itself goes to a mailbox address
+`ok: true` exactly like the call that works (gotcha G46). The only verb that reaches a RUNNING
+session is `terminal send`, which is not the channel: the message goes to a mailbox address
 (`run:<id>`, `dispatch:<id>`), or into a file with a one-line pointer when it runs long, and
 `terminal send` carries at most one sentence telling the busy worker to go read it
 ("check your mailbox: `<subject>`"). It truncates silently and keeps only the tail (hard rule 4,
-G60, G64), so a nudge that grows into the instruction is how the instruction gets lost. Full
-assignment: `references/channel-discipline.md`.
+G60, G64), so a nudge that grows into the instruction loses it. Full assignment:
+`references/channel-discipline.md`.
 
 ---
 
-## 5 · Liveness sweep (Orca-native signals FIRST)
+## 5 · Liveness sweep (Orca-native signals first)
 
-Run the sweep on a cadence YOU choose (at each round boundary, or when the owner asks), never as a
-background monitor. Order matters: native signals are cheap and truthful; the token sweep is the
-fallback that also works with no runtime.
+Run the sweep on a cadence you choose (at each round boundary, or when the owner asks), never as a
+background monitor. Native signals come first because they are cheap and truthful; the token sweep
+is the fallback that also works with no runtime.
 
-1. `orca orchestration worker-list --run <run_id> --json </dev/null` — terminal-state accounting per
+1. `orca orchestration worker-list --run <run_id> --json </dev/null`: terminal-state accounting per
    worker (`active`, `reclaimable`, `retained`, `release_pending`, `release_unknown`, `released`).
-   Terminal state is process accounting, reported SEPARATELY from task status: a completed task can
+   Terminal state is process accounting, reported separately from task status: a completed task can
    still own a live terminal.
-2. `orca orchestration worker-show --dispatch <id> --json </dev/null` — read `observation.agentWait`.
+2. `orca orchestration worker-show --dispatch <id> --json </dev/null`: read `observation.agentWait`.
    It names a worker parked on a prompt only a human can answer, with the evidence that proved it.
-   `null` means the runtime looked and found no wait. An **absent** field means it never looked, and
-   never means the worker is not waiting. **A waiting worker is healthy, not failed.**
-3. `orca worktree ps --json </dev/null` — the compact cross-worktree summary; the fastest read of
+   `null` means the runtime looked and found no wait. An absent field means it never looked, and
+   never means the worker is not waiting. A waiting worker is healthy, not failed.
+3. `orca worktree ps --json </dev/null`: the compact cross-worktree summary, the fastest read of
    "how many are alive and where".
-4. `orca terminal read --terminal <handle> --screen --json </dev/null` — for a worker that answers
-   nothing. This is the only way to see a **hung interactive selector** (an "Enter to select" prompt),
+4. `orca terminal read --terminal <handle> --screen --json </dev/null`: for a worker that answers
+   nothing. It is the only way to see a hung interactive selector (an "Enter to select" prompt),
    which produces no message because the worker does not know it is stuck.
 5. Only then, the non-runtime fallback: grep the workflow's own blocked tokens in the session memory
    the workflow skill already writes, plus staleness (no progress line in more than ~20 minutes).
@@ -390,23 +396,24 @@ fallback that also works with no runtime.
    had not opened at launch only takes the label once it has (G72). After a runtime restart the
    handles in the titles are stale (G22): match each tab on its label (the part before the last
    `--term_`), update the roster's `terminal` column, and rename with the new handle.
-   The tab is only half of it: each resumed worker's harness SESSION name still carries the old
-   handle, and on Claude Code too the identity hook will not re-title it, because it names a session
-   only from a prompt carrying the fleet token and a resumed session receives none. Once the
-   worker's screen shows it ready, send the rename verb of step 5 on every harness, Claude Code
-   included (`terminal send --enter --text '/rename <label>--<new handle>'`; Pi `/name`), and read
-   the bar back. On Claude Code that makes the name human-set, so the hook leaves it alone from then
-   on, which is what a resume wants. OpenCode v1, or a harness that cannot be renamed: mark the row
-   `(roster only)` as at launch. Update the roster's `name` column (keep the old name in the row's
-   notes) BEFORE the first message to the resumed worker, and give it the new name in that message
-   on a harness with no identity hook; every `Session:` trailer after the resume carries the new
-   name, commits made before keep the old one. Do this once per restart, not every sweep.
+   The tab is half of it. A resumed worker's harness SESSION name still carries the old handle, and
+   on Claude Code the identity hook will not re-title it, because it names a session only from a
+   prompt carrying the fleet token and a resumed session receives none. Once the worker's screen
+   shows it ready, send the rename verb of step 5 on every harness, Claude Code included
+   (`terminal send --enter --text '/rename <label>--<new handle>'`; Pi `/name`), and read the bar
+   back. On Claude Code that makes the name human-set, so the hook leaves it alone from then on,
+   which is what a resume wants. An OpenCode whose `/rename` takes no argument, or any harness that
+   cannot be renamed: mark the row `(roster only)` as at launch. Update the roster's `name` column
+   (keep the old name in the row's notes) BEFORE the first message to the resumed worker, and give
+   it the new name in that message on a harness with no identity hook. Every `Session:` trailer
+   after the resume carries the new name; commits made before keep the old one. Do this once per
+   restart, not every sweep.
 
 ### Stalled is not idle, and the prompt line cannot tell them apart
 
-The prompt box is ALWAYS drawn, so a screen read that greps for the prompt character reports "idle"
-for every worker, always — including one that is working (gotcha G55). The signal is the **spinner
-line** above the prompt box (`✽ …ing… (Nm Ns · ↓ N tokens)`):
+The prompt box is always drawn, so a screen read that greps for the prompt character reports "idle"
+for every worker, including one that is working (gotcha G55). The signal is the spinner line above
+the prompt box (`✽ …ing… (Nm Ns · ↓ N tokens)`):
 
 | Spinner on screen | `worker_done` sent | Verdict |
 |---|---|---|
@@ -415,17 +422,17 @@ line** above the prompt box (`✽ …ing… (Nm Ns · ↓ N tokens)`):
 | no | yes | **idle**, finished. Read its cost footer, then close it |
 
 A stalled worker is nudged with `terminal send`, not with mail (§4), and the nudge repeats the
-continuation sentence rather than re-explaining the stage. Corroborate the verdict with the worker's
+continuation sentence instead of re-explaining the stage. Corroborate the verdict with the worker's
 own progress timestamp before acting: a worker mid-`ask` is waiting, not stalled, and waiting is
 healthy.
 
-Screen-read traps, all paid for: the lines arrive in `result.terminal.tail` (not `result.lines`); a
-parser that looks for `lines` returns empty forever, silently. The TUI status bar uses non-breaking
-spaces, so a grep including a space after a label never matches. `result.terminal.status == exited`
-is usually the conductor having closed that terminal itself. And if the runtime restarts, **handles
-change** while the sessions survive as separate processes: re-discover with
-`orca terminal list --worktree <sel> --json </dev/null`, then rename each tab AND each session with
-the new handle (step 6 above).
+Screen-read traps, all paid for: the lines arrive in `result.terminal.tail` (not `result.lines`), and
+a parser that looks for `lines` returns empty forever, silently. The TUI status bar uses
+non-breaking spaces, so a grep with a space after a label never matches.
+`result.terminal.status == exited` is usually the conductor having closed that terminal itself. If
+the runtime restarts, handles change while the sessions survive as separate processes: re-discover
+with `orca terminal list --worktree <sel> --json </dev/null`, then rename each tab AND each session
+with the new handle (item 6 above).
 
 `terminal read` without `--screen` returns accumulated output with escapes stripped, so a repainting
 TUI comes back as stacked fragments. `--screen` and `--cursor` are mutually exclusive.
@@ -434,51 +441,51 @@ TUI comes back as stacked fragments. `--screen` and `--cursor` are mutually excl
 
 ## 6 · Closing, in the same turn
 
-**Verify integration BEFORE closing anything**: commits landed (`git cherry`), PR opened where the
-strategy asks for one, tracker artifacts in their declared status. A released worker whose work never
-integrated is the one failure that cannot be recovered from the board.
+Verify integration BEFORE closing anything: commits landed (`git cherry`), PR opened where the
+strategy asks for one, tracker artifacts in their declared status. A released worker whose work
+never integrated is the one failure that cannot be recovered from the board.
 
-**Read the cost footer BEFORE closing.** A worker's token and context usage exists only on its own
+Read the cost footer BEFORE closing. A worker's token and context usage exists only on its own
 screen and no command reports it, so closing the terminal destroys the number (gotcha G54). One
 `terminal read --screen`, the numbers into `roster.md`, then close.
 
 | Case | Close with |
 |---|---|
-| supervised (native launch, §1) | `orca orchestration worker-release --dispatch <id> --json </dev/null` — closes that worker's terminal and no other; idempotent; an inspectable archive is preserved first, so `worker-read` still answers afterwards |
-| needs to stay open for debugging | `orca orchestration worker-retain --dispatch <id>` — a durable exception a later explicit release clears |
-| uncertain / unreachable | `orca orchestration worker-abandon --dispatch <id>` — fences it WITHOUT claiming it stopped, and touches no resource |
-| unsupervised (custom-argv launch, §1b) | COUNT the terminals in that worktree first, then `orca terminal close --terminal <handle> --tab --json </dev/null`. **Never** `orca terminal stop --worktree <sel>`: its radius is the whole worktree |
+| supervised (native launch, §1) | `orca orchestration worker-release --dispatch <id> --json </dev/null`: closes that worker's terminal and no other; idempotent; an inspectable archive is preserved first, so `worker-read` still answers afterwards |
+| needs to stay open for debugging | `orca orchestration worker-retain --dispatch <id>`: a durable exception a later explicit release clears |
+| uncertain / unreachable | `orca orchestration worker-abandon --dispatch <id>`: fences it WITHOUT claiming it stopped, and touches no resource |
+| unsupervised (custom-argv launch, §1b) | COUNT the terminals in that worktree first, then `orca terminal close --terminal <handle> --tab --json </dev/null`. Never `orca terminal stop --worktree <sel>`: its radius is the whole worktree |
 
 ### Orphan audit before removing a worktree
 
-Removing a worktree deletes everything gitignored inside it, silently and with exit 0. In THIS repo
+Removing a worktree deletes everything gitignored inside it, silently and with exit 0. In this repo
 that means the env file, the `.vercel/` link, any local session scope, the tracker cache, the
 `.next/` build cache and installed dependencies. Before `worktree rm`:
 
-1. `git -C <wt> status --porcelain` — uncommitted work? Commit it or copy it out.
-2. `git -C <wt> cherry -v origin/<base>` — commits not in the base? Push or integrate first.
-3. `bun run worktree:audit <wt>` — classifies every gitignored file as STATE, CACHE, DISPOSABLE or
+1. `git -C <wt> status --porcelain`: uncommitted work? Commit it or copy it out.
+2. `git -C <wt> cherry -v origin/<base>`: commits not in the base? Push or integrate first.
+3. `bun run worktree:audit <wt>` classifies every gitignored file as STATE, CACHE, DISPOSABLE or
    UNKNOWN (`references/provisioning.md` §5) and exits 1 while STATE or UNKNOWN is only in the
    worktree. `--rescue` copies STATE to the same path under `<<PRIMARY_ROOT>>`, never overwriting;
    a CONFLICT line (the primary holds different bytes) and every UNKNOWN entry are decided by hand.
    Exit 0 is the gate. Test-run output and browser session material are DISPOSABLE and never rescued.
-4. Is anyone going to RESUME this worker's session? Removing the worktree also ends that. A harness
-   finds its sessions by working directory (Claude Code keeps transcripts under a folder named after
-   the path), so once the directory is gone the resume command in the roster (`claude --resume
-   <label>`, `codex resume <label>`) has nowhere to run and the owner cannot bring the session back
-   after a crash or a restart. Keep the worktree while the session may still be resumed; when you do
-   remove it, mark the roster row `resume: gone (worktree removed)` so nobody tries.
+4. Will anyone RESUME this worker's session? A harness finds its sessions by working directory
+   (Claude Code keeps transcripts under a folder named after the path), so once the directory is gone
+   the roster's resume command (`claude --resume <label>`, `codex resume <label>`) has nowhere to
+   run and the owner cannot bring the session back after a crash or a restart. Keep the worktree
+   while the session may still be resumed; when you do remove it, mark the roster row
+   `resume: gone (worktree removed)` so nobody tries.
 5. Only then remove, and `git worktree prune`. From the CLI that is `orca worktree rm --run-hooks`:
    without the flag Orca skips the committed `orca.yaml` archive hook (which runs the same rescue).
 
 Removing is part of closing, not a later chore: `worker-release` closes the agent terminal only, so
-without this step the worktree, its `Setup` terminal and its local branch pile up on disk. Removable
-when ALL hold: its HEAD is an ancestor of the integration branch, `git status --porcelain` shows
-nothing that is not disposable, `bun run worktree:audit` exits 0, nobody will resume the session (else
-write why in `roster.md`, item 4 above), and no terminal other than `Setup` is left in it. A worktree
-some other session created, one not in your roster, is not yours to remove: report it to the owner
-with the audit. End-of-run check before the final report: `git worktree list` shows only the primary
-checkout plus the worktrees `roster.md` explains; anything else is a leak, close it or name it.
+without this step the worktree, its `Setup` terminal and its local branch pile up on disk. A worktree
+is removable when its HEAD is an ancestor of the integration branch, `git status --porcelain` shows
+nothing that is not disposable, `bun run worktree:audit` exits 0, nobody will resume the session
+(else write why in `roster.md`, item 4 above), and no terminal other than `Setup` is left in it. A
+worktree some other session created, one not in your roster, is not yours to remove: report it to
+the owner with the audit. Before the final report, `git worktree list` shows only the primary
+checkout plus the worktrees `roster.md` explains; anything else is a leak, so close it or name it.
 
 Mechanics and the untracked-files gotcha: `git-flow-master/references/worktrees.md`.
 
@@ -488,33 +495,34 @@ Mechanics and the untracked-files gotcha: `git-flow-master/references/worktrees.
 
 A fleet has exactly one writer for anything shared. These stay with the conductor:
 
-- **Schema migrations on a shared database.** Applying a migration to a Supabase project every
+- Schema migrations on a shared database. Applying a migration to a Supabase project every
   worker reads is irreversible and hits all of them at once. The conductor applies it, after taking
   the migration number from the live ledger (never from a branch's directory listing: a sibling's
-  unmerged migration may already own the next number), and broadcasts the result. A worker that needs
-  one sends `BLOCKED: migration` with the SQL in its report. The gate and its hazards are canon in
-  `/autonomous-delivery` (Migration gate) and apply to a supervised fleet unchanged.
-- **Generated output from a shared live instance** (Supabase types, `bun run api:sync` into
-  `api/schemas/`). One writer, after any migration lands; a worker reads the result and never commits
-  a regeneration that absorbed a sibling's unmerged schema.
-- **Merges into the integration branch and the staging deploy.** Each worker opens its own PR and
+  unmerged migration may already own the next number), and broadcasts the result. A worker that
+  needs one sends `BLOCKED: migration` with the SQL in its report. The gate and its hazards are
+  canon in `/autonomous-delivery` (Migration gate) and apply to a supervised fleet unchanged.
+- Generated output from a shared live instance (Supabase types, `bun run api:sync` into
+  `api/schemas/`). One writer, after any migration lands; a worker reads the result and never
+  commits a regeneration that absorbed a sibling's unmerged schema.
+- Merges into the integration branch and the staging deploy. Each worker opens its own PR and
   stops there. The conductor merges in dependency order (`.context/dev-roadmap.md` holds the edges),
-  one at a time, and verifies each deploy at the destination (Critical Rule #16) before the next. Two
-  workers deploying to one staging environment is a race neither can see.
-- **Tracker pull and push at fleet altitude**: the sprint report
-  (`.context/reports/SPRINT-{N}-DEVELOPMENT.md`), cache hydration (`bun run context:hydrate`) and any
-  bulk sync. A worker syncs and transitions its own ticket; it does not re-hydrate the whole cache.
-- **The automation identity.** One identity = one live browser: when two workers need the same
-  `testing.automation_identity` slot, the conductor serializes their live-UI validation or declares a
-  second identity for one of them (`sprint-development/references/live-ui-validation.md` §3.5).
-- **Generated registries** that every worker would otherwise rewrite (`.agents/skills/REGISTRY.md`,
+  one at a time, and verifies each deploy at the destination (Critical Rule #16) before the next.
+  Two workers deploying to one staging environment is a race neither can see.
+- Tracker pull and push at fleet altitude: the sprint report
+  (`.context/reports/SPRINT-{N}-DEVELOPMENT.md`), cache hydration (`bun run context:hydrate`) and
+  any bulk sync. A worker syncs and transitions its own ticket; it does not re-hydrate the whole
+  cache.
+- The automation identity. One identity is one live browser: when two workers need the same
+  `testing.automation_identity` slot, the conductor serializes their live-UI validation or declares
+  a second identity for one of them (`sprint-development/references/live-ui-validation.md` §3.5).
+- Generated registries that every worker would otherwise rewrite (`.agents/skills/REGISTRY.md`,
   the generated harness surfaces of `bun run agents:compat`). The conductor regenerates them when it
   integrates; a generated-file conflict is regenerated, never hand-merged.
-- **Arbitrating claims** (`references/claims-protocol.md`).
+- Arbitrating claims (`references/claims-protocol.md`).
 
 ---
 
-## 8 · Conductor → conductor handoff
+## 8 · Conductor to conductor handoff
 
 A Run outlives the session that created it. To take over:
 
@@ -524,9 +532,9 @@ orca orchestration task-list --run <run_id> --brief --json </dev/null
 orca orchestration worker-list --run <run_id> --json </dev/null
 ```
 
-Never guess the Run from `run-list`: several Runs from OTHER repos coexist on one machine.
-`orca orchestration run-current --json </dev/null` tells you what this terminal is bound to, and
-returns a null Run in an unbound terminal.
+Take the Run from `run.md`, not from `run-list`: Runs from OTHER repos coexist on one machine.
+`orca orchestration run-current --json </dev/null` tells you what this terminal is bound to (a null
+Run in an unbound terminal).
 
 `kickoff.md` is the handoff pointer, written by the outgoing conductor and loadable as-is by the
 incoming one: the Run id, the topology, which rounds closed, what is in flight with its dispatch
@@ -537,7 +545,7 @@ files. One file, no archaeology.
 
 ## 9 · Cross-session memory
 
-Three files in the scope, one owner each, appended never rewritten:
+Three files in the scope, one owner each, appended and never rewritten:
 
 | File | What goes in | What does NOT |
 |---|---|---|
@@ -545,7 +553,11 @@ Three files in the scope, one owner each, appended never rewritten:
 | `skill-improvements.md` | gaps in the skills themselves: a missing step, a wrong order, a stage that has no verifier | bug reports about the product |
 | `kickoff.md` | the handoff pointer above | a diary |
 
-Harvest them at the close of the run: `skill-improvements.md` is the input for the next edit of
-the skills it names (through the owning skill, never a drive-by in a story branch), and
-`learnings.md` for the next run's `COMMON.md`. Neither is a
-deliverable; anything the team needs lives in the tracker.
+Harvest at the close of the run. Call the Skill tool with "retro" and give it the run's scope
+and have it write its ranked candidates into `learnings.md` and `skill-improvements.md`, applying
+none of them: a conductor with nobody at the keyboard files them for the launcher, and a person
+present reads them in order. When `retro` is not installed, do the harvest inline from the same
+two files and say so in the run report; it never blocks the close. `skill-improvements.md` is the
+input for the next edit of the skills it names (through the owning skill, never a drive-by in a
+story branch), and `learnings.md` for the next run's `COMMON.md`. Neither is a deliverable;
+anything the team needs lives in the tracker.
