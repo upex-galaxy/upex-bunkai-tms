@@ -29,12 +29,16 @@ export const DISPLAY_NAME_COPY = {
   saveFailed: 'We couldn\'t save your name. Try again.',
   removeFailed: 'We couldn\'t remove your name. Try again.',
   sessionExpired: 'Your session has expired. Sign in again to save your name.',
+  sessionExpiredRemove: 'Your session has expired. Sign in again to remove your name.',
 } as const;
 
 // Outer characters trimmed before anything else (ruling PO3): every Unicode
 // whitespace (`\s` under the `u` flag covers NBSP, U+3000, tabs, line breaks
-// and U+FEFF) plus the zero-width characters `\s` does not cover.
-const EDGE_RUN = /^[\s\u200B-\u200D\u2060]+|[\s\u200B-\u200D\u2060]+$/gu;
+// and U+FEFF) plus the zero-width characters `\s` does not cover. All of them
+// are single UTF-16 units, so the trim scans by index. Tested one character at
+// a time on purpose: an anchored `[...]+$` regex backtracks quadratically on a
+// long inner whitespace run (BK-1949 review), and this runs on request bodies.
+const EDGE_CHAR = /[\s\u200B-\u200D\u2060]/u;
 
 // Refused anywhere inside the trimmed name (ruling PO4): every C0/C1 control
 // character (newline, tab, ...), the Unicode line and paragraph separators,
@@ -42,8 +46,20 @@ const EDGE_RUN = /^[\s\u200B-\u200D\u2060]+|[\s\u200B-\u200D\u2060]+$/gu;
 // text around the name. Ordinary right-to-left letters are NOT in this set.
 const FORBIDDEN = /[\p{Cc}\u2028\u2029\u202A-\u202E\u2066-\u2069]/u;
 
+// Raw input longer than this is refused before any other work, so a huge body
+// costs one length check. Far above 80 code points plus any honest padding.
+export const DISPLAY_NAME_MAX_RAW_LENGTH = 1000;
+
 export function trimDisplayName(raw: string): string {
-  return raw.replace(EDGE_RUN, '');
+  let start = 0;
+  let end = raw.length;
+  while (start < end && EDGE_CHAR.test(raw[start])) {
+    start += 1;
+  }
+  while (end > start && EDGE_CHAR.test(raw[end - 1])) {
+    end -= 1;
+  }
+  return raw.slice(start, end);
 }
 
 // Length in code points, not UTF-16 units: an emoji counts once (ruling PO3).
@@ -58,6 +74,9 @@ export type DisplayNameParse
 export function parseDisplayName(raw: unknown): DisplayNameParse {
   if (typeof raw !== 'string') {
     return { ok: false, message: DISPLAY_NAME_COPY.notText };
+  }
+  if (raw.length > DISPLAY_NAME_MAX_RAW_LENGTH) {
+    return { ok: false, message: DISPLAY_NAME_COPY.tooLong };
   }
   const value = trimDisplayName(raw);
   if (value.length === 0) {

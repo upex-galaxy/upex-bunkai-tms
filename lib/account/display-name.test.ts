@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   countCodePoints,
   DISPLAY_NAME_COPY,
+  DISPLAY_NAME_MAX_RAW_LENGTH,
   parseDisplayName,
   readOwnDisplayName,
   readProviderName,
@@ -133,6 +134,26 @@ describe('parseDisplayName — refused names', () => {
 
   it('states the empty message the AC names (PO5)', () => {
     expect(DISPLAY_NAME_COPY.empty).toContain('The display name cannot be empty');
+  });
+});
+
+describe('parseDisplayName — hostile input size (BK-1949 review)', () => {
+  it('accepts 80 characters padded with spaces up to the raw cap', () => {
+    const padded = `${' '.repeat(460)}${'A'.repeat(80)}${' '.repeat(460)}`;
+    expect(padded.length).toBe(DISPLAY_NAME_MAX_RAW_LENGTH);
+    expectSaved(padded, 'A'.repeat(80));
+  });
+
+  it('refuses raw input longer than the cap with the length message, before trimming', () => {
+    expectRefused(' '.repeat(DISPLAY_NAME_MAX_RAW_LENGTH + 1), DISPLAY_NAME_COPY.tooLong);
+  });
+
+  it('trims in linear time: a long inner whitespace run is cheap', () => {
+    const hostile = `a${' '.repeat(200_000)}b`;
+    const started = performance.now();
+    expect(trimDisplayName(hostile)).toBe(hostile);
+    // The anchored-regex version took about 2.5 s at 80k spaces.
+    expect(performance.now() - started).toBeLessThan(200);
   });
 });
 
