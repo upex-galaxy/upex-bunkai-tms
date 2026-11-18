@@ -63,7 +63,7 @@ Each line is the rule's binding text, verbatim (`…` joins excerpts). Full text
 
 ## PROJECT RULES (BUNKAI)
 
-Bunkai rules NO-LOCAL-BUILD, GUARDED-TESTS, MVP-ONE-DATABASE, ONE-PR-PER-STORY, LIVE-UI-FIRST and DESIGN-FIDELITY bind mid-task. Read `.agents/instructions/agent-project.md` before a build, test, migration, PR or UI work.
+Bunkai rules NO-LOCAL-BUILD, GUARDED-TESTS, MVP-ONE-DATABASE, ONE-PR-PER-STORY, LIVE-UI-FIRST and DESIGN-FIDELITY bind mid-task. Read `agent-project.md` before a build, test, migration, PR or UI work.
 
 ---
 
