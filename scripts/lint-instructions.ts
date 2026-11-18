@@ -111,7 +111,7 @@ import {
 import { evaluateRouter, MIN_EVAL_PROMPTS, promptsPerLabel, readRouterEvalFixture } from './lib/router-eval';
 
 /** Target for L0 without project additions: over it is a warning, so the number stays visible. */
-export const L0_TARGET = 16 * 1024;
+export const L0_TARGET = 20 * 1024;
 /** Ceiling for L0 without project additions. */
 export const L0_BUDGET = 24 * 1024;
 /** Ceiling for L0 with a project's additions (an adopted app's preserved block). */

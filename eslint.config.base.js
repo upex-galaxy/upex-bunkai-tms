@@ -18,7 +18,12 @@
  * Every scoped block exported here (a SCREAMING_SNAKE `export const` other than
  * `BASE_ESLINT_OPTIONS`) must be wired into `eslint.config.js`:
  * `bun run agents:compat:check` fails, group `lint`, on one that is not.
+ * `GUARD_ENFORCEMENT_LEVEL` and `GUARD_LAYERS` are values the GUARD blocks read,
+ * not blocks, and are exempt from that check.
  */
+import guardPlugin, { GUARD_LAYERS } from './guard-eslint-plugin.js';
+
+export { GUARD_LAYERS, guardPlugin };
 
 /**
  * Options handed to `antfu()`. Spread it, then override: the project's config
@@ -137,10 +142,15 @@ export const BASE_ESLINT_OPTIONS = {
  * re-exec'd mid-run). `api/`, `src/`, `config/` and `tests/` are listed for
  * the scaffolded project this config travels into; they are equally absent
  * at re-exec time.
+ *
+ * `ts/no-unnecessary-type-assertion` is off here: the casts in `cli/` (`NodeJS.ProcessEnv`, `ErrnoException`) are
+ * needed or redundant depending on the host's type packages, so a disable directive would warn as unused in the hosts
+ * where the cast is needed and error in the others.
  */
 export const CLI_IMPORT_CLOSURE = {
   files: ['cli/**/*.ts'],
   rules: {
+    'ts/no-unnecessary-type-assertion': 'off',
     'no-restricted-imports': ['error', {
       patterns: [{
         group: [
@@ -178,3 +188,41 @@ export const CLI_IMPORT_CLOSURE = {
     }],
   },
 };
+
+/**
+ * --- GUARD (product architecture, agentic-dev-core/references/guard-architecture.md) ---
+ *
+ * Severity of every GUARD rule: `warn` this release, `error` the next. Mirrored
+ * in `scripts/guard-manifest.ts`.
+ */
+export const GUARD_ENFORCEMENT_LEVEL = 'error';
+
+/**
+ * The two `guard/*` rules on every TypeScript file. They are layer-aware
+ * inside, so one block is enough; a file in no layer is ignored. `settings`
+ * carries the default map a project overrides (see `GUARD_LAYERS`).
+ */
+export const GUARD_RULES = {
+  files: ['**/*.{ts,tsx}'],
+  plugins: { guard: guardPlugin },
+  settings: { guard: { layers: GUARD_LAYERS } },
+  rules: {
+    'guard/layer-imports': GUARD_ENFORCEMENT_LEVEL,
+    'guard/feature-door': GUARD_ENFORCEMENT_LEVEL,
+  },
+};
+
+/**
+ * Size limits that keep a feature reviewable: at most 2 positional params on
+ * features and adapters, at most 400 lines per feature file.
+ */
+export const GUARD_SHAPE = [
+  {
+    files: ['src/features/**/*.{ts,tsx}', 'src/adapters/**/*.{ts,tsx}'],
+    rules: { 'max-params': [GUARD_ENFORCEMENT_LEVEL, 2] },
+  },
+  {
+    files: ['src/features/**/*.{ts,tsx}'],
+    rules: { 'max-lines': [GUARD_ENFORCEMENT_LEVEL, { max: 400, skipBlankLines: true, skipComments: true }] },
+  },
+];

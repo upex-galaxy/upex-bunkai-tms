@@ -197,6 +197,14 @@ export interface ParityInput {
    * `tsconfig.json`, say); `merge` instead, saying why.
    */
   adopting?: boolean
+  /** Upstream's unedited copies of boilerplate-only files the run removed (`cleanupBoilerplateCopies`). */
+  boilerplateCopiesRemoved?: string[]
+  /** Boilerplate-only paths the project holds that the cleanup kept, with why. */
+  boilerplateCopiesKept?: { path: string, reason: 'edited' | 'protected' | 'unverified' }[]
+  /** Absolute backup directory of the removed copies. */
+  boilerplateCleanupBackup?: string | null
+  /** Protected updater files an older parent overwrote during the self-update (`repairParentOverwrites`). */
+  selfUpdateRepair?: { restored: string[], unloadable: string[], backupDir: string | null } | null
 }
 
 export interface PbiCacheInput {
@@ -242,9 +250,28 @@ const MCP_HOST_FILE: Record<string, string> = {
   claude: '.mcp.json',
   opencode: 'opencode.jsonc',
   codex: '.codex/config.toml',
+  pi: '.pi/mcp.json',
 };
 
 /** Order of the surfaces in every table. */
+/** Every task command under the project's `lint-staged` key, or none when absent or unreadable. */
+function readLintStagedCommands(root: string): string[] {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { 'lint-staged'?: Record<string, unknown> };
+    return Object.values(pkg['lint-staged'] ?? {}).flatMap(v => (Array.isArray(v) ? v : [v])).filter((c): c is string => typeof c === 'string');
+  }
+  catch { return []; }
+}
+
+/** True when package.json lists `name` in `dependencies` or `devDependencies`. */
+function packageDeclares(root: string, name: string): boolean {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { dependencies?: Record<string, unknown>, devDependencies?: Record<string, unknown> };
+    return name in (pkg.dependencies ?? {}) || name in (pkg.devDependencies ?? {});
+  }
+  catch { return false; }
+}
+
 export const SURFACE_ORDER: ParitySurface[] = ['instructions', 'skills', 'hooks', 'mcp', 'env', 'components', 'package', 'git', 'gates'];
 
 /** English labels for the prompt (the AI reads it). */
@@ -273,9 +300,10 @@ const SURFACE_LABEL_ES: Record<ParitySurface, string> = {
   gates: 'Verificación',
 };
 
-/** The other two MCP registries a host's project-only server must be declared in. */
-function otherMcpHostFiles(host: string): string {
-  return Object.entries(MCP_HOST_FILE).filter(([id]) => id !== host).map(([, file]) => file).join(' and ');
+/** The other MCP registries in use where a host's project-only server must be declared. */
+function otherMcpHostFiles(host: string, root: string): string {
+  const inUse: readonly string[] = declaredHarnesses(root).harnesses;
+  return Object.entries(MCP_HOST_FILE).filter(([id]) => id !== host && inUse.includes(id)).map(([, file]) => file).join(' and ');
 }
 
 const MAX_NAMES = 3;
@@ -891,7 +919,7 @@ export function structuralEvidence(filePath: string, project: string, upstream: 
   return `informational: upstream added ${added.length} ${unit}${added.length === 1 ? '' : 's'}: ${listNames(added)}; merge = add the new ${unit}s, values are project identity and never compared`;
 }
 
-/** Registry keys of the three MCP host files (`.mcp.json`, `opencode.jsonc`, `.codex/config.toml`). */
+/** Registry keys of the MCP host files, one per harness (`mcpServers` covers `.mcp.json` and `.pi/mcp.json`). */
 const MCP_REGISTRY_KEYS = ['mcpServers', 'mcp', 'mcp_servers'];
 
 /** Server ids among `ids` the project file declares and the upstream copy no longer does. */
@@ -922,8 +950,8 @@ export function harnessLevelMcpNote(filePath: string, project: string, upstream:
     note: [
       `Upstream no longer commits ${listNames(ids)}: a remote MCP server whose only project-side content is an API key is the harness's business, and the skills resolve it by capability whatever the server prefix (ADR-0005; .agents/skills/agentic-dev-core/references/mcp-capabilities.md).`,
       'Two valid answers for this project:',
-      `  - keep project: the server stays a project-only entry in ${filePath} and in the other two host files, and its key stays in your .env, which no sync touches (the synced .env.example and the variable manifest no longer list ${listNames(vars)}, so document it wherever this project keeps its own keys).`,
-      `  - remove it here (and from the other two host files) and connect it at user level: Claude Code \`claude mcp add --scope user\` or a claude.ai connector; OpenCode ~/.config/opencode/opencode.json; Codex \`codex mcp add\`. Then drop ${listNames(vars)} from .env.`,
+      `  - keep project: the server stays a project-only entry in ${filePath} and in the other host files, and its key stays in your .env, which no sync touches (the synced .env.example and the variable manifest no longer list ${listNames(vars)}, so document it wherever this project keeps its own keys).`,
+      `  - remove it here (and from the other host files) and connect it at user level: Claude Code \`claude mcp add --scope user\` or a claude.ai connector; OpenCode ~/.config/opencode/opencode.json; Codex \`codex mcp add\`; Pi \`pi mcp add\`. Then drop ${listNames(vars)} from .env.`,
       'bun run setup:doctor reports which of these servers your user-level configs already declare.',
     ].join('\n'),
   };
@@ -938,7 +966,7 @@ export function harnessLevelMcpNote(filePath: string, project: string, upstream:
  * and never deletes a project's copy: the launcher is in the updater's
  * `excludePaths`, so not even `--force` removes it. One informational row each.
  */
-export const RETIRED_HARNESS_SCRIPTS = ['claude', 'codex', 'opencode'] as const;
+export const RETIRED_HARNESS_SCRIPTS = ['claude', 'codex', 'opencode', 'pi'] as const;
 export const RETIRED_HARNESS_LAUNCHER = 'scripts/launch.ts';
 
 /** A script that starts its harness with the env files loaded: the launcher, varlock, dotenv, or a sourced `.env`. */
@@ -983,8 +1011,8 @@ export function retiredMcpNote(filePath: string, project: string, upstream: stri
     note: [
       ...retired.map(id => `Upstream no longer commits ${listNames([id])}: ${RETIRED_MCPS[id]}.`),
       'Two valid answers for this project:',
-      `  - keep project: the server stays a project-only entry in ${filePath} (and in the other two host files); agents:compat:check still compares it across hosts, just without a pinned shape.`,
-      '  - remove it from all three host files.',
+      `  - keep project: the server stays a project-only entry in ${filePath} (and in the other host files); agents:compat:check still compares it across hosts, just without a pinned shape.`,
+      '  - remove it from every host file.',
     ].join('\n'),
   };
 }
@@ -1106,7 +1134,7 @@ export function compatErrorSuggestion(message: string): ParitySuggestion {
 function compatErrorPath(message: string): string {
   const m = /(?:^|\s|:)((?:\.[\w-]+|[\w-]+)(?:\/[\w.-]+)+\.\w+)/.exec(message);
   if (m) { return m[1]; }
-  const host = /(claude|opencode|codex)\b/i.exec(message);
+  const host = /\b(claude|opencode|codex|pi)\b/i.exec(message);
   if (host && /MCP/.test(message)) { return MCP_HOST_FILE[host[1].toLowerCase()]; }
   if (/skills alias|\.claude\/skills/.test(message)) { return '.claude/skills'; }
   const eslint = /^(eslint\.config(?:\.tooling)?\.m?js) /.exec(message);
@@ -1230,7 +1258,7 @@ function readIfExists(filePath: string): string | null {
 }
 
 function watchedSurface(filePath: string, source: 'upstream' | 'project' = 'upstream'): ParitySurface {
-  if (filePath === '.mcp.json' || filePath === 'opencode.jsonc' || filePath === '.codex/config.toml') { return 'mcp'; }
+  if (filePath === '.mcp.json' || filePath === 'opencode.jsonc' || filePath === '.codex/config.toml' || filePath === '.pi/mcp.json') { return 'mcp'; }
   if (filePath === '.claude/settings.json') { return 'hooks'; }
   if (filePath.startsWith('.agents/skills/')) { return 'skills'; }
   // Synced component files kept as the project's own (.husky hooks, a declared path).
@@ -1288,6 +1316,41 @@ export function readGitStrategyStamp(projectYaml: string | null): GitStrategySta
   const strategy = /^ {2}strategy:\s*([\w-]+)/m.exec(projectYaml)?.[1] ?? null;
   const source = /^\s+strategy_source:\s*([\w-]+)/m.exec(projectYaml)?.[1] ?? null;
   return { present: true, strategy, source };
+}
+
+/** A test file name `bun test` collects. */
+const BUN_TEST_FILE = /(?:\.test|_test_|\.spec|_spec_)\.[cm]?[jt]sx?$/;
+
+function hasTestFile(dir: string): boolean {
+  let entries: fs.Dirent[];
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+  catch { return false; }
+  return entries.some(e => e.name !== 'node_modules' && e.name !== '.git' && (e.isDirectory() ? hasTestFile(path.join(dir, e.name)) : BUN_TEST_FILE.test(e.name)));
+}
+
+/**
+ * The paths a `bun test` in a package.json script searches, when that run
+ * finds no test file and so exits 1 ("no tests found"); null when every
+ * `bun test` in the command finds one, or passes `--pass-with-no-tests`.
+ */
+export function bunTestFindsNothing(root: string, command: string): string[] | null {
+  for (const segment of command.split(/&&|\|\||;/)) {
+    const tokens = segment.trim().split(/\s+/);
+    const at = tokens.findIndex((t, i) => t === 'bun' && tokens[i + 1] === 'test');
+    if (at < 0 || tokens.includes('--pass-with-no-tests')) { continue; }
+    let base = root;
+    const targets: string[] = [];
+    for (let i = at + 2; i < tokens.length; i++) {
+      if (tokens[i] === '--cwd') { base = path.resolve(root, tokens[++i] ?? '.'); continue; }
+      if (tokens[i].startsWith('-')) { continue; }
+      targets.push(tokens[i]);
+    }
+    const searched = targets.length > 0 ? targets : ['.'];
+    if (!searched.some(t => hasTestFile(path.resolve(base, t)))) {
+      return searched.map(t => path.relative(root, path.resolve(base, t)).replace(/\\/g, '/') || '.');
+    }
+  }
+  return null;
 }
 
 /**
@@ -1422,7 +1485,7 @@ export function collectParityFindings(input: ParityInput): ParityFinding[] {
     // Servers only this host has are the project's integrations: the fix is to
     // declare them everywhere or drop them deliberately, never to overwrite
     // the file with upstream's copy.
-    if (sets.extra.length > 0) { parts.push(`only here: ${sets.extra.join(', ')} (not in .mcp.json): declare them in ${otherMcpHostFiles(host)}, or remove them`); }
+    if (sets.extra.length > 0) { parts.push(`only here: ${sets.extra.join(', ')} (not in .mcp.json): declare them in ${otherMcpHostFiles(host, input.root)}, or remove them`); }
     pushCompat({
       surface: 'mcp',
       path: MCP_HOST_FILE[host] ?? host,
@@ -1681,14 +1744,100 @@ export function collectParityFindings(input: ParityInput): ParityFinding[] {
   // 8. package.json keys kept at the project's value: the terminal FYI is
   //    lost on a non-interactive run; the row survives, the values go to the file.
   for (const kept of input.packageJsonKept ?? []) {
+    // A kept test script over tests that are gone (the boilerplate's own no
+    // longer travel) fails every run: that is not a preference, it blocks.
+    const empty = kept.section === 'scripts' ? bunTestFindsNothing(input.root, kept.localValue) : null;
     findings.push({
       surface: 'package',
       path: kept.file,
-      evidence: `${kept.section}.${kept.key}: project value kept; upstream differs`,
-      suggested: 'decide',
-      blocking: false,
+      evidence: empty
+        ? `${kept.section}.${kept.key}: project value kept, and it will exit 1: \`bun test\` finds no test file under ${empty.map(p => `\`${p}\``).join(', ')} (the boilerplate's own tests no longer travel). Take upstream's value, or add --pass-with-no-tests`
+        : `${kept.section}.${kept.key}: project value kept; upstream differs`,
+      suggested: empty ? 'take upstream' : 'decide',
+      blocking: empty !== null,
       detail: `project (kept):\n  ${kept.localValue}\nupstream:\n  ${kept.upstreamValue}`,
     });
+  }
+
+  // 8d. The boilerplate's own tests, fixtures and maintainer scripts no longer
+  //     travel: upstream's unedited copies left this run (one row, with the
+  //     backup), and every copy the project edited or protects stays, one row each.
+  const removedCopies = input.boilerplateCopiesRemoved ?? [];
+  if (removedCopies.length > 0) {
+    const shown = removedCopies.slice(0, 5).map(p => `\`${p}\``).join(', ');
+    const where = input.boilerplateCleanupBackup ? `; copies in \`${path.relative(input.root, input.boilerplateCleanupBackup)}\`` : '';
+    findings.push({
+      surface: 'components',
+      path: removedCopies.length === 1 ? removedCopies[0] : `${removedCopies.length} boilerplate-only files`,
+      evidence: `informational: ${input.boilerplateCleanupBackup ? 'removed' : 'the real run removes'} upstream's unedited copies of the boilerplate's own tests, fixtures and maintainer scripts, which no longer travel (${shown}${removedCopies.length > 5 ? `, and ${removedCopies.length - 5} more` : ''})${where}. Commit the deletions with the sync`,
+      suggested: 'keep project',
+      blocking: false,
+    });
+  }
+  for (const kept of input.boilerplateCopiesKept ?? []) {
+    const why = kept.reason === 'edited'
+      ? `your copy differs from upstream's, so it is yours now; it may fail against newer cli code (\`bun test ${kept.path}\` is the check), delete it if you do not need it`
+      : kept.reason === 'protected'
+        ? 'it is protected (or the test of a protected file), so the cleanup never touches it'
+        : 'upstream\'s copy could not be read to prove it unedited, so it stays; delete it by hand if it is upstream\'s';
+    findings.push({
+      surface: 'components',
+      path: kept.path,
+      evidence: `informational: project-owned file under a boilerplate-only path, kept: ${why}`,
+      suggested: 'keep project',
+      blocking: false,
+    });
+  }
+
+  // 8e. A self-update parent older than this updater overwrote protected
+  //     updater files: restored (informational), or the project's copy no longer
+  //     loads with the new updater and upstream's stays in place (blocking).
+  const repair = input.selfUpdateRepair;
+  const repairBackup = repair?.backupDir ? `\`${path.relative(input.root, repair.backupDir)}\`` : 'the run\'s backup';
+  for (const p of repair?.restored ?? []) {
+    findings.push({
+      surface: 'components',
+      path: p,
+      evidence: `informational: protected, and the previous updater overwrote it during the self-update; your copy was restored from ${repairBackup}. Later syncs keep it`,
+      suggested: 'keep project',
+      blocking: false,
+    });
+  }
+  for (const p of repair?.unloadable ?? []) {
+    findings.push({
+      surface: 'components',
+      path: p,
+      evidence: `protected, but your copy no longer loads with the new updater, so upstream's copy is in place and yours is in ${repairBackup}. Merge your change into upstream's copy, keep the path in updater.protected_paths, and run \`bun sync\` again`,
+      suggested: 'merge',
+      blocking: true,
+    });
+  }
+
+  // 8b. Oxlint ships (`.oxlintrc.base.json` is on disk). The sync installs
+  //     nothing and keeps the project's `lint-staged`, so two things stay for
+  //     the agent, each named once: the dependency is declared but not
+  //     installed, and the pre-commit task still runs ESLint on staged code.
+  if (fs.existsSync(path.join(input.root, '.oxlintrc.base.json'))) {
+    const declaresOxlint = packageDeclares(input.root, 'oxlint');
+    if (declaresOxlint && !fs.existsSync(path.join(input.root, 'node_modules', '.bin', 'oxlint'))) {
+      findings.push({
+        surface: 'package',
+        path: 'package.json',
+        evidence: 'informational: `oxlint` is declared in package.json and not installed (the sync installs nothing). Run `bun install` before the next commit or gate: until then a script or hook that calls it fails with "command not found".',
+        suggested: 'decide',
+        blocking: false,
+      });
+    }
+    const lintStaged = readLintStagedCommands(input.root);
+    if (lintStaged.some(c => c.includes('eslint')) && !lintStaged.some(c => c.includes('oxlint'))) {
+      findings.push({
+        surface: 'package',
+        path: 'package.json',
+        evidence: 'informational: upstream now runs Oxlint (well under a second) in pre-commit and keeps ESLint as the gate in `lint:check`, `repo:check`, `pre-push` and CI. Your `lint-staged` still runs ESLint on staged code, so commits stay correct but slow. To switch, set the `*.{ts,tsx,js,jsx}` task to `["oxlint -c .oxlintrc.json"]` (needs `bun install` first and a `.oxlintrc.json` that extends `./.oxlintrc.base.json`); `bun run lint:fix` still autofixes style.',
+        suggested: 'decide',
+        blocking: false,
+      });
+    }
   }
 
   // 9. Quality gates that failed after the apply. Informational (never
@@ -1847,6 +1996,26 @@ export function renderParityReport(findings: ParityFinding[], meta: ParityMeta):
     prompt: buildParityPrompt(findings, meta),
     fileBody: buildParityFileBody(findings, meta),
   };
+}
+
+/**
+ * The rows of a run the self-update aborted (`RunSummary.selfUpdateBlocked`):
+ * the new updater does not load, the old one is back. One blocking row per
+ * protected file it kept, the likely cause; one for `cli/` when none was kept.
+ */
+export function selfUpdateBlockedFindings(blocked: { protectedPaths: string[], error: string }): ParityFinding[] {
+  const loader = blocked.error.split('\n').find(line => line.trim() !== '') ?? 'the entry did not load';
+  const paths = blocked.protectedPaths.length > 0 ? blocked.protectedPaths : ['cli/'];
+  return paths.map((p, i) => ({
+    id: i + 1,
+    surface: 'components' as const,
+    path: p,
+    evidence: blocked.protectedPaths.length > 0
+      ? `protected, and the new updater does not load with your copy, so the self-update was undone and the run stopped (loader: ${loader}). Merge upstream's changes into it, or drop it from updater.protected_paths, then run \`bun sync\` again`
+      : `the new updater does not load, so the self-update was undone and the run stopped (loader: ${loader})`,
+    suggested: 'merge' as const,
+    blocking: true,
+  }));
 }
 
 // ============================================================================

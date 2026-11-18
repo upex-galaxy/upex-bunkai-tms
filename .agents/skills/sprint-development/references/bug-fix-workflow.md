@@ -1,264 +1,201 @@
-# Bug/Defect Fixing
+# Bug and defect fixing
 
-> AI-guided bug analysis, triage, fix implementation, and complete Jira documentation.
-
----
-
-## Custom field resolution — slug-based, never hardcoded
-
-Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO viven en este skill. Esta metodología resuelve cada campo en runtime vía `{{jira.<slug>}}` contra el catálogo canónico en `.agents/jira-required.yaml`. El AI runtime resuelve el slug → ID numérico vía `.agents/jira-fields.json` (poblado por `bun run jira:sync-fields`). Si un slug no existe en el workspace de destino, el catálogo declara el fallback y `bun run jira:check` warnea.
-
-**Slugs que este workflow lee/escribe** (semántica de cada campo):
-
-- `{{jira.actual_result}}` — 🐞 Actual Result (Textarea). Lo que pasó (comportamiento del bug).
-- `{{jira.expected_result}}` — ✅ Expected Result (Textarea). Lo que debería haber pasado.
-- `{{jira.error_type}}` — Error Type (Dropdown). Functional/Visual/Content/Performance/Crash/Data/Integration/Security.
-- `{{jira.severity}}` — SEVERITY (Dropdown). Crítica/Mayor/Moderada/Menor/Trivial.
-- `{{jira.test_environment}}` — Test Environment (Dropdown). Dev/QA/UAT/Staging/Production.
-- `{{jira.root_cause}}` — Root Cause🐞 (Dropdown). Code Error/Config-Env Error/Environment Error/Requirement Error/WAD/Third-Party/etc.
-- `{{jira.workaround}}` — Workaround (Textarea). Solución temporal mientras se aplica el fix definitivo.
-- `{{jira.evidence}}` — Evidence (attachments/links). Screenshots, logs, traces.
-- `{{jira.fix}}` — Fix (Radio). Bugfix (standard) / Hotfix (critical, immediate deploy).
-
-**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `.agents/instructions/agent-tool-resolution.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.agents/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
+> Read a bug from Jira, reproduce it, triage it, fix it with the smallest change, verify, open the PR and document the fix in Jira.
 
 ---
 
 ## Purpose
 
-Analyze, triage, and fix bugs/defects reported during exploratory testing or production. This prompt helps the AI:
+This workflow takes a bug reported during testing or in production and carries it to Ready For QA:
 
-1. **Gather full context** from Jira (issue, comments, links, related stories)
-2. **Reproduce the bug** using available testing tools
-3. **Triage** to determine if it's a real bug, enhancement, or duplicate
-4. **Implement the fix** with minimal changes following code standards
-5. **Verify the fix** passes typecheck, lint, build, and manual testing
-6. **Create branch, commit, and PR** with proper documentation
-7. **Document in Jira** with root cause analysis and fix details
-8. **Provide educational feedback** to improve bug report quality (optional)
+1. Gather the full context from Jira (issue, comments, links, parent story).
+2. Reproduce the bug with the tools available.
+3. Triage it: real bug, enhancement, working as designed, duplicate, or deferred.
+4. Implement a minimal fix that follows the code standards.
+5. Verify the fix: types, lint, build, tests and a manual check.
+6. Create the branch, commit and PR.
+7. Document root cause and fix in Jira.
+8. Give feedback on the bug report (optional, only on request).
 
-**Prerequisites:**
+Prerequisites:
 
-- Bug reported in Jira (from exploratory testing or production)
-- Access to `[ISSUE_TRACKER_TOOL]` (e.g., Atlassian/Jira MCP)
-- Access to GitHub CLI (`gh`)
-- Optional: `/playwright-cli` for browser reproduction (session rules: `live-ui-validation.md` §3)
-- Optional: API testing tools (e.g., Postman MCP)
-- Optional: Context7 MCP for library documentation
+- The bug exists in Jira.
+- `[ISSUE_TRACKER_TOOL]` resolves (for example the Atlassian/Jira MCP).
+- The GitHub CLI (`gh`) is installed and authenticated.
+- Optional: `/playwright-cli` for browser reproduction (session rules in `live-ui-validation.md` §3), an API client such as Postman MCP, and Context7 MCP for library docs.
 
-**Important:** Custom fields are referenced by slug (resolved against `.agents/jira-required.yaml`) — never by hardcoded `customfield_NNNNN`. If a slug doesn't resolve to a workspace field, see the **Fallback Strategy** section.
+## With nobody at the keyboard
+
+Each point where this workflow would wait for a person has a path for the three ways it runs. The rulings behind them are in `agentic-dev-core/references/decision-protocol.md` (§5.2 covers "no person at the wheel"); this table only places them in the workflow.
+
+| Wait point | A person is present | Supervised worker | Routine with nobody |
+| --- | --- | --- | --- |
+| Git strategy differs from the default (Git strategy section) | Ask. | The launcher answers. | Use `git_strategy` from `.agents/project.yaml`; report it as DECIDED. |
+| Slug does not resolve, option 2 of the fallback | Ask which field maps. | The launcher answers. | Take fallback 3 (put the information in the Jira comment) and say so. |
+| Possible duplicate (Phase 1) | Offer the three options. | Send the question to the launcher. | Decide by evidence: same root cause is a duplicate, otherwise continue as a separate bug. Report DECIDED. |
+| Not reproducible, WAD or enhancement (Phases 2 and 3) | Offer the options. | Send the question to the launcher. | The delegating brief covers tracker writes for this bug; without one, record the finding in the escalation log and stop before any Jira write. |
+| Fix needs a breaking change (Case 2) | Stop and ask the user or the Product Owner / Business Analyst (delegated). | Escalate to the launcher. | Escalation log entry, then stop on this bug and move to the next within the run's cap. |
+| Insufficient information (Case 5) | Ask the reporter through Jira. | Same. | Comment with the specific questions only when the brief covers tracker writes; the bug stays `open`. |
+
+Phase 8 never waits: it runs only when the user asks for it.
 
 ---
 
-## MCP Tool Verification
+## Tools and access
 
-**BEFORE starting, verify available tools:**
+Check these before starting.
 
-### Required: Jira reads (sync script) + writes (`[ISSUE_TRACKER_TOOL]`)
+### Jira: reads go through the sync, writes through `[ISSUE_TRACKER_TOOL]`
 
-This workflow splits Jira access two ways — they resolve to **different tools**:
+The two directions use different tools.
 
-- **Detailed READS** (bug custom fields: `actual_result`, `expected_result`, `error_type`, `severity`, `test_environment`, `root_cause`, `fix`; description; comments for context) → **`bun run jira:sync-issues get <BUG-KEY> --include-comments`**, then read the materialized `.md` files under `.context/PBI/`. The sync materializes the FULL synced bug folder (every per-field `.md` + `comments.md`); to fix a bug you MUST read the whole synced bug folder + comments — never omit custom fields, description, or comment context. The sync resolves every slug and converts ADF→Markdown; `[ISSUE_TRACKER_TOOL]` `view` returns `null` for `customfield_*` and MUST NOT be used to read these.
-- **WRITES** (transition issue status, add documentation comment, set bug custom fields) → `[ISSUE_TRACKER_TOOL]` (primary `/acli`, fallback Atlassian MCP per `.agents/instructions/agent-tool-resolution.md` §6).
+- Detailed reads (the bug custom fields `actual_result`, `expected_result`, `error_type`, `severity`, `test_environment`, `root_cause`, `fix`, plus the description and the comments) come from `bun run jira:sync-issues get <BUG-KEY> --include-comments`. Then read every file the sync materialized under `.context/PBI/`: one `.md` per field and `comments.md`. The sync resolves every slug and converts ADF to Markdown. Fixing a bug on a partial read is how fields and comment context get missed, so read the whole folder.
+- `[ISSUE_TRACKER_TOOL]` `view` returns `null` for `customfield_*`, so it is never the way to read a bug custom field.
+- Writes (status transitions, documentation comments, custom fields) go through `[ISSUE_TRACKER_TOOL]`: `/acli` first, the Atlassian MCP as fallback, per `.agents/instructions/agent-tool-resolution.md` §6.
 
-**Check before starting:**
-
-- `bun run jira:sync-issues get <BUG-KEY> --include-comments` succeeds (auth fresh — run `[ISSUE_TRACKER_TOOL]` auth login first if the sync errors).
-- `[ISSUE_TRACKER_TOOL]` resolves (for transitions + comments).
+Both must work before you start: the sync succeeds (when it fails on auth, log in through `[ISSUE_TRACKER_TOOL]` and re-run it) and `[ISSUE_TRACKER_TOOL]` resolves for transitions and comments. When either fails, tell the user what is missing:
 
 ```
-⚠️ Jira access required
+Jira access required
 
 This workflow needs:
-- READ bug details + custom fields + comments → bun run jira:sync-issues get <BUG-KEY> --include-comments
-- WRITE status transitions + documentation comments → [ISSUE_TRACKER_TOOL]
+- READ bug details + custom fields + comments: bun run jira:sync-issues get <BUG-KEY> --include-comments
+- WRITE status transitions + documentation comments: [ISSUE_TRACKER_TOOL]
 
 If the sync errors with an auth failure, authenticate via [ISSUE_TRACKER_TOOL] and re-run.
-Cannot proceed without Jira read (sync) + write ([ISSUE_TRACKER_TOOL]) access.
+Cannot proceed without Jira read (sync) and write ([ISSUE_TRACKER_TOOL]) access.
 ```
 
-### Required: GitHub CLI (gh)
+For the operation-to-tool matrix see `.agents/skills/product-management/references/jira-operations.md`; for the two ADF rich-text bugs and their workarounds see `.agents/skills/product-management/references/jira-publishing-gotchas.md`.
 
-**Check if available:** Run `gh --version`
+### GitHub CLI (`gh`)
 
-**If NOT available:**
+Run `gh --version`. When it is missing, tell the user:
 
 ```
-⚠️ GitHub CLI Required
+GitHub CLI required
 
-This workflow requires GitHub CLI for:
-- Creating branches
-- Pushing changes
-- Creating Pull Requests
+This workflow uses it to create branches, push changes and open Pull Requests.
 
-**How to install:**
+How to install:
 1. Visit: https://cli.github.com/
 2. Install for your OS
 3. Authenticate: `gh auth login`
 ```
 
-### Optional: Browser Testing Tools
+### Optional tools
 
-**When useful:**
+- Browser testing, for UI bugs that need visual verification, reproduction of an interaction, or before and after screenshots: `/playwright-cli`, in a named in-memory session logged in as the declared automation identity (`live-ui-validation.md` §3 and `live-ui-identity.md`). Without it, write manual reproduction steps and ask the user to verify visually.
+- API testing (Postman MCP or an HTTP client), for API, data-validation and backend-error bugs.
+- Context7 MCP, to check library behavior, correct API usage and known dependency issues while analyzing the root cause.
 
-- UI bugs requiring visual verification
-- Reproducing user interaction bugs
-- Taking screenshots of before/after state
+To attach a screenshot as inline evidence (on the bug or in `{{jira.evidence}}`), use the bundled helper. `![](path)` does not embed in Jira ADF, and the helper uploads the file and posts it as a real image, so a reviewer sees the before and after state without opening the Attachments panel. One call per image:
 
-**Tool:** `/playwright-cli`, in a named in-memory session logged in as the declared automation identity (`live-ui-validation.md` §3, `live-ui-identity.md`)
+```bash
+bun .agents/skills/acli/scripts/jira-attach-media.ts <BUG-KEY> ./before.png --caption "Before fix" --publish
+bun .agents/skills/acli/scripts/jira-attach-media.ts <BUG-KEY> ./after.png  --caption "After fix"  --publish
+```
 
-> **Attaching a screenshot as inline evidence** (to the bug, or to `{{jira.evidence}}`): `![](path)` does NOT embed in Jira ADF. Use the bundled helper, which uploads the file and posts it inline as a real image so a reviewer sees the before/after state without opening the Attachments panel:
-> ```bash
-> bun .agents/skills/acli/scripts/jira-attach-media.ts <BUG-KEY> ./before.png --caption "Before fix" --publish
-> bun .agents/skills/acli/scripts/jira-attach-media.ts <BUG-KEY> ./after.png  --caption "After fix"  --publish
-> ```
-> One call per image. Recipe + when-to-use → `.agents/skills/acli/references/adf-authoring-style.md` §media.
-
-**If NOT available:**
-
-- Manual reproduction steps will be provided
-- User will need to verify visually
-
-### Optional: API Testing Tools
-
-**When useful:**
-
-- API/Integration bugs
-- Data validation issues
-- Backend error reproduction
-
-**Examples:** Postman MCP, HTTP client tools
-
-### Optional: Context7 MCP
-
-**When useful:**
-
-- Understanding library behavior for root cause analysis
-- Verifying correct API usage
-- Checking for known issues in dependencies
+The recipe and when to use it are in `.agents/skills/acli/references/adf-authoring-style.md` §media.
 
 ---
 
-## Custom Fields Schema
+## Custom fields
 
-> **CRITICAL:** Reference bug fields by slug; the runtime resolves each slug against `.agents/jira-fields.json`. For workspaces missing a slug, see **Fallback Strategy**.
+Jira's numeric field ids (`customfield_NNNNN`) differ per workspace, so they never appear in this skill. Every field is referenced as `{{jira.<slug>}}`, resolved against the catalog in `.agents/jira-required.yaml`. At runtime the slug resolves to the numeric id through `.agents/jira-fields.json`, which `bun run jira:sync-fields` fills. When a slug is missing from the target workspace, the catalog declares its fallback and `bun run jira:check` warns.
 
-### Bug Fields Reference
+### Bug fields
 
-| Slug (resuelve vía jira-required.yaml)  | Jira Field Name    | Type     | Values/Usage                                                                         |
-| --------------------------------------- | ------------------ | -------- | ------------------------------------------------------------------------------------ |
-| `{{jira.actual_result}}` | 🐞 Actual Result   | Textarea | What happened (the bug behavior)                                                     |
-| `{{jira.expected_result}}`       | ✅ Expected Result | Textarea | What should have happened                                                            |
-| `{{jira.error_type}}`                   | Error Type         | Dropdown | Functional/Visual/Content/Performance/Crash/Data/Integration/Security                |
-| `{{jira.severity}}`                     | SEVERITY           | Dropdown | Crítica/Mayor/Moderada/Menor/Trivial                                                 |
-| `{{jira.test_environment}}`             | Test Environment   | Dropdown | Dev/QA/UAT/Staging/Production                                                        |
-| `{{jira.root_cause}}`                   | Root Cause🐞       | Dropdown | Code Error/Config-Env Error/Environment Error/Requirement Error/WAD/Third-Party/etc. |
-| `{{jira.fix}}`                          | Fix                | Radio    | Bugfix (standard) / Hotfix (critical, immediate deploy)                              |
+| Slug | Jira field | Type | Values and use |
+| --- | --- | --- | --- |
+| `{{jira.actual_result}}` | 🐞 Actual Result | Textarea | What happened (the bug behavior) |
+| `{{jira.expected_result}}` | ✅ Expected Result | Textarea | What should have happened |
+| `{{jira.error_type}}` | Error Type | Dropdown | Functional / Visual / Content / Performance / Crash / Data / Integration / Security |
+| `{{jira.severity}}` | SEVERITY | Dropdown | Crítica (critical) / Mayor (major) / Moderada (moderate) / Menor (minor) / Trivial. These are the dropdown's own Spanish values. |
+| `{{jira.test_environment}}` | Test Environment | Dropdown | Dev / QA / UAT / Staging / Production |
+| `{{jira.root_cause}}` | Root Cause🐞 | Dropdown | See the categories below |
+| `{{jira.workaround}}` | Workaround | Textarea | Temporary solution until the definitive fix lands |
+| `{{jira.evidence}}` | Evidence | Attachments/links | Screenshots, logs, traces |
+| `{{jira.fix}}` | Fix | Radio | Bugfix (standard) / Hotfix (critical, immediate deploy) |
 
-### Root Cause Categories
+### Root cause categories
 
-| Value                       | When to Use                                     |
-| --------------------------- | ----------------------------------------------- |
-| `Code Error`                | Bug in source code logic                        |
-| `Config/Env Error`          | Environment variables, configs, feature flags   |
-| `Environment Error`         | Infrastructure, server, deploy, CI/CD           |
-| `Requirement Error`         | Unclear spec, ambiguous AC, missing requirement |
-| `Working As Designed (WAD)` | Not a bug, works as intended                    |
-| `Third-Party Error`         | Bug in external library/framework               |
-| `Integration Error`         | External service down, third-party API failed   |
-| `Data Error`                | Corrupted data in DB, failed migration          |
+| Value | When to use |
+| --- | --- |
+| `Code Error` | Bug in source code logic |
+| `Config/Env Error` | Environment variables, configs, feature flags |
+| `Environment Error` | Infrastructure, server, deploy, CI/CD |
+| `Requirement Error` | Unclear spec, ambiguous AC, missing requirement |
+| `Working As Designed (WAD)` | Not a bug, works as intended |
+| `Third-Party Error` | Bug in an external library or framework |
+| `Integration Error` | External service down, third-party API failed |
+| `Data Error` | Corrupted data in the DB, failed migration |
 
-### SEVERITY to Priority Mapping
+### Severity to priority
 
-| SEVERITY (Spanish) | Jira Priority | Action                        |
-| ------------------ | ------------- | ----------------------------- |
-| Crítica            | Highest       | Hotfix flow (immediate)       |
-| Mayor              | High          | Standard fix (high priority)  |
-| Moderada           | Medium        | Standard fix (normal)         |
-| Menor              | Low           | Standard fix (low priority)   |
-| Trivial            | Lowest        | Standard fix (when available) |
+| SEVERITY | Jira priority | Action |
+| --- | --- | --- |
+| Crítica | Highest | Hotfix flow (immediate) |
+| Mayor | High | Standard fix (high priority) |
+| Moderada | Medium | Standard fix (normal) |
+| Menor | Low | Standard fix (low priority) |
+| Trivial | Lowest | Standard fix (when available) |
 
----
+### Fallback when a slug does not resolve
 
-## Fallback Strategy (Slug doesn't resolve in workspace)
+Apply this when a `{{jira.<slug>}}` has no matching field in the target workspace (per `.agents/jira-fields.json` or a runtime probe). Try the options in order.
 
-> Apply when a `{{jira.<slug>}}` doesn't resolve to a present field in the target workspace (per `.agents/jira-fields.json` or a runtime probe).
+1. Search the workspace for an equivalent field:
 
-### Fallback 1: Search for Equivalent Field
+   ```
+   [ISSUE_TRACKER_TOOL] search_fields(keyword="root cause")  // or "severity", "error type", etc.
+   ```
 
-When a slug doesn't resolve to a present field, search the workspace:
+   When one exists, point the slug at it in `.agents/jira-required.yaml` (or add an alias slug), re-run `bun run jira:sync-fields`, tell the user "Slug `<slug>` now resolves to the discovered field in this workspace", and continue with the fix workflow.
 
-```
-[ISSUE_TRACKER_TOOL] search_fields(keyword="root cause")  // or "severity", "error type", etc.
-```
+2. Ask the user to define the field:
 
-If found:
+   ```
+   Custom field not found
 
-1. Update `.agents/jira-required.yaml` to point the slug at the discovered field (or add an alias slug) and re-run `bun run jira:sync-fields`.
-2. Inform user: "Slug `<slug>` now resolves to the discovered field in this workspace."
-3. Proceed with fix workflow.
+   The slug `{{jira.<slug>}}` ("[Field Name]") doesn't resolve to a present field in this workspace.
 
-### Fallback 2: Ask User to Define Fields
+   Options:
+   1. Tell me which existing workspace field maps to this slug, and I'll update `.agents/jira-required.yaml`.
+   2. Skip this field and include the information in the Jira comment.
+   3. Proceed without updating this field.
 
-```
-⚠️ Custom Field Not Found
+   Which would you prefer?
+   ```
 
-The slug `{{jira.<slug>}}` ("[Field Name]") doesn't resolve to a present field in this workspace.
-
-Options:
-1. Tell me which existing workspace field maps to this slug — I'll update `.agents/jira-required.yaml`.
-2. Skip this field and include info in the Jira comment.
-3. Proceed without updating this field.
-
-Which would you prefer?
-```
-
-### Fallback 3: Include in Comment
-
-As last resort:
-
-1. **Omit the custom field** from update
-2. **Add info to Jira comment** in structured format
-3. Note to user which fields were unavailable
+3. Last resort: omit the custom field from the update, put the information in the Jira comment in structured form, and tell the user which fields were unavailable.
 
 ---
 
-## Required Context
+## Required context
 
-**MUST gather this information before starting:**
+Gather this before starting.
 
-### 1. Bug Issue from Jira
+### 1. The bug issue
 
-> Detailed bug-field READS go through the sync, NOT `[ISSUE_TRACKER_TOOL]` `view` — `view` returns `null` for `customfield_*`.
+Run the sync from "Tools and access" and read the whole materialized folder. Extract:
 
-Materialize the FULL synced bug folder, then read it:
+- Summary and description, steps to reproduce.
+- Actual Result against Expected Result.
+- Error Type, Severity and Test Environment.
+- Root Cause (often empty at this point).
+- Every comment, from `comments.md`: context, discussion, earlier attempts.
+- Attachments (screenshots, logs), linked in the synced fields.
 
-```
-bun run jira:sync-issues get <BUG-KEY> --include-comments
-```
+When a field's `.md` is a stub, the field is absent on this instance. The stub points at the fallback comment, which you read in `comments.md` (per the `fallback:` key in `.agents/jira-required.yaml`). A field counts as empty only after you have checked its `.md`, `comments.md` and the description.
 
-Read every materialized file under `.context/PBI/` (the bug's `.md` per-field files + `comments.md`). The sync resolves every slug (`{{jira.actual_result}}`, `{{jira.expected_result}}`, `{{jira.error_type}}`, `{{jira.severity}}`, `{{jira.test_environment}}`, `{{jira.root_cause}}`, `{{jira.workaround}}`, `{{jira.evidence}}`, `{{jira.fix}}`), converts ADF→Markdown, and captures the description + comments in one pass. Read the WHOLE folder — never omit a custom field, the description, or comment context.
+### 2. Linked issues
 
-**Extract from the synced files:**
+- The parent user story, for the original requirement and its AC.
+- Related bugs, for duplicates.
+- Blocking and blocked-by links, for dependencies that affect the fix.
 
-- Summary and Description
-- Steps to Reproduce
-- **Actual Result** vs **Expected Result**
-- **Error Type** and **Severity**
-- **Test Environment**
-- **Root Cause** — may be empty initially
-- All comments (context, discussions, prior attempts) from `comments.md`
-- Attachments (screenshots, logs) — linked in the synced fields
-
-### 2. Linked Issues
-
-Check issue links for:
-
-- **Parent User Story:** Understand the original requirement and AC
-- **Related bugs:** Check for duplicates or related issues
-- **Blocked/Blocking:** Dependencies that might affect the fix
-
-### 3. Code Standards (when implementing fix)
+### 3. Code standards (when implementing the fix)
 
 ```
 .agents/skills/sprint-development/references/
@@ -267,41 +204,28 @@ Check issue links for:
 └── data-testid-standards.md    # Test attributes (if UI fix)
 ```
 
-### 4. Git Strategy
+### 4. Git strategy
 
-**Default branching pattern (user can override):**
+The default branching pattern, which the user can override:
 
-| Type       | Branch Pattern                           | Target                                                                                 |
-| ---------- | ---------------------------------------- | -------------------------------------------------------------------------------------- |
-| **Bugfix** | `fix/{ISSUE_KEY}/{short-description}`    | `git_strategy.branches.integration` (production branch when integration is null)       |
-| **Hotfix** | `hotfix/{ISSUE_KEY}/{short-description}` | `git_strategy.branches.production`                                                     |
+| Type | Branch pattern | Target |
+| --- | --- | --- |
+| Bugfix | `fix/{ISSUE_KEY}/{short-description}` | `git_strategy.branches.integration` (the production branch when integration is null) |
+| Hotfix | `hotfix/{ISSUE_KEY}/{short-description}` | `git_strategy.branches.production` |
 
-**Ask user if they have a different git strategy before creating branches.**
+Ask the user whether they use a different git strategy before creating the branch (see "With nobody at the keyboard" for the other two cases).
 
 ---
 
 ## Workflow
 
-### Phase 1: Bug Context Gathering
+### Phase 1: Bug context gathering
 
-**Objective:** Understand the bug completely before attempting to fix.
+Goal: understand the bug completely before touching code.
 
-**Step 1: Read the bug issue (via the sync)**
+Step 1. Read the bug through the sync (`bun run jira:sync-issues get [BUG_ID] --include-comments`) and then the materialized files under `.context/PBI/`: each per-field `.md` (Actual and Expected Result, Error Type, Severity, Test Environment, Root Cause, Workaround, Evidence, Fix), the description and `comments.md`. One command yields the complete context: summary, description, status, changelog-derived fields, comments and custom field values.
 
-> Detailed bug-field READS go through the sync. `[ISSUE_TRACKER_TOOL]` `view` returns `null` for `customfield_*` and MUST NOT be used to read bug custom fields.
-
-```
-bun run jira:sync-issues get [BUG_ID] --include-comments
-```
-
-Then read the materialized files under `.context/PBI/` — every per-field `.md` (Actual / Expected Result, Error Type, Severity, Test Environment, Root Cause, Workaround, Evidence, Fix), the description, and `comments.md`. The sync resolves all slugs and converts ADF→Markdown in one pass, so a single command yields the complete bug context (summary, description, status, changelog-derived fields, comments, custom field VALUES).
-
-**If a custom field's `.md` is a stub (field absent on this instance):**
-
-1. The stub points at the fallback comment — read it in `comments.md` (per `.agents/jira-required.yaml` → `fallback:`).
-2. Do NOT assume a field is empty without checking `comments.md` and the description.
-
-**Step 2: Extract and present critical information**
+Step 2. Summarize what you found:
 
 ```markdown
 ## Bug Analysis: [BUG_ID]
@@ -342,17 +266,17 @@ Then read the materialized files under `.context/PBI/` — every per-field `.md`
 - Related Bugs: [List or "None"]
 ```
 
-**Step 3: Check for duplicates**
+Step 3. Check for duplicates:
 
 ```
 Use [ISSUE_TRACKER_TOOL] to search issues:
   jql: "project = [PROJECT] AND type = Bug AND status != Done AND summary ~ '[keywords]' AND key != [CURRENT_BUG]"
 ```
 
-**If potential duplicate found:**
+When a likely duplicate turns up, put the options to the user:
 
 ```
-⚠️ Potential Duplicate Detected
+Potential duplicate detected
 
 This bug may be a duplicate of [EXISTING-BUG]:
 - Summary: [Summary]
@@ -369,39 +293,24 @@ Which would you prefer?
 
 ---
 
-### Phase 2: Bug Reproduction
+### Phase 2: Bug reproduction
 
-**Objective:** Confirm the bug is reproducible before implementing a fix.
+Goal: confirm the bug is reproducible before implementing a fix.
 
-**Reproduction approach by bug type:**
+| Bug type | Reproduction method |
+| --- | --- |
+| UI bug | Browser testing tools, when available |
+| API bug | API testing tools or curl commands |
+| Code or logic bug | Code inspection and trace |
+| Data bug | Database queries or API verification |
 
-| Bug Type           | Reproduction Method                  |
-| ------------------ | ------------------------------------ |
-| **UI Bug**         | Browser testing tools (if available) |
-| **API Bug**        | API testing tools or curl commands   |
-| **Code/Logic Bug** | Code inspection and trace            |
-| **Data Bug**       | Database queries or API verification |
+For a UI bug (with browser tools): open the affected page, follow the steps exactly, capture a screenshot when the bug shows, and note console errors and network failures.
 
-**For UI Bugs (if browser tools available):**
+For an API bug: replay the call with the same parameters, capture the response and status code, and compare with the expected behavior.
 
-1. Navigate to the affected page
-2. Follow steps to reproduce exactly
-3. Capture screenshot if bug manifests
-4. Note any console errors or network failures
+For a code or logic bug: find the code path from the description, trace the logic, and locate where the behavior diverges from the expected one.
 
-**For API Bugs:**
-
-1. Replicate the API call with same parameters
-2. Capture response and status code
-3. Compare with expected behavior
-
-**For Code/Logic Bugs:**
-
-1. Identify the code path from the bug description
-2. Trace through the logic
-3. Identify where behavior diverges from expected
-
-**Document reproduction results:**
+Write the result down:
 
 ```markdown
 ## Reproduction Results
@@ -409,20 +318,20 @@ Which would you prefer?
 **Attempt 1:** [Date/Time]
 
 - Steps executed: [List]
-- Result: ✅ Reproduced / ❌ Not Reproduced / ⚠️ Intermittent
+- Result: Reproduced / Not reproduced / Intermittent
 - Evidence: [Screenshot path / Log excerpt / None]
 
 **Conclusion:**
 
-- [ ] Bug confirmed reproducible → Proceed to Phase 3
-- [ ] Bug NOT reproducible → Request more info
-- [ ] Bug is intermittent → Note timing/race condition
+- [ ] Bug confirmed reproducible, proceed to Phase 3
+- [ ] Bug NOT reproducible, request more info
+- [ ] Bug is intermittent, note timing/race condition
 ```
 
-**If NOT reproducible:**
+When you cannot reproduce it, say so and offer the options:
 
 ```
-⚠️ Unable to Reproduce Bug
+Unable to reproduce bug
 
 I followed the steps but could not reproduce the issue.
 
@@ -433,33 +342,33 @@ Possible reasons:
 4. Timing/race condition issue
 
 Options:
-1. Add Jira comment requesting more details from reporter
+1. Add a Jira comment requesting more details from the reporter
 2. Check git history for recent fixes that might have resolved this
 3. Close as "Cannot Reproduce" with documentation
 
 Which would you prefer?
 ```
 
+When the cause is not obvious from the report, or the bug reproduces only sometimes, `Call the Skill tool with "diagnosing-bugs"` and follow it through all six phases. Here you go on to fix the bug, which that skill's diagnosis alone does not do. Form no hypothesis before you have a command that goes red on the bug. Its regression test goes in at the seam the plan named; when no seam can host it, the missing seam is a finding for the review notes. Its cleanup phase leaves no `[DEBUG-...]` line behind. With nobody at the keyboard, follow that skill's own unattended lines: when no loop can be built it ends at its Phase 1 with the list of what was tried, and you record that as an escalation entry (a clean stop, `decision-protocol.md` §5.2) and move to the next bug within the run's cap. When the skill is not installed, keep the reproduction steps above, write down the failing command before you form a hypothesis, and say once that the diagnosis method was not available.
+
 ---
 
-### Phase 3: Triage & Decision
+### Phase 3: Triage and decision
 
-**Objective:** Determine the correct course of action based on analysis.
+Goal: pick the right course of action from the analysis.
 
-**Decision Matrix:**
+| Finding | Action | Jira transition (slug, then status) |
+| --- | --- | --- |
+| Real bug, reproducible | Proceed to fix | `start_fixing` → `in_progress` |
+| Duplicate of an existing bug | Link and close | `is_duplicated` → `duplicated` |
+| Not a bug (works as designed) | Document the reasoning | `is_wad` → `rejected` |
+| Enhancement request | Reclassify as enhancement | `is_not_a_bug` → `enhancement` |
+| Cannot reproduce | Request more info or close | comment, then `is_cnr` → `cannot_reproduce` (or leave `open`) |
+| Deferred (low priority or risk) | Document and defer | `defer` → `deferred` |
 
-| Finding                       | Action                     | Jira Transition (slug → status)        |
-| ----------------------------- | -------------------------- | -------------------------------------- |
-| Real bug, reproducible        | Proceed to fix             | `start_fixing` → `in_progress`         |
-| Duplicate of existing bug     | Link and close             | `is_duplicated` → `duplicated`         |
-| Not a bug (works as designed) | Document reasoning         | `is_wad` → `rejected`                  |
-| Enhancement request           | Reclassify as enhancement  | `is_not_a_bug` → `enhancement`         |
-| Cannot reproduce              | Request more info or close | comment, then `is_cnr` → `cannot_reproduce` (or leave `open`) |
-| Deferred (low priority/risk)  | Document and defer         | `defer` → `deferred`                   |
+Slugs resolve through `{{jira.transition.bug.<slug>}}` (the same slugs serve `defect` and `improvement`). A slug this project's catalog lacks follows the unmapped-status fallback in `agentic-dev-core/references/artifact-lifecycle.md` §4: never a remembered id, never a status name typed from memory.
 
-Slugs resolve through `{{jira.transition.bug.<slug>}}` (same slugs for `defect` / `improvement`). A slug this project's catalog lacks follows the unmapped-status fallback in `agentic-dev-core/references/artifact-lifecycle.md` §4: never a remembered id, never a status name typed from memory.
-
-**For "Real Bug" - Check if Hotfix needed:**
+For a real bug, decide whether it is a hotfix:
 
 ```markdown
 ## Fix Type Determination
@@ -467,33 +376,33 @@ Slugs resolve through `{{jira.transition.bug.<slug>}}` (same slugs for `defect` 
 **Severity:** [Crítica/Mayor/Moderada/Menor/Trivial]
 **Environment:** [Dev/QA/UAT/Staging/Production]
 
-**Hotfix Criteria:**
+**Hotfix criteria:**
 
 - [ ] Severity is "Crítica"
 - [ ] Found in Production environment
-- [ ] Blocking critical business flow
+- [ ] Blocking a critical business flow
 
 **Decision:**
 
-- [ ] **HOTFIX** → Use `hotfix/*` branch, PR to the production branch (`git_strategy.branches.production`)
-- [ ] **BUGFIX** → Use `fix/*` branch, PR to the integration branch (`git_strategy.branches.integration`)
+- [ ] HOTFIX: `hotfix/*` branch, PR to the production branch (`git_strategy.branches.production`)
+- [ ] BUGFIX: `fix/*` branch, PR to the integration branch (`git_strategy.branches.integration`)
 ```
 
-**For "Not a Bug" scenarios:**
+For a "not a bug" finding, explain it to the user:
 
 ```
 I've analyzed this issue and determined it's NOT a bug.
 
-**Classification:** Working As Designed (WAD)
+Classification: Working As Designed (WAD)
 
-**Analysis:**
+Analysis:
 [Detailed explanation of why this is expected behavior]
 
-**Reference:**
+Reference:
 - AC from [STORY-XXX]: "[Quote the AC]"
 - Design decision: [Reference if documented]
 
-**Recommendation:**
+Recommendation:
 [Close as WAD / Convert to enhancement / Other]
 
 Do you want me to:
@@ -502,7 +411,7 @@ Do you want me to:
 3. Let me investigate further
 ```
 
-**Transition to In Progress (if real bug):**
+For a real bug, move it to In Progress:
 
 ```
 Use [ISSUE_TRACKER_TOOL] to transition issue:
@@ -510,13 +419,15 @@ Use [ISSUE_TRACKER_TOOL] to transition issue:
   transition: {{jira.transition.bug.start_fixing}}
 ```
 
+Parent story in `blocked` (defect loop): when QA filed this defect from testing, the parent story sits in `blocked` (QA fired `defect_reported`). Starting the fix also moves the story. Fire `fix_defect` (`blocked` to `in_progress`) on the parent story, read its status back, and keep it there while the fix is built and reviewed. The defect and the story each have their own transitions, and moving one never moves the other.
+
 ---
 
-### Phase 4: Implementation of Fix
+### Phase 4: Implementing the fix
 
-**Objective:** Implement minimal, targeted fix following code standards.
+Goal: a minimal, targeted fix that follows the code standards.
 
-**Step 1: Root Cause Analysis**
+Step 1. Analyze the root cause and write it down:
 
 ```markdown
 ## Root Cause Analysis
@@ -536,9 +447,7 @@ Use [ISSUE_TRACKER_TOOL] to transition issue:
 [The logic error / missing check / incorrect assumption]
 ```
 
-**Step 2: Create Fix Branch**
-
-Determine branch type based on Phase 3 decision:
+Step 2. Create the fix branch from the Phase 3 decision:
 
 ```bash
 # For standard BUGFIX:
@@ -550,18 +459,14 @@ git checkout -b hotfix/[ISSUE_KEY]/[short-description]
 # Example: git checkout -b hotfix/PROJ-456/payment-crash
 ```
 
-**Step 3: Implement Fix**
+Step 3. Implement the fix:
 
-**Guidelines:**
+- Change only what is broken. Refactor only what is directly tied to the bug.
+- Follow `references/code-standards.md` and `references/error-handling.md`.
+- Add a `data-testid` when a UI element is involved, for future automation.
+- Consider the edge cases and related scenarios the change might affect.
 
-- **Minimal changes:** Fix only what's broken
-- **Don't refactor:** Unless directly related to the bug
-- **Follow code standards:** `references/code-standards.md`
-- **Error handling:** `references/error-handling.md`
-- **Add data-testid:** If UI element involved (for future automation)
-- **Consider edge cases:** Related scenarios that might be affected
-
-**Document the change:**
+Document the change:
 
 ````markdown
 ## Fix Implementation
@@ -577,7 +482,6 @@ git checkout -b hotfix/[ISSUE_KEY]/[short-description]
 ```[language]
 [old code snippet]
 ```
-````
 
 **After (fixed code):**
 
@@ -587,20 +491,17 @@ git checkout -b hotfix/[ISSUE_KEY]/[short-description]
 
 **Why this fixes it:**
 [Explanation of how the fix addresses the root cause]
-
 ````
 
 ---
 
-### Phase 5: Verification of Fix
+### Phase 5: Verifying the fix
 
-**Objective:** Ensure fix works and doesn't break anything.
+Goal: the fix works and breaks nothing.
 
-**Step 1: Code Quality Checks**
+Step 1. Run the code quality checks with the app's own scripts (`## Stack parameters` in `../SKILL.md`), from `{{stack.app_root}}`. A role set to null is skipped and reported, never replaced by an invented command.
 
 ```bash
-# The app's own scripts (`## Stack parameters` in ../SKILL.md), run from {{stack.app_root}}.
-# A null role is skipped and reported, never replaced by an invented command.
 # TypeScript check
 {{stack.package_manager}} run {{stack.scripts.types}}
 
@@ -609,37 +510,32 @@ git checkout -b hotfix/[ISSUE_KEY]/[short-description]
 
 # Build
 {{stack.package_manager}} run {{stack.scripts.build}}
-````
+```
 
-**Step 2: Manual Verification**
+Step 2. Verify by hand: follow the original reproduction steps, confirm the bug no longer occurs, test related scenarios, and capture evidence (a screenshot for UI).
 
-1. Follow original steps to reproduce
-2. Verify bug no longer occurs
-3. Test related scenarios (regression check)
-4. Capture evidence (screenshot if UI)
-
-**Step 3: Run Tests (if available)**
+Step 3. Run the tests, when the project has them:
 
 ```bash
 {{stack.package_manager}} run {{stack.scripts.test}}
 ```
 
-**Verification Checklist:**
+Checklist:
 
 ```markdown
 ## Fix Verification
 
-**Code Quality:**
+**Code quality:**
 
-- [ ] TypeScript: No errors
-- [ ] Lint: No errors (or only pre-existing)
-- [ ] Build: Successful
+- [ ] TypeScript: no errors
+- [ ] Lint: no errors (or only pre-existing)
+- [ ] Build: successful
 
-**Functional Verification:**
+**Functional verification:**
 
-- [ ] Original bug: FIXED
-- [ ] Steps to reproduce now show expected behavior
-- [ ] Related scenarios: Not broken (regression check)
+- [ ] Original bug: fixed
+- [ ] Steps to reproduce now show the expected behavior
+- [ ] Related scenarios not broken (regression check)
 - [ ] Evidence captured: [Screenshot path or "N/A"]
 
 **Tests:**
@@ -650,11 +546,9 @@ git checkout -b hotfix/[ISSUE_KEY]/[short-description]
 
 ---
 
-### Phase 6: Git Flow (Branch, Commit, Push, PR)
+### Phase 6: Git flow (commit, push, PR)
 
-**Step 1: Stage and Commit**
-
-Use semantic commit format:
+Step 1. Commit with a semantic message:
 
 ```bash
 git add [files]
@@ -666,7 +560,7 @@ git commit -m "fix(ISSUE_KEY): brief description
 Fixes: ISSUE_KEY"
 ```
 
-**Commit Message Examples:**
+Examples:
 
 ```bash
 # Standard bugfix
@@ -686,16 +580,16 @@ git commit -m "fix(PROJ-456): prevent payment crash on empty cart [HOTFIX]
 Fixes: PROJ-456"
 ```
 
-**Step 2: Push Branch**
+Step 2. Push the branch:
 
 ```bash
 git push -u origin [branch-name]
 ```
 
-**Step 3: Create Pull Request**
+Step 3. Create the pull request:
 
 ```bash
-# For BUGFIX (to the integration branch: <integration> = git_strategy.branches.integration;
+# For BUGFIX, to the integration branch (<integration> = git_strategy.branches.integration;
 #   when it is null, the PR targets git_strategy.branches.production)
 gh pr create \
   --title "fix(ISSUE_KEY): brief description" \
@@ -737,17 +631,17 @@ EOF
 )" \
   --base <integration>
 
-# For HOTFIX (to the production branch, git_strategy.branches.production)
+# For HOTFIX, to the production branch (git_strategy.branches.production)
 gh pr create \
   --title "fix(ISSUE_KEY): brief description [HOTFIX]" \
   --body "..." \
   --base <production>
 ```
 
-**Confirm PR creation:**
+Confirm the PR to the user:
 
 ```
-✅ Pull Request Created
+Pull Request created
 
 Title: fix(PROJ-123): resolve email validation
 PR #: [NUMBER]
@@ -761,13 +655,13 @@ Next steps:
 
 ---
 
-### Phase 7: Jira Documentation
+### Phase 7: Jira documentation
 
-**Objective:** Update Jira with complete fix documentation.
+Goal: Jira carries the complete fix documentation.
 
-> Before writing rich-text fields in Jira, read `.agents/skills/product-management/references/jira-publishing-gotchas.md` for the two known ADF bugs and their workarounds.
+Before writing rich-text fields, read `.agents/skills/product-management/references/jira-publishing-gotchas.md` for the two known ADF bugs and their workarounds.
 
-**Step 1: Update Custom Fields (Root Cause)**
+Step 1. Update the custom fields (root cause and fix type):
 
 ```
 [ISSUE_TRACKER_TOOL] update_issue_field(
@@ -783,15 +677,15 @@ Next steps:
 )
 ```
 
-**Step 2: Add Fix Documentation Comment**
+Step 2. Add the fix documentation comment (template under "Jira comment templates"):
 
 ```
 Use [ISSUE_TRACKER_TOOL] to add comment to issue:
   issue_key: "[BUG_ID]"
-  body: "[Use Fix Documentation Template below]"
+  body: "[Use Fix Documentation template below]"
 ```
 
-**Step 3: Transition to Ready For QA**
+Step 3. Transition to Ready For QA:
 
 ```
 Use [ISSUE_TRACKER_TOOL] to transition issue:
@@ -799,107 +693,85 @@ Use [ISSUE_TRACKER_TOOL] to transition issue:
   transition: {{jira.transition.bug.fixed_and_deployed}}  // from in_review; urgent hotfix with no review: hard_pushed
 ```
 
-**Step 4: Assign to QA (if known)**
+Step 4. Assign the bug to the QA. Read `{{jira.qa_assignee}}` from the synced defect (QA fills it when filing). When it names a QA, move the native `assignee` to that QA and read it back (use `editJiraIssue` with the `accountId`; a raw accountId through the CLI can silently unassign). When it is empty, leave `assignee` as it is, write no made-up or placeholder address, and say so in the fix comment.
 
-```
-Use [ISSUE_TRACKER_TOOL] to update issue:
-  issue_key: "[BUG_ID]"
-  fields:
-    assignee: "[qa-email@example.com]"
-```
+Step 5. Re-deliver the parent story and record the DTU cycle.
+
+- Parent story in `blocked` (defect loop): once the fix is merged and deployed, re-deliver the story to Ready For QA (`pushed` from `in_progress`, or `pull_request` then `deployed`), read its status back and move its `assignee` to the QA in `{{jira.qa_assignee}}`. The full loop is in `SKILL.md` Stage 4 "Defect loop".
+- DTU: write the next cycle per `SKILL.md` Stage 4. Read the current `{{jira.development_token_usage}}`, add this cycle's measured delta (never overwrite), and post one `DTU cycle N: +x K (total y K) source=<harness or human>` comment, or a stated N/A when no figure exists. The figure is measured, never an estimate.
 
 ---
 
-### Phase 8: Educational Feedback (Optional)
+### Phase 8: Educational feedback (optional)
 
-> **Note:** This phase is OFF by default. Activate only when explicitly requested by the user.
+This phase is off by default. Run it only when the user asks for feedback mode or asks for feedback on the bug report. Its goal is better bug reports from the same reporter next time.
 
-**Objective:** Provide constructive feedback to improve future bug reports.
+Before you call any field "missing" or "incomplete", verify it: re-run the sync so you read current values rather than a stale cache, show the actual values from the synced per-field `.md` files in your feedback, and mark a field missing only when its `.md` is a stub and `comments.md` carries no fallback for it. An AI that reads through `view` (which returns `null` for `customfield_*`) or from a stale cache concludes "empty" when the field was filled. If you already gave feedback on that basis, tell the user, re-run the sync and give the corrected assessment.
 
-**When to activate:**
-
-- User explicitly requests feedback mode
-- User asks "give me feedback on this bug report"
-
-**⚠️ CRITICAL: Verify Custom Fields Before Giving Feedback**
-
-Before evaluating whether fields are "missing" or "incomplete":
-
-1. **Re-run the sync** so you read the current values, not a stale cache:
-   ```
-   bun run jira:sync-issues get [BUG_ID] --include-comments
-   ```
-2. **List found values:** in your feedback, show the ACTUAL values from the synced per-field `.md` files.
-3. **Only mark as "missing" if the synced `.md` is a stub** (field absent on this instance) AND no fallback comment carries the content in `comments.md`.
-
-**If a field's `.md` is a stub and `comments.md` has no fallback for it:** then it's valid to note as missing in feedback.
-
-**Evaluation Criteria:**
-
-| Aspect             | Good                          | Needs Improvement    |
-| ------------------ | ----------------------------- | -------------------- |
+| Aspect | Good | Needs improvement |
+| --- | --- | --- |
 | Steps to Reproduce | Clear, numbered, reproducible | Vague, missing steps |
-| Expected vs Actual | Specific, measurable          | Generic, unclear     |
-| Error Type         | Correctly categorized         | Misclassified        |
-| Severity           | Appropriate to impact         | Over/under estimated |
-| Environment        | Specified correctly           | Missing or incorrect |
-| Evidence           | Screenshots, logs attached    | No evidence          |
-| User Story Link    | Linked to related story       | No traceability      |
-| Title              | Follows nomenclature          | Unclear or too vague |
+| Expected vs Actual | Specific, measurable | Generic, unclear |
+| Error Type | Correctly categorized | Misclassified |
+| Severity | Appropriate to impact | Over or under estimated |
+| Environment | Specified correctly | Missing or incorrect |
+| Evidence | Screenshots, logs attached | No evidence |
+| User Story Link | Linked to related story | No traceability |
+| Title | Follows nomenclature | Unclear or too vague |
 
-**Feedback Comment Template:**
+Feedback comment template:
 
 ```markdown
-## 📚 Feedback sobre el Bug Report
+## Feedback on the Bug Report
 
-### ✅ Lo que estuvo bien
+### What went well
 
 - [Positive aspect 1]
 - [Positive aspect 2]
 
-### 🔧 Oportunidades de mejora
+### Opportunities to improve
 
-**Custom Fields:**
-| Campo | Estado | Comentario |
-|-------|--------|------------|
-| 🐞 Actual Result | ✅/⚠️/❌ | [Comentario] |
-| ✅ Expected Result | ✅/⚠️/❌ | [Comentario] |
-| Error Type | ✅/⚠️/❌ | [Comentario] |
-| SEVERITY | ✅/⚠️/❌ | [Comentario] |
-| Test Environment | ✅/⚠️/❌ | [Comentario] |
-| Root Cause🐞 | ⚠️ N/A | [Se llena después del fix] |
+**Custom fields:**
+| Field | Status | Comment |
+|-------|--------|---------|
+| 🐞 Actual Result | OK / Partial / Missing | [Comment] |
+| ✅ Expected Result | OK / Partial / Missing | [Comment] |
+| Error Type | OK / Partial / Missing | [Comment] |
+| SEVERITY | OK / Partial / Missing | [Comment] |
+| Test Environment | OK / Partial / Missing | [Comment] |
+| Root Cause🐞 | N/A | [Filled in after the fix] |
 
-**Estructura del Reporte:**
+**Report structure:**
 
-- [ ] Steps to reproduce claros y numerados
-- [ ] Evidencia adjunta (screenshot/video)
-- [ ] Link a User Story relacionada
-- [ ] Título sigue nomenclatura: `<EPICNAME>: <COMPONENT>: <ISSUE_SUMMARY>`
+- [ ] Clear, numbered steps to reproduce
+- [ ] Evidence attached (screenshot/video)
+- [ ] Link to the related User Story
+- [ ] Title follows the nomenclature: `<EPICNAME>: <COMPONENT>: <ISSUE_SUMMARY>`
 
-**Nota sobre Issue Type:**
+**Note on issue type:**
 
-- **Defect:** Error encontrado durante testing de una US que aún no ha sido aprobada
-- **Bug:** Error en funcionalidad ya desplegada/aprobada en producción
+- Defect: an error found while testing a US that has not been approved yet
+- Bug: an error in functionality already deployed or approved in production
 
-### 💡 Tips para futuros reportes
+### Tips for future reports
 
 1. [Specific tip based on this report]
 2. [Another helpful suggestion]
 
 ---
 
-_Este feedback es constructivo y busca mejorar nuestro proceso de testing._
+_This feedback is meant to improve our testing process._
 _Bug retest / QA verification: out of scope here._
 ```
 
 ---
 
-## Jira Comment Templates
+## Jira comment templates
 
-### Fix Documentation (Standard)
+### Fix documentation (standard)
 
 ```markdown
-## 🔧 Bug Fix Documentation
+## Bug Fix Documentation
 
 ### Root Cause Analysis
 
@@ -940,10 +812,10 @@ _Bug retest / QA verification: out of scope here._
 _Fix ready for QA verification._
 ```
 
-### Duplicate Resolution
+### Duplicate resolution
 
 ```markdown
-## 🔗 Duplicate Bug Resolution
+## Duplicate Bug Resolution
 
 This issue is a **duplicate** of **[EXISTING-BUG]**.
 
@@ -961,10 +833,10 @@ This issue is a **duplicate** of **[EXISTING-BUG]**.
 **Note:** Progress will be tracked on [EXISTING-BUG].
 ```
 
-### Not a Bug (WAD)
+### Not a bug (WAD)
 
 ```markdown
-## ✅ Resolution: Working As Designed (WAD)
+## Resolution: Working As Designed (WAD)
 
 ### Analysis
 
@@ -987,10 +859,10 @@ This behavior is **intentional** and working as designed.
 _Closing as "Won't Fix" - Working As Designed._
 ```
 
-### Cannot Reproduce
+### Cannot reproduce
 
 ```markdown
-## ❓ Resolution: Cannot Reproduce
+## Resolution: Cannot Reproduce
 
 ### Reproduction Attempts
 
@@ -1020,17 +892,17 @@ Unable to reproduce the reported behavior.
 _Please provide additional details to help us investigate._
 ```
 
-### Enhancement Request
+### Enhancement request
 
 ```markdown
-## 📝 Reclassified: Enhancement Request
+## Reclassified: Enhancement Request
 
 ### Analysis
 
-After investigation, this is **not a bug** but rather a **feature request/enhancement**.
+After investigation, this is **not a bug** but a **feature request/enhancement**.
 
 **Current Behavior:**
-[What the system does - correctly]
+[What the system does, correctly]
 
 **Requested Behavior:**
 [What the reporter wants it to do]
@@ -1049,51 +921,49 @@ _Reclassifying and moving to backlog._
 
 ---
 
-## Hotfix Section (Critical Production Bugs)
+## Hotfix (critical production bugs)
 
-> Use this workflow when: SEVERITY = "Crítica" AND Environment = "Production"
-
-### Hotfix Checklist
+A hotfix applies when severity is Crítica and the environment is Production (the Phase 3 criteria). It branches from and targets the production branch, then backports.
 
 ```markdown
-## 🚨 HOTFIX Required
+## HOTFIX Required
 
 **Bug:** [ISSUE_KEY]
 **Severity:** Crítica
 **Environment:** Production
 **Impact:** [Business impact description]
 
-### Hotfix Criteria Met:
+### Hotfix criteria met:
 
 - [x] Severity is Crítica
 - [x] Bug is in Production
-- [x] Blocking critical business flow
+- [x] Blocking a critical business flow
 
-### Hotfix Workflow:
+### Hotfix workflow:
 
 1. [ ] Branch from `<production>` (`git_strategy.branches.production`): `hotfix/[ISSUE_KEY]/[description]`
-2. [ ] Implement minimal fix
-3. [ ] Verify fix locally
-4. [ ] Create PR to `<production>` with [HOTFIX] tag
+2. [ ] Implement the minimal fix
+3. [ ] Verify the fix locally
+4. [ ] Create a PR to `<production>` with the [HOTFIX] tag
 5. [ ] Request expedited review
 6. [ ] After merge to `<production>`:
-   - [ ] Verify production deployment
-   - [ ] Backport to the integration branch (`git_strategy.branches.integration`, e.g. `staging`)
-7. [ ] Update Jira with hotfix documentation
+   - [ ] Verify the production deployment
+   - [ ] Backport to the integration branch (`git_strategy.branches.integration`)
+7. [ ] Update Jira with the hotfix documentation
 ```
 
-### Hotfix Branch Strategy
+Branch strategy:
 
 ```bash
-# 1. Create hotfix branch from <production> (git_strategy.branches.production)
+# 1. Create the hotfix branch from <production> (git_strategy.branches.production)
 git checkout <production>
 git pull origin <production>
 git checkout -b hotfix/[ISSUE_KEY]/[description]
 
-# 2. Implement fix (minimal changes only)
+# 2. Implement the fix (minimal changes only)
 # ... make changes ...
 
-# 3. Commit with HOTFIX tag
+# 3. Commit with the HOTFIX tag
 git commit -m "fix(ISSUE_KEY): description [HOTFIX]
 
 - Root cause: [explanation]
@@ -1102,7 +972,7 @@ git commit -m "fix(ISSUE_KEY): description [HOTFIX]
 
 Fixes: ISSUE_KEY"
 
-# 4. Push and create PR to <production>
+# 4. Push and create the PR to <production>
 git push -u origin hotfix/[ISSUE_KEY]/[description]
 gh pr create --base <production> --title "fix(ISSUE_KEY): description [HOTFIX]"
 
@@ -1114,10 +984,10 @@ git cherry-pick [hotfix-commit-hash]
 git push origin <integration>
 ```
 
-### Hotfix PR Template
+Hotfix PR template:
 
 ```markdown
-## 🚨 HOTFIX: [ISSUE_KEY]
+## HOTFIX: [ISSUE_KEY]
 
 **Severity:** Crítica
 **Environment:** Production
@@ -1129,7 +999,7 @@ git push origin <integration>
 
 ### Fix
 
-[Brief explanation of minimal fix]
+[Brief explanation of the minimal fix]
 
 ### Changes
 
@@ -1139,100 +1009,59 @@ git push origin <integration>
 
 ### Testing
 
-- [x] Reproduced in production-like environment
+- [x] Reproduced in a production-like environment
 - [x] Fix verified
 - [x] No regression in critical paths
 
 ### Deployment Notes
 
 - [ ] Requires immediate deployment to production
-- [ ] Backport needed to: the integration branch (`git_strategy.branches.integration`, e.g. `staging`)
+- [ ] Backport needed to: the integration branch (`git_strategy.branches.integration`)
 
 ### Rollback Plan
 
-[If fix causes issues, how to rollback]
+[If the fix causes issues, how to roll back]
 
 ---
 
-🚨 **EXPEDITED REVIEW REQUESTED**
+**EXPEDITED REVIEW REQUESTED**
 
 Fixes: [ISSUE_KEY]
 ```
 
 ---
 
-## Edge Cases Handling
+## Edge cases
 
-### Case 1: Bug Already Fixed
+### Case 1: bug already fixed
 
-**Detection:** Code inspection shows problematic code no longer exists.
+The problematic code no longer exists. Verify the fix is deployed to the environment where the bug was reported, add a Jira comment documenting when and how it was fixed, then transition to Ready For QA (or close it if it is already in production).
 
-**Action:**
+### Case 2: the fix needs a breaking change
 
-1. Verify fix is deployed to the environment where bug was reported
-2. Add Jira comment documenting when/how it was fixed
-3. Transition to Ready For QA (or close if already in production)
+The fix would break an existing API or behavior other features use. Stop, and do not implement a breaking change without approval. Document the impact in a Jira comment, ask the user or the Product Owner / Business Analyst (delegated) how to proceed, and weigh a deprecation strategy, a feature flag or versioning.
 
-### Case 2: Bug Requires Breaking Change
+### Case 3: bug in a third-party library
 
-**Detection:** Fix would break existing API/behavior used by other features.
+1. Check for a newer version that fixes it.
+2. When none does, implement a workaround in our code, document it as a known limitation, and consider opening an issue in the library's repo.
+3. Record the third-party dependency in Jira.
 
-**Action:**
+### Case 4: bug affects multiple areas
 
-1. **STOP** - Do not implement breaking change without approval
-2. Document the impact in Jira comment
-3. Ask user/PO for guidance on approach
-4. Consider: deprecation strategy, feature flag, versioning
+Scope the full impact before implementing, split into several PRs when one would be too large, test regressions extra thoroughly, and document every affected area in the PR.
 
-### Case 3: Bug in Third-Party Library
+### Case 5: insufficient information
 
-**Detection:** Root cause is in external dependency.
+You cannot understand or reproduce the bug from the report. Add a Jira comment with the specific questions and list exactly what information is needed. Leave the bug `open` with the questions in the comment, or fire `is_cnr`, which moves it to `cannot_reproduce`, when the user chooses to close it. The bug workflow has no "Need Info" status; a project that added one is the `artifact-lifecycle.md` §4 case. Do not guess.
 
-**Action:**
+### Case 6: security bug
 
-1. Check for newer version that fixes the issue
-2. If no fix available:
-   - Implement workaround in our code
-   - Document as known limitation
-   - Consider opening issue in library repo
-3. Update Jira with third-party dependency info
-
-### Case 4: Bug Affects Multiple Areas
-
-**Detection:** Fix requires changes across multiple features/modules.
-
-**Action:**
-
-1. Scope the full impact before implementing
-2. Consider splitting into multiple PRs if too large
-3. Extra thorough regression testing
-4. Document all affected areas in PR
-
-### Case 5: Insufficient Information
-
-**Detection:** Cannot understand or reproduce from bug report.
-
-**Action:**
-
-1. Add Jira comment with specific questions
-2. Leave the bug `open` with the questions in the comment, or `is_cnr` → `cannot_reproduce` if the user chooses to close it (the bug workflow has no "Need Info" status; a project that added one is the `artifact-lifecycle.md` §4 case)
-3. List exactly what information is needed
-4. Do NOT guess or assume
-
-### Case 6: Security Bug
-
-**Detection:** Bug involves security vulnerability (auth bypass, data exposure, XSS, etc.)
-
-**Action:**
-
-1. **DO NOT** discuss vulnerability details in public Jira comments
-2. Use private/restricted channel if available
-3. Prioritize as critical regardless of original severity
-4. Consider if disclosure is needed after fix
+The bug involves a vulnerability (auth bypass, data exposure, XSS). Keep vulnerability details out of public Jira comments, use a private or restricted channel when one exists, prioritize it as critical whatever the original severity, and consider whether disclosure is needed after the fix.
 
 ---
 
-## Decision Flow Diagram
+## Decision flow
 
 ```
 Bug Reported in Jira
@@ -1279,7 +1108,7 @@ Real Bug    Not a Bug    Enhancement    Deferred
     │
     v
 Is Crítica + Production? ───Yes──> HOTFIX Flow
-    │                              (hotfix/* → main)
+    │                              (hotfix/* → production branch)
     No
     │
     v
@@ -1314,7 +1143,7 @@ Is Crítica + Production? ───Yes──> HOTFIX Flow
           │
           v
 ┌───────────────────┐
-│ Phase 8: Feedback │  ←── Optional (user request)
+│ Phase 8: Feedback │  <-- Optional (user request)
 │ (if requested)    │
 └─────────┬─────────┘
           │
@@ -1324,177 +1153,173 @@ Is Crítica + Production? ───Yes──> HOTFIX Flow
 
 ---
 
-## Output: Final Report to User
+## Final report to the user
 
-After completing the workflow, present this consolidated report to the user in the chat:
+After the workflow, present this consolidated report in the chat.
 
-### Fix Report Template
+### Fix report template
 
 ```markdown
-## ✅ [ISSUE_KEY] - FIX COMPLETADO
+## [ISSUE_KEY] - FIX COMPLETE
 
-| Aspecto              | Detalle                                  |
-| -------------------- | ---------------------------------------- |
-| Issue Key            | [ISSUE_KEY]                              |
-| Título               | [Bug summary/title]                      |
-| Estado Final         | Ready For QA                             |
-| Asignado a           | [Tester name] (reporter/tester original) |
-| Branch               | `fix/[ISSUE_KEY]/[description]`          |
-| Commit               | [Full commit URL - clickeable]           |
-| PR                   | [PR URL - clickeable] (si aplica)        |
-| Archivos Modificados | [List of modified files]                 |
-| Causa Raíz           | [Category]: [Brief explanation]          |
-| URL Jira             | [Full Jira URL - clickeable]             |
+| Aspect         | Detail                                   |
+| -------------- | ---------------------------------------- |
+| Issue Key      | [ISSUE_KEY]                              |
+| Title          | [Bug summary/title]                      |
+| Final status   | Ready For QA                             |
+| Assigned to    | [Tester name] (original reporter/tester) |
+| Branch         | `fix/[ISSUE_KEY]/[description]`          |
+| Commit         | [Full commit URL, clickable]             |
+| PR             | [PR URL, clickable] (if applicable)      |
+| Files modified | [List of modified files]                 |
+| Root cause     | [Category]: [Brief explanation]          |
+| Jira URL       | [Full Jira URL, clickable]               |
 
 ---
 
-### Acciones Realizadas
+### Actions taken
 
-| Acción            | Detalle                                                   |
+| Action            | Detail                                                    |
 | ----------------- | --------------------------------------------------------- |
-| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments` (con comentarios/changelog)  |
-| Jira - Transition | [Status inicial] → In Progress → Ready For QA             |
-| Jira - Fields     | Root Cause, Fix Type actualizados                         |
-| Jira - Comments   | [N] comentarios añadidos (Fix documentation [+ Feedback]) |
-| Jira - Assign     | Asignado a [Tester name] para re-test                     |
+| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments` (with comments/changelog) |
+| Jira - Transition | [Initial status] → In Progress → Ready For QA             |
+| Jira - Fields     | Root Cause and Fix Type updated                           |
+| Jira - Comments   | [N] comments added (Fix documentation [+ Feedback])       |
+| Jira - Assign     | Assigned to [Tester name] for re-test                     |
 | Git - Branch      | `fix/[ISSUE_KEY]/[description]`                           |
 | Git - Commit      | `fix([ISSUE_KEY]): [commit message]`                      |
 | Git - Push        | → [target branch: integration, or production when null]   |
-| Verificación      | typecheck ✓, lint ✓, build ✓                              |
+| Verification      | typecheck ✓, lint ✓, build ✓                              |
 
 ---
 
-### Triage Assessment
+### Triage assessment
 
-| Criterio              | Resultado                                   |
-| --------------------- | ------------------------------------------- |
-| ¿Es realmente un bug? | ✅ Sí / ⚠️ Parcial / ❌ No (es enhancement) |
-| ¿Alineado con AC?     | [Sí/No - referencia AC si existe]           |
-| ¿Reproducible?        | ✅ Sí / ⚠️ Intermitente / ❌ No             |
-| Tipo de Fix           | Bugfix / Hotfix                             |
-| Decisión              | [Breve explicación de la decisión tomada]   |
+| Criterion           | Result                                      |
+| ------------------- | ------------------------------------------- |
+| Is it really a bug? | Yes / Partly / No (it is an enhancement)    |
+| Aligned with AC?    | [Yes/No - AC reference if any]              |
+| Reproducible?       | Yes / Intermittent / No                     |
+| Fix type            | Bugfix / Hotfix                             |
+| Decision            | [Short explanation of the decision taken]   |
 
-**Análisis:**
-[1-2 párrafos explicando:
+**Analysis:**
+[1-2 paragraphs covering:
 
-- Contexto del bug
-- Por qué ocurría
-- Decisiones tomadas durante el fix
-- Notas relevantes para QA (casos edge, limitaciones, etc.)
-- Si fue un caso borderline (Bug vs Enhancement), explicar el razonamiento]
-
----
-
-### Cómo Verificar el Fix
-
-1. Navegar a [URL/página específica]
-2. [Paso específico de verificación]
-3. [Paso específico de verificación]
-4. **Expected:** [Comportamiento esperado después del fix]
+- Context of the bug
+- Why it happened
+- Decisions taken during the fix
+- Notes relevant to QA (edge cases, limitations, etc.)
+- For a borderline case (bug vs enhancement), the reasoning]
 
 ---
 
-**Próximo paso:** Bug retest / QA verification: out of scope here.
+### How to verify the fix
+
+1. Go to [URL/specific page]
+2. [Specific verification step]
+3. [Specific verification step]
+4. **Expected:** [Behavior expected after the fix]
+
+---
+
+**Next step:** Bug retest / QA verification: out of scope here.
 ```
 
-### Report Variations
+### Report variations
 
-**For HOTFIX (critical production bugs):**
-
-Add this banner at the top:
+Hotfix: add this banner at the top.
 
 ```markdown
-## 🚨 [ISSUE_KEY] - HOTFIX COMPLETADO
+## [ISSUE_KEY] - HOTFIX COMPLETE
 
-> **HOTFIX:** Este fix fue aplicado directamente a `main` por ser crítico en producción.
-> Backport a staging: [Sí, commit: XXX / Pendiente / N/A]
+> **HOTFIX:** This fix was applied directly to the production branch because it was critical in production.
+> Backport to the integration branch: [Yes, commit: XXX / Pending / N/A]
 ```
 
-**For Duplicate resolution:**
+Duplicate resolution:
 
 ```markdown
-## 🔗 [ISSUE_KEY] - DUPLICADO
+## [ISSUE_KEY] - DUPLICATE
 
-| Aspecto      | Detalle              |
+| Aspect       | Detail               |
 | ------------ | -------------------- |
 | Issue Key    | [ISSUE_KEY]          |
-| Duplicado de | [EXISTING_ISSUE_KEY] |
-| Estado Final | Duplicate            |
-| URL Jira     | [Jira URL]           |
+| Duplicate of | [EXISTING_ISSUE_KEY] |
+| Final status | Duplicate            |
+| Jira URL     | [Jira URL]           |
 
-### Acciones Realizadas
+### Actions taken
 
-| Acción            | Detalle                        |
+| Action            | Detail                         |
 | ----------------- | ------------------------------ |
-| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments`   |
+| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments` |
 | Jira - Link       | Linked to [EXISTING_ISSUE_KEY] |
 | Jira - Transition | [Status] → Duplicate           |
 | Jira - Comment    | Documented duplicate reasoning |
 
-**Análisis:** [Por qué es duplicado, qué issue tiene el fix/tracking]
+**Analysis:** [Why it is a duplicate, which issue has the fix/tracking]
 
-**Próximo paso:** Seguir progreso en [EXISTING_ISSUE_KEY]
+**Next step:** Follow progress on [EXISTING_ISSUE_KEY]
 ```
 
-**For WAD (Working As Designed):**
+Working as designed:
 
 ```markdown
-## ✅ [ISSUE_KEY] - CERRADO (WAD)
+## [ISSUE_KEY] - CLOSED (WAD)
 
-| Aspecto      | Detalle                   |
+| Aspect       | Detail                    |
 | ------------ | ------------------------- |
 | Issue Key    | [ISSUE_KEY]               |
-| Resolución   | Working As Designed (WAD) |
-| Estado Final | Won't Fix                 |
-| URL Jira     | [Jira URL]                |
+| Resolution   | Working As Designed (WAD) |
+| Final status | Won't Fix                 |
+| Jira URL     | [Jira URL]                |
 
-### Acciones Realizadas
+### Actions taken
 
-| Acción            | Detalle                      |
+| Action            | Detail                       |
 | ----------------- | ---------------------------- |
 | Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments` |
 | Jira - Transition | [Status] → Won't Fix         |
 | Jira - Comment    | Documented WAD reasoning     |
 
-**Análisis:**
-[Por qué no es un bug - referencia a AC, diseño, o documentación]
+**Analysis:**
+[Why it is not a bug: reference to the AC, design or documentation]
 
-**Recomendación:** [Si aplica, sugerir crear Enhancement]
+**Recommendation:** [If applicable, suggest creating an Enhancement]
 ```
 
-**For Cannot Reproduce:**
+Cannot reproduce:
 
 ```markdown
-## ❓ [ISSUE_KEY] - NO REPRODUCIBLE
+## [ISSUE_KEY] - CANNOT REPRODUCE
 
-| Aspecto      | Detalle                      |
-| ------------ | ---------------------------- |
-| Issue Key    | [ISSUE_KEY]                  |
-| Estado Final | Open (pending info) / Cannot Reproduce |
-| Intentos     | [N] intentos de reproducción |
-| URL Jira     | [Jira URL]                   |
+| Aspect       | Detail                                 |
+| ------------ | -------------------------------------- |
+| Issue Key    | [ISSUE_KEY]                            |
+| Final status | Open (pending info) / Cannot Reproduce |
+| Attempts     | [N] reproduction attempts              |
+| Jira URL     | [Jira URL]                             |
 
-### Acciones Realizadas
+### Actions taken
 
-| Acción            | Detalle                           |
-| ----------------- | --------------------------------- |
-| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments`      |
-| Jira - Comment    | Preguntas específicas al reporter |
+| Action            | Detail                                          |
+| ----------------- | ----------------------------------------------- |
+| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments` |
+| Jira - Comment    | Specific questions for the reporter             |
 | Jira - Transition | none (stays Open) / `is_cnr` → Cannot Reproduce |
 
-**Análisis:**
-[Qué se intentó, qué información falta, preguntas para el reporter]
+**Analysis:**
+[What was tried, what information is missing, questions for the reporter]
 
-**Próximo paso:** Esperar respuesta del reporter con más detalles
+**Next step:** Wait for the reporter's reply with more details
 ```
 
----
+### Output checklist (internal)
 
-## Output Checklist (Internal)
+Before presenting the report, tick these.
 
-Before presenting the final report, verify:
-
-**Jira Updates:**
+Jira:
 
 - [ ] Bug analyzed with full context
 - [ ] Reproduction documented
@@ -1502,62 +1327,59 @@ Before presenting the final report, verify:
 - [ ] Root Cause custom fields updated
 - [ ] Fix documentation comment added
 - [ ] Issue transitioned to Ready For QA
-- [ ] Assignee updated to original reporter/tester
+- [ ] Assignee moved to the `{{jira.qa_assignee}}` QA (or left as is with the reason in the fix comment); parent story in `blocked` re-delivered to Ready For QA; DTU cycle written or N/A
 
-**Code Changes:**
+Code:
 
-- [ ] Fix implemented following code standards
+- [ ] Fix follows the code standards
 - [ ] Fix verified (typecheck, lint, build, manual test)
-- [ ] Branch created with proper naming
-- [ ] Commit with semantic message
-- [ ] PR created with detailed description (if applicable)
+- [ ] Branch named per the strategy
+- [ ] Semantic commit message
+- [ ] PR created with a detailed description (if applicable)
 
-**Report Quality:**
+Report:
 
-- [ ] All URLs are complete and clickeable
-- [ ] Triage assessment includes reasoning
-- [ ] Analysis section provides useful context
-- [ ] "Cómo Verificar" has specific, actionable steps
-
-**Optional:**
-
-- [ ] Educational feedback provided (if requested)
-- [ ] Hotfix backported (if applicable)
+- [ ] Every URL is complete and clickable
+- [ ] Triage assessment includes the reasoning
+- [ ] The analysis gives useful context
+- [ ] "How to verify the fix" has specific, actionable steps
+- [ ] Educational feedback provided (if requested); hotfix backported (if applicable)
 
 ---
 
-## Quick Reference: Tools
+## Quick reference
 
-| Action                | Tool                                       |
-| --------------------- | ------------------------------------------ |
-| Read bug issue        | `[ISSUE_TRACKER_TOOL]` to get issue        |
-| Search for duplicates | `[ISSUE_TRACKER_TOOL]` to search issues    |
-| Update custom fields  | `[ISSUE_TRACKER_TOOL]` to update issue     |
-| Add comment           | `[ISSUE_TRACKER_TOOL]` to add comment      |
-| Transition status     | `[ISSUE_TRACKER_TOOL]` to transition issue |
-| Link issues           | `[ISSUE_TRACKER_TOOL]` to link issues      |
-| Search for fields     | `[ISSUE_TRACKER_TOOL]` to search fields    |
-| Navigate browser      | `[AUTOMATION_TOOL]` (if available)         |
-| Take screenshot       | `[AUTOMATION_TOOL]` (if available)         |
-| Check library docs    | `[DOCS_TOOL]`                              |
+### Tools
 
-## Quick Reference: Jira Transitions (by slug)
+| Action | Tool |
+| --- | --- |
+| Read bug custom fields | `bun run jira:sync-issues get <BUG-KEY> --include-comments` |
+| Search for duplicates | `[ISSUE_TRACKER_TOOL]` to search issues |
+| Update custom fields | `[ISSUE_TRACKER_TOOL]` to update issue |
+| Add comment | `[ISSUE_TRACKER_TOOL]` to add comment |
+| Transition status | `[ISSUE_TRACKER_TOOL]` to transition issue |
+| Link issues | `[ISSUE_TRACKER_TOOL]` to link issues |
+| Search for fields | `[ISSUE_TRACKER_TOOL]` to search fields |
+| Navigate browser, take screenshot | `[AUTOMATION_TOOL]` (if available) |
+| Check library docs | `[DOCS_TOOL]` |
 
-> Transition IDs differ per workspace, so this file names slugs only. Each resolves through `{{jira.transition.bug.<slug>}}` against `.agents/jira-workflows.json` (refreshed by `bun run jira:sync-workflows`). Who fires each one, and what to do when a slug is missing: `agentic-dev-core/references/artifact-lifecycle.md`.
+### Jira transitions (by slug)
 
-| Slug                 | From → To                       |
-| -------------------- | ------------------------------- |
-| `start_fixing`       | `open` → `in_progress`          |
-| `pull_request`       | `in_progress` → `in_review`     |
-| `fixed_and_deployed` | `in_review` → `ready_for_qa`    |
-| `hard_pushed`        | `in_progress` → `ready_for_qa`  |
-| `is_not_a_bug`       | `open` → `enhancement`          |
-| `is_duplicated`      | `open` → `duplicated`           |
-| `is_cnr`             | `open` → `cannot_reproduce`     |
-| `is_wad`             | `open` → `rejected`             |
-| `defer`              | `open` → `deferred`             |
+Transition ids differ per workspace, so this file names slugs only. Each resolves through `{{jira.transition.bug.<slug>}}` against `.agents/jira-workflows.json` (refreshed by `bun run jira:sync-workflows`). Who fires each one, and what to do when a slug is missing, is in `agentic-dev-core/references/artifact-lifecycle.md`.
 
-**Usage:**
+| Slug | From → To |
+| --- | --- |
+| `start_fixing` | `open` → `in_progress` |
+| `pull_request` | `in_progress` → `in_review` |
+| `fixed_and_deployed` | `in_review` → `ready_for_qa` |
+| `hard_pushed` | `in_progress` → `ready_for_qa` |
+| `is_not_a_bug` | `open` → `enhancement` |
+| `is_duplicated` | `open` → `duplicated` |
+| `is_cnr` | `open` → `cannot_reproduce` |
+| `is_wad` | `open` → `rejected` |
+| `defer` | `open` → `deferred` |
+
+Usage:
 
 ```
 Use [ISSUE_TRACKER_TOOL] to transition issue:
@@ -1565,56 +1387,38 @@ Use [ISSUE_TRACKER_TOOL] to transition issue:
   transition: {{jira.transition.bug.start_fixing}}
 ```
 
-## Quick Reference: Git Commands
+### Code quality commands
 
-| Action                 | Command                                                   |
-| ---------------------- | --------------------------------------------------------- |
-| Create fix branch      | `git checkout -b fix/ISSUE-KEY/description`               |
-| Create hotfix branch   | `git checkout -b hotfix/ISSUE-KEY/description`            |
-| Stage changes          | `git add [files]`                                         |
-| Commit with message    | `git commit -m "fix(ISSUE-KEY): description"`             |
-| Push branch            | `git push -u origin [branch-name]`                        |
-| Create PR              | `gh pr create --title "..." --body "..." --base [branch]` |
-| Cherry-pick (backport) | `git cherry-pick [commit-hash]`                           |
+Run from `{{stack.app_root}}`; a role set to null is skipped and reported.
 
-## Quick Reference: Code Quality Commands
+| Check | Command |
+| --- | --- |
+| TypeScript | `{{stack.package_manager}} run {{stack.scripts.types}}` |
+| Lint | `{{stack.package_manager}} run {{stack.scripts.lint}}` |
+| Build | `{{stack.package_manager}} run {{stack.scripts.build}}` |
+| Test | `{{stack.package_manager}} run {{stack.scripts.test}}` |
 
-Run from `{{stack.app_root}}`; a null role is skipped and reported.
+The git commands are in Phases 4 and 6 and in the Hotfix section.
 
-| Check      | Command                                                  |
-| ---------- | -------------------------------------------------------- |
-| TypeScript | `{{stack.package_manager}} run {{stack.scripts.types}}`  |
-| Lint       | `{{stack.package_manager}} run {{stack.scripts.lint}}`   |
-| Build      | `{{stack.package_manager}} run {{stack.scripts.build}}`  |
-| Test       | `{{stack.package_manager}} run {{stack.scripts.test}}`   |
+### Related references
 
----
+| Reference | When to use |
+| --- | --- |
+| `implement-story.md` | Implementing new features |
+| `review-pr.md` | Code review of the fix PR |
+| `/git-flow-master` | Advanced git operations |
 
-## Related Prompts
-
-| Prompt                                     | When to Use                   |
-| ------------------------------------------ | ----------------------------- |
-| `fase-7-implementation/implement-story.md` | For implementing new features |
-| `fase-8-code-review/review-pr.md`          | For code review of the fix PR |
-| `git-flow.md`                              | For advanced git operations   |
-
-> _Bug reporting, retest, and QA verification flows are out of scope here._
+Bug reporting, retest and QA verification flows are out of scope here.
 
 ---
 
-## Multi-Bug Session Support
+## Several bugs in one session
 
-This section provides templates for handling multiple bugs in a single session.
-
-### JQL Query for Pending Bugs
-
-Use this query to get a list of bugs to work on:
+### JQL for pending bugs
 
 ```
 project = [PROJECT_KEY] AND issuetype in (Bug, Defect) AND status = OPEN ORDER BY priority DESC, created ASC
 ```
-
-**Tool usage:**
 
 ```
 Use [ISSUE_TRACKER_TOOL] to search issues:
@@ -1623,91 +1427,78 @@ Use [ISSUE_TRACKER_TOOL] to search issues:
   limit: 20
 ```
 
----
+### Bug list template
 
-### Bug List Template
-
-Use this table to track progress across multiple bugs:
+Track progress across several bugs with this table:
 
 ```markdown
-## Lista de Bugs - Sesión [DATE]
+## Bug List - Session [DATE]
 
-| #   | Key       | Summary   | Priority | Status | Resultado    |
-| --- | --------- | --------- | -------- | ------ | ------------ |
-| 1   | [PROJ-XX] | [Summary] | Highest  | OPEN   | ⏳ Pendiente |
-| 2   | [PROJ-XX] | [Summary] | High     | OPEN   | ✅ Fixed     |
-| 3   | [PROJ-XX] | [Summary] | Medium   | OPEN   | ❌ WAD       |
-| 4   | [PROJ-XX] | [Summary] | Low      | OPEN   | 🔗 Duplicate |
+| #   | Key       | Summary   | Priority | Status | Result    |
+| --- | --------- | --------- | -------- | ------ | --------- |
+| 1   | [PROJ-XX] | [Summary] | Highest  | OPEN   | Pending   |
+| 2   | [PROJ-XX] | [Summary] | High     | OPEN   | Fixed     |
+| 3   | [PROJ-XX] | [Summary] | Medium   | OPEN   | WAD       |
+| 4   | [PROJ-XX] | [Summary] | Low      | OPEN   | Duplicate |
 
-**Leyenda:**
-
-- ⏳ Pendiente
-- ✅ Fixed (Ready For QA)
-- ❌ WAD / Rejected
-- 🔗 Duplicate
-- ❓ CNR (Cannot Reproduce)
-- 🔄 Enhancement
+**Legend:** Pending; Fixed (Ready For QA); WAD / Rejected; Duplicate; CNR (Cannot Reproduce); Enhancement.
 ```
 
----
-
-### Session Report Template
-
-Use this report at the end of a multi-bug session:
+### Session report template
 
 ```markdown
-## 📊 Reporte de Sesión - Bug Fixing [DATE]
+## Session Report - Bug Fixing [DATE]
 
-### Resumen Ejecutivo
+### Summary
 
-| Métrica                             | Valor |
+| Metric                              | Value |
 | ----------------------------------- | ----- |
-| Bugs analizados                     | [N]   |
-| Bugs arreglados                     | [N]   |
-| Bugs rechazados (WAD/CNR/Duplicate) | [N]   |
-| Commits realizados                  | [N]   |
-| Archivos modificados                | [N]   |
+| Bugs analyzed                       | [N]   |
+| Bugs fixed                          | [N]   |
+| Bugs rejected (WAD/CNR/Duplicate)   | [N]   |
+| Commits made                        | [N]   |
+| Files modified                      | [N]   |
 
 ---
 
-### Bugs Procesados
+### Bugs processed
 
-#### ✅ [PROJ-XX] - [Summary]
+#### [PROJ-XX] - [Summary]
 
-| Aspecto      | Detalle             |
+| Aspect       | Detail              |
 | ------------ | ------------------- |
-| Estado Final | Ready For QA        |
+| Final status | Ready For QA        |
 | Root Cause   | [Category]: [Brief] |
 | Commit       | [URL]               |
-| Asignado a   | [Tester]            |
+| Assigned to  | [Tester]            |
 
-#### ❌ [PROJ-XX] - [Summary]
+#### [PROJ-XX] - [Summary]
 
-| Aspecto      | Detalle               |
+| Aspect       | Detail                |
 | ------------ | --------------------- |
-| Estado Final | WAD / Duplicate / CNR |
-| Razón        | [Explicación breve]   |
+| Final status | WAD / Duplicate / CNR |
+| Reason       | [Brief explanation]   |
 
 ---
 
-### Cambios en Código
+### Code changes
 
-| Archivo            | Bugs Relacionados | Cambio        |
+| File               | Related bugs      | Change        |
 | ------------------ | ----------------- | ------------- |
-| `path/to/file.ts`  | PROJ-XX, PROJ-YY  | [Descripción] |
-| `path/to/other.ts` | PROJ-ZZ           | [Descripción] |
+| `path/to/file.ts`  | PROJ-XX, PROJ-YY  | [Description] |
+| `path/to/other.ts` | PROJ-ZZ           | [Description] |
 
 ---
 
-### Feedback Educacional Entregado
+### Educational feedback delivered
 
-| Tester | Puntos Clave           |
+| Tester | Key points             |
 | ------ | ---------------------- |
-| [Name] | [Resumen del feedback] |
+| [Name] | [Summary of feedback]  |
 
 ---
 
-### Próximos Bugs a Atender
+### Next bugs to handle
 
 | #   | Key       | Summary   | Priority   |
 | --- | --------- | --------- | ---------- |
@@ -1715,86 +1506,54 @@ Use this report at the end of a multi-bug session:
 | 2   | [PROJ-XX] | [Summary] | [Priority] |
 ```
 
----
+### Session continuation template
 
-### Session Continuation Template
-
-To continue a previous session, paste this block with updated data:
+To continue an earlier session, paste this block with updated data:
 
 ```markdown
 ---
 
-## Continuación de Sesión Anterior
+## Continuation of the Previous Session
 
-**Sesión anterior:** [DATE]
-**Bugs completados:** [N]
-**Bugs pendientes:** [N]
+**Previous session:** [DATE]
+**Bugs completed:** [N]
+**Bugs pending:** [N]
 
-### Resumen del Progreso Anterior
+### Summary of previous progress
 
-[Pegar aquí el reporte de sesión anterior o resumen clave]
+[Paste the previous session report or the key summary here]
 
-### Bugs Pendientes de la Sesión Anterior
+### Pending bugs from the previous session
 
-| # | Key | Summary | Priority | Notas |
+| # | Key | Summary | Priority | Notes |
 |---|-----|---------|----------|-------|
-| 1 | [PROJ-XX] | [Summary] | [Priority] | [Contexto si hay] |
+| 1 | [PROJ-XX] | [Summary] | [Priority] | [Context if any] |
 | 2 | [PROJ-XX] | [Summary] | [Priority] | |
 
 ---
 
-**Continuando con:** [PROJ-XX]
+**Continuing with:** [PROJ-XX]
 ```
 
 ---
 
 ## Troubleshooting
 
-| Issue                            | Solution                                             |
-| -------------------------------- | ---------------------------------------------------- |
-| "Slug `{{jira.<slug>}}` doesn't resolve to a workspace field" | Use Fallback Strategy (search or include in comment) |
-| "Transition not valid"           | Check available transitions for current status       |
-| Cannot reproduce bug             | Request more info, check environment differences     |
-| Fix breaks other tests           | Investigate regression, consider scope of fix        |
-| PR conflicts                     | Rebase on target branch, resolve conflicts           |
-| Hotfix needs backport            | Use cherry-pick to apply to the integration branch   |
+| Issue | Solution |
+| --- | --- |
+| Slug `{{jira.<slug>}}` doesn't resolve to a workspace field | Use the fallback (search for an equivalent, or put it in the comment) |
+| "Transition not valid" | Check the available transitions for the current status |
+| Cannot reproduce the bug | Request more info, check environment differences |
+| Fix breaks other tests | Investigate the regression, reconsider the scope of the fix |
+| PR conflicts | Rebase on the target branch and resolve the conflicts |
+| Hotfix needs a backport | Cherry-pick it onto the integration branch |
 
-### Custom Fields Not Returned (Common Issue)
+### Custom fields come back null or missing
 
-**Problem:** `[ISSUE_TRACKER_TOOL]` `view` / `get_issue` returns standard fields but custom field values are `null` or missing.
+`[ISSUE_TRACKER_TOOL]` `view` and `get_issue` return the standard fields but `null` for `customfield_*` (acli, and some MCP tiers). Read custom-field content through the sync (`bun run jira:sync-issues get <BUG-KEY> --include-comments`): it resolves every slug, converts ADF to Markdown and writes one `.md` per field under `.context/PBI/`, next to `comments.md`.
 
-**Root Cause:** `acli view` (and some MCP tiers) return `null` for `customfield_*` — they are not the read path for custom-field content.
+When a field's `.md` is a stub, read the fallback comment in `comments.md`, verify the slug-to-id mapping in `.agents/jira-fields.json` (`bun run jira:sync-fields` refreshes it) or in `.agents/jira-required.yaml`, and check whether the field is visible only to certain roles or projects.
 
-**Solution:** Read custom-field content via the sync, never via `view`:
+### Wrong "missing field" feedback
 
-```
-bun run jira:sync-issues get <BUG-KEY> --include-comments
-```
-
-The sync resolves every slug, converts ADF→Markdown, and writes one `.md` per field under `.context/PBI/`. Read those files plus `comments.md`.
-
-**If a field's `.md` is a stub (field absent on this instance):**
-
-1. The stub points at the fallback comment — read it in `comments.md` (per `.agents/jira-required.yaml` → `fallback:`).
-2. Verify the slug→ID mapping in `.agents/jira-fields.json` (run `bun run jira:sync-fields` to refresh), or update `.agents/jira-required.yaml`.
-3. Check if the field is only visible to certain roles/projects.
-
-**NEVER assume a field is empty without reading the synced `.md` + `comments.md`.**
-
-### Incorrect Feedback Due to Missing Fields
-
-**Problem:** AI gives feedback that custom fields are "missing" when they were actually filled.
-
-**Root Cause:** AI read via `acli view` (which returns `null` for `customfield_*`) or read a stale cache, and assumed empty = not filled.
-
-**Prevention:**
-
-1. Always read custom-field content via `bun run jira:sync-issues get <BUG-KEY> --include-comments`, never `view`.
-2. Before giving feedback on missing fields, re-run the sync and read the per-field `.md` + `comments.md`.
-3. In Phase 8 (Feedback), explicitly list which fields WERE found and their values.
-
-**If you already gave incorrect feedback:**
-
-1. Acknowledge the error to the user.
-2. Re-run the sync and read the materialized fields.
-3. Provide corrected assessment.
+The cause is almost always a read through `view` or a stale cache, which makes a filled field look empty. Read through the sync every time, re-run it before giving feedback, and list the fields that were found with their values in Phase 8. If the feedback already went out wrong, tell the user, re-run the sync, read the materialized fields and give the corrected assessment.

@@ -49,6 +49,24 @@
       "category": "positive"
     },
     {
+      "name": "should-trigger-env-urls-es",
+      "prompt": "Configura las URLs por ambiente (staging y producción) con un helper central para todo el proyecto.",
+      "expected_behavior": "Activates project-bootstrap in add-on mode. Reads `references/env-url-setup.md`, reads `.agents/project.yaml` → `stack:` and `environments:`, asks the user only for the URLs that are `null`, creates `src/lib/urls.ts` with `getEnvironment`, `getBaseUrl` and `buildUrl`, and never hardcodes a URL elsewhere.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-supabase-types-es",
+      "prompt": "Genera los tipos de Supabase y conéctalos a los clientes del proyecto.",
+      "expected_behavior": "Activates project-bootstrap in add-on mode. Reads `references/supabase-types-setup.md`, loads `/supabase` and `/supabase-postgres-best-practices` before generating, resolves the project ref from `environments.<env>.db_project_ref`, generates the types file, adds the `<Database>` generic to the clients and registers the `db:types` script only when `stack.scripts.db_types` is null.",
+      "category": "positive"
+    },
+    {
+      "name": "routine-stops-on-missing-url",
+      "prompt": "Unattended run, brief says: add the env URL helper. `environments.staging.web_url` is null in `.agents/project.yaml` and the brief gives no URL.",
+      "expected_behavior": "Activates project-bootstrap in add-on mode with nobody to ask. Does not write `src/lib/urls.ts` with a `[STAGING_URL]` placeholder and does not invent a URL. Stops before Phase 1, puts the staging and production URL questions in the report, leaves `.agents/project.yaml` untouched and says it did, per the \"With nobody at the keyboard\" part of `references/env-url-setup.md`.",
+      "category": "positive"
+    },
+    {
       "name": "should-not-trigger-prd-definition",
       "prompt": "Define the PRD for this product — personas, user journeys, MVP scope.",
       "expected_behavior": "Does NOT activate project-bootstrap. Should route to /project-foundation (phase-2-prd references) because the request is product definition, not infrastructure scaffolding. project-bootstrap implements infra after the PRD/SRS exist.",

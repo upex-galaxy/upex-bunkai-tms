@@ -9,7 +9,7 @@
     {
       "name": "should-trigger-tdd-workflow",
       "prompt": "TDD this validator: I want the red-green-refactor cycle, write the failing test first.",
-      "expected_behavior": "Activates unit-testing in TDD mode. Reads tdd-workflow.md reference. Walks the explicit cycle: write failing test (red), confirm it fails for the right reason, write minimum code to pass (green), refactor while keeping green, repeat for each AC. Pauses between cycles to confirm direction with the user.",
+      "expected_behavior": "Activates unit-testing in TDD mode. Reads tdd-workflow.md. Names the seams under test first, then walks the cycle: write a failing test (red) at a named seam, confirm it fails for the right reason, write the minimum code to pass (green), refactor while green, and repeat for each AC. Expected values come from a literal or the spec, not from the code under test. With nobody to confirm the seams, takes them from the plan or picks the highest existing seam and says so.",
       "category": "positive"
     },
     {
@@ -34,6 +34,18 @@
       "name": "greenfield-null-runner-sets-up-and-records",
       "prompt": "Fresh project from create-agentic-dev, no tests yet. TDD the slug helper.",
       "expected_behavior": "Activates unit-testing. Reads `stack.test_runner`, finds `null` (runner not chosen yet), so runs the Setup step: asks which runner, checks its setup docs through `library-docs`, installs it with `stack.package_manager`, adds the test script only because `stack.scripts.test` names none in the app's `package.json`, then runs `bun run agents:setup --stack` so the block records the runner and the script. Then runs red-green-refactor on the helper. The greenfield flow is otherwise unchanged.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-spanish-write-tests",
+      "prompt": "Escribime los unit tests de esta función de validación de emails, con casos borde.",
+      "expected_behavior": "Activates unit-testing in standalone mode. Reads the stack block for the runner, reads unit-testing.md and test-naming.md, enumerates input partitions and edge cases, writes the tests in the app's own runner and layout, runs them and reports the coverage delta.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-spanish-tdd",
+      "prompt": "Quiero hacer TDD de esta función de descuentos: primero el test que falla y después el código.",
+      "expected_behavior": "Activates unit-testing in TDD mode. Reads tdd-workflow.md, names the seams first, confirms the red test fails for the right reason, writes the minimum code, refactors on green and checks each new assertion against Lying tests (LT-1 to LT-3).",
       "category": "positive"
     },
     {

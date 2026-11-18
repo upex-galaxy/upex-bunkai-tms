@@ -1,119 +1,119 @@
 # Data-TestID Standards
 
-> **Nota:** Este documento es un template genérico aplicable a cualquier proyecto. Los ejemplos usan diferentes dominios (e-commerce, SaaS, blog, etc.) para ilustrar los patrones. Adapta los nombres al dominio específico de tu proyecto.
+This is a generic template for any project. The examples draw on different domains (e-commerce, SaaS, blog) to show the patterns, so adapt the names to your own domain.
 
-> **Existing conventions win**: este estándar es el default para una app sin convención de test ids. Si `{{stack.conventions.testid_style}}` está definido, o el código de la app ya usa otro atributo o case, se sigue el de la app. Un test id existente nunca se renombra, re-casea ni borra: otra herramienta (una suite de QA, un tag de analytics) puede seleccionar por él (`../SKILL.md` → `## Stack parameters`).
+**Existing conventions win.** This standard is the default for an app with no test-id convention. If `{{stack.conventions.testid_style}}` is set, or the app's code already uses another attribute or case, follow the app's. Never rename, re-case or delete an existing test id, because another tool (a QA suite, an analytics tag) may select on it (`../SKILL.md`, section `## Stack parameters`).
 
-Este documento define las convenciones para agregar atributos `data-testid` a los componentes y elementos UI. El objetivo es proveer **identidad estable** a cada elemento: un identificador semántico que sobrevive refactors visuales y permite que cualquier consumidor del DOM (devtools, scripts, automatización futura, herramientas de accesibilidad) localice el elemento de forma predecible.
-
----
-
-## Por Qué Usar data-testid
-
-- **Estabilidad:** Los selectores basados en `data-testid` no se rompen con cambios de CSS o estructura HTML
-- **Claridad:** Identifican el propósito semántico de cada elemento dentro de la UI
-- **Independencia:** Desacoplan la identidad del elemento de su implementación visual
-- **Mantenibilidad:** Facilitan refactors y la integración con herramientas externas que necesitan localizar elementos del DOM
+The convention gives every UI element a **stable identity**: a semantic identifier that survives visual refactors and lets any consumer of the DOM (devtools, scripts, future automation, accessibility tools) find the element predictably.
 
 ---
 
-## Dónde Agregar data-testid: Definición vs Uso
+## Why use data-testid
 
-### Criterio de Decisión: Mantenibilidad
-
-La decisión de dónde colocar el `data-testid` debe basarse en la **mantenibilidad**. Pregúntate:
-
-1. ¿El componente es genérico o específico del dominio?
-2. ¿Se usa en múltiples contextos con diferentes propósitos?
-3. ¿Qué ubicación será más fácil de mantener a largo plazo?
-
-### Regla General
-
-| Tipo de Componente                                                                    | Ubicación del data-testid             | Razón                                                    |
-| ------------------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------- |
-| **Componentes UI base** (Button, Input, Card, etc.)                                   | Donde se **usa**, NO en la definición | Se usan en múltiples contextos con diferentes propósitos |
-| **Componentes de dominio específicos** (ShoppingCart, UserProfile, ArticleCard, etc.) | En la **definición** del componente   | Tienen propósito único, más fácil de mantener            |
+- **Stability.** Selectors based on `data-testid` do not break when CSS or the HTML structure changes.
+- **Clarity.** They name the semantic purpose of each element in the UI.
+- **Independence.** They separate an element's identity from its visual implementation.
+- **Maintainability.** They make refactors easier, and external tools can locate DOM elements through them.
 
 ---
 
-### Componentes UI Base (NO agregar data-testid en definición)
+## Where to add data-testid: definition vs usage
 
-Los componentes genéricos y reutilizables (Button, Input, Card, Modal, etc.) NO deben tener `data-testid` en su definición porque:
+### Decision criterion: maintainability
 
-1. Se usan en múltiples contextos con diferentes propósitos
-2. El mismo `Button` puede ser `login_button` en un lugar y `add_to_cart_button` en otro
-3. El `data-testid` debe reflejar el **propósito específico** del uso
+Place the `data-testid` where it is easiest to maintain. Ask:
+
+1. Is the component generic or specific to the domain?
+2. Is it used in several contexts with different purposes?
+3. Which location will be easier to maintain in the long run?
+
+### General rule
+
+| Component type                                                                       | Where the data-testid goes                | Reason                                                  |
+| ------------------------------------------------------------------------------------ | ----------------------------------------- | ------------------------------------------------------- |
+| **Base UI components** (Button, Input, Card, etc.)                                   | Where it is **used**, not in the definition | They are used in many contexts with different purposes |
+| **Domain-specific components** (ShoppingCart, UserProfile, ArticleCard, etc.)        | In the component's **definition**         | They have one purpose, so one place to maintain         |
+
+---
+
+### Base UI components (no data-testid in the definition)
+
+Generic, reusable components (Button, Input, Card, Modal, etc.) get no `data-testid` in their definition, because:
+
+1. They are used in many contexts with different purposes.
+2. The same `Button` can be `login_button` in one place and `add_to_cart_button` in another.
+3. The `data-testid` should reflect the **specific purpose** of the usage.
 
 ```tsx
-// ❌ INCORRECTO: data-testid en la definición del componente genérico
+// INCORRECT: data-testid in the definition of a generic component
 // components/ui/button.tsx
 export function Button({ children, ...props }) {
   return (
-    <button data-testid="button" {...props}>  {/* MAL - muy genérico */}
+    <button data-testid="button" {...props}>  {/* BAD: too generic */}
       {children}
     </button>
   )
 }
 
-// ✅ CORRECTO: data-testid donde se USA el componente
-// Ejemplo e-commerce:
-<Button data-testid="add_to_cart_button">Agregar al carrito</Button>
+// CORRECT: data-testid where the component is USED
+// E-commerce example:
+<Button data-testid="add_to_cart_button">Add to cart</Button>
 
-// Ejemplo SaaS:
-<Button data-testid="upgrade_plan_button">Mejorar plan</Button>
+// SaaS example:
+<Button data-testid="upgrade_plan_button">Upgrade plan</Button>
 
-// Ejemplo blog:
-<Button data-testid="publish_article_button">Publicar</Button>
+// Blog example:
+<Button data-testid="publish_article_button">Publish</Button>
 ```
 
 ---
 
-### Componentes de Dominio Específicos (SÍ agregar data-testid en definición)
+### Domain-specific components (data-testid in the definition)
 
-Los componentes elaborados y específicos del dominio SÍ deben tener `data-testid` en su definición porque:
+Elaborate, domain-specific components get a `data-testid` in their definition, because:
 
-1. Tienen un propósito único y específico
-2. Siempre representan lo mismo donde se usen
-3. Es más fácil de mantener (un solo lugar para actualizar)
-4. El `data-testid` es parte de su identidad
+1. They have one specific purpose.
+2. They always represent the same thing wherever they are used.
+3. There is a single place to update.
+4. The `data-testid` is part of their identity.
 
 ```tsx
-// ✅ CORRECTO: data-testid en la definición del componente específico
+// CORRECT: data-testid in the definition of the specific component
 
-// Ejemplo e-commerce:
+// E-commerce example:
 export function ShoppingCart({ items }) {
   return (
     <aside data-testid="shoppingCart">
-      {/* El carrito siempre es "shoppingCart" donde se use */}
+      {/* The cart is always "shoppingCart" wherever it is used */}
     </aside>
   );
 }
 
-// Ejemplo SaaS:
+// SaaS example:
 export function PricingTable({ plans }) {
   return (
-    <div data-testid="pricingTable">{/* La tabla de precios siempre es "pricingTable" */}</div>
+    <div data-testid="pricingTable">{/* The pricing table is always "pricingTable" */}</div>
   );
 }
 
-// Ejemplo blog:
+// Blog example:
 export function ArticleCard({ article }) {
   return (
-    <article data-testid="articleCard">{/* Cada card de artículo es "articleCard" */}</article>
+    <article data-testid="articleCard">{/* Every article card is "articleCard" */}</article>
   );
 }
 ```
 
 ---
 
-## Reglas de Nomenclatura
+## Naming rules
 
-### 1. Componentes (root): camelCase
+### 1. Components (root): camelCase
 
-El `data-testid` del **elemento raíz** de un componente usa **camelCase** basado en el nombre del componente.
+The `data-testid` of a component's **root element** is **camelCase**, based on the component name.
 
 ```tsx
-// Ejemplos de diferentes dominios:
+// Examples from different domains:
 
 // E-commerce
 export function ProductCard({ product }) {
@@ -130,28 +130,28 @@ export function CommentSection({ comments }) {
   return <section data-testid="commentSection">...</section>;
 }
 
-// Red social
+// Social network
 export function FriendsList({ friends }) {
   return <ul data-testid="friendsList">...</ul>;
 }
 ```
 
-**Patrón de conversión:**
+**Conversion pattern:**
 
-| Nombre Componente | data-testid    |
-| ----------------- | -------------- |
-| `ProductCard`     | `productCard`  |
-| `ShoppingCart`    | `shoppingCart` |
-| `UserProfile`     | `userProfile`  |
-| `SearchBar`       | `searchBar`    |
-| `Navbar`          | `navbar`       |
+| Component name | data-testid    |
+| -------------- | -------------- |
+| `ProductCard`  | `productCard`  |
+| `ShoppingCart` | `shoppingCart` |
+| `UserProfile`  | `userProfile`  |
+| `SearchBar`    | `searchBar`    |
+| `Navbar`       | `navbar`       |
 
-### 2. Elementos Específicos Internos: snake_case
+### 2. Specific internal elements: snake_case
 
-Cuando necesitas identificar **elementos específicos dentro de un componente**, usa **snake_case**.
+To identify **specific elements inside a component**, use **snake_case**.
 
 ```tsx
-// Ejemplo: Formulario de checkout (e-commerce)
+// Example: checkout form (e-commerce)
 export function CheckoutForm({ onSubmit }) {
   return (
     <form data-testid="checkoutForm" onSubmit={onSubmit}>
@@ -159,13 +159,13 @@ export function CheckoutForm({ onSubmit }) {
       <input data-testid="expiry_date_input" />
       <input data-testid="cvv_input" />
       <button data-testid="pay_button" type="submit">
-        Pagar
+        Pay
       </button>
     </form>
   );
 }
 
-// Ejemplo: Header de aplicación (genérico)
+// Example: application header (generic)
 export function AppHeader() {
   return (
     <header data-testid="appHeader">
@@ -175,59 +175,59 @@ export function AppHeader() {
       <nav data-testid="main_nav">...</nav>
       <button data-testid="menu_toggle">Menu</button>
       <div data-testid="user_menu">
-        <button data-testid="logout_button">Salir</button>
+        <button data-testid="logout_button">Log out</button>
       </div>
     </header>
   );
 }
 ```
 
-**Patrón de nomenclatura:**
+**Naming pattern:**
 
-- `{descripcion}_{tipo}` donde tipo puede ser: `input`, `button`, `link`, `container`, `list`, `item`, `section`, etc.
+- `{description}_{type}`, where type is one of `input`, `button`, `link`, `container`, `list`, `item`, `section`, etc.
 
 ---
 
-## Posicionamiento del data-testid
+## Placing the data-testid
 
-### Regla Principal: Root del Componente
+### Main rule: the component root
 
-El `data-testid` debe estar en el **elemento raíz** del componente, permitiendo navegar hacia elementos hijos usando selectores CSS descendientes.
+Put the `data-testid` on the component's **root element**. Descendant CSS selectors then reach the child elements.
 
 ```tsx
-// ✅ CORRECTO: data-testid en el root
+// CORRECT: data-testid on the root
 export function SearchBar() {
   return (
     <div data-testid="searchBar" className="...">
-      <input placeholder="Buscar..." />
-      <button>Buscar</button>
+      <input placeholder="Search..." />
+      <button>Search</button>
     </div>
   );
 }
 
-// Uso en tests:
+// Usage in tests:
 // $('[data-testid="searchBar"] input')
 // $('[data-testid="searchBar"] button')
 ```
 
 ```tsx
-// ❌ INCORRECTO: data-testid solo en elementos internos sin root
+// INCORRECT: data-testid only on inner elements, none on the root
 export function SearchBar() {
   return (
     <div className="...">
       <input data-testid="searchInput" />
-      <button data-testid="searchButton">Buscar</button>
+      <button data-testid="searchButton">Search</button>
     </div>
   );
 }
 ```
 
-### Elementos Interactivos
+### Interactive elements
 
-Si el componente ES un elemento interactivo (ej: un botón wrapper), el `data-testid` va en el elemento interactivo mismo.
+If the component IS an interactive element (for example a button wrapper), the `data-testid` goes on that interactive element itself.
 
 ```tsx
-// ✅ CORRECTO: El botón ES el componente
+// CORRECT: the button IS the component
 export function SubmitButton({ children }) {
   return (
     <button data-testid="submitButton" type="submit">
@@ -239,81 +239,81 @@ export function SubmitButton({ children }) {
 
 ---
 
-## Unicidad: Por Componente, NO Por Instancia
+## Uniqueness: per component, not per instance
 
-### Regla Fundamental
+### Fundamental rule
 
-El `data-testid` es **único por tipo de componente**, NO por cada instancia renderizada.
+The `data-testid` is **unique per component type**, not per rendered instance.
 
 ```tsx
-// ✅ CORRECTO: Todas las cards tienen el mismo data-testid
+// CORRECT: every card has the same data-testid
 
-// E-commerce: lista de productos
+// E-commerce: product list
 function ProductList({ products }) {
   return (
     <div data-testid="productList">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
-        {/* Cada ProductCard tiene data-testid="productCard" */}
+        {/* Every ProductCard has data-testid="productCard" */}
       ))}
     </div>
   )
 }
 
-// Uso en tests:
-// $$('[data-testid="productCard"]') → Array de todas las cards
-// $$('[data-testid="productCard"]')[0] → Primera card
-// $('[data-testid="productCard"]:nth-child(2)') → Segunda card
+// Usage in tests:
+// $$('[data-testid="productCard"]') -> array of all the cards
+// $$('[data-testid="productCard"]')[0] -> first card
+// $('[data-testid="productCard"]:nth-child(2)') -> second card
 ```
 
-### NUNCA Usar IDs Dinámicos
+### Static ids only
 
 ```tsx
-// ❌ INCORRECTO: ID dinámico hace el selector impredecible
+// INCORRECT: a dynamic id makes the selector unpredictable
 <div data-testid={`productCard-${product.id}`}>
 <div data-testid={`item-${index}`}>
 
-// ✅ CORRECTO: data-testid estático basado en el componente
+// CORRECT: a static data-testid based on the component
 <div data-testid="productCard">
 ```
 
-**Razón:** Cualquier consumidor del DOM (devtools, scripts, automatización) combina `data-testid` con:
+**Reason:** any consumer of the DOM (devtools, scripts, automation) combines `data-testid` with:
 
-- Índices: `$$('[data-testid="productCard"]')[2]`
-- Selectores CSS: `$('[data-testid="productCard"]:has-text("iPhone")')`
-- Atributos: `$('[data-testid="productCard"][data-product-id="123"]')`
+- Indexes: `$$('[data-testid="productCard"]')[2]`
+- CSS selectors: `$('[data-testid="productCard"]:has-text("iPhone")')`
+- Attributes: `$('[data-testid="productCard"][data-product-id="123"]')`
 
 ---
 
-## Estrategia para Componentes Complejos
+## Strategy for complex components
 
-Para componentes grandes con múltiples elementos interactivos, aplica **ambas estrategias**: root en camelCase + elementos internos en snake_case.
+A large component with many interactive elements uses **both strategies**: camelCase on the root, snake_case on the inner elements.
 
 ```tsx
-// Ejemplo: Formulario de registro (genérico)
+// Example: registration form (generic)
 export function RegistrationForm({ onSubmit }) {
   return (
     <form data-testid="registrationForm" onSubmit={onSubmit}>
-      {/* Sección de datos personales */}
+      {/* Personal data section */}
       <div data-testid="personal_info_section">
         <input data-testid="first_name_input" name="firstName" />
         <input data-testid="last_name_input" name="lastName" />
         <input data-testid="email_input" type="email" />
       </div>
 
-      {/* Sección de seguridad */}
+      {/* Security section */}
       <div data-testid="security_section">
         <input data-testid="password_input" type="password" />
         <input data-testid="confirm_password_input" type="password" />
       </div>
 
-      {/* Acciones */}
+      {/* Actions */}
       <div data-testid="form_actions">
         <button data-testid="submit_button" type="submit">
-          Crear cuenta
+          Create account
         </button>
         <a data-testid="login_link" href="/login">
-          Ya tengo cuenta
+          I already have an account
         </a>
       </div>
     </form>
@@ -321,73 +321,73 @@ export function RegistrationForm({ onSubmit }) {
 }
 ```
 
-**Selectores disponibles:**
+**Available selectors:**
 
 ```javascript
-// Formulario completo
+// The whole form
 $('[data-testid="registrationForm"]');
 
-// Campos específicos
+// Specific fields
 $('[data-testid="email_input"]');
 $('[data-testid="password_input"]');
 
-// Navegación dentro del componente
+// Navigating inside the component
 $('[data-testid="registrationForm"] [data-testid="submit_button"]');
 $('[data-testid="personal_info_section"] input');
 
-// Combinaciones con selectores CSS
+// Combined with CSS selectors
 $('[data-testid="registrationForm"] button[type="submit"]');
 ```
 
 ---
 
-## Cuándo Agregar data-testid
+## When to add a data-testid
 
-### SIEMPRE agregar en
+### Add one on
 
-1. **Componentes de dominio específicos** (cards, formularios, secciones)
-2. **Formularios y sus campos** (inputs, selects, textareas)
-3. **Botones de acción** (submit, CTA, navegación)
-4. **Elementos de navegación** (navbar, sidebar, tabs, breadcrumbs)
-5. **Listas y sus items** (cuando el item es un componente)
-6. **Modales y diálogos**
-7. **Mensajes de feedback** (errores, éxito, warnings)
-8. **Dropdowns y menús**
+1. **Domain-specific components** (cards, forms, sections)
+2. **Forms and their fields** (inputs, selects, textareas)
+3. **Action buttons** (submit, CTA, navigation)
+4. **Navigation elements** (navbar, sidebar, tabs, breadcrumbs)
+5. **Lists and their items** (when the item is a component)
+6. **Modals and dialogs**
+7. **Feedback messages** (errors, success, warnings)
+8. **Dropdowns and menus**
 
-### Opcional en
+### Optional on
 
-1. Elementos puramente decorativos
-2. Wrappers de layout sin interacción
-3. Iconos (a menos que sean clickeables)
-
----
-
-## Resumen de Convenciones
-
-| Contexto              | Nomenclatura | Ejemplo                         |
-| --------------------- | ------------ | ------------------------------- |
-| Componente (root)     | camelCase    | `data-testid="shoppingCart"`    |
-| Elemento específico   | snake_case   | `data-testid="email_input"`     |
-| Sección de componente | snake_case   | `data-testid="billing_section"` |
-| Botón de acción       | snake_case   | `data-testid="checkout_button"` |
+1. Purely decorative elements
+2. Layout wrappers without interaction
+3. Icons (unless they are clickable)
 
 ---
 
-## Checklist para Implementación
+## Convention summary
 
-Al implementar un componente, verifica:
-
-- [ ] **Decisión de ubicación:** ¿Es componente genérico (agregar donde se usa) o específico (agregar en definición)?
-- [ ] El componente tiene `data-testid` en su elemento raíz (camelCase)
-- [ ] Los elementos interactivos importantes tienen `data-testid` (snake_case)
-- [ ] NO hay IDs dinámicos en los `data-testid`
-- [ ] Los `data-testid` permiten selectores descendientes (`[data-testid="X"] button`)
-- [ ] La nomenclatura es consistente (camelCase para componentes, snake_case para elementos)
-- [ ] Se consideró la mantenibilidad a largo plazo
+| Context            | Naming     | Example                         |
+| ------------------ | ---------- | ------------------------------- |
+| Component (root)   | camelCase  | `data-testid="shoppingCart"`    |
+| Specific element   | snake_case | `data-testid="email_input"`     |
+| Component section  | snake_case | `data-testid="billing_section"` |
+| Action button      | snake_case | `data-testid="checkout_button"` |
 
 ---
 
-## Ejemplos por Dominio
+## Implementation checklist
+
+When you implement a component, check:
+
+- [ ] **Placement decision:** is it a generic component (add where it is used) or a specific one (add in the definition)?
+- [ ] The component has a `data-testid` on its root element (camelCase)
+- [ ] The important interactive elements have a `data-testid` (snake_case)
+- [ ] No dynamic ids in any `data-testid`
+- [ ] The `data-testid` values allow descendant selectors (`[data-testid="X"] button`)
+- [ ] Naming is consistent (camelCase for components, snake_case for elements)
+- [ ] Long-term maintainability was considered
+
+---
+
+## Examples by domain
 
 ### E-commerce: ProductCard
 
@@ -399,9 +399,9 @@ export function ProductCard({ product }) {
       <h3 data-testid="product_name">{product.name}</h3>
       <p data-testid="product_price">${product.price}</p>
       <div data-testid="product_actions">
-        <Button data-testid="add_to_cart_button">Agregar al carrito</Button>
+        <Button data-testid="add_to_cart_button">Add to cart</Button>
         <Button data-testid="view_details_button" variant="outline">
-          Ver detalles
+          View details
         </Button>
       </div>
     </article>
@@ -416,7 +416,7 @@ export function PricingCard({ plan }) {
   return (
     <div data-testid="pricingCard">
       <h3 data-testid="plan_name">{plan.name}</h3>
-      <p data-testid="plan_price">${plan.price}/mes</p>
+      <p data-testid="plan_price">${plan.price}/month</p>
       <ul data-testid="features_list">
         {plan.features.map(feature => (
           <li data-testid="feature_item" key={feature}>
@@ -424,7 +424,7 @@ export function PricingCard({ plan }) {
           </li>
         ))}
       </ul>
-      <Button data-testid="select_plan_button">Seleccionar plan</Button>
+      <Button data-testid="select_plan_button">Select plan</Button>
     </div>
   );
 }
@@ -444,14 +444,14 @@ export function ArticleCard({ article }) {
         <span data-testid="publish_date">{article.date}</span>
       </div>
       <a data-testid="read_more_link" href={`/articles/${article.slug}`}>
-        Leer más
+        Read more
       </a>
     </article>
   );
 }
 ```
 
-### Genérico: Navigation
+### Generic: Navigation
 
 ```tsx
 export function MainNavigation() {
@@ -463,21 +463,21 @@ export function MainNavigation() {
 
       <div data-testid="nav_links">
         <a data-testid="home_link" href="/">
-          Inicio
+          Home
         </a>
         <a data-testid="features_link" href="/features">
-          Características
+          Features
         </a>
         <a data-testid="pricing_link" href="/pricing">
-          Precios
+          Pricing
         </a>
       </div>
 
       <div data-testid="auth_actions">
         <Button data-testid="login_button" variant="ghost">
-          Iniciar sesión
+          Log in
         </Button>
-        <Button data-testid="signup_button">Registrarse</Button>
+        <Button data-testid="signup_button">Sign up</Button>
       </div>
     </nav>
   );

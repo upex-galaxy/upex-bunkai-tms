@@ -1,22 +1,22 @@
 ---
 name: project-foundation
-description: 'Orchestrates the foundational definition of a new product/project: Constitution (business model + market context), Architecture (PRD + SRS + API contracts), and Discovery (business data map + API architecture + dev guide). On an existing app (adopted, or code with no PRD/SRS) it runs Discovery only, read from the code: maps + dev guide + domain glossary, never an invented PRD/SRS. Triggers on: `ideando un nuevo producto`, `define el PRD`, `construir la constitución del proyecto`, `mapear arquitectura del sistema`, `definir SRS`, `user personas`, `user journeys`, `MVP scope`, `business data map`, `api architecture discovery`, `project dev guide`, `constituir el proyecto desde cero`, `dev guide and glossary for this existing app`, `documentar la app existente`, `foundation for an adopted app`. Do NOT use for: infrastructure scaffolding (use `/project-bootstrap`), backlog seeding (use `/product-management`), per-story development (use `/sprint-development`), unit testing (use `/unit-testing`), or formal QA workflows (out of scope here).'
+description: "Defines a product before code: Constitution, PRD, SRS and discovery docs (business maps, dev guide, glossary). Use when ideating a new product; writing the PRD, personas, MVP scope or SRS; mapping the system and its API; documenting an existing app (discovery only). Not for scaffolding (/project-bootstrap), backlog seeding (/product-management) or story work (/sprint-development)."
 license: MIT
-compatibility: [claude-code, codex, opencode]
+compatibility: [claude-code, codex, opencode, pi]
 phase: foundation
-# compact_rules is consumed VERBATIM by scripts/build-skill-registry.ts (frontmatter-first,
-# no truncation). Keep in sync with the "Anti-patterns" section in the body below.
+# compact_rules is read verbatim by scripts/build-skill-registry.ts (frontmatter first, no
+# truncation). It is the only copy of the F1 to F9 rules; the body points here.
 compact_rules: |
-  - **F1.** NEVER rewrite the project Constitution, PRD, or SRS from scratch when prior versions exist under `.context/`. Always UPSERT — preserve existing decisions, surface diffs, refine in place.
-  - **F2.** NEVER fabricate user personas, market data, or competitor analysis. If the user has no research, surface the gap as a `[PLACEHOLDER]` open TODO and ask — speculative personas mislead every downstream skill.
-  - **F3.** NEVER conflate PRD scope with SRS architecture. PRD answers WHAT and WHY (problem, users, journeys, MVP cut); SRS answers HOW (functional contracts, NFRs, tech stack, API definitions). Cross-contamination breaks traceability.
-  - **F4.** NEVER skip Phase 4 Discovery (`/project-context data`, `/project-context features`, `/project-context api`, `project-dev-guide`). Downstream skills (`/product-management`, `/sprint-development`) assume those running-mental-model docs exist.
-  - **F5.** NEVER hardcode tool choices (DB engine, hosting provider, auth vendor, framework) in the Constitution. Tool selection lives in SRS architecture — Constitution stays vendor-agnostic so the SRS can change without invalidating the strategic anchor.
-  - **F6.** NEVER define personas, problem statements, or KPIs without quoting evidence (user interview, analytics snapshot, stakeholder ask, market data citation). Evidence-free claims look authoritative and mislead the PRD downstream.
-  - **F7.** NEVER produce a PRD without an explicit out-of-scope section. Implicit scope boundaries always leak; missing out-of-scope is the #1 source of mid-sprint argumentation.
-  - **F8.** NEVER leave the SRS architecture's hard-to-reverse decisions undocumented. Seed the foundational ones as ADRs in `.context/ADR/` (per `agentic-dev-core/references/adr-doctrine.md`) so later sessions don't re-litigate or silently violate them. Status per `adr-doctrine.md` §3 step 4: a decision the human already approved is `Accepted` from the start (cite the approval); only a still-open one is `Proposed`.
-  - **F9.** NEVER run Phases 1-3 to manufacture a Constitution, PRD or SRS for an app whose code already exists (`.template/installer.lock.json` → `adopted: true`, or the user asks to document an existing app). Its foundation is Phase 4 Discovery alone, read from the code ("Existing app: Discovery-only foundation"); a missing PRD / SRS there is not a gap to fill.
-  - **Capabilities** (`metadata.requires_capabilities`): resolve each by tool-name suffix, any prefix; none available at the step that needs it → STOP per `agentic-dev-core/references/mcp-capabilities.md` §4, never a silent substitute (built-in `WebSearch` / `WebFetch` only when the user chooses it).
+  - **F1.** Upsert, never rewrite. When a Constitution, PRD or SRS already exists under `.context/`, refine it in place: keep the earlier decisions and show the diff. A rewrite from scratch throws away decisions people already made.
+  - **F2.** Personas, market data and competitor analysis come only from sources the user supplies. With none, leave a `[PLACEHOLDER]` open TODO and ask for the research. A speculative persona misleads every downstream skill.
+  - **F3.** The PRD answers what and why (problem, users, journeys, MVP cut). The SRS answers how (functional contracts, NFRs, tech stack, API definitions). Keep them apart, because mixing them breaks traceability.
+  - **F4.** Run Phase 4 Discovery (`/project-context data`, `/project-context features`, `/project-context api`, `project-dev-guide`). `/product-management` and `/sprint-development` assume those mental-model docs exist.
+  - **F5.** Keep the Constitution vendor-agnostic: no DB engine, hosting provider, auth vendor or framework in it. Tool choices live in the SRS architecture, so the SRS can change without invalidating the strategic anchor.
+  - **F6.** Every persona, problem statement and KPI quotes its evidence (user interview, analytics snapshot, stakeholder ask, market-data citation). A claim without evidence looks authoritative and misleads the PRD downstream.
+  - **F7.** Every PRD has an explicit out-of-scope section. Implicit scope boundaries leak, and the leak is the top source of mid-sprint argument.
+  - **F8.** Seed the SRS architecture's foundational decisions as ADRs in `.context/ADR/`, per `agentic-dev-core/references/adr-doctrine.md`: a decision qualifies when it passes that file's three-gate test (hard to reverse, surprising without context, a real trade-off). Later sessions then neither re-litigate nor silently violate them. Status follows `adr-doctrine.md` §3 step 4: a decision the human already approved is `Accepted` from the start (cite the approval), and only a still-open one is `Proposed`.
+  - **F9.** On an app whose code already exists (`.template/installer.lock.json` records `adopted: true`, or the user asks to document an existing app), do not run Phases 1 to 3: they would invent a Constitution, PRD or SRS for code that is already there. Its foundation is Phase 4 Discovery alone, read from the code ("Existing app: Discovery-only foundation"), and a missing PRD or SRS there is not a gap to fill.
+  - **Capabilities** (`metadata.requires_capabilities`): resolve each by tool-name suffix, any prefix. When none is available at the step that needs it, stop per `agentic-dev-core/references/mcp-capabilities.md` §4 and do not substitute silently (the built-in `WebSearch` / `WebFetch` only when the user chooses them).
 metadata:
   kind: workflow
   stage_owner: true
@@ -33,54 +33,46 @@ model_preferences:
   archive: haiku         # mechanical close-out
 -->
 
-# Project Foundation — Product definition orchestrator
+# Project foundation: product definition
 
-`project-foundation` orchestrates the one-time, up-front definition of a product: **why** we are building it (Constitution), **what** we are building (Architecture: PRD + SRS), and **how the system maps to its world** (Discovery). It produces the documents every later skill assumes already exist.
+`project-foundation` runs the one-time, up-front definition of a product: why we are building it (Constitution), what we are building (Architecture: PRD and SRS) and how the system maps to its world (Discovery). It produces the documents every later skill assumes exist.
 
-It is invoked once per project at inception, before any infrastructure scaffolding (`/project-bootstrap`) or backlog seeding (`/product-management`). Re-invoke individual phases if scope changes substantially mid-project.
+Run it once per project, at inception, before infrastructure scaffolding (`/project-bootstrap`) and backlog seeding (`/product-management`). When scope changes substantially mid-project, re-run only the phases that changed.
 
 ---
 
 ## Dependencies
 
-Requires `agentic-dev-core`. Loads on demand:
+Requires `agentic-dev-core`. Loaded on demand:
 
-- `agentic-dev-core/references/briefing-template.md` — used when dispatching subagents to research market data, audit competitors, or interview users.
-- `agentic-dev-core/references/dispatch-patterns.md` — picks Single / Sequential / Parallel for each phase below.
-- `agentic-dev-core/references/orchestration-doctrine.md` — mandatory subagent dispatch (main thread is command center).
-- `agentic-dev-core/references/session-management.md` — Phase 0 resume contract, plan-first persistence at `.session/project-foundation/`, archive on completion.
-- `agentic-dev-core/references/adr-doctrine.md` — Phase 3 only: which architectural decisions earn an ADR + how to seed the first batch into `.context/ADR/`.
+- `agentic-dev-core/references/briefing-template.md` and `dispatch-patterns.md`: the 7-component briefing, and the Single, Sequential or Parallel choice for each phase.
+- `agentic-dev-core/references/orchestration-doctrine.md` and `session-management.md`: the main thread is the command center, plus the Phase 0 resume contract, plan-first persistence at `.session/project-foundation/` and the archive on completion.
+- `agentic-dev-core/references/adr-doctrine.md`, Phase 3 only: which decisions earn an ADR and how to seed the first batch.
+
+User-level skills, called with the Skill tool where a step says so: `grilling` (Phases 1 and 2) and `domain-modeling` (Step 6). When one is not installed, ask the same questions as a numbered list with your recommended answers, say in the report that the skill was missing, and carry on. A person can type `/grill-with-docs` for a document-aware interview; this skill never loads it.
 
 ---
 
-## Inputs — read these first, in this order
+## Inputs: read these first, in this order
 
-Canonical reading order for any AI starting cold on a project-foundation workflow. Read in order; stop earlier when the phase you're driving is small enough that later inputs add no signal. Several inputs are optional at inception — surface a `missing_input` note rather than fabricating content.
+Read in order and stop early when the phase you drive is small enough that later inputs add no signal. Several inputs are optional at inception: report a `missing_input` note instead of inventing content.
 
-1. Stakeholder brief or initial PRD draft — whatever the user provides as the seed for this foundation pass (paste, doc link, voice-memo transcript, etc.).
-2. `.context/PRD/` — existing PRD outputs if a prior version exists. UPSERT semantics: re-invoking a phase refines what's there; it does NOT rewrite from scratch.
-3. `.context/business/` — existing personas, business model, market context if prior research exists. Surface what's there; never invent replacements.
-4. Market context / competitor research artifacts the user provides (links, PDFs, analyst notes). Optional but high-leverage for Constitution Phase 1.
-5. `.agents/project.yaml` — project identity (project name, key, domain, env URLs). Created or refined as part of this foundation pass when missing.
+1. The stakeholder brief or initial PRD draft: whatever the user gives as the seed (paste, doc link, voice-memo transcript).
+2. `.context/PRD/`, the existing PRD outputs of a prior version. Re-invoking a phase refines what is there (F1).
+3. `.context/business/`, the existing personas, business model and market context. Surface what is there and never invent replacements.
+4. Market or competitor research the user provides (links, PDFs, analyst notes). Optional, and the most useful input to Phase 1.
+5. `.agents/project.yaml`, the project identity (name, key, domain, env URLs). Create or refine it in this pass when it is missing.
 
 ---
 
 ## When to use
 
-Use this skill when:
+- A new product is defined from scratch: Constitution, PRD, SRS and Discovery.
+- An existing project redefines its scope (a pivot, a new MVP cut) and the foundation docs must be regenerated.
+- One section is missing or stale: run just that phase from the Specific tasks table.
+- An existing app (adopted through `/project-adoption`, or code with no PRD or SRS) needs its foundation: Phase 4 Discovery only, per "Existing app: Discovery-only foundation".
 
-- A new product/project is being defined from scratch and you need Constitution + PRD + SRS + Discovery artifacts.
-- An existing project needs to redefine scope significantly (e.g. pivot, new MVP cut) and the foundation docs must be regenerated.
-- A specific section is missing or stale (e.g. user journeys haven't been written yet) — invoke just that phase via the Specific tasks table below.
-- An existing app (adopted through `/project-adoption`, or code with no PRD / SRS) needs its foundation: run Phase 4 Discovery only, per "Existing app: Discovery-only foundation" below.
-
-Do NOT use this skill to:
-
-- Scaffold the codebase (backend / frontend / OpenAPI / auth) — that's `/project-bootstrap`.
-- Seed the Jira backlog with epics + stories — that's `/product-management`.
-- Plan or implement an individual user story — that's `/sprint-development`.
-- Set up unit tests — that's `/unit-testing`.
-- Run formal QA workflows (test plans, exploratory testing, automation) — out of scope here.
+Scaffolding goes to `/project-bootstrap`, backlog seeding to `/product-management`, one story to `/sprint-development`, unit tests to `/unit-testing`. Formal QA workflows are out of scope.
 
 ---
 
@@ -90,249 +82,211 @@ Do NOT use this skill to:
 >
 > **Session close**: every stage ends with the light stage verifier and the session ends with the chat footer (tools used + dev surfaces touched), both per `agentic-dev-core/references/session-footer-contract.md`.
 
-This skill is **project-scope**: no `<scope>` segment. Session state lives directly at `.session/project-foundation/{plan.md, progress.md}` per `agentic-dev-core/references/session-management.md` §3 + §9.
+The skill is project-scope, so there is no `<scope>` segment. Session state lives directly at `.session/project-foundation/{plan.md, progress.md}` (`agentic-dev-core/references/session-management.md` §3 and §9).
 
-## Phase 0 — Resume check (MANDATORY, inline)
+## Phase 0 (resume check, inline)
 
-Before any subagent dispatch and before invoking any phase below, run the resume contract from `agentic-dev-core/references/session-management.md` §4:
+Before any dispatch or phase, run the resume contract of `agentic-dev-core/references/session-management.md` §4, inline with no subagent. It runs on a first invocation too, so resume versus fresh never depends on memory.
 
-1. Check whether `.session/project-foundation/progress.md` exists.
-2. If it does NOT exist → proceed to Phase 0.5 (write `plan.md`).
-3. If it DOES exist:
-   1. Read `.session/project-foundation/plan.md` in full.
-   2. Read the tail of `.session/project-foundation/progress.md` (last ~3 phase entries).
-   3. Surface to the user: plan Goal (one sentence), last completed phase + timestamp, next planned phase, any blocking notes.
-   4. Offer three options and WAIT for input: **resume** (jump to the next planned phase) / **restart** (archive current dir to `.session/.archive/<YYYY-MM-DD>-project-foundation-project-aborted/`, then proceed to Phase 0.5 fresh) / **abort** (leave directory untouched, stop).
+1. Check whether `.session/project-foundation/progress.md` exists. If not, go to Phase 0.5.
+2. If it does, read `plan.md` in full and the last three phase entries of `progress.md`, then tell the user the plan's Goal, the last completed phase with its timestamp, the next planned phase and any blocking notes.
+3. Offer three options and wait: resume (jump to the next planned phase), restart (archive the directory to `.session/.archive/<YYYY-MM-DD>-project-foundation-project-aborted/`, then Phase 0.5 fresh) or abort (leave it untouched and stop). "With nobody at the keyboard" says who answers when no person is present.
 
-Phase 0 is inline — no subagent dispatch. The check fires even on first invocation so resume-vs-fresh is deterministic.
+## Phase 0.5 (write `plan.md`)
 
-## Phase 0.5 — Write `plan.md`
-
-After Phase 0 confirms no prior session exists, write `.session/project-foundation/plan.md` per the schema in `agentic-dev-core/references/session-management.md` §6. The plan must capture which sub-deliverables the user picked across Constitution / PRD / SRS / Discovery:
+Once Phase 0 finds no prior session, write `.session/project-foundation/plan.md` per `agentic-dev-core/references/session-management.md` §6, recording which sub-deliverables the user picked across Constitution, PRD, SRS and Discovery.
 
 - Frontmatter: `topic_key: session/project-foundation/project/plan`, `skill: project-foundation`, `scope: project`, `status: draft`, `capture_prompt: true`.
-- Body sections (fixed H2 order): `## Goal` · `## Inputs` · `## Approach` · `## Phase breakdown` (Phase 1 Constitution → Phase 2 PRD → Phase 2.5 DESIGN handoff → Phase 3 SRS → Phase 4 Steps 1–6, with dispatch pattern per row) · `## Risks & open questions` · `## Verification checklist` · `## Cross-references`.
+- Body sections, in this H2 order: `## Goal`, `## Inputs`, `## Approach`, `## Phase breakdown` (Phase 1 Constitution, Phase 2 PRD, Phase 2.5 DESIGN hand-off, Phase 3 SRS, Phase 4 Steps 1 to 6, each row with its dispatch pattern), `## Risks & open questions`, `## Verification checklist`, `## Cross-references`.
+- `## Cross-references` carries a hand-off note: Phase 2.5 goes to the separate `/design-system` skill, which owns `.session/design-system/`, and the `project-context` modes of Phase 4 manage their own checkpoints. This skill's `progress.md` records only the orchestrator-level "delegated" and "returned" entries.
 
-**Hand-off note (required in `## Cross-references`)**: Phase 2.5 hands off to the separate `/design-system` skill, which owns its own `.session/design-system/` directory. The Phase 4 sub-steps that delegate to `project-context` modes (`/project-context data`, `/project-context features`, `/project-context api`, `/project-context master-plan`) each manage their own progress checkpoints inline; this skill's `progress.md` records the orchestrator-level "delegated → returned" entries only.
-
-Dispatch: a Single planner subagent is typical when Constitution + PRD inputs are substantial (the orchestrator inline-drafts the plan only when scope is tiny).
-
-After `plan.md` is written and the user approves the scope, transition `status: draft → approved` in the frontmatter and proceed to Phase 1 (Constitution) in the "Phase walkthrough" below.
+A single planner subagent is typical when the Constitution and PRD inputs are substantial, and the orchestrator drafts the plan inline when the scope is tiny. When the user approves the scope, change `status` from `draft` to `approved` and start Phase 1.
 
 ## Phase walkthrough
 
-The skill covers four sequential phases (1 Constitution → 2 PRD → 3 SRS → 4 Discovery), with the Phase 2.5 hand-off to `/design-system` between PRD and SRS. Each phase has multiple sub-deliverables; read only the references your current task needs.
+Four sequential phases (1 Constitution, 2 PRD, 3 SRS, 4 Discovery), with the Phase 2.5 hand-off to `/design-system` between PRD and SRS. Each phase has several sub-deliverables, and you read only the references the current task needs.
 
-> **Progress checkpoint**: after each of Phase 1 (Constitution), Phase 2 (PRD), Phase 2.5 (DESIGN handoff return), Phase 3 (SRS), and Phase 4 Steps 1–6 completes, the orchestrator appends a phase entry to `.session/project-foundation/progress.md` per `agentic-dev-core/references/session-management.md` §7.
+> **Progress checkpoint**: after each of Phase 1, Phase 2, Phase 2.5 (when the hand-off returns), Phase 3 and Phase 4 Steps 1 to 6, the orchestrator appends a phase entry to `.session/project-foundation/progress.md` per `agentic-dev-core/references/session-management.md` §7.
 
-### 1. Constitution (Why we're building this)
+### 1. Constitution (why we are building this)
 
-The constitution captures the rationale for the product before any scope decisions are made: the problem worth solving, who it serves, how it monetizes, and the competitive context it lives in. Without this, the PRD has no anchor.
+The Constitution states the rationale before any scope decision: the problem worth solving, who it serves, how it earns money and the competitive context. Without it the PRD has no anchor.
 
-- Read `references/constitution-business-model.md` for the canvas template (problem, solution, value prop, customer segments, channels, revenue model, cost structure, key metrics).
-- Read `references/constitution-market-context.md` for industry positioning, competitive analysis, and trends.
+- `references/constitution-business-model.md` is the canvas template (problem, solution, value proposition, customer segments, channels, revenue model, cost structure, key metrics).
+- `references/constitution-market-context.md` covers industry positioning, competitive analysis and trends.
 
-Output: `.context/business/business-model.md` and `.context/business/market-context.md` (or wherever your project keeps strategic context).
+Call the Skill tool with "grilling" when a founding answer is vague or overloaded (the product, the user, the money, the scope) and walk its questions in rounds, each with a recommended answer, before writing a claim from that answer.
+
+Output: `.context/business/business-model.md` and `.context/business/market-context.md` (or wherever the project keeps strategic context).
 
 ### 2. Architecture: PRD (Product Requirements Document)
 
-The PRD turns the constitution into a buildable product spec. It defines the problem statement formally, names the target users, slices the MVP, and traces the user journeys end-to-end.
+The PRD turns the Constitution into a buildable spec: the formal problem statement, the target users, the MVP slice and the user journeys end to end.
 
-- Read `references/prd-executive-summary.md` for problem statement, solution overview, success KPIs, MVP success metrics.
-- Read `references/prd-personas.md` for target users, demographics, jobs-to-be-done, pain points.
-- Read `references/prd-mvp-scope.md` for epic breakdown, must-have / should-have / could-have user stories, MVP cut.
-- Read `references/prd-user-journeys.md` for happy paths, alternate flows, and edge cases per persona.
+- `references/prd-executive-summary.md`: problem statement, solution overview, success KPIs, MVP success metrics.
+- `references/prd-personas.md`: target users, demographics, jobs to be done, pain points.
+- `references/prd-mvp-scope.md`: epic breakdown, must-have, should-have and could-have stories, the MVP cut.
+- `references/prd-user-journeys.md`: happy paths, alternate flows and edge cases per persona.
 
-Output: `.context/PRD/*.md` files (one per sub-deliverable, or a consolidated `prd.md`).
+Call the Skill tool with "grilling" for any persona, KPI or scope answer that is vague or overloaded, with the same rounds and recommended answers as in Phase 1.
 
-### 2.5 Design system (Visual identity)
+Output: `.context/PRD/*.md` (one file per sub-deliverable, or a consolidated `prd.md`).
 
-Before closing Architecture and dropping to the SRS, invoke `/design-system` to produce `DESIGN.md` at the project root. This persists the product's visual identity (palette, typography, spacing, components) in a portable format consumable by every downstream agent, and replaces the legacy interactive Q&A buried inside `frontend-setup.md`.
+### 2.5 Design system (visual identity)
 
-- Hand off to `/design-system` (default path = `npx getdesign` + LLM-matcher driven by Constitution + PRD inputs).
-- Skip when `DESIGN.md` already exists at root and the user did not request a rebrand.
-- See `.agents/skills/design-system/SKILL.md` for the five available paths (getdesign default, manual gallery, Open Design app, Claude Design handoff, LLM-authored custom).
+Before closing Architecture, hand off to `/design-system` to produce `DESIGN.md` at the project root: palette, typography, spacing and components in a portable format every downstream agent reads. It replaces the old interactive Q&A inside `frontend-setup.md`.
 
-Why here (post-PRD, pre-SRS): the visual identity co-evolves with product ideation, and some architecture decisions (motion-rich Framer Motion stack vs. plain Tailwind; rich-media stack vs. minimal) flow from the design system. Producing `DESIGN.md` before the SRS lets Phase 3 consume it as input.
+- The default path is `npx getdesign` plus an LLM matcher driven by the Constitution and PRD. `.agents/skills/design-system/SKILL.md` lists all five paths.
+- Skip it when `DESIGN.md` already exists at the root and the user did not ask for a rebrand.
 
-Output: `DESIGN.md` at the project root (or the path configured under `design_md_path` in `.agents/project.yaml`).
+It sits between PRD and SRS because the visual identity grows with the product idea, and some architecture decisions follow from it (a motion-rich Framer Motion stack against plain Tailwind). Phase 3 can then use `DESIGN.md` as input.
+
+Output: `DESIGN.md` at the project root (or the path under `design_md_path` in `.agents/project.yaml`).
 
 ### 3. Architecture: SRS (Software Requirements Specification)
 
-The SRS turns the PRD into a technical contract: formal functional requirements, non-functional constraints, system architecture decisions, and the API contract. This is the input `/project-bootstrap` consumes to scaffold the codebase.
+The SRS turns the PRD into a technical contract: formal functional requirements, non-functional constraints, system architecture decisions and the API contract. `/project-bootstrap` consumes it to scaffold the codebase.
 
-- Read `references/srs-functional.md` for formal functional requirements (one section per epic, traceable to PRD user stories).
-- Read `references/srs-non-functional.md` for performance, security, scalability, reliability, accessibility NFRs.
-- Read `references/srs-architecture.md` for system architecture diagram, tech stack rationale, data model, deployment topology.
-- Read `references/srs-api-contracts.md` for OpenAPI endpoint definitions per domain.
+- `references/srs-functional.md`: formal functional requirements, one section per epic, traceable to PRD stories.
+- `references/srs-non-functional.md`: performance, security, scalability, reliability and accessibility requirements.
+- `references/srs-architecture.md`: the architecture diagram, tech stack rationale, data model and deployment topology.
+- `references/srs-api-contracts.md`: OpenAPI endpoint definitions per domain.
 
-**Seed the first ADRs.** The architecture phase is where the most hard-to-reverse decisions are made (auth model, data-access pattern, error/response contract, tenancy, deployment topology, framework choices with lock-in). After `srs-architecture.md` is drafted, promote each decision that passes the two-gate test (architectural **and** hard to reverse) into a standalone `ADR-NNNN-<slug>.md` under `.context/ADR/`, then reference them from the architecture doc. Follow `agentic-dev-core/references/adr-doctrine.md` (detection + authoring) and `.context/ADR/README.md` (template + lifecycle). Status: a decision the human already approved (it is in the PRD/SRS they signed off) is written `Accepted`, naming that approval; a still-open one is `Proposed`.
+Seed the first ADRs. The architecture phase is where most hard-to-reverse decisions get made (auth model, data-access pattern, error and response contract, tenancy, deployment topology, framework choices with lock-in). Once `srs-architecture.md` is drafted, promote each decision that passes the three-gate test of `adr-doctrine.md` (hard to reverse, surprising without context, a real trade-off, after the architectural-scope screen) into a standalone `ADR-NNNN-<slug>.md` under `.context/ADR/`, then link them from the architecture doc. `agentic-dev-core/references/adr-doctrine.md` covers detection and authoring, and `.context/ADR/README.md` has the template and lifecycle. A decision the human already approved (it is in the PRD or SRS they signed off) is written `Accepted` and names that approval. A still-open one is `Proposed`.
 
-Output: `.context/SRS/*.md` files, plus the seeded `.context/ADR/ADR-NNNN-*.md` records and an updated `.context/ADR/README.md` index.
+Output: `.context/SRS/*.md`, the seeded `.context/ADR/ADR-NNNN-*.md` records and an updated `.context/ADR/README.md` index.
 
-### 4. Discovery (Codify the system mental model)
+### 4. Discovery (codify the system mental model)
 
-Discovery produces the running-mental-model docs every later skill loads at session start: the entity map, the feature inventory, the API map, and a conversational dev guide. Together they make a fresh AI session productive on day one.
+Discovery produces the docs every later skill loads at session start: the entity map, the feature inventory, the API map and a conversational dev guide. Together they make a fresh session productive on day one.
 
-Phase 4 is an **orchestrator** with six steps: it delegates to four `project-context` modes (each invocable on its own from any session as `/project-context <mode>`) and runs two steps in-skill, the dev guide (Step 4) and the domain glossary (Step 6). Re-running individual modes later (after schema or feature changes) is the supported maintenance flow.
+Phase 4 is an orchestrator with six steps. It delegates to four `project-context` modes, each also runnable alone from any session as `/project-context <mode>`, and runs two steps in-skill: the dev guide (Step 4) and the domain glossary (Step 6). Re-running one mode after a schema or feature change is the supported way to maintain these docs.
 
-**Step 1 — Business data map** (entities, business flows, state machines, automatic processes, external integrations):
+**Step 1, business data map** (entities, business flows, state machines, automatic processes, external integrations). Invoke skill `project-context` mode `data` (pointer: `references/business-data-map.md`). Output: the data map inside `business-data-context` (`references/business-data-map.html`).
 
-- Invoke skill `project-context` mode `data`.
-- Pointer: `references/business-data-map.md`.
-- Output: the data map inside `business-data-context` (`references/business-data-map.html`).
+**Step 2, business feature map** (feature inventory by domain, CRUD matrix, endpoint catalog, UI component inventory, third-party integrations, feature flags). Invoke mode `features`. Soft gate: do Step 1 first. A placeholder data map makes the mode warn, not block. Output: the feature map inside `business-feature-context` (`references/business-feature-map.html`).
 
-**Step 2 — Business feature map** (feature inventory by domain, CRUD matrix, endpoint catalog, UI component inventory, third-party integrations, feature flags):
+**Step 3, business API map** (auth model, critical user journeys traced through API call chains, the architecture behind the API, integrations at the API boundary). Invoke mode `api`. The pointer `references/api-architecture.md` keeps its legacy name so old greps still find it, and the mode writes the map inside `business-api-context` instead. Steps 1 and 2 inform it and do not block it. Output: the API map inside `business-api-context` (`references/business-api-map.html`).
 
-- Invoke skill `project-context` mode `features`.
-- Soft gate: Step 1 should be done first (the command will surface a warning if the data map (`business-data-context`) is still a placeholder but will not block).
-- Output: the feature map inside `business-feature-context` (`references/business-feature-map.html`).
+**Step 4, project dev guide** (a conversational onboarding guide for any developer, human or AI, joining the project). Read `references/project-dev-guide.md` and run it in-skill: no `project-context` mode covers it, because its content belongs only to the foundation flow. Hard prerequisite: the Step 1 data map is generated (`bun run context:map business-data-context` prints sections, not the placeholder notice). Output: `.context/business/project-dev-guide.md`.
 
-**Step 3 — Business API map** (auth model, critical user journeys traced through API call chains, architecture behind the API, integrations at the API boundary):
+**Step 5, master implementation plan** (a bonus: the roadmap of everything to build, dependency-cascaded and value-prioritized, the natural synthesis of Steps 1 to 3). Invoke mode `master-plan`. Hard gate: the Step 1 data map is generated. Soft gate: the Step 2 feature map is generated (`bun run context:map business-feature-context`). Output: `.context/master-implementation-plan.md`. The step is recommended and optional: skip it when the user has not defined product scope (a greenfield with only a Constitution), and re-run it after `/product-management` has seeded the backlog to align the plan with the epics.
 
-- Invoke skill `project-context` mode `api`.
-- Pointer: `references/api-architecture.md` (kept under the legacy name for grep-stability; the command writes the API map inside `business-api-context` instead of the legacy `api-architecture.md`).
-- Soft gates: Steps 1 and 2 inform but do not block.
-- Output: the API map inside `business-api-context` (`references/business-api-map.html`).
+**Step 6, domain glossary** (the canonical vocabulary every later artifact speaks). It runs once, seeded from the PRD (personas, product terms) and the SRS when they exist, the Step 1 to 3 maps and existing ADRs. An existing app adds the sources listed under "Existing app: Discovery-only foundation".
 
-**Step 4 — Project dev guide** (conversational onboarding guide for any developer — human or AI — joining the project):
+- Output: `.context/business/domain-glossary.md`, structured as §0 a read-first clarification of the most confused term (optional), §1 a core acronyms table (term, expansion, one-line definition), §2 methodology terms, §3 product entities (short forms that point to the data map in `business-data-context`), §4 an anti-glossary (banned or ambiguous terms, the replacement, why), §5 the change protocol (the glossary is updated first, in the same PR; it wins doc conflicts; Jira content must match it).
+- Call the Skill tool with "domain-modeling" when a term is fuzzy, or two documents use it differently. It names one canonical term, lists the words to avoid and writes the term to the glossary the project already keeps, in the structure above, which wins over the skill's default format. The glossary holds vocabulary only, never decisions or scratch notes. Terms the PRD and SRS already settle go in, and a term you inferred alone goes to the report as proposed.
+- After this step the glossary is hand-maintained and append-only, like ADRs. Re-running `/project-foundation` does not regenerate it: when the file exists, skip the step and say so. Every domain term later used in Jira content, docs, code comments and UI copy matches it.
 
-- Read `references/project-dev-guide.md` and execute it in-skill (this one has no `project-context` mode — its content is unique to the foundation flow).
-- Hard prerequisite: the data map from Step 1 is generated (`bun run context:map business-data-context` prints sections, not the placeholder notice).
-- Output: `.context/business/project-dev-guide.md`.
-
-**Step 5 — Master implementation plan** (bonus: roadmap of all features to build, dependency-cascaded and value-prioritized — the natural synthesis of Steps 1–3):
-
-- Invoke skill `project-context` mode `master-plan`.
-- Hard gate: the data map from Step 1 is generated (`bun run context:map business-data-context` prints sections, not the placeholder notice).
-- Soft gate: the feature map from Step 2 is generated (`bun run context:map business-feature-context`).
-- Output: `.context/master-implementation-plan.md`.
-- This step is **recommended but optional**. Skip it if the user has not yet defined product scope (e.g. greenfield where only the constitution exists). Re-invoke later, after `/product-management` has seeded the backlog, to align the master plan with the planned epics.
-
-**Step 6 — Domain glossary** (canonical domain terminology — the single vocabulary every later artifact must speak):
-
-- Runs **once**. Seed it from the PRD (personas, product terms) and the SRS when they exist, the business maps (Steps 1–3), and existing ADRs (an existing app adds the sources listed under "Existing app: Discovery-only foundation").
-- Output: `.context/business/domain-glossary.md` with this section structure: §0 read-first clarification of the most-confused term (optional), §1 Core acronyms table (term → expansion → one-line definition), §2 Methodology terms, §3 Product entities (short forms pointing to the data map in `business-data-context` for detail), §4 Anti-glossary (banned/ambiguous terms → correct replacement → why), §5 Change protocol (glossary updated FIRST in the same PR; glossary wins doc conflicts; Jira content must match it).
-- Hand-maintained and **append-only** afterwards (like ADRs) — re-running `/project-foundation` NEVER regenerates it. If the file already exists, skip this step with a note.
-- Every domain term used later in Jira content, docs, code comments, and UI copy must match this glossary.
-
-**Final Phase 4 outputs:**
-
-- the data map inside `business-data-context` (`references/business-data-map.html`)
-- the feature map inside `business-feature-context` (`references/business-feature-map.html`)
-- the API map inside `business-api-context` (`references/business-api-map.html`)
-- `.context/business/project-dev-guide.md`
-- `.context/master-implementation-plan.md` (if Step 5 ran)
-- `.context/business/domain-glossary.md` (Step 6; skipped when it already exists)
-
-On successful completion of Phase 4 (Verification checklist from `plan.md` passes), the orchestrator runs Archive per `agentic-dev-core/references/session-management.md` §8 — moves `.session/project-foundation/` to `.session/.archive/<YYYY-MM-DD>-project-foundation-project/` and calls `mem_session_summary` with the archive path included so future `mem_search` calls can navigate back.
+When the plan's verification checklist passes, the orchestrator archives per `agentic-dev-core/references/session-management.md` §8: it moves `.session/project-foundation/` to `.session/.archive/<YYYY-MM-DD>-project-foundation-project/` and calls `mem_session_summary` with the archive path, so a later `mem_search` can find its way back.
 
 ---
 
 ## Existing app: Discovery-only foundation
 
-An app whose code already exists has no product to define: its foundation is what the code does, written down. The business maps, the dev guide and the domain glossary ARE its product docs, and `/sprint-development` accepts them in place of a PRD / SRS (its Pre-requisites).
+An app whose code already exists has no product to define: its foundation is what the code does, written down. The business maps, the dev guide and the domain glossary are its product docs, and `/sprint-development` accepts them in place of a PRD and SRS (see its Pre-requisites).
 
-**When it applies**: `.template/installer.lock.json` records `adopted: true` (the same key `project-context` reads), or the user asks to document an existing app that has no `.context/PRD/` / `.context/SRS/` content. A project that has a PRD / SRS keeps the full chain above, unchanged.
-
-**What changes**:
+This applies when `.template/installer.lock.json` records `adopted: true` (the key `project-context` reads), or when the user asks to document an existing app with no `.context/PRD/` or `.context/SRS/` content. A project that has a PRD and SRS keeps the full chain above.
 
 | Phase | Existing app |
 |---|---|
-| 1 Constitution, 2 PRD, 3 SRS | not run (F9). A team that already holds real product docs may hand them in; nothing is invented to fill a phase |
-| 2.5 Design system | not run from here: `DESIGN.md` from the live theme is `/design-system extract`, optional, its own skill |
-| 4 Steps 1-3, 5 | the `project-context` modes, which read the code and the `stack:` block (`project-context` → "Stack parameters"). `/project-adoption` hands off `/project-context refresh-all` first: a map that `bun run context:map <skill> --list` already shows generated is not regenerated, only refreshed through its own mode when stale |
-| 4 Step 4 dev guide | reverse-engineered: folder layout, conventions and commands come from the app's code, `package.json` and the `stack:` block, never from this boilerplate's defaults |
-| 4 Step 6 glossary | seeded from the maps, the code's identifiers, the live UI copy, existing ADRs and the tracker's epic names; skipped when the file exists |
+| 1 Constitution, 2 PRD, 3 SRS | Not run (F9). A team that holds real product docs may hand them in, and nothing is invented to fill a phase |
+| 2.5 Design system | Not run from here. `DESIGN.md` from the live theme is `/design-system extract`, optional and its own skill |
+| 4 Steps 1 to 3, and 5 | The `project-context` modes, which read the code and the `stack:` block (`project-context`, "Stack parameters"). `/project-adoption` hands off `/project-context refresh-all` first, and a map that `bun run context:map <skill> --list` shows as generated is refreshed through its own mode when stale, not regenerated |
+| 4 Step 4 dev guide | Reverse-engineered: layout, conventions and commands come from the app's code, `package.json` and the `stack:` block, never from this boilerplate's defaults |
+| 4 Step 6 glossary | Seeded from the maps, the code's identifiers, the live UI copy, existing ADRs and the tracker's epic names. Skipped when the file exists |
 
-**Capability `db`** is optional on this path: the data map reads the schema per `{{stack.database.schema_source}}` (`migrations` = the files, offline; `{{stack.database.engine}}` = `none` = no database), so a project with no DB MCP or no access to the live database is a Discovery Gap the data map names, never a STOP.
+Capability `db` is optional on this path. The data map reads the schema per `{{stack.database.schema_source}}` (`migrations` means the files, read offline; `{{stack.database.engine}}` set to `none` means no database), so a project with no DB MCP or no live access gets a Discovery Gap named in the data map, and the run goes on.
 
-**Inputs**: the seed is the code, not a stakeholder brief; Inputs #1 and #4 above are optional. Phase 0.5 writes the plan with `discovery-only` in `## Approach` and Phase 4 alone in `## Phase breakdown`. **Hand-offs**: `/product-management` for the backlog and `/sprint-development` per story; never `/project-bootstrap` base phases on an existing app.
+The seed is the code, not a stakeholder brief, so Inputs 1 and 4 are optional. Phase 0.5 writes `discovery-only` in `## Approach` and Phase 4 alone in `## Phase breakdown`. Hand off to `/product-management` for the backlog and `/sprint-development` per story, never to the `/project-bootstrap` base phases.
 
 ---
 
-## Specific tasks — which reference to read
+## Specific tasks: which reference to read
 
-| User intent                                                      | Read                                                                     |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| "constitución del proyecto" / "business model canvas"            | `references/constitution-business-model.md`                              |
-| "análisis de mercado" / "market context" / "competitivo"         | `references/constitution-market-context.md`                              |
-| "executive summary del PRD" / "problem statement" / "KPIs"       | `references/prd-executive-summary.md`                                    |
-| "user personas" / "perfiles de usuario" / "target users"         | `references/prd-personas.md`                                             |
-| "MVP scope" / "epic breakdown" / "must-have stories"             | `references/prd-mvp-scope.md`                                            |
-| "user journeys" / "happy path" / "edge cases" / "flujos"         | `references/prd-user-journeys.md`                                        |
-| "design system" / "DESIGN.md" / "paleta" / "branding"            | hand off to `/design-system` (Phase 2.5)                                 |
-| "functional requirements" / "SRS funcional" / "FR formales"      | `references/srs-functional.md`                                           |
-| "NFR" / "performance/security/scalability" / "no funcional"      | `references/srs-non-functional.md`                                       |
-| "system architecture" / "tech stack" / "diagrama de sistema"     | `references/srs-architecture.md`                                         |
-| "record an ADR" / "architecture decision record" / "decisión de arquitectura" | `agentic-dev-core/references/adr-doctrine.md` + `.context/ADR/README.md` |
-| "API contracts" / "OpenAPI" / "endpoints definition"             | `references/srs-api-contracts.md`                                        |
-| "business data map" / "entity model" / "mapa de negocio"         | invoke `/project-context data` (pointer: `references/business-data-map.md`) |
-| "business feature map" / "feature inventory" / "CRUD matrix"     | invoke `/project-context features`                                           |
-| "API architecture discovery" / "endpoint catalog" / "auth model" | invoke `/project-context api` (pointer: `references/api-architecture.md`)   |
-| "project dev guide" / "guía de desarrollo" / "onboarding"        | `references/project-dev-guide.md`                                        |
-| "master implementation plan" / "what to build first" / "roadmap" | invoke `/project-context master-plan`                                     |
+| User intent | Read |
+|---|---|
+| Constitution, business model canvas | `references/constitution-business-model.md` |
+| Market analysis, competitive context | `references/constitution-market-context.md` |
+| PRD executive summary, problem statement, KPIs | `references/prd-executive-summary.md` |
+| User personas, target users | `references/prd-personas.md` |
+| MVP scope, epic breakdown, must-have stories | `references/prd-mvp-scope.md` |
+| User journeys, happy path, edge cases | `references/prd-user-journeys.md` |
+| Design system, `DESIGN.md`, branding | hand off to `/design-system` (Phase 2.5) |
+| Functional requirements | `references/srs-functional.md` |
+| NFRs: performance, security, scalability | `references/srs-non-functional.md` |
+| System architecture, tech stack, system diagram | `references/srs-architecture.md` |
+| Record an ADR | `agentic-dev-core/references/adr-doctrine.md` and `.context/ADR/README.md` |
+| API contracts, OpenAPI, endpoint definitions | `references/srs-api-contracts.md` |
+| Business data map, entity model | `/project-context data` (pointer: `references/business-data-map.md`) |
+| Business feature map, feature inventory, CRUD matrix | `/project-context features` |
+| API architecture discovery, endpoint catalog, auth model | `/project-context api` (pointer: `references/api-architecture.md`) |
+| Project dev guide, developer onboarding | `references/project-dev-guide.md` |
+| Master implementation plan, roadmap | `/project-context master-plan` |
 
-If the user intent does not match a row exactly, identify the closest phase (Constitution / PRD / SRS / Discovery) and fall back to the most relevant reference, surfacing in the report that no exact match was found.
+When no row matches, pick the closest phase, use its most relevant reference and say in the report that no exact match was found.
 
 ---
 
 ## Subagent dispatch
 
-Phases 1 → 2 → 3 → 4 are **logically sequential** (each phase consumes output from the previous), but sub-deliverables WITHIN a phase are often independent and parallel-friendly:
+Phases 1 to 4 run in sequence, because each consumes the previous output. Sub-deliverables inside a phase are often independent:
 
-- **Phase 2 (PRD)**: `prd-personas`, `prd-user-journeys`, `prd-mvp-scope` can run in parallel after `prd-executive-summary` is drafted.
-- **Phase 3 (SRS)**: `srs-functional`, `srs-non-functional`, `srs-architecture`, `srs-api-contracts` can run in parallel once the PRD is locked.
-- **Phase 4 (Discovery)**: Steps 1–3 run one at a time in the `project-context` dependency order, `data` → `features` → `api` (canonical list: `project-context` SKILL.md → "`refresh-all` dependency order"): `features` and `api` read the data map, and every mode closes its own approval gate before the next starts. Step 4 (`project-dev-guide`) needs only Step 1 and may run alongside Steps 2–3. Step 5 (`/project-context master-plan`) is the synthesis after Steps 1–3. Step 6 (domain glossary, in-skill) seeds from the PRD, the SRS and the maps of Steps 1–3, and closes the phase.
+- Phase 2: `prd-personas`, `prd-user-journeys` and `prd-mvp-scope` run in parallel once `prd-executive-summary` is drafted.
+- Phase 3: the four SRS references run in parallel once the PRD is locked.
+- Phase 4: Steps 1 to 3 run one at a time in the `project-context` dependency order, `data`, then `features`, then `api` (canonical list: `project-context` SKILL.md, "`refresh-all` dependency order"), because `features` and `api` read the data map and every mode closes its own approval gate first. Step 4 needs only Step 1 and may run alongside Steps 2 and 3. Step 5 synthesizes Steps 1 to 3. Step 6 seeds from the PRD, the SRS and those maps, and closes the phase.
 
-Use the parallel dispatch pattern from `agentic-dev-core/references/dispatch-patterns.md`. Each subagent briefing must follow the 7-component template in `agentic-dev-core/references/briefing-template.md` and cite the specific reference file the subagent must read.
-
-For research-heavy tasks (market sizing, competitor audits, persona interviews) dispatch a single subagent with web/search tools rather than running the research from the main conversation.
+Use the parallel pattern of `agentic-dev-core/references/dispatch-patterns.md`. Each briefing follows the 7-component template in `agentic-dev-core/references/briefing-template.md` and names the one reference the subagent reads. Research-heavy work (market sizing, competitor audits, persona interviews) goes to a single subagent with web and search tools, not to the main conversation.
 
 ---
 
 ## Hand-offs
 
-When the foundation is solid, the natural next steps are:
+- `/project-bootstrap` turns the SRS architecture and API contracts into a backend and frontend skeleton.
+- `/product-management` turns the PRD MVP scope into Jira epics, stories and refined acceptance criteria.
+- `/sprint-development` implements stories once `/project-bootstrap` is done.
 
-- **Infrastructure scaffolding** → `/project-bootstrap`. Turns the SRS architecture + API contracts into a working backend + frontend skeleton.
-- **Seed the product backlog** → `/product-management`. Turns the PRD MVP scope into Jira epics, user stories, and refined acceptance criteria.
-- **(Eventually) implement stories** → `/sprint-development`. The per-story planning → code → review → deploy loop, only after `/project-bootstrap` is done.
-
-Foundation output is **not** code — it is documentation. The output is "ready for `/project-bootstrap`", not "ready for production".
+Foundation output is documentation, not code: it ends at "ready for `/project-bootstrap`".
 
 ---
 
 ## Verification
 
-After running any phase, confirm:
+After any phase, confirm:
 
 - The deliverables for that phase exist at the expected paths under `.context/`.
-- Each document follows the structure specified in the corresponding reference file (sections, headings, tables).
-- Cross-references are wired: PRD personas appear in user journeys; SRS functional requirements trace to PRD epics; API contracts trace to SRS architecture decisions.
-- `bun run vars:check` does not surface new unresolved `{{VAR}}` references introduced by the new docs.
+- Each document follows the structure of its reference file (sections, headings, tables).
+- Cross-references are wired: PRD personas appear in the user journeys, SRS functional requirements trace to PRD epics, and API contracts trace to SRS architecture decisions.
+- `bun run vars:check` surfaces no new unresolved `{{VAR}}` reference from the new docs.
 
-If a section is left as `[PLACEHOLDER]` because the user could not yet answer (e.g. no real user-research data exists), surface it in the report as an open TODO rather than inventing content.
-
----
-
-## Anti-patterns — NEVER do these
-
-- **F1.** NEVER rewrite the project Constitution, PRD, or SRS from scratch when prior versions exist under `.context/`. Always UPSERT — preserve existing decisions, surface diffs, refine in place.
-- **F2.** NEVER fabricate user personas, market data, or competitor analysis. If the user has no research, surface the gap as a `[PLACEHOLDER]` open TODO and ask — speculative personas mislead every downstream skill.
-- **F3.** NEVER conflate PRD scope with SRS architecture. PRD answers WHAT and WHY (problem, users, journeys, MVP cut); SRS answers HOW (functional contracts, NFRs, tech stack, API definitions). Cross-contamination breaks traceability.
-- **F4.** NEVER skip Phase 4 Discovery (`/project-context data`, `/project-context features`, `/project-context api`, `project-dev-guide`). Downstream skills (`/product-management`, `/sprint-development`) assume those running-mental-model docs exist.
-- **F5.** NEVER hardcode tool choices (DB engine, hosting provider, auth vendor, framework) in the Constitution. Tool selection lives in SRS architecture — Constitution stays vendor-agnostic so the SRS can change without invalidating the strategic anchor.
-- **F6.** NEVER define personas, problem statements, or KPIs without quoting evidence (user interview, analytics snapshot, stakeholder ask, market data citation). Evidence-free claims look authoritative and mislead the PRD downstream.
-- **F7.** NEVER produce a PRD without an explicit out-of-scope section. Implicit scope boundaries always leak; missing out-of-scope is the #1 source of mid-sprint argumentation.
-- **F8.** NEVER leave the SRS architecture's hard-to-reverse decisions undocumented. Seed the foundational ones as ADRs in `.context/ADR/` (per `agentic-dev-core/references/adr-doctrine.md`) so later sessions don't re-litigate or silently violate them. Status per `adr-doctrine.md` §3 step 4: a decision the human already approved is `Accepted` from the start (cite the approval); only a still-open one is `Proposed`.
-- **F9.** NEVER run Phases 1-3 to manufacture a Constitution, PRD or SRS for an app whose code already exists (`.template/installer.lock.json` → `adopted: true`, or the user asks to document an existing app). Its foundation is Phase 4 Discovery alone, read from the code ("Existing app: Discovery-only foundation"); a missing PRD / SRS there is not a gap to fill.
+A section left as `[PLACEHOLDER]` because the user could not yet answer (no real user-research data, say) goes into the report as an open TODO. It is never filled with invented content.
 
 ---
 
-## Notes
+## With nobody at the keyboard
 
-- This skill is **one-time per project**. If scope changes significantly mid-project, re-invoke specific phases (e.g. only `references/prd-mvp-scope.md` to re-cut the MVP).
-- Several reference files are written in Spanish (preserved from the original prompts). The skill orchestrator (this file) is in English; subagents should mirror the user's language when reporting results.
-- This skill consumes `{{PROJECT_NAME}}`, `{{PROJECT_KEY}}`, `{{WEBAPP_DOMAIN}}` from `.agents/project.yaml`. If `.agents/project.yaml` is missing, the agentic layer is not installed: `bunx create-agentic-dev@latest <name>` for a new project, `bunx create-agentic-dev@latest --adopt` then `/project-adoption` for an existing app (`agentic-dev-core` → Install model).
-- The discovery step delegates to four `project-context` modes (`/project-context data`, `/project-context features`, `/project-context api`, `/project-context master-plan`) plus two in-skill steps: the dev guide (`references/project-dev-guide.md`) and the domain glossary (Step 6). All are intentionally agnostic of stack and work on either greenfield projects (where they ENCODE decisions) or brownfield projects (where they REVERSE-ENGINEER existing code). Re-invoke an individual command directly when only one artifact needs refreshing — there's no need to re-run the whole foundation.
+A person starts this skill and it runs once per project, so `/autonomous-delivery` never runs it. A supervised worker or a routine can, and neither waits. The rule is `agentic-dev-core/references/decision-protocol.md` §5.2: a worker's conductor holds each gate, and a routine takes the delegating brief as the answer when the brief covers the decision. Without that cover it does the reversible work, stops before any outward action and reports. This skill writes only local files (`.context/`, `.session/`, `DESIGN.md`), so a stop here means "do not invent content".
+
+| Gate | A person is present | A supervised worker | A routine with nobody |
+|---|---|---|---|
+| Phase 0 resume, restart or abort | the user picks | the conductor picks | the brief picks, else resume and say earlier state was found |
+| Phase 0.5 scope and plan approval | the user approves | the conductor approves | the brief covers it. Else write the plan as `draft`, stop and report, since a new product's scope comes from its founders. An existing app's scope is Discovery-only, so approve it and go on |
+| Missing research or evidence (F2, F6) | ask the user | ask the conductor | leave the `[PLACEHOLDER]`, report it as an open TODO, carry on |
+| Vague founding answer (grilling) | the interview runs in rounds | the questions go to the conductor | follow grilling's own "With nobody at the keyboard" lines: each question and recommended answer goes into the plan and the report, with the assumptions named |
+| Fuzzy domain term (domain-modeling) | the skill's own question | the conductor decides | write only terms the PRD, SRS, code or tickets already settle, and mark every other candidate as proposed in the report |
+| User-level skill not installed | the numbered-list fallback | the same, reported to the conductor | the same, answered by the brief's assumptions |
+| `DESIGN.md` missing at Phase 2.5 | hand off to `/design-system`, then return | report to the conductor | report the hand-off as pending and continue to Phase 3 |
+| ADR status | `Accepted` only with a cited human approval, else `Proposed` | the conductor confirms an approval | `Proposed`, and say so |
+| A `project-context` mode's approval gate | the mode asks the user | the conductor answers | the mode's own nobody path |
+| Capability missing (`db`, `library-docs`, `web-search`) | one-message stop per `mcp-capabilities.md` §4 | the message goes to the conductor | skip the dependent step, do the rest, report (on an existing app `db` is optional) |
+| `.agents/project.yaml` missing | tell the user to install the layer | report to the conductor | stop and report |
+
+---
+
+## Rules
+
+The F1 to F9 rules live once, in `compact_rules` in the frontmatter, and the references cite them by code.
+
+- Reports mirror the user's language. Every document this skill writes into the repo is English, as are the reference templates.
+- The skill consumes `{{PROJECT_NAME}}`, `{{PROJECT_KEY}}` and `{{WEBAPP_DOMAIN}}` from `.agents/project.yaml`. When that file is missing the agentic layer is not installed: `bunx create-agentic-dev@latest <name>` for a new project, or `bunx create-agentic-dev@latest --adopt` then `/project-adoption` for an existing app (`agentic-dev-core`, Install model).
+- The Discovery modes work on greenfield projects, where they encode decisions, and on brownfield ones, where they reverse-engineer the code. Re-invoke one mode when only one artifact needs refreshing.

@@ -1,400 +1,232 @@
-Actúa como Senior Backend Architect, Database Engineer, y DevOps experto.
+# Backend and database setup
 
----
+You are acting as a backend architect, database engineer and DevOps engineer. This reference builds the base backend (database, auth, API layer) once, so every MVP story reuses it. `frontend-setup.md` runs afterwards and consumes `src/types/supabase.ts` and the Supabase clients this reference produces.
 
-## 🎯 TAREA
+## Entry gate: greenfield only
 
-**🔄 FASE 3: BACKEND & DATABASE SETUP (Sincrónica - UNA sola vez)**
+This reference only creates things (tables, RLS, seed data, Supabase clients, `src/lib/config.ts`, `middleware.ts`, dependency upgrades), so it must never run on an app that already exists. Confirm the guard verdict before any step (`SKILL.md`, "Entry gate", rule B0 (`compact_rules`)):
 
-Crear la **infraestructura de backend base** (Database + Auth + API Layer) que será REUTILIZADA en todas las stories del MVP.
+- `.session/project-bootstrap/plan.md` has the line `Bootstrap guard: greenfield, exit 0`: continue.
+- There is no plan (a loose request, or a subagent that only has this reference): run `bun run bootstrap:guard`. Exit 0 continues. Exit 2 stops.
+- The verdict is `existing-app`, unreadable or missing: stop without touching anything. Quote the signals the script printed, say what this phase would have overwritten, and route to `/project-adoption` (and to `/design-system extract` when the request was about how the UI looks). The add-ons of SKILL.md Phase 3 stay available and read the `stack:` block.
 
----
+The script's verdict is the only verdict. Looking at the tree by hand does not replace it, and a user saying "it is greenfield" does not waive it.
 
-## ⛔ GUARD DE ENTRADA: SOLO GREENFIELD
+## Inputs
 
-Esta fase SOLO crea (tablas, RLS, seed, Supabase clients, `src/lib/config.ts`, `middleware.ts`, upgrades de dependencias). Antes de cualquier paso, confirmar el veredicto del guard (`SKILL.md` → "Entry gate", anti-pattern **B0**):
+Read these before starting:
 
-- Hay `.session/project-bootstrap/plan.md` con la línea `Bootstrap guard: greenfield, exit 0` → continuar.
-- No hay plan (pedido suelto, subagente con solo esta referencia) → correr `bun run bootstrap:guard`. Exit 0 → continuar. Exit 2 → **DETENER**.
-- Veredicto `existing-app`, ilegible o ausente → **DETENER** sin tocar nada: citar las señales que imprimió el script, decir qué habría pisado esta fase y derivar a `/project-adoption` (y a `/design-system extract` si el pedido era sobre el aspecto de la UI). Las add-ons de la Fase 3 siguen disponibles y leen el bloque `stack:`.
+- `.context/SRS/architecture-specs.md`: the critical one. Full ERD, tech stack, database schema.
+- `.context/SRS/functional-specs.md`: functional requirements and features.
+- `.context/SRS/non-functional-specs.md`: security and performance requirements.
+- `.context/PRD/executive-summary.md`: project name and description.
+- `.context/PRD/mvp-scope.md`: MVP epics and main functionality.
+- `.agents/project.yaml`: project identity, stack, and `environments.<env>.db_project_ref` (the Supabase project ref, `{{DB_PROJECT_REF}}`).
+- `package.json`: Next.js and React versions, existing dependencies.
 
-Nunca reemplazar el veredicto mirando el árbol a mano, ni aceptar "es greenfield" como dispensa del usuario.
+The backend goes first. There is no frontend to analyse; if the repo already has code under `src/app/`, detect it so you do not overwrite it (B3), but do not use it as a data source.
 
----
+Identify from the documents:
 
-## 📥 INPUT REQUERIDO
+1. The full ERD: every table, relation and constraint.
+2. The foundational tables: the ones the MVP epics need first, `profiles` for auth included. Not the whole ERD.
+3. The user roles (admin, user, vendor, and so on), for the RLS policies.
+4. The protected routes the PRD or SRS marks as authenticated. The middleware consumes them.
+5. The seed data: the entities and volumes the PRD or SRS describes, so the frontend has real data to show.
 
-### 1. Contexto del Proyecto
+## Tools
 
-**Leer TODOS estos archivos:**
+Two MCPs are required.
 
-- `.context/SRS/architecture-specs.md` - **CRÍTICO** - ERD completo, tech stack, database schema
-- `.context/SRS/functional-specs.md` - Requerimientos funcionales, features
-- `.context/SRS/non-functional-specs.md` - Security, performance requirements
-- `.context/PRD/executive-summary.md` - Nombre del proyecto, descripción
-- `.context/PRD/mvp-scope.md` - Épicas del MVP, funcionalidades principales
-- `.agents/project.yaml` - Identidad del proyecto, stack y `environments.<env>.db_project_ref` (el Supabase project ref, `{{DB_PROJECT_REF}}`)
-- `package.json` - Versiones de Next.js, React, dependencias existentes
+1. **Supabase MCP** creates tables and RLS policies and manages the database. If it is not available, stop the whole run.
+2. **Context7 MCP** verifies packages and current APIs. Query it before installing any dependency.
 
-**Orden de la skill:** el backend va PRIMERO. El frontend (`frontend-setup.md`) corre después y consume `src/types/supabase.ts` y los Supabase clients que produce esta fase. No hay frontend previo que analizar; si el repo ya tiene código bajo `src/app/`, se detecta para no pisarlo (B3), no como fuente de datos.
+### Required skills (load before installing anything or making any DB-MCP call)
 
-### 2. Qué identificar
+`/supabase` and `/supabase-postgres-best-practices` (category `backend-db`): load both before Step 0.3 (CLI install) and before the first schema, RLS or migration call through the Supabase MCP. They carry the Supabase and Postgres rules (RLS shape, indexes, migration hygiene) this reference writes against. If they are not installed, say so once, point at `bun setup` (project-level list in `cli/install.ts`) or the single `bunx skills add` line from that list, and continue. Do not skip silently and do not stop (`agentic-dev-core/references/skill-composition-strategy.md` §3.5).
 
-1. **ERD del SRS:** Todas las tablas, relaciones, constraints del schema completo
-2. **Tablas fundacionales:** Las que las épicas del MVP (`mvp-scope.md`) necesitan primero, incluida `profiles` para auth (no todas del ERD)
-3. **Roles de usuario:** Admin, user, vendor, etc. (para RLS policies)
-4. **Rutas protegidas:** Las que el PRD/SRS marca como autenticadas (las consume el middleware)
-5. **Seed data:** Entidades y volúmenes que el PRD/SRS describe, para que el frontend tenga datos reales que mostrar
+Also needed: the Supabase CLI (installed in Step 0.3 if missing), a package manager (npm, yarn, pnpm or bun) and git.
 
----
+Credentials needed:
 
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS (MCP)
+- The Supabase project ref, from `.agents/project.yaml` key `environments.<env>.db_project_ref`. Ask the user only when it is `null`.
+- The Supabase project URL, publishable key and secret key.
 
-### MCP CRÍTICO REQUERIDO:
+The canonical variable names are the ones in `.env.example`: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`. The legacy pair (`NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`) keeps working while Supabase provisions it.
 
-1. **MCP Supabase** - OBLIGATORIO
-   - Para crear tablas, RLS policies, gestionar database
-   - Si NO está disponible → DETENER TODO
+## Scope and output
 
-2. **MCP Context7** - OBLIGATORIO
-   - Para verificar paquetes y APIs actualizadas
-   - Consultar ANTES de instalar cualquier dependencia
+This runs once, before the feature sprints. Done means a working backend (database, auth, clients, types) that `frontend-setup.md` can consume.
 
-### Required skills (load BEFORE installing anything or making any DB-MCP call)
+In scope: the Supabase setup (project, credentials, CLI), the foundational tables, basic RLS, Supabase Auth (config, clients, session middleware), the API layer (typed Supabase clients), realistic seed data derived from the PRD and SRS, and the docs.
 
-- **`/supabase` + `/supabase-postgres-best-practices`** (category `backend-db`): load both before Paso 0.3 (CLI install) and before the first schema, RLS or migration call through the Supabase MCP. They carry the Supabase and Postgres rules (RLS shape, indexes, migration hygiene) this phase writes against.
-- Not installed → say so once, point at `bun setup` (project-level list in `cli/install.ts`) or the single `bunx skills add` line from that list, then continue. Never a silent skip, never a hard STOP (`agentic-dev-core/references/skill-composition-strategy.md` §3.5).
+Out of scope: the full ERD, complex business logic, per-story features (those belong to the sprints), and multi-environment setup (dev, staging, prod).
 
-### CLIs Requeridos:
+| Output | Notes |
+| --- | --- |
+| `.env` | Real credentials, gitignored |
+| `.env.example` | Descriptive template without credentials, committed |
+| `src/lib/config.ts` | Centralised configuration with validation |
+| `src/lib/supabase/client.ts` | Browser client with `@supabase/ssr` |
+| `src/lib/supabase/server.ts` | Server client for Server Components |
+| `src/lib/supabase/admin.ts` | Optional admin client with the secret key |
+| `middleware.ts` | Route protection and session refresh |
+| `src/types/supabase.ts` | Types generated from the database schema |
+| `.context/backend-setup.md`, `.context/api-auth.md` | Setup and API auth docs |
+| In Supabase | Foundational tables, RLS policies, indexes, seed data |
+| Dependencies | `@supabase/ssr` and `@supabase/supabase-js` upgraded |
 
-- Supabase CLI (se instalará si falta)
-- Package manager (npm/yarn/pnpm/bun)
-- Git (verificación de estado)
+## Rules
 
-### Credenciales Necesarias:
+- Create only the tables the MVP needs now. Extra tables are speculative and the ERD keeps growing with the sprints.
+- Read project values from the context, never hardcode them (B4).
+- Run DDL through the Supabase MCP under `agentic-dev-core/references/db-change-doctrine.md`: `apply_migration` for DDL, never `execute_sql`. Do not write manual SQL scripts.
+- Do not write complete code in the plan. Use pseudocode plus Context7, and check versions there before using any example code. Never assume package names or imports.
+- Query Context7 before installing or using any dependency.
+- Check `git status` before writing, so unsaved work is not overwritten.
+- Check for an existing env file and ask the user about the strategy before creating `.env` files.
+- Do not commit automatically. Recommend the commit.
+- Check the Next.js and React versions first, because they change the Supabase setup.
+- Centralise env access in a config file, add indexes for the expected queries, apply basic RLS from the start, and generate TypeScript types with the Supabase CLI.
+- Validate that the clients, middleware and types compile against the real database.
 
-- Supabase project ref: `.agents/project.yaml` → `environments.<env>.db_project_ref` (se pide al usuario solo si está en `null`)
-- Supabase Project URL
-- Supabase Publishable Key
-- Supabase Secret Key
+## Workflow
 
-Nombres canónicos: los de `.env.example` (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`). El par legacy (`NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`) sigue funcionando mientras Supabase lo provisione.
+Each part ends with a checkpoint.
 
----
+## Part 0: Validations and setup
 
-## 🎯 OBJETIVO DE FASE 3 - BACKEND
+Goal: every tool is available.
 
-Crear la **infraestructura de backend base** (Database + Auth + API Layer) que será REUTILIZADA en todas las stories del MVP.
+### Step 0.0: Check git state
 
-**Esta fase se ejecuta UNA SOLA VEZ** antes de comenzar los sprints de implementación de features.
-
-**Incluye:**
-
-- ✅ Configuración de Supabase (proyecto, credenciales, CLI)
-- ✅ Database schema (tablas fundacionales que el MVP necesita)
-- ✅ Row Level Security (RLS) básico
-- ✅ Supabase Auth (configuración, clients, middleware de sesión)
-- ✅ API Layer (Supabase clients + tipados)
-- ✅ Seed data realista (derivado de las entidades del PRD/SRS)
-- ✅ Documentación (`.context/backend-setup.md`, `.context/api-auth.md`)
-
-**NO incluye:**
-
-- ❌ Implementar TODAS las tablas del ERD completo
-- ❌ Funcionalidad de negocio compleja
-- ❌ Features específicas de cada story (eso es Fase 6)
-- ❌ Configuración de múltiples ambientes (dev/staging/prod)
-
-**Resultado:** Backend funcional (DB + Auth + clients + tipos) listo para que `frontend-setup.md` lo consuma.
-
----
-
-## 📤 OUTPUT GENERADO
-
-### Archivos de Configuración:
-
-- ✅ `.env` - Variables de entorno con credenciales reales (gitignored)
-- ✅ `.env.example` - Template descriptivo sin credenciales (commiteado)
-- ✅ `src/lib/config.ts` - Configuración centralizada con validaciones
-
-### Supabase Clients:
-
-- ✅ `src/lib/supabase/client.ts` - Browser client con @supabase/ssr
-- ✅ `src/lib/supabase/server.ts` - Server client para Server Components
-- ✅ `src/lib/supabase/admin.ts` - (Opcional) Admin client con la secret key
-
-### Middleware y Auth:
-
-- ✅ `middleware.ts` - Protección de rutas + refresh de sesión
-
-### TypeScript Types:
-
-- ✅ `src/types/supabase.ts` - Tipos auto-generados desde database schema
-
-### Documentación:
-
-- ✅ `.context/backend-setup.md` - Setup completo documentado
-- ✅ `.context/api-auth.md` - Autenticación y autorización para APIs
-
-### Database (en Supabase):
-
-- ✅ Tablas fundacionales creadas con schemas
-- ✅ Row Level Security policies configuradas
-- ✅ Índices optimizados para performance
-- ✅ Seed data realista insertado
-
-### Dependencias:
-
-- ✅ Dependencias actualizadas (@supabase/ssr)
-
----
-
-## 🚨 RESTRICCIONES CRÍTICAS
-
-### ❌ NO HACER:
-
-- **NO crear tablas que el MVP todavía no necesita** - Solo fundacionales
-- **NO hardcodear valores del proyecto** - Leer del contexto
-- **NO correr esta fase sobre una app existente** - El guard de entrada (`bun run bootstrap:guard`) la rechaza; la app se adopta con `/project-adoption`
-- **NO crear SQL scripts manuales** - Usar MCP de Supabase bajo `agentic-dev-core/references/db-change-doctrine.md` (DDL solo por `apply_migration`, nunca por `execute_sql`)
-- **NO proceder sin MCP de Supabase** - Es crítico
-- **NO escribir código completo en el prompt** - Usar pseudocódigo + Context7
-- **NO hacer commits automáticos** - Solo recomendar
-- **NO usar código de ejemplos sin verificar versiones** - Consultar Context7 primero
-- **NO crear archivos .env sin consultar al usuario** - Verificar estrategia primero
-- **NO asumir nombres de paquetes o imports** - Verificar con Context7 MCP
-- **NO sobrescribir trabajo sin verificar git status** - Revisar estado primero
-
-### ✅ SÍ HACER:
-
-- **Verificar herramientas necesarias** - MCP, CLI, credenciales, git
-- **Leer contexto completo** - PRD, SRS, `.agents/project.yaml`
-- **Usar Context7 MCP SIEMPRE** - Antes de instalar/usar cualquier dependencia
-- **Verificar archivo de env existente** - .env, .env.example
-- **Centralizar configuración** - Crear archivo config para env vars
-- **Crear solo tablas fundacionales** - Las que piden las épicas del MVP
-- **Optimizar con índices** - Queries rápidas desde el inicio
-- **Aplicar RLS básico** - Seguridad desde el inicio
-- **Generar tipados TypeScript** - Supabase CLI
-- **Crear seed data realista** - Entidades y volúmenes del PRD/SRS
-- **Documentar todo** - Backend setup + API endpoints
-- **Validar integración** - Clients, middleware y tipos compilan contra la DB real
-- **Verificar versiones de Next.js y React** - Puede afectar el setup de Supabase
-
----
-
-## 🔄 WORKFLOW
-
-El proceso se divide en 8 fases ejecutadas secuencialmente. Cada fase incluye validaciones y checkpoints.
-
----
-
-## 📦 FASE 0: VALIDACIONES & SETUP
-
-**Objetivo:** Asegurar que todas las herramientas necesarias están disponibles.
-
-### Paso 0.0: Verificar Estado de Git
-
-**CRÍTICO - Evitar sobrescribir trabajo no guardado**
-
-**Acción:**
+Run `git status` before anything else, to avoid overwriting unsaved work.
 
 ```bash
 git status
 ```
 
-**Analizar output:**
+- Uncommitted changes: warn the user clearly, list the modified files, and ask "You have uncommitted changes. Do you want to continue anyway?" Suggest a commit or `git stash` first.
+- Clean repo: continue without warnings.
+- Not a git repo: warn only (it does not block) and suggest `git init` for a new project.
 
-1. **Si hay cambios sin commit:**
-   - ADVERTIR al usuario claramente
-   - Listar archivos modificados
-   - **Preguntar:** "Tienes cambios sin commit. ¿Quieres continuar de todas formas?"
-   - **Sugerir:** Hacer commit o `git stash` antes de continuar
-
-2. **Si repo está limpio:**
-   - Continuar sin avisos
-
-3. **Si no es un repo git:**
-   - Solo avisar (no es bloqueante)
-   - Sugerir: `git init` si es un proyecto nuevo
-
-**Output esperado:**
+Expected output:
 
 ```
-✅ Git status verificado
-   - Estado: [limpio / cambios pendientes / no es repo git]
-   - [Advertencias si aplican]
+Git status checked
+   - State: [clean / pending changes / not a git repo]
+   - [Warnings if any]
 ```
 
----
+### Step 0.1: Check the Supabase MCP
 
-### Paso 0.1: Verificar MCP de Supabase
+If it is not available, stop the whole run. List the available MCP tools and look for the Supabase MCP. If it is missing, report:
 
-**CRÍTICO - Si no está disponible, DETENER TODO.**
+```
+STOPPING
 
-**Acción:**
+Supabase MCP NOT available
 
-1. Intentar listar herramientas MCP disponibles
-2. Buscar MCP de Supabase
-3. Si NO está disponible:
+This reference needs the Supabase MCP to create tables, RLS and manage the database.
 
-   ```
-   DETENER EJECUCIÓN
+Please:
+1. Configure the Supabase MCP in your environment
+2. Restart and run this step again
 
-   ❌ MCP de Supabase NO disponible
+Docs: [link to the Supabase MCP docs]
+```
 
-   Este prompt requiere el MCP de Supabase para crear tablas, RLS, y gestionar la base de datos.
+If it is available, continue.
 
-   Por favor:
-   1. Configura el MCP de Supabase en tu entorno
-   2. Reinicia y vuelve a ejecutar este prompt
+### Step 0.2: Resolve the Supabase project ref
 
-   Documentación: [link a docs de MCP Supabase]
-   ```
+Read `.agents/project.yaml` key `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` of the active environment) first. If it has a value, use it without asking.
 
-**Si está disponible:** Continuar.
+Only when it is `null`, ask "What is your Supabase project ref?" with two options:
 
----
+1. I have an existing project: ask for the ref.
+2. I need to create a new project: show the instructions.
 
-### Paso 0.2: Resolver el Supabase project ref
+Save the ref in `.agents/project.yaml` (`environments.<env>.db_project_ref`) with the user's OK. It never goes in `AGENTS.md` or in a separate file (`.agents/instructions/agent-project-variables.md` §7).
 
-**Leer primero** `.agents/project.yaml` → `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` del ambiente activo). Si tiene valor, usarlo sin preguntar.
-
-**Solo si está en `null`, preguntar:** "¿Cuál es tu Supabase project ref?"
-
-**Opciones:**
-
-1. **Tengo un proyecto existente** → Pedir el ref
-2. **Necesito crear un proyecto nuevo** → Mostrar instrucciones
-
-**Guardar el ref en `.agents/project.yaml` (`environments.<env>.db_project_ref`) con OK del usuario**, nunca en `AGENTS.md` ni en un archivo aparte (`.agents/instructions/agent-project-variables.md` §7).
-
----
-
-### Paso 0.3: Verificar Supabase CLI
-
-**Acción:**
+### Step 0.3: Check the Supabase CLI
 
 ```bash
 supabase --version
 ```
 
-**Si NO está instalado:**
+If it is not installed, get the current install command from Context7, ask "Can I install it for you?", then run the install or show the manual instructions.
 
-- Consultar Context7 para comando de instalación actualizado
-- Preguntar: "¿Puedo instalarlo por ti?"
-- Ejecutar instalación o mostrar instrucciones manuales
-
-**Output:**
+Output:
 
 ```
-✅ Supabase CLI: v[version]
-✅ MCP Supabase disponible
-✅ Project ID: [project-id]
+Supabase CLI: v[version]
+Supabase MCP available
+Project ID: [project-id]
 ```
 
----
+### Step 0.4: Detect the env-var strategy
 
-### Paso 0.4: Detectar Estrategia de Variables de Entorno
+Getting this wrong causes hard-to-trace errors, so settle it first.
 
-**CRÍTICO PARA EVITAR ERRORES**
-
-**Acción:**
-
-1. Verificar archivos existentes:
+1. List the existing env files:
 
    ```bash
    ls -la | grep -E "^\.env"
    ```
 
-2. Leer contenido de archivos encontrados
+2. Read the files found.
+3. Ask the user: "I detected [files]. How do you want to manage the Supabase variables?" Options: (a) use the existing `.env`, (b) use `.env` (Next.js standard), (c) a centralised config file.
+4. Implement the chosen strategy.
 
-3. **Preguntar al usuario:**
-   "Detecté [archivos]. ¿Cómo prefieres gestionar las variables de Supabase?"
-
-   **Opciones:**
-   - a) Usar `.env` existente
-   - b) Usar `.env` (Next.js standard)
-   - c) Archivo centralizado de configuración
-
-4. Implementar estrategia elegida
-
-**Output:**
+Output:
 
 ```
-✅ Estrategia: [elegida]
-✅ Archivos a actualizar: [listar]
+Strategy: [chosen]
+Files to update: [list]
 ```
 
----
+### Step 0.5: Check the stack versions
 
-### Paso 0.5: Verificar Versiones del Stack
+Compatibility depends on these.
 
-**CRÍTICO PARA COMPATIBILIDAD**
-
-**Acción:**
-
-1. Leer `package.json` → Next.js, React, TypeScript
-2. Usar Context7 MCP:
-   - Query: "Supabase auth Next.js [version] React [version] latest setup"
-   - Identificar paquetes correctos según versiones
-
-3. Documentar decisión:
+1. Read `package.json` for Next.js, React and TypeScript.
+2. Query Context7: "Supabase auth Next.js [version] React [version] latest setup", and identify the right packages for those versions.
+3. Record the decision:
 
    ```
-   Versiones detectadas:
+   Detected versions:
    - Next.js: [version]
    - React: [version]
 
-   Paquetes a usar:
-   - @supabase/ssr@[version] (verificado con Context7)
+   Packages to use:
+   - @supabase/ssr@[version] (verified with Context7)
    - @supabase/supabase-js@[version]
 
-   Razón: [explicar compatibilidad]
+   Reason: [explain compatibility]
    ```
 
-**Output:**
+Output:
 
 ```
-✅ Stack analizado
-✅ Paquetes verificados con Context7
-✅ Compatibilidad confirmada
+Stack analysed
+Packages verified with Context7
+Compatibility confirmed
 ```
 
----
+## Part 1: Context analysis
 
-## 📊 FASE 1: ANÁLISIS DE CONTEXTO
+Goal: understand the project and decide which tables to create.
 
-**Objetivo:** Comprender el proyecto y decidir qué tablas crear.
+### Step 1.1: Read the project docs
 
-### Paso 1.1: Leer Documentación del Proyecto
+Read `.context/SRS/architecture-specs.md` (full ERD, tech stack), `.context/SRS/functional-specs.md` (functional requirements) and `.context/PRD/mvp-scope.md` (main functionality). Identify the five items listed under Inputs, and keep the seed data to the entities, volumes and realistic ranges the PRD or SRS describes.
 
-**Archivos a leer:**
+Keep the results internal (do not show them): the complete ERD, the foundational tables to create, and the seed plan per entity.
 
-- `.context/SRS/architecture-specs.md` → ERD completo, tech stack
-- `.context/SRS/functional-specs.md` → Requerimientos funcionales
-- `.context/PRD/mvp-scope.md` → Funcionalidades principales
+### Step 1.2: Query the official docs (Context7 MCP)
 
-**Qué identificar:**
-
-1. **ERD del SRS:** Todas las tablas, relaciones, constraints
-2. **Tablas fundacionales:** Las que piden las épicas del MVP
-3. **Roles de usuario:** Admin, user, vendor, etc.
-4. **Seed data:** Entidades, volúmenes y rangos realistas que describe el PRD/SRS
-
-**Output interno (no mostrar):**
-
-- ERD completo
-- Tablas fundacionales a crear
-- Plan de seed data por entidad
-
----
-
-### Paso 1.2: Consultar Documentación Oficial (Context7 MCP)
-
-**OBLIGATORIO ANTES DE CUALQUIER IMPLEMENTACIÓN**
-
-**Queries necesarias:**
+Do this before any implementation, and write no code until all queries are done.
 
 1. "Supabase JavaScript client Next.js [version] App Router latest package"
 2. "Supabase Auth Next.js [version] App Router setup authentication"
@@ -402,1048 +234,857 @@ supabase --version
 4. "Supabase Row Level Security policies best practices"
 5. "Supabase CLI generate types TypeScript command"
 6. "Next.js [version] environment variables best practices"
-7. (Si Next.js 15+) "Next.js 15 cookies async breaking changes"
+7. If Next.js 15 or later: "Next.js 15 cookies async breaking changes"
 
-**IMPORTANTE:** NO escribir código hasta completar todas las queries.
-
-**Output al usuario:**
+Then show the user:
 
 ````markdown
-## 📚 Análisis Completado
+## Analysis complete
 
-### ERD Identificado:
+### ERD identified:
 
-- Tablas totales en SRS: [número]
-- Tablas fundacionales a crear: [listar con razón]
+- Tables in the SRS: [number]
+- Foundational tables to create: [list with reason]
 
-Ejemplo:
-
-```pseudocode
-- `profiles` - Requerida por: auth
-- `[entidad_core]` - Requerida por: [épica del MVP]
-```
-````
-
-### Plan de Seed Data:
+Example:
 
 ```pseudocode
-- [entity1]: [X] registros (fuente: [sección del PRD/SRS])
-- [entity2]: [Y] registros, vinculados a [entity1]
+- `profiles` - Required by: auth
+- `[core_entity]` - Required by: [MVP epic]
 ```
 
-### Stack Técnico Verificado:
+### Seed data plan:
+
+```pseudocode
+- [entity1]: [X] records (source: [PRD/SRS section])
+- [entity2]: [Y] records, linked to [entity1]
+```
+
+### Verified technical stack:
 
 - Framework: Next.js [version] (App Router)
 - Database: Supabase PostgreSQL
 - Auth: Supabase Auth
-- Client: @supabase/ssr@[version] (verificado con Context7)
+- Client: @supabase/ssr@[version] (verified with Context7)
 
-### Decisiones:
+### Decisions:
 
-- Paquete: @supabase/ssr (no auth-helpers - deprecado)
-- Cookies: [async/sync según version]
-- Env vars: [estrategia del paso 0.4]
+- Package: @supabase/ssr (not auth-helpers, which is deprecated)
+- Cookies: [async/sync depending on version]
+- Env vars: [strategy from Step 0.4]
+````
+
+## Part 1.5: Install dependencies
+
+Goal: install the packages Context7 verified.
+
+### Step 1.5.1: Check existing dependencies
+
+1. Read the whole `package.json`.
+2. Look for conflicts: `@supabase/auth-helpers-nextjs` exists, remove it (deprecated). `@supabase/supabase-js` exists, check its version.
+3. Show the plan:
 
 ```
+Dependency plan:
 
----
+To remove:
+- @supabase/auth-helpers-nextjs (deprecated)
 
-## 🔧 FASE 1.5: INSTALACIÓN DE DEPENDENCIAS
-
-**Objetivo:** Instalar paquetes correctos verificados con Context7.
-
-### Paso 1.5.1: Verificar Dependencias Existentes
-
-1. Leer `package.json` completo
-2. Identificar conflictos:
-   - ¿Existe `@supabase/auth-helpers-nextjs`? → Remover (deprecado)
-   - ¿Existe `@supabase/supabase-js`? → Verificar versión
-
-3. Mostrar plan:
-```
-
-Plan de dependencias:
-
-A remover:
-
-- @supabase/auth-helpers-nextjs (deprecado)
-
-A instalar:
-
+To install:
 - @supabase/ssr@[version]
 - @supabase/supabase-js@[version]
+```
 
-````
-
-### Paso 1.5.2: Instalar Dependencias Verificadas
+### Step 1.5.2: Install the verified dependencies
 
 ```bash
-# Remover dependencias deprecadas (si existen)
+# Remove deprecated dependencies (if present)
 [package-manager] remove @supabase/auth-helpers-nextjs
 
-# Instalar versiones estables actuales
+# Install current stable versions
 [package-manager] add @supabase/ssr@latest @supabase/supabase-js@latest
-````
+```
 
-**Validar versiones instaladas:**
+Validate the installed versions:
 
 ```bash
 [package-manager] list | grep supabase
 ```
 
-**Output esperado:**
+Expected output:
 
 ```
-✅ Dependencias Supabase instaladas:
-   - @supabase/ssr@0.x.x (estable)
-   - @supabase/supabase-js@2.x.x (estable)
-✅ Deprecados removidos: @supabase/auth-helpers-nextjs
+Supabase dependencies installed:
+   - @supabase/ssr@0.x.x (stable)
+   - @supabase/supabase-js@2.x.x (stable)
+Deprecated removed: @supabase/auth-helpers-nextjs
 
-📋 Versiones instaladas:
+Installed versions:
    @supabase/ssr: ^0.x.x
    @supabase/supabase-js: ^2.x.x
 
-⚠️ Si las versiones son diferentes:
-   - Verificar compatibilidad con Context7
-   - Asegurar que @supabase/ssr es 0.x+ (no alpha/beta)
-   - Asegurar que @supabase/supabase-js es 2.x+ (no 1.x)
+If the versions differ:
+   - Check compatibility with Context7
+   - Make sure @supabase/ssr is 0.x or later (not alpha/beta)
+   - Make sure @supabase/supabase-js is 2.x or later (not 1.x)
 ```
 
-**Verificación adicional de compatibilidad:**
+Additional compatibility check:
 
 ```bash
-# Verificar versión de Next.js
+# Check the Next.js version
 [package-manager] list next
 
-# Compatibilidad validada:
-# - Next.js 15.x + @supabase/ssr 0.x ✅
-# - Next.js 14.x + @supabase/ssr 0.x ✅
-# - Next.js 13.x + @supabase/ssr 0.x ✅
+# Validated compatibility:
+# - Next.js 15.x + @supabase/ssr 0.x OK
+# - Next.js 14.x + @supabase/ssr 0.x OK
+# - Next.js 13.x + @supabase/ssr 0.x OK
 ```
 
----
+## Part 2: Database schema
 
-## 🏗️ FASE 2: DATABASE SCHEMA
+Goal: create the foundational tables through the Supabase MCP.
 
-**Objetivo:** Crear tablas fundacionales usando MCP de Supabase.
+### Step 2.0: Read the history before writing
 
-### Paso 2.0: Leer el historial antes de escribir
+The doctrine is `agentic-dev-core/references/db-change-doctrine.md`. With `/supabase` and `/supabase-postgres-best-practices` loaded:
 
-**Doctrina:** `agentic-dev-core/references/db-change-doctrine.md`. Con `/supabase` + `/supabase-postgres-best-practices` ya cargadas:
+1. Run `list_migrations` on the project ref from Step 0.2. A greenfield project has an empty history, or only what the user applied by hand. If it holds migrations this session does not know, stop and show them to the user: the database is not new.
+2. Run `list_tables` (verbose) to confirm the tables you are about to create do not exist.
+3. State the environment and the ref out loud before the first write.
 
-1. `list_migrations` sobre el project ref del Paso 0.2: en un proyecto greenfield el historial está vacío o solo trae lo que el usuario aplicó a mano. Si trae migraciones que esta sesión no conoce, **DETENER** y mostrárselas al usuario: la base no es nueva.
-2. `list_tables` (verbose) para confirmar que las tablas que se van a crear no existen.
-3. Decir en voz alta el ambiente y el ref antes de la primera escritura.
+### Step 2.1: Create the foundational tables
 
-### Paso 2.1: Crear Tablas Fundacionales
+Use the Supabase MCP, not manual SQL scripts. Each schema change (a table with its indexes, or one table's RLS) is ONE migration through `apply_migration`, with a snake_case name that says what changes, so it appears in the history (`list_migrations`). `execute_sql` never carries DDL. If `stack.database.migrations_tool` is `supabase-cli`, write the same SQL also into `stack.database.migrations_dir` as `<version>_<name>.sql` (version read from `list_migrations`).
 
-**IMPORTANTE:** Usar MCP de Supabase, NO scripts SQL manuales. Cada cambio de schema (tabla + sus índices, o el RLS de una tabla) es UNA migración con `apply_migration` y un nombre snake_case que diga qué cambia, así queda en el historial (`list_migrations`). `execute_sql` nunca lleva DDL. Si `stack.database.migrations_tool` es `supabase-cli`, el mismo SQL se escribe además en `stack.database.migrations_dir` como `<version>_<name>.sql` (versión leída de `list_migrations`).
-
-**Para cada tabla fundacional:**
-
-**Pseudocódigo:**
+For each foundational table:
 
 ```
-Para tabla [TABLE_NAME] del ERD:
+For table [TABLE_NAME] from the ERD:
 
-  1. Preparar definición:
-     - Nombre: [table_name] (snake_case)
-     - Columnas: [según ERD + timestamps]
+  1. Prepare the definition:
+     - Name: [table_name] (snake_case)
+     - Columns: [per ERD + timestamps]
      - PK: id (uuid, gen_random_uuid())
-     - FKs: [según relaciones]
+     - FKs: [per relations]
      - Constraints: [unique, not null, defaults]
 
-  2. Crear via MCP Supabase, como migración registrada:
+  2. Create via the Supabase MCP, as a recorded migration:
      MCP_CALL: apply_migration(name: "create_[table_name]", query: [DDL])
 
-  3. Validar creación en el destino:
-     list_migrations muestra "create_[table_name]"; list_tables (verbose) muestra la tabla
+  3. Validate at the destination:
+     list_migrations shows "create_[table_name]"; list_tables (verbose) shows the table
 ```
 
-**Convenciones:**
+Conventions:
 
 ```pseudocode
 - snake_case: `user_profiles`, `[entity]_[subentity]`
-- UUID para IDs: `gen_random_uuid()`
+- UUID for IDs: `gen_random_uuid()`
 - Timestamps: `created_at TIMESTAMPTZ DEFAULT now()`
-- Soft deletes (si aplica): `deleted_at TIMESTAMPTZ`
+- Soft deletes (if applicable): `deleted_at TIMESTAMPTZ`
 ```
 
-**Output por tabla:**
+Output per table:
 
 ```
-✅ Tabla `[table_name]` creada
-   - Columnas: [número]
+Table `[table_name]` created
+   - Columns: [number]
    - PKs: id
-   - FKs: [listar]
-   - Índices: [listar]
+   - FKs: [list]
+   - Indexes: [list]
 ```
 
----
+### Step 2.1.5: Optimise with indexes
 
-### Paso 2.1.5: Optimizar con Índices
+Add indexes from the start, for performance. For each table, consider indexes on:
 
-**NUEVO - Para performance desde el inicio**
-
-**Para cada tabla, considerar índices en:**
-
-- Columnas de búsqueda frecuente (email, username, slug)
-- Foreign keys (automático en algunos casos)
-- Campos de ordenamiento (created_at, rating, price)
-- Campos de filtrado (status, category, is_active)
-
-**Pseudocódigo:**
+- Frequently searched columns (email, username, slug)
+- Foreign keys (automatic in some cases)
+- Sort fields (created_at, rating, price)
+- Filter fields (status, category, is_active)
 
 ```
-Para cada tabla:
-  Analizar queries esperadas del frontend
+For each table:
+  Analyse the frontend's expected queries
 
-  SI columna usada en WHERE/ORDER BY frecuentemente:
-    Crear índice: CREATE INDEX idx_[table]_[column] ON [table]([column])
+  IF a column is often used in WHERE/ORDER BY:
+    Create an index: CREATE INDEX idx_[table]_[column] ON [table]([column])
 
-  SI columna es FK:
-    Verificar que índice existe (debería ser automático)
+  IF a column is an FK:
+    Check that the index exists (it should be automatic)
 
-  Documentar: Qué índices se crearon y razón
+  Document which indexes were created and why
 ```
 
-**Output:**
+Output:
 
 ```pseudocode
-✅ Índices optimizados:
-   - profiles.email (búsquedas de login)
-   - [entity_table].[sort_column] (ordenamiento)
-   - [entity_table].[fk_column] (FK + filtros)
+Optimised indexes:
+   - profiles.email (login lookups)
+   - [entity_table].[sort_column] (sorting)
+   - [entity_table].[fk_column] (FK + filters)
 ```
 
----
+### Step 2.2: Configure Row Level Security (RLS)
 
-### Paso 2.2: Configurar Row Level Security (RLS)
-
-**Para cada tabla creada:**
-
-**Pseudocódigo:**
+For each table created:
 
 ```
-1. Habilitar RLS (DDL: va por apply_migration, nunca por execute_sql):
+1. Enable RLS (DDL: goes through apply_migration, never execute_sql):
    MCP_CALL: apply_migration(name: "rls_[table_name]", query: "ALTER TABLE ... ENABLE ROW LEVEL SECURITY; CREATE POLICY ...")
 
-2. Crear políticas según tipo de tabla:
+2. Create policies by table type:
 
-   SI tabla_pública (catálogos, listados):
-     POLICY: SELECT permitir a todos
+   IF public table (catalogs, listings):
+     POLICY: SELECT allowed for everyone
 
-   SI tabla_autenticada (perfiles, datos user):
-     POLICY: SELECT solo autenticados
-     POLICY: INSERT solo autenticados
-     POLICY: UPDATE solo si user_id = auth.uid()
-     POLICY: DELETE solo si user_id = auth.uid()
+   IF authenticated table (profiles, user data):
+     POLICY: SELECT only authenticated
+     POLICY: INSERT only authenticated
+     POLICY: UPDATE only if user_id = auth.uid()
+     POLICY: DELETE only if user_id = auth.uid()
 
-   SI tabla_admin (configuración, reportes):
-     POLICY: SELECT solo si role = 'admin'
-     POLICY: INSERT/UPDATE/DELETE solo admin
+   IF admin table (configuration, reports):
+     POLICY: SELECT only if role = 'admin'
+     POLICY: INSERT/UPDATE/DELETE only admin
 
-3. Validar políticas:
-   Probar con query simulado
-   get_advisors (security), si el MCP lo expone: reportar cada hallazgo nuevo
+3. Validate the policies:
+   Test with a simulated query
+   get_advisors (security), if the MCP exposes it: report every new finding
 ```
 
-**ADR:** el schema fundacional y su modelo de RLS (quién lee qué en toda la app) pasan las dos compuertas de `adr-doctrine.md`. Registrar un ADR que nombre las migraciones (`<version>_<name>` de `list_migrations`), el ambiente donde se aplicaron y el statement de rollback (`db-change-doctrine.md` §4).
+ADR: the foundational schema and its RLS model (who reads what across the whole app) pass all three gates of `adr-doctrine.md` (hard to reverse, surprising without context, a real trade-off). Record an ADR that names the migrations (`<version>_<name>` from `list_migrations`), the environment where they were applied, and the rollback statement (`db-change-doctrine.md` §4).
 
-**Security Checklist:**
+Security checklist:
 
-- [ ] ¿Users pueden leer datos ajenos? (Si no deben, política restrictiva)
-- [ ] ¿Policies son lo más restrictivas posible?
-- [ ] ¿Secret key nunca expuesta en frontend?
+- [ ] Can users read other users' data? If they should not, the policy is restrictive.
+- [ ] Are the policies as restrictive as possible?
+- [ ] Is the secret key never exposed in the frontend?
 
-**Output:**
+Output:
 
 ```
-✅ RLS configurado en [table_name]
-   - SELECT: [público/autenticado/propio]
-   - INSERT: [descripción]
-   - UPDATE: [descripción]
-   - DELETE: [descripción]
+RLS configured on [table_name]
+   - SELECT: [public/authenticated/own]
+   - INSERT: [description]
+   - UPDATE: [description]
+   - DELETE: [description]
 
-🔒 Security verified:
-   - Policies restrictivas aplicadas
-   - No data leaks identificados
+Security verified:
+   - Restrictive policies applied
+   - No data leaks identified
 ```
 
----
+### Step 2.3: Seed data
 
-### Paso 2.3: Seed Data Inteligente
+Goal: the frontend, scaffolded later, has real, believable data from day one.
 
-**Objetivo:** Que el frontend (que se scaffoldea después) tenga datos reales y creíbles que mostrar desde el primer día.
+```
+1. Derive the seed plan from the PRD/SRS (Part 1):
+   - Foundational entities and their relations
+   - A reasonable volume per entity for a demo
+   - Realistic ranges and values for the domain
 
-**Acción:**
+2. Ask the user:
+   "I propose [X] [entity1], [Y] [entity2] as seed data.
+    Should I create it in the DB?"
 
-**Pseudocódigo:**
+   Options:
+   a) Yes, the proposed plan (recommended)
+   b) Create the minimum (2-3 records per table)
+   c) No, leave the tables empty
 
-````
-1. Derivar el plan de seed del PRD/SRS (Fase 1):
-   - Entidades fundacionales y sus relaciones
-   - Volumen razonable por entidad para una demo
-   - Rangos y valores realistas del dominio
+3. IF the user chooses (a):
+   For each entity:
+     - Create the records in the plan
+     - Keep data types realistic (real-looking names, fitting values)
+     - Preserve relations (valid FKs)
 
-2. Preguntar al usuario:
-   "Propongo [X] [entidad1], [Y] [entidad2] como seed data.
-    ¿Lo creo en la DB?"
+4. IF the user chooses (b):
+   Create 2-3 basic records per table
+   Enough to validate queries
 
-   Opciones:
-   a) Sí, el plan propuesto (recomendado)
-   b) Crear mínimo (2-3 registros por tabla)
-   c) No, dejar tablas vacías
-
-3. SI usuario elige (a):
-   Para cada entidad:
-     - Crear los registros del plan
-     - Mantener tipos de datos (nombres realistas, valores apropiados)
-     - Preservar relaciones (FK válidos)
-
-4. SI usuario elige (b):
-   Crear 2-3 registros básicos por tabla
-   Suficiente para validar queries
-
-5. Insertar via MCP Supabase (DML, solo en un ambiente que no sea producción, con los registros aprobados por el usuario):
+5. Insert via the Supabase MCP (DML, only in a non-production environment, with the records the user approved):
    MCP_CALL: execute_sql(INSERT ...)
 
-6. Validar inserción:
-   Query para confirmar datos en DB
-````
+6. Validate the insert:
+   Query to confirm the data is in the DB
+```
 
-**Output:**
+Output:
 
 ```pseudocode
-✅ Seed data creado:
-   - profiles: [N] registros
-   - [entity1]: [X] registros
-   - [entity2]: [Y] registros (vinculados a [entity1])
+Seed data created:
+   - profiles: [N] records
+   - [entity1]: [X] records
+   - [entity2]: [Y] records (linked to [entity1])
 
-📊 Datos generados:
-   - [Atributos] realistas (no Lorem Ipsum)
-   - Relaciones válidas (FKs correctos)
+Generated data:
+   - Realistic [attributes] (no Lorem Ipsum)
+   - Valid relations (correct FKs)
 ```
 
----
+## Part 3: Auth integration
 
-## 🔐 FASE 3: AUTH INTEGRATION
+Goal: Supabase Auth configured on the server side: clients, config and session middleware. The auth UI (login, signup) is built by `frontend-setup.md` on top of these clients.
 
-**Objetivo:** Dejar Supabase Auth configurado del lado servidor: clients, config y middleware de sesión. La UI de auth (login, signup) la construye `frontend-setup.md` sobre estos clients.
+### Step 3.1: Configure Supabase Auth
 
-### Paso 3.1: Configurar Supabase Auth
+Give the user these instructions for the Supabase Dashboard:
 
-**En Supabase Dashboard (instrucciones al usuario):**
+1. Check that Email Auth is enabled.
+2. Set the redirect URLs: `http://localhost:3000/**`
+3. Optional: OAuth providers, if the PRD mentions them.
 
-1. Verificar Email Auth habilitado
-2. Configurar redirect URLs: `http://localhost:3000/**`
-3. (Opcional) OAuth providers si PRD lo menciona
+### Step 3.2: Create the centralised config file
 
----
+File: `src/lib/config.ts`
 
-### Paso 3.2: Crear Archivo de Configuración Centralizado
-
-**Archivo:** `src/lib/config.ts`
-
-**⚠️ CRÍTICO - Variables NEXT*PUBLIC*\*:**
-En Next.js, las variables `NEXT_PUBLIC_*` se reemplazan **estáticamente durante el build**. NO uses acceso dinámico como `process.env[variableName]`. Siempre accede directamente: `process.env.NEXT_PUBLIC_SUPABASE_URL`.
-
-**Pseudocódigo:**
+In Next.js, `NEXT_PUBLIC_*` variables are replaced statically at build time. Dynamic access such as `process.env[variableName]` does not work in the browser. Always read them directly: `process.env.NEXT_PUBLIC_SUPABASE_URL`.
 
 ```
-Crear archivo config que:
-1. Importa process.env variables con ACCESO ESTÁTICO DIRECTO
-2. Exporta constantes tipadas
-3. Valida que variables requeridas existen
-4. Lanza errores descriptivos si faltan
-5. (Opcional) Log en desarrollo sin exponer secrets
+Create a config file that:
+1. Imports process.env variables with DIRECT STATIC ACCESS
+2. Exports typed constants
+3. Validates that the required variables exist
+4. Throws descriptive errors if they are missing
+5. (Optional) Logs in development without exposing secrets
 
-Estructura:
+Structure:
 - supabaseUrl: NEXT_PUBLIC_SUPABASE_URL
 - supabasePublishableKey: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-- supabaseSecretKey: SUPABASE_SECRET_KEY (solo server)
+- supabaseSecretKey: SUPABASE_SECRET_KEY (server only)
 - appUrl: NEXT_PUBLIC_APP_URL
 
-Validaciones:
-- throw Error si falta supabaseUrl
-- throw Error si falta supabaseAnonKey
+Validations:
+- throw Error if supabaseUrl is missing
+- throw Error if supabasePublishableKey is missing
 
-CORRECTO:
+CORRECT:
   export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 
-INCORRECTO:
-  const getEnv = (key: string) => process.env[key]  // ❌ NO funciona en cliente
+INCORRECT:
+  const getEnv = (key: string) => process.env[key]  // does NOT work in the client
   export const supabaseUrl = getEnv('NEXT_PUBLIC_SUPABASE_URL')
 ```
 
-**Output:**
+Output:
 
 ```
-✅ Config creado: src/lib/config.ts
-✅ Validaciones incluidas
-✅ Type-safe exports
+Config created: src/lib/config.ts
+Validations included
+Type-safe exports
 ```
 
----
+### Step 3.3: Update the environment files
 
-### Paso 3.3: Actualizar Archivos de Environment
-
-**Según estrategia elegida en Paso 0.4:**
-
-**Pseudocódigo:**
+Follow the strategy chosen in Step 0.4.
 
 ```
-SI estrategia = "usar .env existente":
-  Agregar variables a .env:
+IF strategy = "use existing .env":
+  Add the variables to .env:
   - NEXT_PUBLIC_SUPABASE_URL=...
   - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
   - SUPABASE_SECRET_KEY=...
 
-SI estrategia = "usar .env":
-  Crear/actualizar .env con variables
+IF strategy = "use .env":
+  Create/update .env with the variables
 
-SIEMPRE:
-  Verificar que .env.example ya declara estas variables (vienen en el template).
-  NUNCA reescribirlo: se mantiene en paridad con cli/lib/variables-manifest.ts.
-  Variable nueva → agregarla en .env.example Y en el manifest (ver Paso 6.3).
+ALWAYS:
+  Check that .env.example already declares these variables (they ship in the template).
+  Never rewrite it: it stays in parity with cli/lib/variables-manifest.ts.
+  A new variable goes in .env.example AND in the manifest (see Step 6.3).
 ```
 
-**Mostrar al usuario:**
+Show the user:
 
 ```
-✅ Variables de entorno configuradas
-   - Archivo: .env
-   - Template: .env.example verificado (sin reescribir)
+Environment variables configured
+   - File: .env
+   - Template: .env.example checked (not rewritten)
 
-⚠️ ACCIÓN REQUERIDA:
-   Agrega tus credenciales reales al archivo [.env]
+ACTION REQUIRED:
+   Add your real credentials to the [.env] file
 
-   Obtener credenciales:
+   Get the credentials:
    1. https://supabase.com/dashboard/project/[PROJECT_ID]/settings/api
-   2. Copiar: URL, publishable key, secret key
-   3. Pegar en tu archivo de env
+   2. Copy: URL, publishable key, secret key
+   3. Paste them into your env file
 ```
 
----
+The user types the secret values. You never read, print or paste them.
 
-### Paso 3.4: Crear Supabase Clients
+### Step 3.4: Create the Supabase clients
 
-**USAR CÓDIGO VERIFICADO CON CONTEXT7**
+Use code verified with Context7. `config.ts` is imported on both the client and the server, so the public variables (`NEXT_PUBLIC_*`) must use direct static access, never a helper that reads `process.env` dynamically.
 
-**⚠️ IMPORTANTE - Sobre config.ts:**
-El archivo `config.ts` se importa tanto en cliente como servidor. Asegúrate de que las variables públicas (`NEXT_PUBLIC_*`) usen acceso estático directo, no funciones helper que lean dinámicamente de `process.env`.
+1. Browser client, `src/lib/supabase/client.ts`:
 
-**Archivos a crear:**
+   ```
+   Import:
+   - createBrowserClient from @supabase/ssr
+   - Database type from @/types/supabase
+   - Config from ../config
 
-**1. Browser client:** `src/lib/supabase/client.ts`
+   Export function createClient():
+     Return: createBrowserClient<Database>(supabaseUrl, supabasePublishableKey)
 
-**Pseudocódigo:**
+   NOTE: verify the API with Context7 (it may change by version)
+   ```
 
-```
-Importar:
-- createBrowserClient desde @supabase/ssr
-- Database type desde @/types/supabase
-- Config desde ../config
+2. Server client, `src/lib/supabase/server.ts` (Next.js 15 or later, async cookies):
 
-Exportar función createClient():
-  Retornar: createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+   ```
+   Import:
+   - createServerClient from @supabase/ssr
+   - cookies from next/headers
+   - Database type, config
 
-NOTA: Verificar API con Context7 (puede cambiar según versión)
-```
+   Export async function createServer():
+     cookieStore = await cookies()  // async in Next.js 15+
 
----
+     Return createServerClient<Database>(url, key, {
+       cookies: {
+         getAll(): cookieStore.getAll(),
+         setAll(cookies):
+           try {
+             cookies.forEach -> cookieStore.set()
+           } catch {
+             // Ignore if called from a Server Component
+           }
+       }
+     })
 
-**2. Server client:** `src/lib/supabase/server.ts`
+   NOTE: on Next.js 13-14, cookies() is sync (no await)
+   ```
 
-**Pseudocódigo (Next.js 15+ con async cookies):**
+3. Optional admin client, `src/lib/supabase/admin.ts`:
 
-```
-Importar:
-- createServerClient desde @supabase/ssr
-- cookies desde next/headers
-- Database type, config
+   ```
+   Create only if needed (bypasses RLS)
+   Use the secret key (`SUPABASE_SECRET_KEY`)
+   Warn: NEVER use it in the frontend
+   ```
 
-Exportar función createServer() async:
-  cookieStore = await cookies()  // async en Next.js 15+
-
-  Retornar createServerClient<Database>(url, key, {
-    cookies: {
-      getAll(): cookieStore.getAll(),
-      setAll(cookies):
-        try {
-          cookies.forEach -> cookieStore.set()
-        } catch {
-          // Ignorar si llamado desde Server Component
-        }
-    }
-  })
-
-NOTA: Si Next.js 13-14, cookies() es sync (sin await)
-```
-
----
-
-**3. (Opcional) Admin client:** `src/lib/supabase/admin.ts`
-
-**Pseudocódigo:**
+Output:
 
 ```
-Crear solo si necesario (bypass RLS)
-Usar secret key (`SUPABASE_SECRET_KEY`)
-Advertir: NUNCA usar en frontend
-```
-
-**Output:**
-
-```
-✅ Supabase clients creados:
+Supabase clients created:
    - client.ts (browser)
    - server.ts (server components)
-   - [admin.ts] (opcional)
-✅ Importan config centralizado
-✅ Tipados con Database
+   - [admin.ts] (optional)
+They import the centralised config
+Typed with Database
 ```
 
----
+### Step 3.5: Create the middleware
 
-### Paso 3.5: Crear Middleware
-
-**Archivo:** `middleware.ts` (raíz)
-
-**Pseudocódigo:**
+File: `middleware.ts` (repo root)
 
 ```
-Importar: createServerClient, NextResponse
+Import: createServerClient, NextResponse
 
-Función middleware(req):
-  1. Crear response inicial: NextResponse.next()
+Function middleware(req):
+  1. Create the initial response: NextResponse.next()
 
-  2. Crear cliente Supabase con cookies del request:
-     - getAll() desde req.cookies
-     - setAll() actualiza req y response cookies
+  2. Create the Supabase client with the request's cookies:
+     - getAll() from req.cookies
+     - setAll() updates req and response cookies
 
-  3. Obtener sesión: supabase.auth.getSession()
+  3. Get the session: supabase.auth.getSession()
 
-  4. Definir rutas protegidas (del análisis de Fase 1):
-     protectedRoutes = ['/[ruta_protegida_1]', '/[ruta_protegida_2]', ...]
+  4. Define the protected routes (from the Part 1 analysis):
+     protectedRoutes = ['/[protected_route_1]', '/[protected_route_2]', ...]
 
-  5. Lógica de redirect:
-     SI no hay sesión Y ruta es protegida:
-       Redirect a /login con param ?redirect=[ruta]
+  5. Redirect logic:
+     IF there is no session AND the route is protected:
+       Redirect to /login with param ?redirect=[route]
 
-     SI hay sesión Y ruta es /login o /signup:
-       Redirect a /[ruta_principal]
+     IF there is a session AND the route is /login or /signup:
+       Redirect to /[main_route]
 
-  6. Retornar response con cookies actualizadas
+  6. Return the response with updated cookies
 
-Config matcher:
-  Excluir: _next/static, _next/image, favicon, assets
+Matcher config:
+  Exclude: _next/static, _next/image, favicon, assets
 ```
 
-**Output:**
+Output:
 
 ```
-✅ Middleware creado
-   - Refresh automático de sesión
-   - Rutas protegidas: [listar]
-   - Redirects configurados
+Middleware created
+   - Automatic session refresh
+   - Protected routes: [list]
+   - Redirects configured
 ```
 
----
+### Step 3.6: Hand the auth over to the frontend
 
-### Paso 3.6: Hand-off de auth al frontend
-
-No se crea ni se refactoriza ningún AuthContext en esta fase: todavía no hay frontend. Lo que esta fase entrega para que `frontend-setup.md` (Paso 5.1, página de login con `supabase.auth.signInWithPassword()`) lo use:
+This reference creates no AuthContext and refactors none: there is no frontend yet. It hands over what `frontend-setup.md` needs for its login page (built on `supabase.auth.signInWithPassword()`):
 
 ```
-✅ src/lib/supabase/client.ts y server.ts listos
-✅ middleware.ts refrescando la sesión
-✅ Rutas protegidas listadas (Fase 1) para el middleware
+src/lib/supabase/client.ts and server.ts ready
+middleware.ts refreshing the session
+Protected routes listed (Part 1) for the middleware
 ```
 
----
+## Part 5: Types and validation
 
-## ✅ FASE 5: TIPADOS & VALIDACIÓN
+Goal: generate the TypeScript types and validate the integration.
 
-**Objetivo:** Generar tipos TypeScript y validar integración.
-
-**⚠️ CRÍTICO - Después de cambios en .env:**
-Next.js NO detecta cambios en variables de entorno automáticamente durante desarrollo. SIEMPRE ejecutar:
+Next.js does not pick up env-var changes during development. After editing `.env`, clear the cache and restart:
 
 ```bash
 rm -rf .next && [package-manager] run dev
 ```
 
-para limpiar caché después de modificar `.env`.
+### Step 5.1: Check the dependency versions
 
-### Paso 5.1: Verificar Versiones de Dependencias
-
-**CRÍTICO - Validar antes de generar tipos:**
-
-```markdown
-## 🔍 Verificando Versiones de Dependencias Backend
-
-**Propósito:** Asegurar compatibilidad entre Next.js y Supabase.
-```
-
-**Comando:**
+Validate before generating types, to make sure Next.js and Supabase are compatible.
 
 ```bash
 [package-manager] list | grep -E "(next|react|supabase)"
 ```
 
-**Output esperado (ejemplo; las versiones reales son las que imprime el comando):**
+Expected output (an example; the real versions are what the command prints):
 
 ```
-✅ Versiones Validadas:
+Validated versions:
 
-Stack Base:
-- next: 15.x.x ✓ (estable)
-- react: 19.x.x ✓ (estable)
-- react-dom: 19.x.x ✓ (estable)
+Base stack:
+- next: 15.x.x (stable)
+- react: 19.x.x (stable)
+- react-dom: 19.x.x (stable)
 
-Stack Supabase:
-- @supabase/ssr: 0.x.x ✓ (estable)
-- @supabase/supabase-js: 2.x.x ✓ (estable)
+Supabase stack:
+- @supabase/ssr: 0.x.x (stable)
+- @supabase/supabase-js: 2.x.x (stable)
 
-⚠️ Si alguna versión NO coincide:
-1. Consultar Context7 MCP: "[paquete] latest stable version compatibility"
-2. Actualizar: [pm] add [paquete]@latest
-3. Re-ejecutar esta validación
+If a version does NOT match:
+1. Query Context7 MCP: "[package] latest stable version compatibility"
+2. Update: [pm] add [package]@latest
+3. Re-run this validation
 
-📋 Compatibilidad crítica verificada:
-- ✅ Next.js 15.x + @supabase/ssr 0.x → async cookies compatible
-- ✅ React 19.x + Next.js 15.x → compatible oficialmente
+Critical compatibility checked:
+- Next.js 15.x + @supabase/ssr 0.x: async cookies compatible
+- React 19.x + Next.js 15.x: officially compatible
 ```
 
----
+### Step 5.2: Generate the Supabase types
 
-### Paso 5.2: Generar Tipos de Supabase
-
-**Comando (verificar con Context7):**
+Verify the command with Context7:
 
 ```bash
 supabase gen types typescript --project-id [PROJECT_ID] > src/types/supabase.ts
 ```
 
-**Validar:**
-
-- Archivo creado: `src/types/supabase.ts`
-- Contiene tipos de todas las tablas
-- No hay errores de sintaxis
-- El archivo no está vacío
-
-**Explicar:**
+Validate that the file `src/types/supabase.ts` exists, contains the types of all tables, has no syntax errors and is not empty. Then explain:
 
 ```
-✅ Tipados generados: src/types/supabase.ts
+Types generated: src/types/supabase.ts
 
-Contiene:
-- Interfaces de tablas
-- Tipos Row, Insert, Update
-- Enums de DB
-- Type-safety en queries
+Contains:
+- Table interfaces
+- Row, Insert and Update types
+- DB enums
+- Type safety in queries
 
-Uso:
+Usage:
 import { Database } from '@/types/supabase'
 type [Entity] = Database['public']['Tables']['[table_name]']['Row']
 
-⚠️ Regenerar tipos cada vez que cambies el schema:
+Regenerate the types every time the schema changes:
    supabase gen types typescript --project-id [PROJECT_ID] > src/types/supabase.ts
 ```
 
----
-
-### Paso 5.3: Validar TypeScript
+### Step 5.3: Validate TypeScript
 
 ```bash
 [package-manager] run types:check
-# O: npx tsc --noEmit
+# Or: npx tsc --noEmit
 ```
 
-**Verificar:**
+Check for no TypeScript errors, correct imports, a valid `config.ts` and reachable Supabase types. On errors, review and fix.
 
-- ✅ Sin errores TypeScript
-- ✅ Imports correctos
-- ✅ Config.ts valida
-- ✅ Tipos de Supabase accesibles
-
-**Si errores:** Revisar y corregir.
-
-**Problemas comunes:**
+Common problems:
 
 ```markdown
-❌ Error: Cannot find module '@/types/supabase'
-→ Verificar que el archivo existe
-→ Verificar alias @ en tsconfig.json
+Error: Cannot find module '@/types/supabase'
+- Check that the file exists
+- Check the @ alias in tsconfig.json
 
-❌ Error: Property 'X' does not exist on type 'Database'
-→ Regenerar tipos (schema cambió)
-→ Verificar nombre de tabla en minúsculas/snake_case
+Error: Property 'X' does not exist on type 'Database'
+- Regenerate the types (the schema changed)
+- Check the table name is lowercase/snake_case
 ```
 
----
-
-### Paso 5.4: Validar Build Completo
+### Step 5.4: Validate the full build
 
 ```bash
 [package-manager] run build
 ```
 
-**Verificar:**
+Check for a successful build, no env-var warnings, a middleware that compiles, and Server Components without cookie errors. On errors, analyse, fix and document.
 
-- ✅ Build exitoso
-- ✅ Sin warnings de env vars
-- ✅ Middleware compila correctamente
-- ✅ Server Components OK (sin errores de cookies)
-
-**Si errores:** Analizar, corregir, documentar.
-
-**Problemas comunes:**
+Common problems:
 
 ```markdown
-❌ Error: cookies() expects to be called within a request scope
-→ Verificar que usas await cookies() en Next.js 15
-→ Código correcto: const cookieStore = await cookies()
+Error: cookies() expects to be called within a request scope
+- Check that you use await cookies() on Next.js 15
+- Correct code: const cookieStore = await cookies()
 
-❌ Error: Environment variables missing
-→ Verificar .env existe
-→ Verificar config.ts lee correctamente
-→ Verificar nombres: NEXT_PUBLIC_SUPABASE_URL (con prefijo)
+Error: Environment variables missing
+- Check that .env exists
+- Check that config.ts reads correctly
+- Check the names: NEXT_PUBLIC_SUPABASE_URL (with the prefix)
 
-❌ Error: Module not found '@supabase/ssr'
-→ Re-instalar: [pm] add @supabase/ssr@latest
-→ Limpiar cache: rm -rf node_modules && [pm] install
+Error: Module not found '@supabase/ssr'
+- Reinstall: [pm] add @supabase/ssr@latest
+- Clear the cache: rm -rf node_modules && [pm] install
 ```
 
-**Output esperado:**
+Expected output:
 
 ```
-✅ Versiones validadas (Next 15 + Supabase SSR 0.x)
-✅ TypeScript validated (sin errores)
-✅ Production build successful
-✅ Ready for development
+Versions validated (Next 15 + Supabase SSR 0.x)
+TypeScript validated (no errors)
+Production build successful
+Ready for development
 ```
 
----
+## Part 6: Documentation
 
-## 📚 FASE 6: DOCUMENTACIÓN
+Goal: document the setup for the team.
 
-**Objetivo:** Documentar setup para el equipo.
+### Step 6.1: Create backend-setup.md
 
-### Paso 6.1: Crear backend-setup.md
-
-**Archivo:** `.context/backend-setup.md`
-
-**Contenido (estructura):**
+File: `.context/backend-setup.md`. Structure:
 
 ```markdown
-# Backend Setup - [Proyecto]
+# Backend Setup - [Project]
 
 ## Database Schema
 
-[Tabla por tabla: propósito, columnas, relaciones, RLS]
+[Table by table: purpose, columns, relations, RLS]
 
 ## Authentication
 
-[Provider, flujo, archivos clave]
+[Provider, flow, key files]
 
 ## API Layer
 
-[Paquetes, config, clients, uso]
+[Packages, config, clients, usage]
 
-## Variables de Entorno
+## Environment Variables
 
-[Estrategia, cómo obtenerlas, validación]
+[Strategy, how to get them, validation]
 
-## Comandos Útiles
+## Useful Commands
 
-[Regenerar tipos, build, dev, etc.]
+[Regenerate types, build, dev, etc.]
 
 ## Troubleshooting
 
-[Errores comunes y soluciones]
+[Common errors and solutions]
 
-## Próximos Pasos
+## Next Steps
 
-[Features a implementar, sugerencias]
+[Features to implement, suggestions]
 ```
 
----
+### Step 6.2: Create api-auth.md
 
-### Paso 6.2: Crear api-auth.md
-
-**Archivo:** `.context/api-auth.md`
-
-**Contenido (estructura):**
+File: `.context/api-auth.md`. Structure:
 
 ```markdown
-# API Authentication - [Proyecto]
+# API Authentication - [Project]
 
-## Métodos de Autenticación
+## Authentication Methods
 
 - Supabase Auth (cookie-based sessions)
-- Flujo de autenticación (signup → login → session)
+- Authentication flow (signup, login, session)
 
-## Para Desarrolladores
+## For Developers
 
-### Acceder al usuario autenticado en API routes
+### Access the authenticated user in API routes
 
-[Código de ejemplo con getAuthenticatedUser()]
+[Example code with getAuthenticatedUser()]
 
-### Proteger endpoints
+### Protect endpoints
 
-[Uso de middleware y RLS]
+[Use of middleware and RLS]
 
-### Auth en componentes
+### Auth in components
 
-[Cómo leer la sesión desde Server Components (server client) y Client Components (browser client)]
+[How to read the session from Server Components (server client) and Client Components (browser client)]
 
-## Para QA/Testing
+## For QA/Testing
 
-### Autenticación al probar APIs
+### Authentication when testing APIs
 
-- Las APIs protegidas requieren cookies de sesión válidas
-- Login via web → Las cookies se setean automáticamente
-- Para Postman: Copiar cookies desde DevTools
+- Protected APIs require valid session cookies
+- Log in via the web: the cookies are set automatically
+- For Postman: copy the cookies from DevTools
 
-### Obtener tokens para testing manual
+### Get tokens for manual testing
 
-1. Hacer login en la aplicación web
-2. Abrir DevTools → Application → Cookies
-3. Copiar cookies `sb-*` relevantes
+1. Log in to the web application
+2. Open DevTools, Application, Cookies
+3. Copy the relevant `sb-*` cookies
 
-### Testing con DevTools
+### Testing with DevTools
 
-[Instrucciones para Network tab]
+[Instructions for the Network tab]
 
-## Consideraciones de Seguridad
+## Security Considerations
 
-- RLS policies aplicadas a todas las tablas
-- NUNCA exponer secret key en frontend
-- Validar permisos en cada endpoint
+- RLS policies applied to every table
+- NEVER expose the secret key in the frontend
+- Validate permissions in every endpoint
 ```
 
-**Nota:** La documentación de endpoints (rutas, parámetros, respuestas) se maneja via OpenAPI + Scalar UI (`/api/docs`) si se ejecutó `openapi-setup.md`.
+Endpoint documentation (routes, parameters, responses) lives in OpenAPI plus Scalar UI (`/api/docs`) when `openapi-setup.md` was run.
 
----
+### Step 6.3: Check .env.example (do not rewrite it)
 
-### Paso 6.3: Verificar .env.example (no reescribir)
+`.env.example` already ships the Supabase block and stays in parity with `cli/lib/variables-manifest.ts` (`scripts/check-vars.ts` fails if they diverge). Rewriting it with your own block would delete the template's other variables.
 
-`.env.example` ya trae el bloque de Supabase y se mantiene en paridad con `cli/lib/variables-manifest.ts` (`scripts/check-vars.ts` falla si divergen). NUNCA lo reescribas con un bloque propio: borraría las demás variables del template.
+- Check that it declares `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`.
+- If the backend adds a variable the template lacks, add it to `.env.example` AND to `cli/lib/variables-manifest.ts`, in the same commit.
 
-- Verifica que declara `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY`.
-- Si el backend agrega una variable que el template no tiene, agrégala en `.env.example` Y en `cli/lib/variables-manifest.ts`, en el mismo commit.
+## Part 7: Final report
 
----
+### Step 7.1: Executive summary
 
-## 🎉 FASE 7: REPORTE FINAL
-
-### Paso 7.1: Resumen Ejecutivo
-
-**Mostrar al usuario:**
+Show the user:
 
 ````markdown
-# 🎉 BACKEND SETUP COMPLETADO
+# BACKEND SETUP COMPLETE
 
-## ✅ Lo Implementado
+## Implemented
 
 ### 1. Database Schema
 
-**Tablas creadas:** [número]
-[Listar con propósito]
+Tables created: [number]
+[List with purpose]
 
 ### 2. Row Level Security
 
-- RLS habilitado
-- Políticas configuradas
+- RLS enabled
+- Policies configured
 - Security validated
 
 ### 3. Authentication
 
-- Supabase Auth con @supabase/ssr
-- Middleware de protección
+- Supabase Auth with @supabase/ssr
+- Protection middleware
 
 ### 4. API Layer
 
-- Clients configurados
-- Config centralizado: src/lib/config.ts
+- Clients configured
+- Centralised config: src/lib/config.ts
 
 ### 5. Seed Data
 
-- [x] registros creados
-- Datos realistas
+- [x] records created
+- Realistic data
 
 ### 6. TypeScript
 
-- Tipos generados: src/types/supabase.ts
+- Types generated: src/types/supabase.ts
 - Build validated
 
-### 7. Documentación
+### 7. Documentation
 
 - .context/backend-setup.md
 - .context/api-auth.md
-- .env.example actualizado
+- .env.example checked
 
 ---
 
-## 🚀 Próximos Pasos INMEDIATOS
+## Immediate next steps
 
-### 1️⃣ Configurar Variables (AHORA)
+### 1. Configure the variables (NOW)
 
 ```bash
-cp .env.example .env  # (o .env)
+cp .env.example .env  # (or .env)
 ```
-````
 
-Edita y agrega credenciales de:
+Edit it and add the credentials from:
 https://supabase.com/dashboard/project/[PROJECT_ID]/settings/api
 
-El archivo src/lib/config.ts validará automáticamente.
+src/lib/config.ts validates them automatically.
 
 ---
 
-### 2️⃣ Probar Integración (AHORA)
+### 2. Test the integration (NOW)
 
 ```bash
 [package-manager] run dev
 ```
 
-**Checklist:**
+Checklist:
 
-1. ✅ App inicia sin errors de env
-2. ✅ Una query con el server client devuelve el seed data
-3. ✅ Redirects de middleware funcionan en una ruta protegida
-4. ✅ Signup / login / logout se prueban cuando `frontend-setup.md` cree la página de login
+1. The app starts with no env errors
+2. A query with the server client returns the seed data
+3. The middleware redirects work on a protected route
+4. Signup, login and logout get tested once `frontend-setup.md` creates the login page
 
 ---
 
-### 3️⃣ Verificar Database (RECOMENDADO)
+### 3. Verify the database (RECOMMENDED)
 
 1. https://supabase.com/dashboard/project/[PROJECT_ID]/editor
-2. Ver tablas creadas
-3. Ver seed data insertado
-4. Verificar usuario en auth.users después de signup
+2. See the tables created
+3. See the seed data inserted
+4. Check the user in auth.users after a signup
 
 ---
 
-### 4️⃣ Commit (RECOMENDADO)
+### 4. Commit (RECOMMENDED)
 
-Hacerlo con `/git-flow-master` (rutas explícitas, nunca `git add .`). Mensaje sugerido:
+Do it with `/git-flow-master` (explicit paths, never `git add .`). Suggested message:
 
 ```
 feat: Supabase backend setup
 
-- Database schema con [X] tablas
-- RLS policies configuradas
-- Auth con @supabase/ssr + middleware de sesión
-- Config centralizado
-- Seed data realista
-- Documentación completa
+- Database schema with [X] tables
+- RLS policies configured
+- Auth with @supabase/ssr + session middleware
+- Centralised config
+- Realistic seed data
+- Full documentation
 ```
 
-### 5️⃣ Siguiente fase
+### 5. Next phase
 
-Frontend setup (`frontend-setup.md`): consume `src/types/supabase.ts` y los clients de esta fase. Requiere `DESIGN.md` (B5).
-
----
-
-## 💎 Valor Generado
-
-**Antes:**
-
-- ❌ Sin auth
-- ❌ Sin API real
-- ❌ Sin DB
-
-**Ahora:**
-
-- ✅ Auth real (JWT, sessions)
-- ✅ PostgreSQL con RLS
-- ✅ API REST auto-generada
-- ✅ Type-safety completo
-- ✅ Config centralizado
-- ✅ Dependencias actualizadas
-- ✅ Lista para features
+Frontend setup (`frontend-setup.md`) consumes `src/types/supabase.ts` and the clients from this reference. It requires `DESIGN.md` (B5).
 
 ---
 
-## 📚 Documentación
-
-- .context/backend-setup.md
-- .context/api-auth.md
-- .env.example
-- src/lib/config.ts
-
----
-
-## 🎯 Stack Final
+## Final stack
 
 - Next.js [version] (App Router)
 - Supabase PostgreSQL
 - @supabase/ssr@[version]
-- TypeScript full type-safety
+- TypeScript with full type safety
+````
 
----
+## Final checklist (internal, do not show the user)
 
-**🎊 Backend completado exitosamente!**
+- [ ] Git status checked, Supabase CLI installed, Supabase MCP and Context7 MCP available
+- [ ] Context7 queried before installing; `@supabase/ssr` installed (not auth-helpers), deprecated packages removed, compatibility verified
+- [ ] Foundational tables created, indexes added, RLS configured and checked, realistic seed data inserted
+- [ ] Env strategy agreed with the user, `config.ts` created and validating, `.env.example` checked
+- [ ] Supabase Auth configured, middleware in place, clients configured (server client async on Next.js 15 or later)
+- [ ] TypeScript check and build pass with no env-var errors
+- [ ] `backend-setup.md` and `api-auth.md` written, troubleshooting included
 
-Ahora implementa features con:
+## With nobody at the keyboard
 
-- ✅ DB funcional
-- ✅ Auth real
-- ✅ API documentada
-- ✅ Type-safety garantizado
+This reference asks the person at six points: a dirty git tree (Step 0.0), the project ref when it is `null` (Step 0.2), the CLI install (Step 0.3), the env strategy (Step 0.4), the seed choice (Step 2.3) and the credentials the user pastes (Step 3.3). The rules for who decides are in `agentic-dev-core/references/decision-protocol.md`.
 
-
----
-
-## 🔄 VALIDACIONES FINALES (Checklist Interno)
-
-**NO mostrar al usuario, uso interno:**
-
-### Pre-ejecución:
-- ✅ Git status verificado
-- ✅ Supabase CLI instalado
-- ✅ MCP Supabase disponible
-- ✅ Context7 MCP disponible
-
-### Backend:
-- ✅ Tablas fundacionales creadas
-- ✅ Índices optimizados
-- ✅ RLS configurado
-- ✅ Security validated
-- ✅ Seed data realista
-
-### Dependencias:
-- ✅ Context7 consultado ANTES de instalar
-- ✅ @supabase/ssr instalado (NO auth-helpers)
-- ✅ Compatibilidad verificada
-- ✅ Deprecados removidos
-
-### Environment:
-- ✅ Estrategia definida con usuario
-- ✅ Config centralizado creado
-- ✅ .env.example actualizado
-- ✅ Validaciones funcionando
-
-### Auth:
-- ✅ Supabase Auth configurado
-- ✅ Middleware con patrón actualizado
-
-### API:
-- ✅ Clients configurados
-- ✅ Server client async (si Next.js 15+)
-
-### Validaciones:
-- ✅ TypeScript check passed
-- ✅ Build passed
-- ✅ Sin errors de env vars
-
-### Documentación:
-- ✅ backend-setup.md creado
-- ✅ api-auth.md creado
-- ✅ .env.example descriptivo
-- ✅ Troubleshooting incluido
-
----
+- A person is present: ask as written above.
+- A supervised worker: the conductor that launched you answers. Send the question to it and wait.
+- A routine with nobody: the delegating brief is the approval source. If it names the project ref, the environment and the seed option, those answers stand and you may write to the database. Without a brief that covers them, do the local, reversible work (reading the context, the env-var strategy that keeps the existing file, `config.ts`, clients, middleware), stop before the first `apply_migration` or `execute_sql`, and report what is waiting. A dirty git tree, a missing Supabase MCP, a non-empty migration history and an `existing-app` verdict stop the run in every mode.

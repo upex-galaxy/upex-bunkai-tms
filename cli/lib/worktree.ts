@@ -235,6 +235,7 @@ export const AUDIT_RULES: readonly AuditRule[] = [
   { pattern: /(^|\/)\.next(\/|$)/, class: 'cache', note: '`next dev` / `next build`' },
   { pattern: /(^|\/)next-env\.d\.ts$/, class: 'cache', note: '`next dev` / `next build`' },
   { pattern: /(^|\/)supabase\/\.(temp|branches)(\/|$)/, class: 'cache', note: 'Supabase CLI' },
+  { pattern: /^\.pi\//, class: 'disposable', note: 'Pi package runtime state: loops, tasks, subagents' },
   { pattern: /^\.atl(\/|$)/, class: 'cache', note: 'sdd-init registry, regenerated on demand' },
   { pattern: /^\.direnv(\/|$)/, class: 'cache', note: 'direnv' },
   { pattern: /(^|\/)(dist|build)(\/|$)/, class: 'cache', note: 'package build' },

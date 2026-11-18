@@ -1,18 +1,17 @@
 # Code Standards
 
-> **Para**: Fases 6-7 (Implementation + Code Review)
-> **Propósito**: Estándares de código para mantener calidad y consistencia
->
-> **Existing conventions win**: these are the DEFAULTS for an app with no convention of its own. Where the app already has one (folder layout, naming, import alias `{{stack.conventions.import_alias}}`, component shape), follow the app's and note a disagreement as tech debt, never as a rewrite inside a story (`../SKILL.md` → `## Stack parameters`).
+Default code conventions for Stage 2 (implementation) and Stage 3 (code review). They keep code consistent and cheap to review.
+
+These are the defaults for an app with no convention of its own. Where the app already has one (folder layout, naming, the import alias `{{stack.conventions.import_alias}}`, component shape), follow the app's. Record a disagreement as tech debt in the plan or PR, and do not rewrite code inside a story to match this file (`../SKILL.md`, section `## Stack parameters`).
 
 ---
 
-## 🎯 Principios Fundamentales
+## Core principles
 
-### 1. **DRY** (Don't Repeat Yourself)
+### 1. DRY (Don't Repeat Yourself)
 
 ```typescript
-// ❌ MAL - Repetición
+// BAD: repeated fetch logic
 function getUserEmail(userId: string) {
   const response = await fetch(`/api/users/${userId}`);
   const user = await response.json();
@@ -25,7 +24,7 @@ function getUserName(userId: string) {
   return user.name;
 }
 
-// ✅ BIEN - Reutilizable
+// GOOD: one reusable function
 async function getUser(userId: string) {
   const response = await fetch(`/api/users/${userId}`);
   return await response.json();
@@ -37,10 +36,10 @@ function getUserEmail(userId: string) {
 }
 ```
 
-### 2. **KISS** (Keep It Simple, Stupid)
+### 2. KISS (Keep It Simple)
 
 ```typescript
-// ❌ MAL - Over-engineering
+// BAD: over-engineered nesting
 const getUserStatus = (user: User): UserStatus => {
   return user.isActive
     ? user.isPremium
@@ -51,7 +50,7 @@ const getUserStatus = (user: User): UserStatus => {
     : UserStatus.INACTIVE;
 };
 
-// ✅ BIEN - Simple y legible
+// GOOD: simple and readable
 const getUserStatus = (user: User): UserStatus => {
   if (!user.isActive) return UserStatus.INACTIVE;
   if (!user.isPremium) return UserStatus.FREE_ACTIVE;
@@ -60,20 +59,20 @@ const getUserStatus = (user: User): UserStatus => {
 };
 ```
 
-### 3. **YAGNI** (You Aren't Gonna Need It)
+### 3. YAGNI (You Aren't Gonna Need It)
 
 ```typescript
-// ❌ MAL - Funcionalidad que nadie pidió
+// BAD: fields nobody asked for
 interface User {
   id: string;
   name: string;
   email: string;
-  socialSecurity?: string; // ¿Para qué?
-  bloodType?: string; // ¿Para qué?
-  favoriteColor?: string; // ¿Para qué?
+  socialSecurity?: string; // why?
+  bloodType?: string; // why?
+  favoriteColor?: string; // why?
 }
 
-// ✅ BIEN - Solo lo necesario
+// GOOD: only what the story needs
 interface User {
   id: string;
   name: string;
@@ -83,12 +82,12 @@ interface User {
 
 ---
 
-## 📝 Naming Conventions
+## Naming conventions
 
-### Variables y Funciones
+### Variables and functions
 
 ```typescript
-// ✅ camelCase para variables y funciones
+// camelCase for variables and functions
 const userName = 'John';
 const isActive = true;
 const totalCount = 42;
@@ -97,43 +96,43 @@ function getUserById(id: string) {}
 function calculateTotal(items: Item[]) {}
 ```
 
-### Componentes React
+### React components
 
 ```typescript
-// ✅ PascalCase para componentes
+// PascalCase for components
 function LoginForm() {}
 function UserProfile() {}
 const NavBar = () => {};
 ```
 
-### Constantes
+### Constants
 
 ```typescript
-// ✅ UPPER_SNAKE_CASE para constantes
+// UPPER_SNAKE_CASE for constants
 const MAX_RETRIES = 3;
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const DEFAULT_TIMEOUT = 5000;
 ```
 
-### Tipos e Interfaces
+### Types and interfaces
 
 ```typescript
-// ✅ PascalCase con 'I' o 'T' prefix (opcional)
+// PascalCase; an 'I' or 'T' prefix is optional
 interface User {}
 interface UserResponse {}
 type UserId = string;
 type UserRole = 'admin' | 'user' | 'guest';
 ```
 
-### Archivos
+### Files
 
 ```
-✅ kebab-case para archivos:
+kebab-case for modules:
 - user-profile.tsx
 - api-client.ts
 - error-handler.ts
 
-✅ PascalCase para componentes:
+PascalCase for component files:
 - LoginForm.tsx
 - UserCard.tsx
 - NavBar.tsx
@@ -141,19 +140,19 @@ type UserRole = 'admin' | 'user' | 'guest';
 
 ---
 
-## 🔧 Function Parameters
+## Function parameters
 
-### Max 2 Positional Parameters Rule
+### At most 2 positional parameters
 
-When a function has 3+ parameters, use an object:
+A function with 3 or more parameters takes an object instead:
 
 ```typescript
-// ❌ BAD - Hard to read, easy to confuse order
+// BAD: hard to read, easy to swap arguments
 createUser('John', 'john@test.com', 'password', true, 30);
 
 // What is `true`? What is `30`? Nobody knows without checking the signature.
 
-// ✅ GOOD - Self-documenting
+// GOOD: self-documenting
 createUser({
   name: 'John',
   email: 'john@test.com',
@@ -163,7 +162,7 @@ createUser({
 });
 ```
 
-### Interface Definition
+### Interface definition
 
 ```typescript
 // Define the interface for the object parameter
@@ -171,11 +170,11 @@ interface CreateUserArgs {
   name: string;
   email: string;
   password: string;
-  isActive?: boolean; // Optional with ?
+  isActive?: boolean; // optional with ?
   age?: number;
 }
 
-// Function signature is clean
+// The signature stays clean
 function createUser(args: CreateUserArgs): User {
   const { name, email, password, isActive = true, age } = args;
   // ...
@@ -186,29 +185,29 @@ function createUser(args: CreateUserArgs): User {
 
 | Benefit                  | Explanation                                  |
 | ------------------------ | -------------------------------------------- |
-| **Self-documenting**     | Parameter names visible at call site         |
+| **Self-documenting**     | Parameter names are visible at the call site |
 | **Order doesn't matter** | `{ age: 30, name: 'John' }` works fine       |
-| **Easy to extend**       | Add optional params without breaking changes |
+| **Easy to extend**       | Add optional params without breaking callers |
 | **IDE support**          | Autocomplete shows all available options     |
 
-### When 2 Positional is OK
+### When 2 positional is fine
 
 ```typescript
-// ✅ OK - 2 params are manageable
+// OK: 2 params are manageable
 function getUser(id: string, includeDeleted: boolean) { ... }
 
-// ✅ OK - 1 param is obvious
+// OK: 1 param is obvious
 function deleteUser(id: string) { ... }
 
-// ❌ NOT OK - 3+ params, use object
+// NOT OK: 3+ params, use an object
 function getUser(id: string, includeDeleted: boolean, expand: string) { ... }
 ```
 
 ---
 
-## 🏗️ TypeScript Strict Mode
+## TypeScript strict mode
 
-**SIEMPRE usar TypeScript en modo strict**:
+Turn on strict mode in every TypeScript app:
 
 ```json
 // tsconfig.json
@@ -224,15 +223,15 @@ function getUser(id: string, includeDeleted: boolean, expand: string) { ... }
 }
 ```
 
-### Evitar `any`
+### Avoid `any`
 
 ```typescript
-// ❌ MAL
+// BAD
 function processData(data: any) {
   return data.value;
 }
 
-// ✅ BIEN
+// GOOD
 interface DataPayload {
   value: string;
 }
@@ -242,24 +241,24 @@ function processData(data: DataPayload) {
 }
 ```
 
-### Usar tipos explícitos
+### Use explicit types
 
 ```typescript
-// ❌ MAL - Tipo inferido puede cambiar
+// BAD: the inferred type can drift
 const users = [];
 
-// ✅ BIEN - Tipo explícito
+// GOOD: explicit type
 const users: User[] = [];
 ```
 
 ---
 
-## 🎨 Component Structure (React)
+## Component structure (React)
 
-### Orden de elementos
+### Order of elements
 
 ```typescript
-// ✅ Orden estándar
+// Standard order
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { getUserById } from '@/lib/api'
@@ -303,12 +302,12 @@ export function UserProfile({ userId }: UserProfileProps) {
 ### Props destructuring
 
 ```typescript
-// ✅ Destructure props en signature
+// GOOD: destructure props in the signature
 function UserCard({ name, email, avatar }: UserCardProps) {
   return <div>{name}</div>
 }
 
-// ❌ No usar props object
+// BAD: passing around the props object
 function UserCard(props: UserCardProps) {
   return <div>{props.name}</div>
 }
@@ -316,7 +315,7 @@ function UserCard(props: UserCardProps) {
 
 ---
 
-## ⚡ Performance Best Practices
+## Performance
 
 ### 1. Memoization
 
@@ -324,12 +323,12 @@ function UserCard(props: UserCardProps) {
 import { useMemo, useCallback } from 'react'
 
 function ExpensiveComponent({ items }: Props) {
-  // ✅ Memoize cálculos costosos
+  // Memoize expensive calculations
   const total = useMemo(() => {
     return items.reduce((sum, item) => sum + item.price, 0)
   }, [items])
 
-  // ✅ Memoize callbacks
+  // Memoize callbacks
   const handleClick = useCallback(() => {
     console.log('Clicked')
   }, [])
@@ -343,7 +342,7 @@ function ExpensiveComponent({ items }: Props) {
 ```typescript
 import { lazy, Suspense } from 'react'
 
-// ✅ Lazy load componentes pesados
+// Lazy load heavy components
 const HeavyChart = lazy(() => import('./HeavyChart'))
 
 function Dashboard() {
@@ -355,12 +354,12 @@ function Dashboard() {
 }
 ```
 
-### 3. Evitar re-renders innecesarios
+### 3. Avoid needless re-renders
 
 ```typescript
 import { memo } from 'react'
 
-// ✅ Memoize componentes puros
+// Memoize pure components
 export const UserCard = memo(function UserCard({ user }: Props) {
   return <div>{user.name}</div>
 })
@@ -368,22 +367,22 @@ export const UserCard = memo(function UserCard({ user }: Props) {
 
 ---
 
-## ♿ Accessibility (a11y)
+## Accessibility (a11y)
 
 ### Semantic HTML
 
 ```tsx
-// ❌ MAL
+// BAD
 <div onClick={handleClick}>Click me</div>
 
-// ✅ BIEN
+// GOOD
 <button onClick={handleClick}>Click me</button>
 ```
 
 ### ARIA labels
 
 ```tsx
-// ✅ Labels descriptivos
+// Descriptive labels
 <button aria-label="Close dialog">
   <XIcon />
 </button>
@@ -398,7 +397,7 @@ export const UserCard = memo(function UserCard({ user }: Props) {
 ### Keyboard navigation
 
 ```tsx
-// ✅ Soporte de teclado
+// Keyboard support
 <div
   role="button"
   tabIndex={0}
@@ -415,21 +414,21 @@ export const UserCard = memo(function UserCard({ user }: Props) {
 
 ---
 
-## 📦 Code Organization
+## Code organization
 
-### Estructura de carpetas
+### Folder structure
 
 ```
 src/
 ├── components/
-│   ├── ui/              # Componentes reutilizables
-│   └── features/        # Componentes específicos
+│   ├── ui/              # reusable components
+│   └── features/        # feature-specific components
 ├── lib/
 │   ├── api/             # API clients
-│   ├── utils/           # Utilities
-│   └── hooks/           # Custom hooks
+│   ├── utils/           # utilities
+│   └── hooks/           # custom hooks
 ├── types/               # TypeScript types
-└── app/                 # Pages (Next.js App Router)
+└── app/                 # pages (Next.js App Router)
 ```
 
 ### Barrel exports
@@ -440,68 +439,70 @@ export { Button } from './Button';
 export { Input } from './Input';
 export { Card } from './Card';
 
-// Uso
+// Usage
 import { Button, Input, Card } from '@/components/ui';
 ```
 
 ---
 
-## 🚫 Qué NO Hacer
+## What to avoid
 
-### 1. NO hardcodear valores
+Each of these has a concrete failure behind it: leaked config, noisy production logs, silent data loss.
+
+### 1. Hardcoded values
 
 ```typescript
-// ❌ MAL
+// BAD
 const apiUrl = 'https://api.example.com';
 
-// ✅ BIEN
+// GOOD
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 ```
 
-### 2. NO dejar console.log()
+### 2. Leftover `console.log()`
 
 ```typescript
-// ❌ MAL
+// BAD
 console.log('User data:', user);
 
-// ✅ BIEN (si necesitas logging)
+// GOOD (when you need logging)
 import { logger } from '@/lib/logger';
 logger.info('User data loaded', { userId: user.id });
 ```
 
-### 3. NO usar var
+### 3. `var`
 
 ```typescript
-// ❌ MAL
+// BAD
 var count = 0;
 
-// ✅ BIEN
+// GOOD
 const count = 0;
 let counter = 0;
 ```
 
-### 4. NO mutar state directamente
+### 4. Direct state mutation
 
 ```typescript
-// ❌ MAL
+// BAD
 const [users, setUsers] = useState<User[]>([]);
-users.push(newUser); // ❌ Mutation!
+users.push(newUser); // mutation
 
-// ✅ BIEN
+// GOOD
 setUsers([...users, newUser]);
 ```
 
-### 5. NO ignorar errores
+### 5. Ignored errors
 
 ```typescript
-// ❌ MAL
+// BAD
 try {
   await fetchData();
 } catch (error) {
-  // Silenciosamente ignorado
+  // silently ignored
 }
 
-// ✅ BIEN
+// GOOD
 try {
   await fetchData();
 } catch (error) {
@@ -512,22 +513,17 @@ try {
 
 ---
 
-## ✅ Checklist de Code Quality
+## Code quality checklist
 
-Antes de commit:
+Before a commit:
 
-- [ ] Código sigue DRY, KISS, YAGNI
-- [ ] Naming conventions seguidas
-- [ ] TypeScript strict (sin `any`)
-- [ ] No hay valores hardcodeados
-- [ ] No hay console.log() olvidados
-- [ ] Accessibility considerada
-- [ ] Performance optimizada
-- [ ] Componentes memoizados (si necesario)
-- [ ] Error handling implementado
-- [ ] Tests escritos
-
----
-
-**Última actualización**: 2025-10-29
-**Fase**: Implementation (Fase 6)
+- [ ] Code follows DRY, KISS and YAGNI
+- [ ] Naming conventions followed
+- [ ] TypeScript strict, no `any`
+- [ ] No hardcoded values
+- [ ] No leftover `console.log()`
+- [ ] Accessibility considered
+- [ ] Performance considered
+- [ ] Components memoized where it pays off
+- [ ] Error handling in place
+- [ ] Tests written

@@ -1,103 +1,108 @@
-# Path D — Claude Design handoff
+# Path D: Claude Design handoff
 
-> Opt-in premium path. User-driven visual iteration in Anthropic's `claude.ai/design`, then bundle ingest + bridge to Path E for the final `DESIGN.md`.
+> Opt-in premium path. The user iterates visually in Anthropic's `claude.ai/design`, then the exported bundle is ingested and bridged to Path E for the final `DESIGN.md`.
 
 ## Purpose
 
-Use este camino cuando el user tiene **Claude Pro / Max / Team / Enterprise** y quiere la mejor calidad visual disponible — Claude Design (Anthropic Labs) es UI-only en `claude.ai/design`, two-pane chat+canvas, lee el codebase / design files del user durante el onboarding y arma un design system que todos los proyectos posteriores heredan automáticamente. No hay CLI, API ni MCP oficial — la invocación es 100% manual en el browser. La skill no puede triggerearla programáticamente; lo único que puede hacer es esperar al user, ingestar el bundle exportado y convertirlo al spec Google Labs vía Path E.
+Use this path when the user has **Claude Pro / Max / Team / Enterprise** and wants the best visual quality available. Claude Design (Anthropic Labs) is UI-only at `claude.ai/design`, a two-pane chat plus canvas. During onboarding it reads the user's codebase and design files and builds a design system that every later project inherits automatically. There is no official CLI, API or MCP, so invoking it is 100% manual in the browser. The skill cannot trigger it programmatically. It can wait for the user, ingest the exported bundle and convert it to the Google Labs spec through Path E.
 
 ## Prerequisites
 
-- **Claude plan**: Pro, Max, Team, o Enterprise. No hay tier free. Si el user no tiene, redirigilo a Path B (default) o C (Open Design free).
-- **Enterprise users**: el admin de la org debe activar Claude Design en Organization Settings (default OFF). Si no está habilitado, el user verá un mensaje "Contact your administrator" — no hay workaround.
-- **Browser actualizado** (cualquier moderno) — la UI usa funcionalidades modernas de canvas.
+- **Claude plan:** Pro, Max, Team or Enterprise. There is no free tier. If the user has none, send them to Path B (default) or Path C (Open Design, free).
+- **Enterprise users:** the org admin must enable Claude Design in Organization Settings (default OFF). If it is not enabled, the user sees a "Contact your administrator" message and there is no workaround.
+- **An up-to-date browser** (any modern one): the UI uses modern canvas features.
 
-Why no automatizamos esto: Anthropic no expone API/CLI/MCP para Claude Design. Hay un community MCP+CLI en `github.com/pro-vi/designer` pero el autor warnea que los rate limits son tight incluso en Max — no es production-grade. La acción humana manual es by-design del producto, no un gap nuestro.
+Why we do not automate this: Anthropic exposes no API, CLI or MCP for Claude Design. A community MCP and CLI exists at `github.com/pro-vi/designer`, but its author warns that the rate limits are tight even on Max, so it is not production-grade. The manual human step is by design in the product, not a gap on our side.
 
 ## User flow
 
-La skill imprime estos pasos textuales para que el user los ejecute en el browser. **No los corre por él** — son human-driven:
+The skill prints these steps verbatim for the user to run in the browser. It does not run them for the user, because they are human-driven:
 
-1. Abrí `https://claude.ai/design` en el browser (logged in con tu cuenta Pro+).
-2. Iterá en el canvas (chat pane + design pane). Si querés que Claude Design lea tu codebase para extraer la design system actual, conectá el repo via la opción de onboarding — es el killer feature del producto.
-3. Cuando estés conforme con el diseño, click **Export** (top-right de la canvas) y elegí UNA de:
-   - **Send to local coding agent** — empuja un bundle directo a tu Claude Code local (terminal-side). El bundle aterriza en el repo donde Claude Code está corriendo.
-   - **Save as folder** — descarga el bundle como ZIP / folder local. Guardalo en `design/handoff/<slug>.zip` (o `design/handoff/<slug>/` si es folder unzipped). Convención path: `design/handoff/` en el root del proyecto.
-4. Volvé a la sesión de la skill y confirmá que terminaste.
+1. Open `https://claude.ai/design` in the browser (logged in with your Pro+ account).
+2. Iterate in the canvas (chat pane + design pane). If you want Claude Design to read your codebase and extract the current design system, connect the repo through the onboarding option. It is the product's strongest feature.
+3. When you are happy with the design, click **Export** (top right of the canvas) and choose ONE of:
+   - **Send to local coding agent** pushes a bundle straight to your local Claude Code (terminal side). The bundle lands in the repo where Claude Code is running.
+   - **Save as folder** downloads the bundle as a local ZIP or folder. Save it to `design/handoff/<slug>.zip` (or `design/handoff/<slug>/` for an unzipped folder). The path convention is `design/handoff/` at the project root.
+4. Come back to the skill session and confirm you are done.
 
-Why el path convencional `design/handoff/`: estandariza dónde la skill busca el bundle, hace el flow reproducible entre proyectos, y deja un lugar obvio gitignoreable si el user no quiere commitear el bundle crudo (sí commitea el `DESIGN.md` final).
+The conventional `design/handoff/` path standardizes where the skill looks for the bundle, makes the flow repeatable across projects, and gives an obvious place to gitignore if the user does not want to commit the raw bundle (the final `DESIGN.md` does get committed).
 
-> **Scope de este path — system bundle, NO screen mockups.** `design/handoff/` recibe el bundle
-> de tokens que se convierte en `DESIGN.md` (este documento). Los **screen mockups** de la fase
-> opcional screen-mapping van a OTRO drop zone: `.context/designs/<project-slug>/<batch-slug>/`,
-> y el user arranca esa sesión de Claude Design pegando el `BRIEF.md` generado por
-> `references/screen-design-brief.md` (no en frío). Misma herramienta, dos cargas distintas —
-> ver `references/screen-design-mapping.md`.
+> **Scope of this path: system bundle, NOT screen mockups.** `design/handoff/` receives the
+> token bundle that becomes `DESIGN.md` (this document). The **screen mockups** of the optional
+> screen-mapping phase go to a DIFFERENT drop zone: `.context/designs/<project-slug>/<batch-slug>/`,
+> and the user starts that Claude Design session by pasting the `BRIEF.md` generated by
+> `references/screen-design-brief.md` (not cold). Same tool, two different loads. See
+> `references/screen-design-mapping.md`.
 
 ## Wait state
 
-Una vez impresas las instrucciones, la skill **bloquea** esperando al user con AskUserQuestion:
+After printing the instructions, the skill waits for the user with AskUserQuestion:
 
-> ¿Ya exportaste el bundle de Claude Design a `design/handoff/`?
+> Have you already exported the Claude Design bundle to `design/handoff/`?
 >
-> - **yes** — ya está, procedé al ingest.
-> - **not yet** — sigo en el browser, esperá.
-> - **abort** — cancelar este path y volver al menú de selección.
+> - **yes**: it is there, go ahead with the ingest.
+> - **not yet**: I am still in the browser, keep waiting.
+> - **abort**: cancel this path and go back to the path selection menu.
 
-Si "not yet" → re-print las instrucciones cortas y vuelve a esperar. No timeout — el user puede tardar lo que tarde.
-Si "abort" → cleanup y volver a `SKILL.md` path selection.
+On "not yet", reprint the short instructions and wait again. There is no timeout: the user can take as long as they need. On "abort", clean up and return to the path selection in `SKILL.md`.
+
+This wait is a human gate with three cases. The decision protocol is `agentic-dev-core/references/decision-protocol.md`.
+
+- **A person is present:** ask as above.
+- **A supervised worker:** the conductor or launcher holds the gate and relays the instructions to the person. Report that the session is waiting for the bundle and stop.
+- **A routine with nobody:** Claude Design cannot be driven without a human, so the wait cannot be answered. The delegating brief is the approval source when it names another path. Without one, print the instructions into the session record, stop before ingesting anything and report that Path D is blocked on the person's export.
 
 ## Bundle ingest
 
-Cuando el user confirma "yes", la skill lee el bundle. Estructura esperada (per Anthropic Labs docs + community writeups):
+When the user confirms "yes", the skill reads the bundle. Expected structure (per Anthropic Labs docs and community writeups):
 
 ```
 design/handoff/<slug>/
-  index.html              # design renderizado
-  *.css                   # estilos extraídos
-  *.js                    # scripts opcionales
+  index.html              # rendered design
+  *.css                   # extracted styles
+  *.js                    # optional scripts
   components/             # machine-readable component spec
-  tokens.json             # design tokens canónicos
+  tokens.json             # canonical design tokens
   screenshots/            # state snapshots
-  assets/                 # imágenes, fonts referenciadas
-  README.md               # target stack + conventions del coding agent
+  assets/                 # referenced images, fonts
+  README.md               # target stack + the coding agent's conventions
 ```
 
-(Si el user eligió "Send to local coding agent" en vez de "Save as folder", Claude Code ya tiene los files en el repo — la skill busca igual en `design/handoff/` por convención. Si Claude Code los puso en otro lado, preguntale al user el path.)
+If the user chose "Send to local coding agent" instead of "Save as folder", Claude Code already has the files in the repo, and the skill still looks in `design/handoff/` by convention. If Claude Code put them somewhere else, ask the user for the path.
 
-**Files load-bearing**:
+**Load-bearing files:**
 
-- `tokens.json` — los design tokens canónicos. Esto es lo que prevalece.
-- `README.md` — primeros ~500 chars dan contexto sobre la dirección visual y el target stack.
+- `tokens.json` holds the canonical design tokens. It is what prevails.
+- `README.md`: its first ~500 chars give context on the visual direction and the target stack.
 
-Why ingestamos `tokens.json` y NO el HTML: el HTML es implementation-leaning (lleva markup, classnames, layout decisions que son del componente, no del design system). Los tokens son las decisiones de diseño canónicas — colors, typography scales, spacing scales, radius, shadows. Esos son los que entran al frontmatter de `DESIGN.md`. El prose del DESIGN.md captura la rationale (tomada del README + screenshots context).
+We ingest `tokens.json` and not the HTML because the HTML leans toward implementation (markup, classnames and layout decisions that belong to the component, not to the design system). The tokens are the canonical design decisions: colors, typography scales, spacing scales, radius, shadows. Those are what go into the `DESIGN.md` frontmatter. The `DESIGN.md` prose captures the rationale, taken from the README and the screenshots context.
 
 ## Bridge step to Path E
 
-Con `tokens.json` parseado y los primeros ~500 chars del README extraídos:
+With `tokens.json` parsed and the first ~500 chars of the README extracted:
 
-1. **Delegate a `references/llm-authored.md`** con este input adicional concatenado al briefing estándar:
+1. **Delegate to `references/llm-authored.md`** with this extra input appended to the standard briefing:
 
    > "User exported a Claude Design bundle at `design/handoff/<slug>/`.
-   > Tokens (inline): `<paste del tokens.json completo>`.
-   > README excerpt: `<primeros 500 chars del README.md>`.
-   > Use these as the foundation; preserve token values exactly where possible (colors, typography, spacing, radius). Document the visual rationale in prose using the README excerpt + screenshots descriptions if disponibles."
+   > Tokens (inline): `<paste of the full tokens.json>`.
+   > README excerpt: `<first 500 chars of README.md>`.
+   > Use these as the foundation; preserve token values exactly where possible (colors, typography, spacing, radius). Document the visual rationale in prose using the README excerpt + screenshots descriptions if available."
 
-2. Path E (LLM-authored) consume esos inputs y produce el `DESIGN.md` final en el root del proyecto siguiendo el spec de Google Labs.
+2. Path E (LLM-authored) consumes those inputs and produces the final `DESIGN.md` at the project root, following the Google Labs spec.
 
-Why bridge a Path E en vez de transform directo: el bundle de Claude Design usa su propio formato (no Google Labs spec). La conversión necesita decidir qué tokens van al frontmatter YAML, qué prose va a cada una de las 8 secciones prescritas, y validar WCAG. Path E ya tiene todo eso documentado — no lo dupliques acá.
+The bridge goes through Path E instead of transforming directly because the Claude Design bundle uses its own format, not the Google Labs spec. The conversion has to decide which tokens go to the YAML frontmatter, which prose goes to each of the 8 prescribed sections, and validate WCAG. Path E already documents all of that, so do not duplicate it here.
 
 ## Cost note
 
-Claude Design consume los rate limits del plan del user (Pro / Max / Team / Enterprise). La skill **NO** invoca Claude Design programáticamente — no hay forma. La acción humana manual es required by design del producto. No hay costo monetario adicional para el user más allá de su suscripción Claude — el bridge a Path E corre en la sesión de Claude Code local (Claude Code Max plan o API key del user) y es independiente.
+Claude Design consumes the rate limits of the user's plan (Pro / Max / Team / Enterprise). The skill does NOT invoke Claude Design programmatically, because there is no way to. The manual human action is required by the product's design. There is no extra monetary cost for the user beyond their Claude subscription. The bridge to Path E runs in the local Claude Code session (the user's Claude Code Max plan or API key) and is independent.
 
 ## Troubleshooting
 
-| Síntoma                                                                        | Causa probable                                                                            | Fix                                                                                                                                                                           |
-| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `design/handoff/<slug>/` no existe después de export                           | El user eligió otro path en "Save as folder"                                              | Preguntar al user el path real, ajustar y re-ingest                                                                                                                           |
-| `tokens.json` no está en el bundle                                             | Claude Design cambió el schema del export                                                 | Surface el error claramente; fallback: re-correr Path E **from scratch** ignorando el bundle, usando solo Constitution+PRD como input                                         |
-| `README.md` tiene implementation hints que conflictúan con el spec Google Labs | Claude Design escribe el README pensando en Claude Code, no en DESIGN.md                  | Preserve los token values del `tokens.json` (canónicos), ignorá el prose de implementación del README, usá solo la parte "visual rationale" como input al prose del DESIGN.md |
-| Export falla en `claude.ai/design` con "Contact administrator"                 | Org Enterprise con Claude Design deshabilitado                                            | No hay workaround técnico — el user debe pedirle al admin que active el feature en Organization Settings, o caer a Path B/C/E                                                 |
-| Bundle pesa mucho (>50MB) por screenshots/assets                               | Normal — Claude Design exporta state snapshots completos                                  | OK, no problem; la skill solo lee `tokens.json` + `README.md`, ignora el resto                                                                                                |
-| Re-export necesario porque el user cambió de opinión                           | El user puede re-iterar en `claude.ai/design` y re-exportar a `design/handoff/<slug-v2>/` | La skill detecta múltiples slugs en `design/handoff/` y pregunta cuál es el canónico antes del ingest                                                                         |
+| Symptom                                                                      | Likely cause                                                                         | Fix                                                                                                                                                                                   |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `design/handoff/<slug>/` does not exist after the export                     | The user picked another path in "Save as folder"                                     | Ask the user for the real path, adjust and ingest again                                                                                                                               |
+| `tokens.json` is not in the bundle                                           | Claude Design changed the export schema                                              | Surface the error clearly. Fallback: re-run Path E **from scratch**, ignoring the bundle and using only Constitution + PRD as input                                                  |
+| `README.md` has implementation hints that conflict with the Google Labs spec | Claude Design writes the README for Claude Code, not for DESIGN.md                   | Preserve the token values from `tokens.json` (canonical), ignore the README's implementation prose, and use only its "visual rationale" part as input for the DESIGN.md prose        |
+| Export fails at `claude.ai/design` with "Contact administrator"              | Enterprise org with Claude Design disabled                                           | No technical workaround: the user must ask the admin to enable the feature in Organization Settings, or fall back to Path B/C/E                                                       |
+| The bundle is heavy (>50MB) because of screenshots and assets                | Normal: Claude Design exports full state snapshots                                   | Fine. The skill reads only `tokens.json` + `README.md` and ignores the rest                                                                                                           |
+| A re-export is needed because the user changed their mind                    | The user can iterate again at `claude.ai/design` and re-export to `design/handoff/<slug-v2>/` | The skill detects several slugs in `design/handoff/` and asks which one is canonical before the ingest                                                                       |

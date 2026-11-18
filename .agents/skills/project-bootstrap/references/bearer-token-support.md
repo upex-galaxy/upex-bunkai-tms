@@ -1,151 +1,102 @@
-Actúa como Senior Backend Developer, API Security Expert, y Next.js Expert.
+# Bearer token support for API routes
 
----
+This add-on adds Bearer token authentication to the Next.js API routes, so the same endpoints serve three kinds of caller:
 
-## 🎯 TAREA
+- testers using Postman, Insomnia or curl;
+- external clients (mobile apps, third-party services);
+- standard OAuth/JWT flows.
 
-**🔧 FEATURE: Bearer Token Support for API Routes (Fase 3 - Infrastructure)**
+Browser cookie authentication keeps working unchanged. The add-on is done when protected endpoints answer to both a cookie session and a Bearer token, rate limiting and secret rotation are in the same scaffold (B7), and the validation in Phase 4 passes.
 
-Agregar soporte de **autenticación Bearer Token** a las API routes de Next.js para permitir:
+## First, read the `stack:` block
 
-- Testing de APIs desde Postman, Insomnia, curl
-- Integración con clientes externos (mobile apps, third-party services)
-- Compatibilidad con flujos de autenticación estándar OAuth/JWT
+This add-on runs the same on a greenfield project and on an existing app (the `existing-app` verdict of the entry gate, `SKILL.md` Phase 3). Before the first step, read `.agents/project.yaml` key `stack:` (contract: `.agents/README.md`, `stack`) and resolve with it everything this reference writes as a literal:
 
-**Mantiene compatibilidad** con la autenticación por cookies existente (browser).
+- The example paths (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) are the greenfield defaults. Resolve them under `{{stack.app_root}}`; the types file is `{{stack.database.types_path}}`; with `stack.framework: nextjs-pages` the API lives in `pages/api/`.
+- App commands are `{{stack.package_manager}} run <script>` with the NAME from `stack.scripts`. A script set to `null` is skipped and the report says so; never invent one. Install dependencies with that package manager and do not change it.
+- What the app already has wins: a docs UI, an error contract, an auth scheme, the location of the Supabase clients, or the major version of a dependency (Zod, Next). Read and extend them. Do not replace them or upgrade them from this add-on. When something clashes, show the user both forms.
+- The Supabase project ref is `environments.<env>.db_project_ref`. Any touch to the database follows `agentic-dev-core/references/db-change-doctrine.md`.
 
----
+## Inputs
 
-## 🧭 PASO PREVIO: LEER EL BLOQUE `stack:`
+Read:
 
-Esta add-on corre igual en un proyecto greenfield y en una app existente (veredicto `existing-app` del guard de entrada, `SKILL.md` → Phase 3). Antes del primer paso, leer `.agents/project.yaml` → `stack:` (contrato: `.agents/README.md` → `stack`) y resolver con él todo lo que esta referencia escribe como literal:
+- `.agents/project.yaml` key `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` of the active environment) for the Supabase project ref. The stack is in `.context/SRS/architecture-specs.md`.
+- `src/lib/supabase/server.ts`: the current server client.
+- `src/app/api/`: the existing endpoints.
+- `src/lib/config.ts`: the Supabase configuration.
 
-- Las rutas de ejemplo (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) son el default greenfield: se resuelven bajo `{{stack.app_root}}`; el archivo de tipos es `{{stack.database.types_path}}`; con `stack.framework: nextjs-pages` la API vive en `pages/api/`.
-- Los comandos de la app son `{{stack.package_manager}} run <script>` con el NOMBRE de `stack.scripts`; un script en `null` se salta y se dice, nunca se inventa. Las dependencias se instalan con ese package manager, sin cambiarlo.
-- Lo que la app ya tiene gana: una UI de docs, un contrato de error, un esquema de auth, la ubicación de los Supabase clients o la versión mayor de una dependencia (Zod, Next) se leen y se extienden, nunca se reemplazan ni se actualizan desde esta add-on. Un choque se le muestra al usuario con las dos formas.
-- El Supabase project ref es `environments.<env>.db_project_ref`; todo toque a la base sigue `agentic-dev-core/references/db-change-doctrine.md`.
+Extract the Supabase URL (to create a client with the token), the publishable key (for authentication) and the existing endpoints (to update them).
 
----
+Tools and dependencies: the Context7 MCP verifies the Supabase and Next.js APIs. `@supabase/supabase-js` creates the client with the token, and `@supabase/ssr` is already there for the SSR client. Check both are installed.
 
-## 📥 INPUT REQUERIDO
+## Mode detection
 
-### 1. Contexto del Proyecto
-
-**Leer estos archivos:**
-
-- `.agents/project.yaml` → `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` del ambiente activo) - Supabase project ref; stack en `.context/SRS/architecture-specs.md`
-- `src/lib/supabase/server.ts` - Server client actual
-- `src/app/api/` - Endpoints existentes
-- `src/lib/config.ts` - Configuración de Supabase
-
-### 2. Información a Extraer
-
-- **Supabase URL** → Para crear cliente con token
-- **Publishable Key** → Para autenticación
-- **Endpoints existentes** → Para actualizarlos
-
----
-
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS
-
-### MCP Requeridos:
-
-1. **MCP Context7** - Para verificar APIs de Supabase/Next.js
-
-### Dependencias Requeridas (verificar):
-
-- `@supabase/supabase-js` - Para crear cliente con token
-- `@supabase/ssr` - Para cliente SSR existente
-
----
-
-## 🔀 DETECCIÓN DE MODO
-
-**Ejecutar análisis para determinar estado actual:**
+Run these to learn the current state:
 
 ```bash
-# Verificar si ya existe soporte Bearer Token
+# Check whether Bearer token support already exists
 grep -r "createServerFromRequest\|Authorization.*Bearer" src/lib/supabase/ src/app/api/ 2>/dev/null
 
-# Contar endpoints que usan createServer
+# Count endpoints that use createServer
 grep -r "createServer()" src/app/api/ --include="*.ts" | wc -l
 
-# Verificar estructura de server.ts
+# Check the structure of server.ts
 cat src/lib/supabase/server.ts | head -20
 ```
 
-**Resultado:**
-
-| Condición                              | Modo                |
+| Condition                              | Mode                |
 | -------------------------------------- | ------------------- |
-| Ya existe `createServerFromRequest`    | **YA IMPLEMENTADO** |
-| Solo existe `createServer` (cookies)   | **IMPLEMENTAR**     |
-| No existe `src/lib/supabase/server.ts` | **CREAR TODO**      |
+| `createServerFromRequest` already exists | **ALREADY IMPLEMENTED** (report it and stop) |
+| Only `createServer` (cookies) exists   | **IMPLEMENT**       |
+| `src/lib/supabase/server.ts` is missing | **CREATE EVERYTHING** |
 
----
+## Output
 
-## 📤 OUTPUT GENERADO
+Core, in `src/lib/supabase/`: `server.ts` gets `createServerFromRequest()` with dual support.
 
-### Archivos Modificados/Creados:
+Shared auth helper, if it exists (from `api-routes-setup`): `src/lib/api/auth.ts` (`getAuthenticatedUser` and `requireAuth`) is updated to receive `request` and use `createServerFromRequest`.
 
-**Core (`src/lib/supabase/`):**
+API routes, in `src/app/api/`: every protected endpoint uses `createServerFromRequest` (or the updated helper) and passes `request`.
 
-- ✅ `server.ts` - Agregar `createServerFromRequest()` con soporte dual
+Documentation, if OpenAPI or `/api/docs` exists: the Bearer `securitySchemes` entry is registered in `src/lib/openapi/registry.ts` and described in `info.description` (Scalar renders it at `/api/docs`).
 
-**Auth helper compartido (si existe, de `api-routes-setup`):**
+## Steps
 
-- ✅ `src/lib/api/auth.ts` (`getAuthenticatedUser`/`requireAuth`) actualizado para recibir `request` y usar `createServerFromRequest`
+### Phase 0: Analyse the project
 
-**API Routes (`src/app/api/`):**
-
-- ✅ Todos los endpoints protegidos actualizados para usar `createServerFromRequest` (o el helper actualizado), pasando `request`
-
-**Documentación (si existe OpenAPI / `/api/docs`):**
-
-- ✅ `securitySchemes` Bearer registrado en `src/lib/openapi/registry.ts` + documentado en `info.description` (Scalar lo renderiza en `/api/docs`)
-
----
-
-## 🛠️ PASOS DETALLADOS
-
-### FASE 0: Análisis del Proyecto
-
-**Paso 0.1: Verificar estado actual**
+Step 0.1: check the current state.
 
 ```bash
-# Verificar si ya existe soporte
-grep -l "createServerFromRequest" src/lib/supabase/server.ts 2>/dev/null && echo "✅ Ya tiene soporte" || echo "❌ Necesita implementación"
+# Check whether support already exists
+grep -l "createServerFromRequest" src/lib/supabase/server.ts 2>/dev/null && echo "Already supported" || echo "Needs implementation"
 ```
 
-**Paso 0.2: Listar endpoints a actualizar**
+Step 0.2: list the endpoints to update.
 
 ```bash
-# Encontrar todos los endpoints que usan createServer
+# Find every endpoint that uses createServer
 grep -rl "await createServer()" src/app/api/ --include="*.ts"
 ```
 
-**Paso 0.3: Verificar configuración de Supabase**
+Step 0.3: check the Supabase configuration.
 
 ```bash
-# Verificar que existen las variables necesarias
+# Check that the needed variables exist
 cat src/lib/config.ts | grep -E "supabaseUrl|supabaseAnonKey"
 ```
 
----
+The config the backend scaffold writes exports `supabasePublishableKey`. When the project's config uses that name, use it in place of `supabaseAnonKey` in the code below.
 
-### FASE 1: Modificar `server.ts`
+### Phase 1: Modify `server.ts`
 
-**Paso 1.1: Agregar import de `createClient`**
-
-Si no existe, agregar al inicio del archivo:
+Step 1.1: add the `createClient` import at the top of the file, if it is not there:
 
 ```typescript
 import { createClient } from '@supabase/supabase-js';
 ```
 
-**Paso 1.2: Agregar función `createServerFromRequest`**
-
-Agregar después de la función `createServer()` existente:
+Step 1.2: add `createServerFromRequest` after the existing `createServer()` function:
 
 ```typescript
 /**
@@ -197,21 +148,14 @@ export async function createServerFromRequest(request: Request) {
 }
 ```
 
-**IMPORTANTE:** Asegurarse de que:
+Make sure the `Database` type is imported from `@/types/supabase` and that `supabaseUrl` and the publishable key are available from the config.
 
-- `Database` type está importado de `@/types/supabase`
-- `supabaseUrl` y `supabaseAnonKey` están disponibles desde config
+### Phase 2: Update the API routes
 
----
-
-### FASE 2: Actualizar API Routes
-
-**Paso 2.1: Identificar patrón de actualización**
-
-Por cada endpoint protegido, cambiar:
+Step 2.1: the update pattern. In every protected endpoint, change:
 
 ```typescript
-// ANTES
+// BEFORE
 import { createServer } from '@/lib/supabase/server';
 
 export async function GET() {
@@ -219,7 +163,7 @@ export async function GET() {
   // ...
 }
 
-// DESPUÉS
+// AFTER
 import { createServerFromRequest } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
@@ -228,31 +172,31 @@ export async function GET(request: Request) {
 }
 ```
 
-**Paso 2.2: Casos especiales**
+Step 2.2: special cases. The handler has to use `request`, not `_request`, because the header comes from it.
 
-Para handlers que ignoraban el request (`_request`):
+For handlers that ignored the request (`_request`):
 
 ```typescript
-// ANTES
+// BEFORE
 export async function GET(_request: Request) {
   const supabase = await createServer();
 
-// DESPUÉS
+// AFTER
 export async function GET(request: Request) {
   const supabase = await createServerFromRequest(request);
 ```
 
-Para handlers con `context` (rutas dinámicas):
+For handlers with `context` (dynamic routes):
 
 ```typescript
-// ANTES
+// BEFORE
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createServer();
 
-// DESPUÉS
+// AFTER
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -260,25 +204,23 @@ export async function GET(
   const supabase = await createServerFromRequest(request);
 ```
 
-**Paso 2.3: NO actualizar endpoints públicos**
+Step 2.3: leave the public endpoints alone. Endpoints that need no authentication stay unchanged, so they remain reachable without a token:
 
-Endpoints que NO requieren autenticación NO necesitan cambios:
+- `/api/health`: public health check
+- `/api/openapi`: public OpenAPI spec
+- `/api/auth/forgot-password`: password reset flow
 
-- `/api/health` - Health check público
-- `/api/openapi` - Spec OpenAPI público
-- `/api/auth/forgot-password` - Flujo de reset password
+Step 2.4: update the shared auth helper (when `src/lib/api/auth.ts` exists).
 
-**Paso 2.4: Actualizar el helper de auth compartido (si existe `src/lib/api/auth.ts`)**
-
-> **CRÍTICO**: si `api-routes-setup` creó `src/lib/api/auth.ts`, los endpoints suelen autenticar vía `getAuthenticatedUser()` / `requireAuth()`, NO llamando `createServer()` directo. Si solo actualizás los `route.ts` pero el helper sigue usando `createServer()` (cookie), el Bearer **no funcionará** en ningún endpoint que use el helper. Actualizá el helper para que acepte el `request` y use `createServerFromRequest`:
+If `api-routes-setup` created `src/lib/api/auth.ts`, endpoints usually authenticate through `getAuthenticatedUser()` or `requireAuth()`, not by calling `createServer()` directly. Updating only the `route.ts` files while the helper still uses `createServer()` (cookies) leaves Bearer broken in every endpoint that uses the helper. Update the helper so it accepts `request` and uses `createServerFromRequest`:
 
 ```typescript
-// src/lib/api/auth.ts (ACTUALIZADO para soporte dual cookie + Bearer)
+// src/lib/api/auth.ts (UPDATED for dual cookie + Bearer support)
 import { createServerFromRequest } from '@/lib/supabase/server';
 import { unauthorizedError } from './responses';
 
-// Pasar SIEMPRE el request: createServerFromRequest lee Authorization: Bearer
-// y cae a cookies si no hay header.
+// ALWAYS pass the request: createServerFromRequest reads Authorization: Bearer
+// and falls back to cookies when there is no header.
 export async function getAuthenticatedUser(request: Request) {
   const supabase = await createServerFromRequest(request);
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -296,176 +238,160 @@ export async function requireAuth(request: Request) {
 }
 ```
 
-Y en cada endpoint que lo use, pasar el `request`:
+In every endpoint that uses the helper, pass the `request`:
 
 ```typescript
-// ANTES:  const { user, error } = await getAuthenticatedUser();
-// DESPUÉS:
+// BEFORE:  const { user, error } = await getAuthenticatedUser();
+// AFTER:
 export async function GET(request: Request) {
   const { user, error } = await getAuthenticatedUser(request);
   // ...
 }
 ```
 
----
+### Phase 3: Update the documentation (optional)
 
-### FASE 3: (Opcional) Actualizar Documentación
+Only when OpenAPI exists (`src/lib/openapi/registry.ts`). Scalar (`/api/docs`) renders the auth section from the spec, so there is no React panel to edit.
 
-**Solo si existe OpenAPI (`src/lib/openapi/registry.ts`).** Scalar (`/api/docs`) renderiza la auth desde el spec — no hay panel React que editar.
-
-**Paso 3.1: Verificar existencia**
+Step 3.1: check that the registry exists.
 
 ```bash
 ls src/lib/openapi/registry.ts 2>/dev/null
 ```
 
-**Paso 3.2: Registrar el `securitySchemes` Bearer + documentar en `info.description`**
+Step 3.2: register the Bearer `securitySchemes` entry and document it in `info.description`. In `src/lib/openapi/registry.ts`:
 
-En `src/lib/openapi/registry.ts`:
-
-1. **Registrar el scheme Bearer** (si no existe ya un `bearerAuth`):
+1. Register the Bearer scheme (if a `bearerAuth` does not already exist):
 
 ```typescript
 registry.registerComponent('securitySchemes', 'bearerAuth', {
   type: 'http',
   scheme: 'bearer',
   bearerFormat: 'JWT',
-  description: 'Supabase access_token (JWT). Obtené uno vía POST /auth/v1/token?grant_type=password y mandalo como Authorization: Bearer <token>.',
+  description: 'Supabase access_token (JWT). Get one via POST /auth/v1/token?grant_type=password and send it as Authorization: Bearer <token>.',
 });
 ```
 
-2. **Aplicar `security: [{ bearerAuth: [] }]`** en los `registry.registerPath()` de los endpoints protegidos.
+2. Apply `security: [{ bearerAuth: [] }]` in the `registry.registerPath()` calls of the protected endpoints.
 
-3. **Documentar el flujo en `info.description`** del `generateOpenAPIDocument()` (login Supabase → `access_token` → header `Authorization: Bearer`, expiración, renovación). Scalar lo muestra arriba en `/api/docs` con ejemplos copiables nativos (incluido "Test Request").
+3. Document the flow in the `info.description` of `generateOpenAPIDocument()`: Supabase login, `access_token`, the `Authorization: Bearer` header, expiry and renewal. Scalar shows it at the top of `/api/docs` with native copyable examples (including "Test Request").
 
-> No se crea ni edita ningún componente React: la doc vive 100% en el spec (single source of truth) y la UI la provee Scalar.
+No React component is created or edited. The docs live entirely in the spec (single source of truth) and Scalar provides the UI.
 
----
+### Phase 3.5: Rate limiting and secret rotation (required, B7)
 
-### FASE 3.5: Rate limiting + rotación de secretos (OBLIGATORIA, B7)
+Bearer auth opens the API routes to clients outside the browser (scripts, Postman, integrations). Without a rate limit and a rotation plan the feature is half finished (`SKILL.md`, anti-pattern **B7**), so both ship in the same scaffold.
 
-Bearer auth abre las API routes a clientes fuera del browser (scripts, Postman, integraciones). Sin límite de tasa ni plan de rotación el feature queda a medias (SKILL.md, anti-pattern **B7**), así que ambos se entregan en el mismo scaffold.
-
-**Paso 3.5.1: Rate limiting en las rutas protegidas**
-
-**Pseudocódigo (verificar la API con Context7 antes de escribir código):**
+Step 3.5.1: rate limiting on the protected routes. Verify the API with Context7 before writing code.
 
 ```
-1. Preguntar al usuario dónde vive el límite:
-   a) En la plataforma (reglas de firewall / rate limit del hosting, ej. Vercel Firewall)
-   b) En código (helper `rateLimit(request)` con un store compartido, ej. Redis)
-   NO usar un contador en memoria: cada instancia serverless tiene el suyo.
+1. Ask the user where the limit lives:
+   a) In the platform (hosting firewall / rate-limit rules, e.g. Vercel Firewall)
+   b) In code (a `rateLimit(request)` helper with a shared store, e.g. Redis)
+   Do NOT use an in-memory counter: every serverless instance has its own.
 
-2. Clave del límite: user_id del token cuando existe, IP como fallback.
+2. Limit key: the token's user_id when there is one, the IP as a fallback.
 
-3. Aplicarlo en las rutas que aceptan Bearer y en el login proxy si existe.
+3. Apply it to the routes that accept Bearer and to the login proxy if there is one.
 
-4. Respuesta al exceder: 429 Too Many Requests + header Retry-After,
-   con el mismo formato de error que el resto de la API.
+4. Response when exceeded: 429 Too Many Requests + a Retry-After header,
+   in the same error format as the rest of the API.
 
-5. Valores (requests por ventana) en `.env` / config, nunca hardcodeados (B4).
+5. Values (requests per window) go in `.env` / config, never hardcoded (B4).
 ```
 
-**Paso 3.5.2: Guía de rotación de secretos**
+Step 3.5.2: secret rotation guide. Document it in `.context/api-auth.md` (or in `info.description` when OpenAPI exists): how each secret this feature touches is rotated.
 
-Documentar en `.context/api-auth.md` (o en `info.description` si hay OpenAPI) cómo se rota cada secreto que este feature toca:
+- `SUPABASE_SECRET_KEY` (and any API key of your own, such as `X-API-Key`): generate the new one in the Supabase dashboard, update `.env` and the Vercel scopes (`/vercel-cli`, env-var sync), redeploy, then revoke the old one.
+- Supabase JWT signing keys: rotate them from the dashboard. Tokens issued with the old key stop validating, so tell the external clients.
+- User tokens: keep the `access_token` short-lived, renew it with the `refresh_token`, and use a global `signOut` to invalidate the sessions of a compromised user.
+- When to rotate: when a secret is exposed (log, commit, screenshot), when someone with access leaves, and at the frequency the team sets.
 
-- **`SUPABASE_SECRET_KEY`** (y cualquier API key propia, ej. `X-API-Key`): generar la nueva en el dashboard de Supabase, actualizar `.env` y los scopes de Vercel (`/vercel-cli`, sync de env vars), redeploy, revocar la anterior.
-- **Claves de firma de JWT de Supabase**: rotarlas desde el dashboard; los tokens emitidos con la clave anterior dejan de validar, así que avisar a los clientes externos.
-- **Tokens de usuario**: vida corta del `access_token`, renovación con `refresh_token`, y `signOut` global para invalidar las sesiones de un usuario comprometido.
-- **Cuándo rotar**: ante un secreto expuesto (log, commit, captura), al salir alguien con acceso, y con la frecuencia que fije el equipo.
+### Phase 4: Validation
 
----
-
-### FASE 4: Validación
-
-**Paso 4.1: TypeScript check**
+Step 4.1: TypeScript check.
 
 ```bash
 bun run types:check
 ```
 
-**Paso 4.2: Lint check**
+Step 4.2: lint check.
 
 ```bash
 bun run lint:check
 ```
 
-**Paso 4.3: Test manual (opcional)**
+Step 4.3: manual test (optional).
 
 ```bash
-# 1. Obtener token
+# 1. Get a token
 curl -X POST "https://[PROJECT_ID].supabase.co/auth/v1/token?grant_type=password" \
   -H "apikey: [PUBLISHABLE_KEY]" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password"}'
 
-# 2. Usar token
+# 2. Use the token
 curl "http://localhost:3000/api/[endpoint]" \
   -H "Authorization: Bearer [ACCESS_TOKEN]"
 ```
 
----
+## Final checklist
 
-## 📋 CHECKLIST FINAL
+Core implementation:
 
-### Implementación Core:
+- [ ] `createServerFromRequest()` added to `server.ts`
+- [ ] `createClient` import added
+- [ ] Types referenced correctly
 
-- [ ] `createServerFromRequest()` agregado a `server.ts`
-- [ ] Import de `createClient` agregado
-- [ ] Tipos correctamente referenciados
+API routes:
 
-### API Routes:
+- [ ] Every protected endpoint updated
+- [ ] Import changed from `createServer` to `createServerFromRequest`
+- [ ] The `request` parameter is used (not `_request`)
+- [ ] (If it exists) `src/lib/api/auth.ts` updated to `createServerFromRequest` and receives `request`
+- [ ] Endpoints that use the helper pass `request` to `getAuthenticatedUser(request)` / `requireAuth(request)`
 
-- [ ] Todos los endpoints protegidos actualizados
-- [ ] Import cambiado de `createServer` a `createServerFromRequest`
-- [ ] Parámetro `request` usado (no `_request`)
-- [ ] (Si existe) `src/lib/api/auth.ts` actualizado a `createServerFromRequest` y recibe `request`
-- [ ] Endpoints que usan el helper pasan `request` a `getAuthenticatedUser(request)` / `requireAuth(request)`
+Rate limiting and rotation (B7):
 
-### Rate limiting + rotación (B7):
+- [ ] Rate limiting applied to the Bearer routes (shared store or platform, never in memory)
+- [ ] Exceeding the limit returns 429 + `Retry-After`
+- [ ] Secret rotation guide documented
 
-- [ ] Rate limiting aplicado a las rutas con Bearer (store compartido o plataforma, nunca en memoria)
-- [ ] Exceso devuelve 429 + `Retry-After`
-- [ ] Guía de rotación de secretos documentada
+Validation:
 
-### Validación:
+- [ ] `bun run types:check` passes
+- [ ] `bun run lint:check` passes with no new errors
+- [ ] Endpoints still work with cookies (browser)
+- [ ] Endpoints work with a Bearer token (Postman)
 
-- [ ] `bun run types:check` pasa
-- [ ] `bun run lint:check` pasa sin nuevos errores
-- [ ] Endpoints siguen funcionando con cookies (browser)
-- [ ] Endpoints funcionan con Bearer token (Postman)
+Documentation (if applicable):
 
-### Documentación (si aplica):
+- [ ] Bearer `securitySchemes` registered in `registry.ts` and applied to the protected endpoints
+- [ ] Bearer token flow documented in `info.description`
+- [ ] Bearer token guide visible at `/api/docs` (Scalar)
 
-- [ ] `securitySchemes` Bearer registrado en `registry.ts` + aplicado en endpoints protegidos
-- [ ] Flujo de Bearer Token documentado en `info.description`
-- [ ] Guía de Bearer Token visible en `/api/docs` (Scalar)
-
----
-
-## 🎉 REPORTE FINAL
+## Final report
 
 ```markdown
-# ✅ Bearer Token Support Implementado
+# Bearer Token Support Implemented
 
-## Archivos Modificados:
+## Files modified:
 
 ### Core:
 
-- src/lib/supabase/server.ts (nueva función createServerFromRequest)
+- src/lib/supabase/server.ts (new function createServerFromRequest)
 
-### API Routes Actualizados:
+### API routes updated:
 
-[Listar todos los archivos modificados]
+[List every modified file]
 
-### Documentación:
+### Documentation:
 
-- src/lib/openapi/registry.ts (securitySchemes `bearerAuth` + `info.description`, si existe OpenAPI)
+- src/lib/openapi/registry.ts (`bearerAuth` securitySchemes + `info.description`, if OpenAPI exists)
 
-## Cómo Usar:
+## How to use:
 
-### 1. Obtener Token:
+### 1. Get a token:
 
 POST https://[PROJECT_ID].supabase.co/auth/v1/token?grant_type=password
 Headers:
@@ -475,83 +401,62 @@ Headers:
   Body:
   {"email": "...", "password": "..."}
 
-### 2. Usar Token:
+### 2. Use the token:
 
 GET /api/[endpoint]
 Headers:
 
 - Authorization: Bearer [access_token]
 
-## Compatibilidad:
+## Compatibility:
 
-- ✅ Browser (cookies) - Sigue funcionando igual
-- ✅ Postman (Bearer token) - Nuevo soporte
-- ✅ Mobile apps (Bearer token) - Nuevo soporte
-- ✅ Third-party integrations (Bearer token) - Nuevo soporte
+- Browser (cookies): keeps working as before
+- Postman (Bearer token): new support
+- Mobile apps (Bearer token): new support
+- Third-party integrations (Bearer token): new support
 
-## Notas:
+## Notes:
 
-- Token expira en 1 hora (3600 segundos)
-- Múltiples tokens pueden coexistir
-- Para renovar, usar refresh_token con grant_type=refresh_token
-- Rate limit: [N] requests por [ventana], exceso → 429
-- Rotación de secretos: ver `.context/api-auth.md`
+- The token expires in 1 hour (3600 seconds)
+- Several tokens can coexist
+- To renew, use the refresh_token with grant_type=refresh_token
+- Rate limit: [N] requests per [window], exceeding it returns 429
+- Secret rotation: see `.context/api-auth.md`
 ```
 
----
+## Questions people ask
 
-## ❓ PREGUNTAS FRECUENTES
+Does this break the existing cookie authentication? No. The function looks for a Bearer token and, when there is none, uses cookies automatically.
 
-**P: ¿Esto rompe la autenticación existente por cookies?**
-R: No. La función detecta si hay Bearer token; si no lo hay, usa cookies automáticamente.
+Does the middleware need changes? No. The middleware keeps protecting pages with cookies, and the API routes handle their own authentication.
 
-**P: ¿Necesito modificar el middleware?**
-R: No. El middleware sigue manejando la protección de páginas con cookies. Los API routes manejan su propia autenticación.
+Does it work with Row Level Security? Yes. The client built from a Bearer token has the same `user_id` as the cookie one, so RLS applies the same way.
 
-**P: ¿Funciona con Row Level Security (RLS)?**
-R: Sí. El cliente creado con Bearer token tiene el mismo `user_id` que con cookies, y RLS se aplica igual.
+What happens when the token expires? The endpoint returns 401 Unauthorized, and the client must get a new token.
 
-**P: ¿Qué pasa si el token expira?**
-R: El endpoint retorna 401 Unauthorized. El cliente debe obtener un nuevo token.
+Can the token be used against the Supabase API directly? Yes. The same `access_token` works for the Next.js API routes (Bearer header), the Supabase REST API (Authorization header plus `apikey`) and Supabase Realtime.
 
-**P: ¿Puedo usar este token para el API de Supabase directamente?**
-R: Sí. El mismo `access_token` funciona para:
+How do I get a token without the UI? POST to `/auth/v1/token?grant_type=password` with email and password. See Phase 4.
 
-- Next.js API routes (con Bearer header)
-- Supabase REST API (con Authorization header + apikey)
-- Supabase Realtime
+## Related features
 
-**P: ¿Cómo obtengo el token sin usar la UI?**
-R: POST a `/auth/v1/token?grant_type=password` con email/password. Ver sección de validación.
+- `api-routes-setup`: this add-on complements it. Run `api-routes-setup` first, then this one to add Bearer support.
+- `openapi-setup`: with OpenAPI and `/api/docs` (Scalar) configured, this add-on registers the Bearer `securitySchemes` entry in `registry.ts` and documents the flow in `info.description`.
+- `supabase-types-setup`: the `Database` types must be available in `@/types/supabase` for correct typing.
 
----
+## Rules for the agent
 
-## 🔗 INTEGRACIÓN CON OTROS FEATURES
+1. Detect the current state before modifying anything. If `createServerFromRequest` already exists, report that it is implemented.
+2. Leave public endpoints (health checks, authentication endpoints that must work without a token) unchanged.
+3. Preserve existing behaviour. The cookie fallback is what keeps the browser working.
+4. Update the docs. When OpenAPI or `/api/docs` exists, updating `securitySchemes` and `info.description` in `registry.ts` is part of the feature.
+5. Rate limiting and rotation are required (B7). If the user does not choose where the limit lives, the feature is not done.
+6. Change `_request` to `request` in the handlers, because that is how the header reaches the code.
 
-### Con `api-routes-setup`:
+## With nobody at the keyboard
 
-Este feature complementa `api-routes-setup`. Si ejecutas primero `api-routes-setup`, luego puedes ejecutar este para agregar Bearer token support.
+This add-on asks the person in one place, Step 3.5.1 (where the rate limit lives), and shows the user both forms when an existing app clashes with a scaffold choice. The rules for who decides are in `agentic-dev-core/references/decision-protocol.md`.
 
-### Con `openapi-setup`:
-
-Si tienes OpenAPI + `/api/docs` (Scalar) configurado, este feature registra el `securitySchemes` Bearer en `registry.ts` y documenta el flujo en `info.description`; Scalar lo renderiza en `/api/docs`.
-
-### Con `supabase-types-setup`:
-
-Los tipos de `Database` deben estar disponibles en `@/types/supabase` para el typing correcto.
-
----
-
-## 📝 NOTAS PARA LA IA
-
-1. **Detectar estado actual** antes de modificar. Si ya existe `createServerFromRequest`, reportar que ya está implementado.
-
-2. **No modificar endpoints públicos** como health checks o endpoints de autenticación que deben ser accesibles sin token.
-
-3. **Preservar funcionalidad existente**. El fallback a cookies es crítico para que el browser siga funcionando.
-
-4. **Documentar cambios**. Si existe OpenAPI/`/api/docs`, actualizar `securitySchemes` + `info.description` en `registry.ts` es parte del feature.
-
-5. **Rate limiting y rotación no son opcionales** (B7). Si el usuario no elige dónde vive el límite, el feature no se da por terminado.
-
-6. **Usar el request parameter**. Cambiar `_request` a `request` en los handlers es necesario para pasar el header.
+- A person is present: ask as written.
+- A supervised worker: the conductor that launched you answers.
+- A routine with nobody: the delegating brief is the approval source. If it names where the limit lives, use that. Otherwise write the code changes in the working tree (Phases 1 to 4), leave the rate limit as the one item not done, and report that B7 is open; the feature is not complete without it. On a clash with the app's own scheme, keep the app's scheme and report the difference. This add-on touches no remote system, so nothing here needs to stop before an outward action.

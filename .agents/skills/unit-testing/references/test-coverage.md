@@ -2,23 +2,23 @@
 
 ## What coverage means (and doesn't)
 
-Coverage = the percentage of your code's lines, branches, or statements executed by your test suite. It's a **floor** indicator, not a quality measure.
+Coverage is the percentage of your code's lines, branches or statements that the test suite executes. It is a **floor** indicator, not a quality measure.
 
-- **High coverage doesn't mean good tests.** A test that calls a function and never asserts anything still hits 100% line coverage.
-- **Low coverage definitely means missing tests.** Whatever isn't covered is, by definition, untested.
-- **The diff is more useful than the total.** A PR that drops coverage from 92% to 85% is the signal — chasing a single global threshold isn't.
+- High coverage does not mean good tests. A test that calls a function and never asserts anything still gives 100% line coverage.
+- Low coverage does mean missing tests, because whatever is not covered is untested.
+- The diff tells you more than the total. A PR that drops coverage from 92% to 85% is the signal, and chasing one global threshold is not.
 
-Treat coverage as a smoke alarm: it tells you something might be wrong, not that everything is right.
+Treat coverage as a smoke alarm: it says something might be wrong, and silence does not prove everything is right.
 
 ## Types of coverage
 
-- **Line**: % of lines executed. Most common, weakest. Misses branches inside a single line.
-- **Branch**: % of conditional branches taken (each side of every `if`, `&&`, `||`, ternary). Catches missing edge cases the most reliably.
-- **Function**: % of functions called at least once. Coarse — basic sanity check.
+- **Line**: % of lines executed. The most common and the weakest, since it misses branches inside a single line.
+- **Branch**: % of conditional branches taken (each side of every `if`, `&&`, `||`, ternary). It catches missing edge cases most reliably.
+- **Function**: % of functions called at least once. Coarse, a basic sanity check.
 - **Statement**: % of statements executed. Similar to line, slightly finer.
-- **Mutation**: % of injected mutations the test suite catches. Gold standard for test quality, but slow.
+- **Mutation**: % of injected mutations the suite catches. The best measure of test quality, and slow.
 
-For most projects, **branch coverage is the most actionable metric**. Line coverage of 90% with branch coverage of 50% means half your conditionals are untested.
+For most projects branch coverage is the most actionable metric. 90% line coverage with 50% branch coverage means half your conditionals are untested.
 
 ## Targets by code type
 
@@ -32,11 +32,11 @@ For most projects, **branch coverage is the most actionable metric**. Line cover
 | Generated code (typegen, codegen)  | exclude                      |
 | Throwaway scripts / migrations     | exclude                      |
 
-These are guidelines, not contracts. A 70%-covered helper that exercises every meaningful branch is better than a 95%-covered helper where the missing 5% includes the only error path.
+These are guidelines, not contracts. A 70%-covered helper that exercises every meaningful branch beats a 95%-covered helper whose missing 5% holds the only error path.
 
 ## What to ignore from coverage
 
-Configure the coverage tool's exclude list so noise doesn't drag down meaningful numbers:
+Configure the coverage tool's exclude list so noise does not drag down the numbers that matter:
 
 - Auto-generated files (typegen, codegen, OpenAPI types)
 - Vendored / third-party copies
@@ -46,56 +46,56 @@ Configure the coverage tool's exclude list so noise doesn't drag down meaningful
 - Story files (`*.stories.tsx`)
 - Test files themselves and test utilities
 
-In Jest: `coveragePathIgnorePatterns`. In Vitest: `coverage.exclude`. Keep the list tight — if everything's excluded, the metric is meaningless.
+In Jest the setting is `coveragePathIgnorePatterns`; in Vitest it is `coverage.exclude`. Keep the list tight, because if everything is excluded the metric means nothing.
 
 ## Reading a coverage report
 
-Open the HTML report (most tools generate one). Sort by coverage **ascending** to see your worst-tested files at the top. For each:
+Open the HTML report (most tools generate one) and sort by coverage **ascending**, so the worst-tested files come first. For each file ask:
 
-1. Are the uncovered lines on **error paths**? (Often yes — and often important.)
+1. Are the uncovered lines on **error paths**? Often yes, and often important.
 2. Are they on **edge cases**? (Empty array, null input, boundary values.)
-3. Are they **dead code**? (If yes, delete them.)
+3. Are they **dead code**? If so, delete it.
 4. Are they **exclusion candidates**? (Generated, configured.)
 
-Focus on the diff in PRs, not the absolute number. Most tools support `--changed-only` or a delta report.
+In PRs, look at the diff and not the absolute number. Most tools support `--changed-only` or a delta report.
 
 ## Coverage in CI
 
-Coverage gates in CI are useful but should not be draconian. Reasonable defaults:
+Coverage gates in CI help when they are not draconian. Reasonable defaults:
 
-- **Warn** if coverage drops by >2% in a PR.
-- **Block** if it drops by >5% — that's a meaningful regression.
+- **Warn** if coverage drops by more than 2% in a PR.
+- **Block** if it drops by more than 5%, which is a meaningful regression.
 - **Fail** if a critical path file (defined explicitly) drops below an absolute threshold.
 
-A single hard threshold (e.g. "must be >=90%") punishes refactors that delete tested code and rewards padding. Delta-based thresholds align incentives with intent: don't degrade what we have.
+A single hard threshold (say "must be >=90%") punishes refactors that delete tested code and rewards padding. Delta-based thresholds line up with the intent: do not degrade what we have.
 
 ## Mutation testing (advanced)
 
-Mutation testing tools (Stryker for JS/TS, PIT for JVM, mutmut for Python) inject small mutations into your code — flip a `<` to `>`, change a constant, remove a return — then run your test suite. If tests still pass, the mutation **survived**, meaning your tests didn't catch a real bug.
+Mutation testing tools (Stryker for JS/TS, PIT for JVM, mutmut for Python) inject small mutations into your code, such as flipping a `<` to `>`, changing a constant or removing a return, then run your test suite. If the tests still pass, the mutation **survived**, which means your tests missed a real bug.
 
-Key signal: a high coverage % with low mutation score = tests that execute code without verifying behavior.
+The signal to watch: a high coverage % with a low mutation score means tests that execute code without verifying behavior.
 
 Caveats:
 
-- Slow (each mutation = full test re-run)
+- Slow (each mutation is a full test re-run)
 - High setup cost
-- Best run weekly or on a nightly CI, not per-PR
-- Worth it for libraries, payment / billing logic, anything where silent bugs are catastrophic
+- Best run weekly or nightly in CI, not per PR
+- Worth it for libraries, payment and billing logic, and anything where silent bugs are catastrophic
 
-If you've never run mutation testing, try it once on your most-trusted module. The result is often humbling.
+If you have never run mutation testing, try it once on your most-trusted module. The result is often humbling.
 
 ## Practical workflow
 
-1. **Don't chase global coverage targets.** Chase coverage on the parts that matter.
-2. **Watch the diff** in every PR — that's where regressions hide.
-3. **Use branch coverage** as the primary signal, not line.
-4. **Exclude noise** so the number reflects real test gaps.
-5. **Try mutation testing** once a quarter on critical modules to calibrate test quality.
-6. **Don't write tests just to hit coverage** — they pollute the suite without adding signal.
+1. Chase coverage on the parts that matter, not a global target.
+2. Watch the diff in every PR, because that is where regressions hide.
+3. Use branch coverage as the primary signal, not line.
+4. Exclude noise so the number reflects real test gaps.
+5. Try mutation testing once a quarter on critical modules to calibrate test quality.
+6. Skip tests written only to hit a coverage number: they pollute the suite without adding signal.
 
 ## Related references
 
-- See `tdd-workflow.md` — TDD naturally produces high meaningful coverage as a byproduct
-- See `test-naming.md` — well-named tests make coverage gaps easier to spot
-- See `mocking-patterns.md` — over-mocked tests can hit lines without verifying behavior (mutation testing exposes this)
-- See `unit-testing.md` for general testing principles + project conventions
+- `tdd-workflow.md`: TDD produces high meaningful coverage as a byproduct.
+- `test-naming.md`: well-named tests make coverage gaps easier to spot.
+- `mocking-patterns.md`: over-mocked tests can hit lines without verifying behavior (mutation testing exposes this).
+- `unit-testing.md`: general testing principles and project conventions.

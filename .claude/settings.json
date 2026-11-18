@@ -93,7 +93,16 @@
       "Bash(varlock printenv*)",
       "Bash(varlock reveal*)",
       "Bash(bunx varlock printenv*)",
-      "Bash(bunx varlock reveal*)"
+      "Bash(bunx varlock reveal*)",
+      "Bash(git restore .)",
+      "Bash(git restore -- .)",
+      "Bash(git checkout -- .)",
+      "Bash(git checkout .)",
+      "Bash(git stash)",
+      "Bash(git stash push)",
+      "Bash(git clean -f *)",
+      "Bash(git clean -xfd *)",
+      "Bash(git clean -fdx *)"
     ],
     "ask": []
   },

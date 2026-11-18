@@ -1,21 +1,21 @@
-# Page Craft — the `/qa` golden file
+# Page craft: the `/qa` golden file
 
-> **Purpose**: The visual + structural target for the generated `/qa` page. This is the single thing that makes the output *better than a flat accordion list*: a page with its own layout (sticky TOC, hero, domain-colored sections), a clean RSC split, copy-buttoned multi-agent code blocks, a real architecture diagram, and a one-object detection→render bridge so NOTHING is hardcoded.
+> **Purpose**: The visual and structural target for the generated `/qa` page. It is what makes the output better than a flat accordion list: a page with its own layout (sticky TOC, hero, domain-colored sections), a clean RSC split, copy-buttoned multi-agent code blocks, a real architecture diagram, and a one-object bridge from detection to render so nothing is hardcoded.
 >
-> **When to read**: Phase 4 (page codegen). Pair with `page-structure.md` (section order + copy) and `mcp-and-env-setup.md` (the content inside §3–§6).
+> **When to read**: Phase 4 (page codegen), together with `page-structure.md` (section order and copy) and `mcp-and-env-setup.md` (the content inside §3 to §6).
 >
-> **How to use the golden**: copy the structure, then fill `qaConfig` (below) from Phase-1 detection. Adapt primitives to the detected UI kit (the golden uses shadcn/ui + Tailwind + lucide-react + next-themes — the most common host stack). For non-Next frameworks, keep the same component decomposition; swap the routing/RSC mechanics per `routing-patterns.md`.
+> **How to use the golden**: copy the structure, then fill `qaConfig` (below) from the Phase 1 detection. Adapt the primitives to the detected UI kit (the golden uses shadcn/ui, Tailwind, lucide-react and next-themes, the most common host stack). For non-Next frameworks keep the same component decomposition and swap the routing and RSC mechanics per `routing-patterns.md`.
 
 ---
 
-## Design principles (what makes it fascinating to read)
+## Design principles
 
-1. **Own layout, not a doc dump.** Two-column on desktop: sticky TOC rail + content. Hero band on top. Each section is a self-contained card with a domain accent color.
-2. **Scannable.** Sticky TOC with active-section highlight + anchor deep-links + copy-link. A tester can jump straight to "DB testing".
-3. **Show, don't tell.** Real architecture diagram (Frontend → API → DB + MCP layer + Repos). Copy-buttoned snippets. Agent tabs so each tester copies the block for THEIR tool.
-4. **Zero hardcode at the source.** One typed `qaConfig` object holds every detected value. JSX reads from it. Codegen fills it. If a value is `null`, the UI renders an explicit "ask your lead" gap — never a fabricated default.
-5. **Clean RSC split.** `page.tsx` is a Server Component (static markup + metadata). Anything with state/interaction lives in a `'use client'` sibling under `_components/`.
-6. **Dark/light from the host.** Mirror the host theme mechanism (the golden assumes `next-themes` + `dark:` variants + CSS-variable tokens). Never ship a second theme system.
+1. **Own layout, not a doc dump.** Two columns on desktop: a sticky TOC rail and the content. A hero band on top. Each section is a self-contained card with a domain accent color.
+2. **Scannable.** The sticky TOC highlights the active section and has anchor deep-links and a copy-link, so a tester can jump straight to "DB testing".
+3. **Show, don't tell.** A real architecture diagram (Frontend, API, DB, the MCP layer and the Repos), copy-buttoned snippets, and agent tabs so each tester copies the block for their own tool.
+4. **Zero hardcode at the source.** One typed `qaConfig` object holds every detected value. The JSX reads from it and codegen fills it. A `null` value renders an explicit "ask your lead" gap, never a fabricated default.
+5. **Clean RSC split.** `page.tsx` is a Server Component (static markup and metadata). Anything with state or interaction lives in a `'use client'` sibling under `_components/`.
+6. **Dark and light from the host.** Mirror the host's theme mechanism (the golden assumes `next-themes`, `dark:` variants and CSS-variable tokens) and ship no second theme system.
 
 ---
 
@@ -42,15 +42,15 @@ app/qa/
     └── EnvSetup.tsx         # .env slots + activation (per process) + missing-var table
 ```
 
-> **Why the `_lib/` split**: the highlighter is server-only (it loads WASM + grammars — expensive, and must never ship to the browser). Client components (`AgentCodeBlock`, `RequestCard`) cannot import it, so the SERVER pre-highlights every snippet into html-string props (`prepare.ts`) and passes them down. Server components highlight inline via the async `<CodeBlock>`.
+> **Why the `_lib/` split**: the highlighter is server-only. It loads WASM and grammars, which is expensive, and it must never ship to the browser. Client components (`AgentCodeBlock`, `RequestCard`) cannot import it, so the server pre-highlights every snippet into html-string props (`prepare.ts`) and passes them down. Server components highlight inline through the async `<CodeBlock>`.
 
-For non-App-Router frameworks, collapse to a single page file + the framework's interactivity pattern; keep the component boundaries conceptually. If the framework has no RSC/server-component model, run the highlighter at build time (or in the route loader) and pass html strings to the components — the "highlight on the server, copy on the client" split is the load-bearing idea, not the exact directory.
+For non-App-Router frameworks, collapse to a single page file plus the framework's interactivity pattern and keep the component boundaries conceptually. If the framework has no RSC or server-component model, run the highlighter at build time (or in the route loader) and pass html strings to the components. The split "highlight on the server, copy on the client" is what matters, not the exact directory.
 
 ---
 
 ## The `qaConfig` contract (qa-config.ts)
 
-Every value here is produced by `pre-flight-discovery.md`. `null` ⇒ render a gap, not a guess.
+Every value here comes from `pre-flight-discovery.md`. `null` renders a gap, not a guess.
 
 ```ts
 // app/qa/qa-config.ts — codegen fills every field from Phase-1 detection.
@@ -125,13 +125,13 @@ export interface QaConfig {
 export const qaConfig: QaConfig = {/* DETECTED — filled by the skill */} as QaConfig;
 ```
 
-> The golden's whole point: reviewers can see at a glance that the page contains **no literal endpoint, host, token, or commit SHA** — only `qaConfig.*` reads. The `apiRequests`, `db.roles`, `db.poolerNote`, and `db.rlsProbe` fields are ALL detection-driven: render only what the project actually exposes, with `null`/empty rendering a gap. The sample-project values (signup/signin/tokens, BYPASSRLS roles, Supabase pooler) are EXAMPLES — never bake them into a fresh run.
+> The point of the golden is that a reviewer sees at a glance that the page contains no literal endpoint, host, token or commit SHA, only `qaConfig.*` reads. The `apiRequests`, `db.roles`, `db.poolerNote` and `db.rlsProbe` fields are all detection-driven: render only what the project exposes, and let `null` or empty render a gap. The sample-project values (signup, signin and tokens, BYPASSRLS roles, the Supabase pooler) are examples, and a fresh run never bakes them in.
 
 ---
 
 ## Color system (domain accents)
 
-Use the host's token palette; map a hue per domain so a tester learns the page visually:
+Use the host's token palette and map one hue per domain, so a tester learns the page visually.
 
 | Domain | Accent (Tailwind family) | Icon (lucide) |
 | --- | --- | --- |
@@ -142,11 +142,11 @@ Use the host's token palette; map a hue per domain so a tester learns the page v
 | UI testing | `pink` | `MousePointerClick` / `TestTube2` |
 | Env setup | `cyan` | `Terminal` |
 
-Accents are `border-l-4` + a soft `bg-<hue>-50 dark:bg-<hue>-950/30` for callouts. Keep body text on the host's `foreground`/`muted-foreground` tokens so dark/light just works.
+Accents are `border-l-4` plus a soft `bg-<hue>-50 dark:bg-<hue>-950/30` for callouts. Body text stays on the host's `foreground` and `muted-foreground` tokens, so dark and light work without extra code.
 
 ---
 
-## Golden — `page.tsx` (Server Component)
+## Golden: `page.tsx` (Server Component)
 
 ```tsx
 /* qa-guide-snapshot
@@ -165,9 +165,9 @@ export default function QaPage() {
 }
 ```
 
-## Golden — `QaShell.tsx` (async SERVER orchestrator)
+## Golden: `QaShell.tsx` (async SERVER orchestrator)
 
-`QaShell` is an **async Server Component** (no `'use client'`). It runs `prepareQa(config)` once — the single place async Shiki work happens — and threads the prepared html into the (client) `RequestCards`, `AgentCodeBlock`, and `TwoWayTabs`. Interactive leaves (`CopyButton`, `Toc`, tab triggers, the request toggle) carry their own `'use client'`.
+`QaShell` is an async Server Component (no `'use client'`). It runs `prepareQa(config)` once, the single place where async Shiki work happens, and threads the prepared html into the client `RequestCards`, `AgentCodeBlock` and `TwoWayTabs`. The interactive leaves (`CopyButton`, `Toc`, the tab triggers, the request toggle) carry their own `'use client'`.
 
 ```tsx
 import { Toc } from "./Toc";
@@ -298,15 +298,15 @@ export async function QaShell({ config }: { config: QaConfig }) {
 }
 ```
 
-> `t.buildGap` is the fallback copy for the build stamp (es: `build local, sin SHA de despliegue`; en: `local build, no deploy SHA`).
+> `t.buildGap` is the fallback copy for the build stamp (es: `build local, sin SHA de despliegue`; en: `local build, no deploy SHA`). The same dictionaries carry the two lead-gap strings (`t.leadGap`: es `preguntá a tu lead`, en `ask your lead`; `t.authGap`: es `Auth no detectado: preguntá a tu lead.`, en `Auth not detected: ask your lead.`), so no golden hardcodes one language.
 >
-> `Section` is a tiny local wrapper (Card + accent border + anchor heading + a copy-link button). `TrinityCards` renders the three-card grid from `mcp-and-env-setup.md` §3. The §4 DB section also renders the roles table + REVOKE callout + pooler + RLS-probe callouts (see "DB-roles depth" in `page-structure.md` §4) — all conditional on the detected `config.db.*` fields. `es`/`en` are copy dictionaries; `qaConfig.lang` (Q5) picks the active one.
+> `Section` is a tiny local wrapper (Card, accent border, anchor heading and a copy-link button). `TrinityCards` renders the three-card grid from `mcp-and-env-setup.md` §3. The §4 DB section also renders the roles table, the REVOKE callout, the pooler note and the RLS-probe callout (see "DB-roles depth" in `page-structure.md` §4), all conditional on the detected `config.db.*` fields. `es` and `en` are copy dictionaries, and `qaConfig.lang` (Q5) picks the active one.
 
 ---
 
 ## Server highlight pipeline (`_lib/highlight.ts` + `_lib/prepare.ts`)
 
-The single thing that makes the code blocks read like an IDE instead of a monochrome wall. **HARD RULE: never call the highlighter from a `'use client'` module.** Shiki loads WASM + grammars — it is server-only and expensive. Highlight on the server, pass html strings down. (Gated by Q6; reuse the host's highlighter if one exists. See `SKILL.md` Notes for the one-dependency sanction.)
+The highlighter is what makes the code blocks read like an IDE instead of a monochrome wall. Never call it from a `'use client'` module: Shiki loads WASM and grammars, so it is server-only and expensive. Highlight on the server and pass html strings down. Q6 gates this; reuse the host's highlighter if one exists (`SKILL.md` Notes has the one-dependency sanction).
 
 ```ts
 // app/qa/_lib/highlight.ts — server-only Shiki bridge.
@@ -388,13 +388,11 @@ export async function prepareQa(config: QaConfig) {
 }
 ```
 
-> `QaShell` is an **async Server Component** that calls `await prepareQa(config)` once and threads the prepared html into the client components. See the QaShell golden above (it is async; `'use client'` is gone from the shell).
-
 ---
 
 ## Build stamp (`_lib/build.ts`)
 
-The hero tells a tester WHICH deploy the page describes, so a finding can be pinned to a commit and "is my fix live?" is answered on the page itself. The value is read from the platform at RUNTIME; codegen only writes the env var NAMES into `qaConfig.build` (detected in `pre-flight-discovery.md`). Writing the SHA as a literal would be stale on the next deploy, and it would put a per-deploy value inside a file the idempotency diff reads.
+The hero tells a tester which deploy the page describes, so a finding can be pinned to a commit and "is my fix live?" is answered on the page itself. The value is read from the platform at runtime, and codegen writes only the env var names into `qaConfig.build` (detected in `pre-flight-discovery.md`). A literal SHA would go stale on the next deploy and would put a per-deploy value inside a file the idempotency diff reads.
 
 ```ts
 // app/qa/_lib/build.ts — server-only. Never import from a 'use client' module.
@@ -418,25 +416,25 @@ export function resolveBuild(build: QaConfig["build"]): BuildStamp | null {
 
 Rules:
 
-- **Server-side read only.** `resolveBuild` runs in the server `QaShell`. A statically prerendered `/qa` still shows the right commit, because every deploy rebuilds from its own commit. Keep the page on the Node runtime (dynamic `process.env[name]` lookups are a server feature).
-- **No server model?** (Vite SPA and similar) read the framework-prefixed build-time copy instead, e.g. `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` / `VITE_*` injected at build. Same rule: a build-time injection, never a value the skill writes.
-- **Fallback is visible, never silent.** No source detected (`build: null`) or the var is unset (local dev, a deploy without git metadata) → `t.buildGap`. The `qa-build-sha` node always renders so automation can read it; `data-sha` carries the full SHA (empty on fallback).
-- **Only the SHA.** Never render other platform env values next to it (`security-rules.md`).
+- **Read on the server only.** `resolveBuild` runs in the server `QaShell`. A statically prerendered `/qa` still shows the right commit, because every deploy rebuilds from its own commit. Keep the page on the Node runtime (dynamic `process.env[name]` lookups are a server feature).
+- **No server model** (a Vite SPA and similar): read the framework-prefixed build-time copy instead, for example `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` or a `VITE_*` value injected at build. The rule is the same: a build-time injection, never a value the skill writes.
+- **The fallback is visible.** When no source is detected (`build: null`) or the var is unset (local dev, a deploy without git metadata), the node shows `t.buildGap`. The `qa-build-sha` node always renders so automation can read it, and `data-sha` carries the full SHA (empty on the fallback).
+- **Render only the SHA.** No other platform env value appears next to it (`security-rules.md`).
 
 ---
 
-## Golden — `CodeBlock.tsx` (server highlight + two chrome variants)
+## Golden: `CodeBlock.tsx` (server highlight + two chrome variants)
 
-`CodeBlock` is an **async SERVER component** — it highlights inline. `CodeFrame` is **presentational** (no directive → usable in BOTH server and client trees). `CopyButton` is the **only** `'use client'` leaf.
+`CodeBlock` is an async server component that highlights inline. `CodeFrame` is presentational (no directive, so it works in both server and client trees). `CopyButton` is the only `'use client'` leaf.
 
-**Two chrome variants** so the surface matches the content:
+Two chrome variants make the surface match the content:
 
 | Variant    | For languages                         | Chrome                                            |
 | ---------- | ------------------------------------- | ------------------------------------------------- |
 | `terminal` | `bash` / `sh` / `shell` / `zsh`       | macOS traffic-light dots + lang label             |
 | `editor`   | `ts` / `json` / `jsonc` / `toml` / …  | filename tab + lang label                         |
 
-`variantFor(language)` picks automatically; pass `variant` to override. For agent config blocks, the filename comes from `AGENT_FILES` (claude → `.mcp.json`, opencode → `opencode.jsonc`, codex → `codex.toml`, gemini → `.gemini/settings.json`).
+`variantFor(language)` picks the variant automatically, and a `variant` prop overrides it. For agent config blocks the filename comes from `AGENT_FILES` (claude is `.mcp.json`, opencode is `opencode.jsonc`, codex is `codex.toml`, gemini is `.gemini/settings.json`).
 
 ```tsx
 // app/qa/_components/CodeBlock.tsx — async SERVER component. NEVER import highlight() from 'use client'.
@@ -538,9 +536,9 @@ export function AgentCodeBlock({ blocks, agents }: { blocks: Record<string, Agen
 
 ---
 
-## Golden — `RequestCard.tsx` + `RequestCards.tsx` (Postman-style request viewer)
+## Golden: `RequestCard.tsx` + `RequestCards.tsx` (Postman-style request viewer)
 
-The §5 default (Q8). **REPLACES the curl-wall `AuthMethods`** — a read-only request viewer with a METHOD badge (verb-colored), URL+copy, a Headers table, Body/Response editor panels, and a Visual/curl toggle. Keep the plain-curl `AuthMethods` (below) only as the Q8 fallback. **Detection-driven**: the skill reads the project's REAL auth requests into `apiRequests[]` — `<METHOD> <path>` placeholders, never baked-in signup/signin/token endpoints.
+This is the §5 default (Q8). It replaces the curl-wall `AuthMethods` with a read-only request viewer: a verb-colored METHOD badge, URL with copy, a Headers table, Body and Response editor panels, and a Visual/curl toggle. Keep the plain-curl `AuthMethods` (below) only as the Q8 fallback. The viewer is detection-driven: the skill reads the project's real auth requests into `apiRequests[]` as `<METHOD> <path>` placeholders and bakes in no signup, signin or token endpoints.
 
 ```tsx
 // app/qa/_components/RequestCard.tsx
@@ -641,11 +639,11 @@ export function RequestCards({ requests }: { requests: PreparedRequest[] }) {
 }
 ```
 
-> `data-testid`s: `qa-request-card`, `qa-request-toggle`, and the tab group reuses `qa-auth-methods` / `qa-auth-tab-<id>` (so it slots in where `AuthMethods` was). The `PreparedRequest` type comes from `_lib/prepare.ts`.
+> `data-testid`s: `qa-request-card` and `qa-request-toggle`; the tab group reuses `qa-auth-methods` and `qa-auth-tab-<id>`, so it slots in where `AuthMethods` was. The `PreparedRequest` type comes from `_lib/prepare.ts`.
 
 ---
 
-## Golden — `ArchDiagram.tsx` (Frontend → API → DB + MCP + Repos)
+## Golden: `ArchDiagram.tsx` (Frontend → API → DB + MCP + Repos)
 
 ```tsx
 import { Globe, Server, Database, GitBranch } from "lucide-react";
@@ -687,11 +685,11 @@ export function ArchDiagram({ config }: { config: QaConfig }) {
       <div className="mt-8 border-t border-dashed pt-6" data-testid="qa-repos">
         <p className="mb-3 flex items-center gap-2 text-sm font-semibold"><GitBranch className="h-4 w-4" /> Repositorios</p>
         {config.project.reposShape === "mono" ? (
-          <RepoRow label="Monorepo" url={config.project.backendRepo ?? config.project.frontendRepo} />
+          <RepoRow label="Monorepo" url={config.project.backendRepo ?? config.project.frontendRepo} gap={t.leadGap} />
         ) : (
           <div className="grid gap-2 md:grid-cols-2">
-            <RepoRow label="Frontend" url={config.project.frontendRepo} />
-            <RepoRow label="Backend" url={config.project.backendRepo} />
+            <RepoRow label="Frontend" url={config.project.frontendRepo} gap={t.leadGap} />
+            <RepoRow label="Backend" url={config.project.backendRepo} gap={t.leadGap} />
           </div>
         )}
       </div>
@@ -699,12 +697,12 @@ export function ArchDiagram({ config }: { config: QaConfig }) {
   );
 }
 
-function RepoRow({ label, url }: { label: string; url: string | null }) {
+function RepoRow({ label, url, gap }: { label: string; url: string | null; gap: string }) {
   return (
     <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 text-sm">
       <Badge>{label}</Badge>
       {url ? <a className="font-mono underline" href={url} target="_blank" rel="noopener noreferrer">{url}</a>
-           : <span className="text-muted-foreground">— preguntá a tu lead —</span>}
+           : <span className="text-muted-foreground">{gap}</span>}
     </div>
   );
 }
@@ -712,7 +710,7 @@ function RepoRow({ label, url }: { label: string; url: string | null }) {
 
 ---
 
-## Golden — `AuthMethods.tsx` (Q8 fallback), `TwoWayTabs.tsx`, `EnvSetup.tsx`
+## Golden: `AuthMethods.tsx` (Q8 fallback), `TwoWayTabs.tsx`, `EnvSetup.tsx`
 
 ```tsx
 // AuthMethods.tsx — the Q8=curl-blocks FALLBACK (RequestCards is the default).
@@ -722,8 +720,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CodeBlock } from "./CodeBlock";
 import type { QaConfig } from "../qa-config";
 export function AuthMethods({ config }: { config: QaConfig }) {
+  const t = config.lang === "es" ? es : en;
   const methods = config.api.authMethods;
-  if (!methods.length) return <p className="text-sm text-muted-foreground">Auth no detectado — preguntá a tu lead.</p>;
+  if (!methods.length) return <p className="text-sm text-muted-foreground">{t.authGap}</p>;
   return (
     <Tabs defaultValue={methods[0].id} data-testid="qa-auth-methods">
       <TabsList>{methods.map(m => <TabsTrigger key={m.id} value={m.id} data-testid={`qa-auth-tab-${m.id}`}>{m.label}</TabsTrigger>)}</TabsList>
@@ -816,37 +815,36 @@ export function EnvSetup({ config }: { config: QaConfig }) {
 
 ## data-testid conventions
 
-- Page root: `qa-page`. Title: `qa-title`. Build stamp: `qa-build-sha` (carries `data-sha="<full sha>"`, empty on fallback).
-- Sections: `qa-section-<name>` (`-trinity`, `-database`, `-api`, `-ui`, `-reference`). **One id per node** — never two on the same element.
+- Page root: `qa-page`. Title: `qa-title`. Build stamp: `qa-build-sha` (carries `data-sha="<full sha>"`, empty on the fallback).
+- Sections: `qa-section-<name>` (`-trinity`, `-database`, `-api`, `-ui`, `-reference`). One id per node, never two on the same element.
 - Credentials: `qa-credentials-card`, `qa-credentials-button`. Docs: `qa-docs-button`.
 - Code: `qa-code-block` (carries `data-variant="terminal|editor"`), `qa-copy-code-button`. Agent tabs: `qa-agent-tabs`, `qa-agent-tab-<agent>`.
-- Request viewer: `qa-request-card`, `qa-request-toggle`. The §5 tab group reuses `qa-auth-methods` / `qa-auth-tab-<id>` so it drops in where `AuthMethods` was.
-- Tabs: `qa-auth-methods`/`qa-auth-tab-<id>`, `qa-db-ways`, `qa-api-ways`. Env: `qa-env-setup`. Repos: `qa-repos`.
+- Request viewer: `qa-request-card`, `qa-request-toggle`. The §5 tab group reuses `qa-auth-methods` and `qa-auth-tab-<id>`, so it drops in where `AuthMethods` was.
+- Tabs: `qa-auth-methods` and `qa-auth-tab-<id>`, `qa-db-ways`, `qa-api-ways`. Env: `qa-env-setup`. Repos: `qa-repos`.
 - TOC: `qa-toc`, `qa-toc-link-<section>`.
 
 ---
 
 ## Responsive + a11y
 
-- Mobile-first. The `[16rem_1fr]` TOC grid collapses to single column under `lg`; on mobile the TOC becomes a top `<details>` or is omitted (sections still anchor-linkable).
-- ArchDiagram arrows flip horizontal→vertical under `md`. Two-way tabs and agent tabs scroll horizontally if cramped.
-- Accordions/tabs keyboard-navigable (shadcn primitives are). Icon-only buttons carry `aria-label`. Headings semantic (`h1` → `h2` per section).
-- Dark/light via the host theme — no inline colors; only token classes + the per-domain `<hue>` families (which have `dark:` variants).
+- Mobile-first. The `[16rem_1fr]` TOC grid collapses to a single column under `lg`; on mobile the TOC becomes a top `<details>` or is omitted (sections stay anchor-linkable).
+- ArchDiagram arrows flip from horizontal to vertical under `md`. Two-way tabs and agent tabs scroll horizontally when cramped.
+- Accordions and tabs are keyboard-navigable (the shadcn primitives are). Icon-only buttons carry `aria-label`. Headings are semantic (`h1`, then one `h2` per section).
+- Dark and light come from the host theme: no inline colors, only token classes and the per-domain `<hue>` families (which have `dark:` variants).
 
 ---
 
 ## Adapt-don't-copy checklist
 
-- [ ] `qaConfig` filled entirely from detection; grep the page for literal hosts/endpoints/tokens → must be zero.
-- [ ] **Build stamp is runtime-only.** `qaConfig.build.shaEnvVars` holds env var NAMES; grep `app/qa/**` for a 7-40 char hex commit literal → must be zero.
-- [ ] UI primitives = the detected host kit (not shadcn if the host uses MUI/Mantine/Chakra).
-- [ ] **Missing primitive ≠ missing dep.** If the golden needs a primitive the host kit has not scaffolded yet (e.g. Tabs, Badge) but the underlying dep already exists (`@radix-ui/*`) or none is needed (`cva`), scaffold the local `components/ui/<x>.tsx` in the host's style. Adding a local component file is NOT "adding a dependency" — it is allowed. The "never add a dep" rule is about `package.json`, not about local files.
-- [ ] **Custom token vocabulary?** The golden is coded against shadcn-neutral tokens (`text-muted-foreground`, `bg-card`, `border`). If the host uses a CUSTOM token system (e.g. `fg-0..4` / `surface-0..2` / `stroke-*` / `accent`), READ an existing host component (`components/ui/card.tsx`, a real page) for the real vocabulary and MAP the golden's classes onto it — do not emit raw shadcn-neutral classes the host app doesn't use. Domain-accent hues (amber/emerald/violet/cyan/pink/slate) come from default Tailwind and are safe regardless. Mirror the host's dark mechanism (`darkMode:'class'` vs `next-themes`); do not add `next-themes` if absent.
-- [ ] Icons = the detected icon lib (lucide here; swap if host differs; inline SVG if none).
-- [ ] Dark/light uses the host mechanism.
-- [ ] Visible copy in `qaConfig.lang` (Q5, the host's language signal); identifiers + `data-testid`s stay English.
+- [ ] `qaConfig` is filled entirely from detection. Grep the page for literal hosts, endpoints and tokens: the count is zero.
+- [ ] The build stamp is runtime-only. `qaConfig.build.shaEnvVars` holds env var names; grep `app/qa/**` for a 7 to 40 character hex commit literal: the count is zero.
+- [ ] UI primitives are the detected host kit (not shadcn when the host uses MUI, Mantine or Chakra).
+- [ ] A missing primitive is not a missing dependency. If the golden needs a primitive the host kit has not scaffolded yet (for example Tabs or Badge) but the underlying dependency exists (`@radix-ui/*`) or none is needed (`cva`), scaffold the local `components/ui/<x>.tsx` in the host's style. A local component file is allowed; the rule against adding a dependency is about `package.json`.
+- [ ] Custom token vocabulary. The golden is coded against shadcn-neutral tokens (`text-muted-foreground`, `bg-card`, `border`). If the host uses a custom token system (for example `fg-0..4`, `surface-0..2`, `stroke-*`, `accent`), read an existing host component (`components/ui/card.tsx`, a real page) for the real vocabulary and map the golden's classes onto it, so no raw shadcn-neutral class lands in an app that does not use them. The domain-accent hues (amber, emerald, violet, cyan, pink, slate) come from default Tailwind and are safe regardless. Mirror the host's dark mechanism (`darkMode:'class'` or `next-themes`) and add `next-themes` only if the host already has it.
+- [ ] Icons are the detected icon lib (lucide here; inline SVG if the host has none).
+- [ ] Visible copy is in `qaConfig.lang` (Q5, the host's language signal); identifiers and `data-testid`s stay English.
 - [ ] Agent tabs include only `qaConfig.mcp.agents`; the 4-tab set is the documentation default.
-- [ ] **Highlighter (Q6).** If the host already ships one (Shiki / Prism / highlight.js / `rehype-pretty-code`), adapt the `_lib/highlight.ts` bridge onto it instead of adding Shiki. Shiki is added ONLY when the host has none (the single sanctioned dep — `SKILL.md` Notes). NEVER import `highlight()` from a `'use client'` module — highlight server-side, pass html down. If the framework has no server model, run it at build / in the route loader.
-- [ ] **Request viewer (Q8).** `apiRequests[]` is filled from the project's DETECTED auth requests (`<METHOD> <path>` placeholders) — never the example signup/signin/token shapes. Fall back to plain-curl `AuthMethods` only when the host kit can't render tabs/tables.
-- [ ] **Agentic UI driver (Q7).** Default `playwright-cli` (binary + skill); ArchDiagram UI badge = "playwright-cli → UI". Use a `@playwright/mcp` block only when detection says so.
-- [ ] **DB depth (only what exists).** Render `db.roles` / `db.revokedColumns` / `db.poolerNote` / `db.rlsProbe` only when the project actually has them; `null`/empty → omit the callout, don't fabricate roles or an RLS story.
+- [ ] Highlighter (Q6). If the host already ships one (Shiki, Prism, highlight.js, `rehype-pretty-code`), adapt the `_lib/highlight.ts` bridge onto it instead of adding Shiki. Add Shiki only when the host has none (the single sanctioned dependency, `SKILL.md` Notes). Highlight on the server and pass html down; a `'use client'` module never imports `highlight()`. With no server model, run it at build time or in the route loader.
+- [ ] Request viewer (Q8). `apiRequests[]` is filled from the project's detected auth requests (`<METHOD> <path>` placeholders), not the example signup, signin or token shapes. Fall back to plain-curl `AuthMethods` only when the host kit cannot render tabs or tables.
+- [ ] Agentic UI driver (Q7). The default is `playwright-cli` (binary and skill), and the ArchDiagram UI badge reads "playwright-cli → UI". Use a `@playwright/mcp` block only when detection says so.
+- [ ] DB depth. Render `db.roles`, `db.revokedColumns`, `db.poolerNote` and `db.rlsProbe` only when the project has them; `null` or empty omits the callout, with no invented roles or RLS story.

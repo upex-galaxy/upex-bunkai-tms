@@ -1,32 +1,30 @@
-# Ruleset Parity — the declared strategy and the enforced host, kept in one shape
+# Ruleset parity: the declared strategy and the enforced host, in one shape
 
 `git_strategy` in `.agents/project.yaml` says what the team decided. The host says what is actually enforced. This file owns the mapping between them and the tool that reconciles it: `bun run git:policy`.
 
-> **Why a tool and not a procedure.** SKILL.md Step 1b has always specified this reconciliation in prose, for an agent to carry out by hand. It kept not happening. The boilerplate itself shipped `require_pr_reviews: 0` against a host demanding one approval plus a code-owner review, and nobody noticed until a merge was refused with `the base branch policy prohibits the merge`. A script performs every query on every run, which is the one property prose cannot guarantee.
+> Why a tool and not a procedure: a script performs every query on every run, which prose cannot guarantee.
 
----
 
 ## 1. Commands
 
 | Command | Reads host | Writes host | Writes yaml | Exit |
 | --- | --- | --- | --- | --- |
 | `bun run git:policy plan` | no | no | no | 0 |
-| `bun run git:policy verify` | yes | no | no | **1 on unaccepted drift**; 0 in parity, when every drift is ACCEPTED (§2b), or when the host is unreachable (warned, not verified) |
+| `bun run git:policy verify` | yes | no | no | 1 on unaccepted drift; 0 in parity, when every drift is ACCEPTED (§2b), or when the host is unreachable (warned, not verified) |
 | `bun run git:policy verify --stamp` | yes | no | `meta.policy_verified` + `policy_source` (`verified`, or `accepted` when accepted divergences exist) when clean | same |
-| `bun run git:policy apply` | yes | no (dry run) | no | 0 / 1 (unreachable host is fatal: an empty reading would derive a payload that drops every host rule) |
-| `bun run git:policy apply --yes` | yes | **yes** | no | 0 / 1 |
+| `bun run git:policy apply` | yes | no (dry run) | no | 0 / 1 (an unreachable host is fatal: an empty reading would derive a payload that drops every host rule) |
+| `bun run git:policy apply --yes` | yes | yes | no | 0 / 1 |
 
 `apply` is a dry run by default. `--yes` is what writes. `--allow-loosening` is additionally required for any change that removes a guard or lowers the bar (see §4).
 
-An unreachable host (offline, no `gh`, no auth) makes `verify` warn and exit 0: absence of data is not drift. The same law covers a ruleset whose `bypass_actors` the active `gh` account may not read (GitHub omits the key for non-admins): `verify` reports it as `UNKNOWN`, names the account, and never counts it as drift.
+An unreachable host (offline, no `gh`, no auth) makes `verify` warn and exit 0, because absence of data is not drift. The same holds for a ruleset whose `bypass_actors` the active `gh` account may not read (GitHub omits the key for non-admins): `verify` reports it as `UNKNOWN`, names the account, and never counts it as drift.
 
----
 
-## 2. The mapping — `git_strategy` to ruleset
+## 2. The mapping from `git_strategy` to ruleset
 
 ### Which branches the ruleset covers
 
-Derived from the strategy shape, then **unioned** with whatever `protected:` already lists. An operator may protect more than the strategy implies; narrowing that silently would itself be a loosening.
+Derived from the strategy shape, then unioned with whatever `protected:` already lists. An operator may protect more than the strategy implies; narrowing that silently would itself be a loosening.
 
 | Strategy | Branches covered |
 | --- | --- |
@@ -42,15 +40,15 @@ Derived from the strategy shape, then **unioned** with whatever `protected:` alr
 | `deletion` | always | every strategy protects against branch deletion |
 | `non_fast_forward` | always | blocks force-push |
 | `creation` | always | |
-| `pull_request` | **omitted** when `policy.direct_push_to_protected: allowed` | the `pull_request` rule IS what blocks a direct push. Declaring `allowed` while shipping the rule is the exact contradiction this tool exists to catch, unless that exact divergence is listed in `policy.accepted_divergences` (§2b), in which case the host's rule is **carried forward as-is**. |
+| `pull_request` | omitted when `policy.direct_push_to_protected: allowed` | the `pull_request` rule is what blocks a direct push. Declaring `allowed` while shipping the rule is the contradiction this tool exists to catch, unless that exact divergence is listed in `policy.accepted_divergences` (§2b): then the host's rule is carried forward as-is. |
 | `pull_request.required_approving_review_count` | `policy.require_pr_reviews` (`null` → `0`) | |
-| `pull_request.require_code_owner_review` | **derived** from whether a `CODEOWNERS` file exists | never declared — see §3 |
-| `pull_request.allowed_merge_methods` | `decisions.feature_merge` | `merge-commit`→`[merge]`, `squash`→`[squash]`, `rebase-merge`→`[rebase]`. On `n/a` the host's current value is **preserved**, because a non-decision must not widen what the repo permits. |
-| `required_signatures`, `required_status_checks`, anything else | **preserved from the existing ruleset** | not derivable from `git_strategy`; dropping a guard the tool has no opinion about is a silent loosening |
+| `pull_request.require_code_owner_review` | derived from whether a `CODEOWNERS` file exists | never declared, see §3 |
+| `pull_request.allowed_merge_methods` | `decisions.feature_merge` | `merge-commit`→`[merge]`, `squash`→`[squash]`, `rebase-merge`→`[rebase]`. On `n/a` the host's current value is preserved, because a non-decision must not widen what the repo permits. |
+| `required_signatures`, `required_status_checks`, anything else | preserved from the existing ruleset | not derivable from `git_strategy`; dropping a guard the tool has no opinion about is a silent loosening |
 
 ### 2b. Accepted divergences: intended disagreement, formally declared
 
-Sometimes BOTH sides are right on purpose. This boilerplate declares `direct_push_to_protected: allowed` (how work actually lands: the admin credential is on the bypass list) while the host keeps a `pull_request` rule (protecting every non-bypass contributor). That is not drift to fix; it is a decision to record.
+Sometimes both sides are right on purpose: this boilerplate declares `direct_push_to_protected: allowed` (how work actually lands: the admin credential is on the bypass list) while the host keeps a `pull_request` rule (protecting every non-bypass contributor). The pair is a decision to record, and there is no drift to fix.
 
 Declare it in `.agents/project.yaml`:
 
@@ -67,25 +65,23 @@ git_strategy:
 
 Effects:
 
-- **`verify`** reports the matching finding under `ACCEPTED (n)` with its reason, exits 0, and `--stamp` records `policy_source: accepted` (a distinct value: `verified` still means "host matches the yaml exactly").
-- **`verify` flags stale entries**: an accepted divergence that no longer matches any drift is reported as a NOTE, so the list cannot accumulate dead exceptions. A field whose host side could not be read is never called stale.
-- **`apply`** preserves the host's side of the accepted field instead of deriving its own (for `direct_push_to_protected`: the host's `pull_request` rule is carried forward verbatim), so applying never bulldozes an accepted divergence.
+- `verify` reports the matching finding under `ACCEPTED (n)` with its reason and exits 0. `--stamp` records `policy_source: accepted`, a distinct value (`verified` still means "host matches the yaml exactly").
+- `verify` flags stale entries: an accepted divergence that no longer matches any drift is reported as a NOTE, so the list cannot accumulate dead exceptions. A field whose host side could not be read is never called stale.
+- `apply` preserves the host's side of the accepted field instead of deriving its own (for `direct_push_to_protected`: the host's `pull_request` rule is carried forward verbatim), so applying never bulldozes an accepted divergence.
 
-Acceptance is per-field and needs a reason. The yaml entry is what the tool reads; the project's `.agents/instructions/agent-project.md` → `## Git Strategy (this repository)` may carry the prose context.
+Acceptance is per field and needs a reason. The yaml entry is what the tool reads; the project's `.agents/instructions/agent-project.md` under `## Git Strategy (this repository)` may carry the prose context.
 
----
 
-## 3. What this deliberately does not manage
+## 3. What this does not manage, on purpose
 
-**`bypass_actors`.** Real bypass entries need GitHub actor IDs — an org-admin role, specific user IDs. That is organisation identity, not project configuration, and it must not live in a versioned per-project file that gets copied between repos. `verify` reports the bypass list; `apply` omits the field on update so the host keeps whatever is configured, and seeds an org-admin entry only when creating a ruleset from scratch on a project that declared `admin_bypass: true`.
+`bypass_actors`: real bypass entries need GitHub actor IDs (an org-admin role, specific user IDs). That is organisation identity, not project configuration, so it does not belong in a versioned per-project file that gets copied between repos. `verify` reports the bypass list; `apply` omits the field on update so the host keeps whatever is configured, and seeds an org-admin entry only when creating a ruleset from scratch on a project that declared `admin_bypass: true`.
 
-**`CODEOWNERS`.** The tool derives `require_code_owner_review` from whether the file exists rather than reading it from yaml. Turning that flag on without the file produces a requirement **nobody outside the bypass list can ever satisfy** — the merge is refused, and the only way through is a bypass, which is strictly worse than no rule. `verify` reports that combination as drift with a named remedy.
+`CODEOWNERS`: the tool derives `require_code_owner_review` from whether the file exists rather than reading it from yaml. Turning that flag on without the file produces a requirement nobody outside the bypass list can satisfy. The merge is refused and the only way through is a bypass, which is worse than no rule. `verify` reports that combination as drift with a named remedy.
 
-**Organisation-level rulesets.** `GET /orgs/{org}/rulesets` returns `403 Upgrade to GitHub Team` on a Free plan, so the unit of configuration here is the repository. A team that later gets org rulesets should treat this tool as the per-repo layer beneath them.
+Organisation-level rulesets: org-level rulesets may be unavailable on the repo's plan (`GET /orgs/{org}/rulesets` answers `403` there), so the unit of configuration here is the repository. A team that later gets org rulesets should treat this tool as the per-repo layer beneath them.
 
-**Classic branch protection.** `verify` READS it, because a `404` on `branches/{b}/protection` means "not configured through that mechanism", never "unprotected". `apply` never writes it: mixing both mechanisms on one branch produces a union nobody can reason about.
+Classic branch protection: `verify` reads it, because a `404` on `branches/{b}/protection` means "not configured through that mechanism", never "unprotected". `apply` does not write it, because mixing both mechanisms on one branch produces a union nobody can reason about.
 
----
 
 ## 4. The loosening guard
 
@@ -97,21 +93,23 @@ Acceptance is per-field and needs a reason. The yaml entry is what the tool read
 - turns off `require_code_owner_review`;
 - permits a merge method the host forbids.
 
-A tool that can silently open `main` is a worse problem than the drift it fixes. The flag exists because some of these are legitimate and intended — turning off an unsatisfiable code-owner requirement, for instance — but each one has to be asked for.
+A tool that can silently open `main` is a worse problem than the drift it fixes. Some of these changes are legitimate (turning off an unsatisfiable code-owner requirement, for instance), so the flag exists, and each one has to be asked for.
 
----
 
 ## 5. When to run which
 
-**`verify` on the first push / PR / merge intent of a session.** This is Step 1b, now executable. It is read-only and cheap. `--stamp` records the reconciliation so later operations know how far the yaml can be trusted.
+`verify` on the first push, PR or merge intent of a session. This is Step 1b, executable. It is read-only and cheap. `--stamp` records the reconciliation so later operations know how far the yaml can be trusted.
 
-**`apply` right after Strategy Setup**, and after any deliberate change to `git_strategy.policy`. Always read the dry run before passing `--yes`.
+`apply` right after Strategy Setup, and after any deliberate change to `git_strategy.policy`. Always read the dry run before passing `--yes`.
 
-**Never `apply` to fix a `verify` failure you have not read.** Drift has three legitimate resolutions and only one of them is "change the host": the yaml may be the wrong side, or the divergence may be intended: record it in `git_strategy.policy.accepted_divergences` (§2b) with a reason, and summarize the WHY in the project's `.agents/instructions/agent-project.md` → `## Git Strategy (this repository)` if it needs prose context.
+`verify` is deliberately not a hook gate. It runs when an agent reaches the first push, PR or merge intent (Step 1b), so a freshly scaffolded project whose inherited policy is not yet reconciled can still push for reasons unrelated to the host.
 
----
+Read a `verify` failure before running `apply`. Drift has three resolutions and only one of them changes the host: the yaml may be the wrong side, or the divergence may be intended, in which case record it in `git_strategy.policy.accepted_divergences` (§2b) with a reason, and summarize the WHY in the project's own `.agents/instructions/agent-project.md` under `## Git Strategy (this repository)` if it needs prose context.
 
-## 6. Worked example — the drift this tool was built from
+`apply --yes` writes to the host, an outward action. With a person present, show the dry run and get a yes. A supervised worker leaves the yes to its conductor. A routine runs `verify` and the dry run, then stops and reports unless the delegating brief names the `apply`; `--allow-loosening` always needs a person or a brief that names it (`agentic-dev-core/references/decision-protocol.md`).
+
+
+## 6. Worked example: the drift this tool was built from
 
 The boilerplate declared, and the host enforced:
 

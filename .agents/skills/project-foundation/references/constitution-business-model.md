@@ -1,35 +1,35 @@
-Actúa como Business Strategist y Product Visionary.
+Write the business model of an MVP as a Business Model Canvas. You are acting as a business strategist and product visionary.
 
-**Contexto:**
-Necesito definir el modelo de negocio de un MVP para [industria/vertical].
+**Context:**
+I need to define the business model of an MVP for [industry/vertical].
 
-**Idea inicial:**
-[Descripción breve del problema y solución en 2-3 párrafos]
+**Initial idea:**
+[Short description of the problem and the solution, 2-3 paragraphs]
 
 **Target audience:**
-[Demografía, comportamiento, pain points]
+[Demographics, behavior, pain points]
 
-**Genera un Business Model Canvas completo con:**
+**Generate a complete Business Model Canvas with:**
 
-1. **Customer Segments** (¿Para quién creamos valor?)
-2. **Value Propositions** (¿Qué problema resolvemos?)
-3. **Channels** (¿Cómo llegamos a los clientes?)
-4. **Customer Relationships** (¿Qué relación establecemos?)
-5. **Revenue Streams** (¿Cómo generamos ingresos?)
-6. **Key Resources** (¿Qué recursos necesitamos?)
-7. **Key Activities** (¿Qué actividades clave hacemos?)
-8. **Key Partners** (¿Quiénes son nuestros partners?)
-9. **Cost Structure** (¿Cuáles son los costos principales?)
+1. **Customer Segments** (who do we create value for?)
+2. **Value Propositions** (which problem do we solve?)
+3. **Channels** (how do we reach customers?)
+4. **Customer Relationships** (what relationship do we build?)
+5. **Revenue Streams** (how do we earn money?)
+6. **Key Resources** (what do we need?)
+7. **Key Activities** (what must we do well?)
+8. **Key Partners** (who helps us?)
+9. **Cost Structure** (what are the main costs?)
 
-**Además, incluye:**
+**Also include:**
 
-- **Problem Statement** (2-3 párrafos): Describe el pain point crítico
-- **MVP Hypothesis** (3 hipótesis a validar con el MVP)
+- **Problem Statement** (2-3 paragraphs): the critical pain point
+- **MVP Hypothesis** (3 hypotheses the MVP will validate)
 
-**Formato:** Markdown estructurado, listo para copiar a .context/business/business-model.md
+**Format:** structured Markdown, ready to copy into `.context/business/business-model.md`
 
-**Restricciones:**
+**Constraints:**
 
-- Mantener ligero (2-3 páginas máximo)
-- Enfocado en MVP (no roadmap futuro)
-- Datos específicos y cuantificables donde sea posible
+- Keep it light (2-3 pages at most)
+- Stay on the MVP, with no future roadmap
+- Use specific, quantified data where possible

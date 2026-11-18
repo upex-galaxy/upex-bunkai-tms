@@ -22,7 +22,7 @@ claude
 
 **Lanzamientos sin línea de comando** (la app de escritorio, un worker supervisado): no necesitan nada extra, porque el loader lee `.env` igual. Después de un cambio de `.env`, reiniciá la sesión. Una instalación vieja escribía una copia en texto plano en el bloque `env` de `.claude/settings.local.json`; `bun run harness:env` la retira (si coincide con `.env` la borra, si no la mueve a `.auth/harness-env-backup/` y la nombra) y `bun run harness:env:check` sale con 1 mientras quede una.
 
-**Tres harnesses, un solo inventario**: los servidores que declara `.mcp.json` viven también en `opencode.jsonc` (OpenCode) y en `.codex/config.toml` (Codex CLI + Desktop, ver [codex.md](./codex.md)). `bun run agents:compat:check` toma `.mcp.json` como conjunto canónico, normaliza los tres formatos y falla si un servidor falta en otro host, existe en un solo host o depende de otras variables de `.env`. Si agregás un servidor acá, agregalo en los otros hosts en uso (`harnesses:` en `.agents/project.yaml`). Las instrucciones (`AGENTS.md`, que Claude Code lee vía el shim `CLAUDE.md`) y las skills (`.agents/skills/`, alias generado `.claude/skills`) también son una sola copia: ver `.agents/instructions/agent-harnesses.md` §5.5.
+**Un solo inventario para todos los harnesses**: los servidores que declara `.mcp.json` viven también en `opencode.jsonc` (OpenCode), en `.codex/config.toml` (Codex CLI + Desktop, ver [codex.md](./codex.md)) y en `.pi/mcp.json` (Pi, ver [docs/mcp/README.md](../../mcp/README.md#pi)). `bun run agents:compat:check` toma `.mcp.json` como conjunto canónico, normaliza los formatos y falla si un servidor falta en otro host, existe en un solo host o depende de otras variables de `.env`. Si agregás un servidor acá, agregalo en los otros hosts en uso (`harnesses:` en `.agents/project.yaml`). Las instrucciones (`AGENTS.md`, que Claude Code lee vía el shim `CLAUDE.md`) y las skills (`.agents/skills/`, alias generado `.claude/skills`) también son una sola copia: ver `.agents/instructions/agent-harnesses.md` §5.5.
 
 **Qué NO va en `.mcp.json`**: la búsqueda web (Exa primero, Tavily segundo) se conecta una vez por máquina, en el scope `user` o como conector de claude.ai; la automatización de browser es `playwright-cli`, no un MCP (`.agents/instructions/agent-tool-resolution.md` §6). Las skills piden capacidades, no servidores: `.agents/skills/agentic-dev-core/references/mcp-capabilities.md`.
 
@@ -60,7 +60,7 @@ claude mcp remove mi-servidor
 
 ### Método 2: Edición manual de `.mcp.json` (scope `project`)
 
-Para un servidor que el equipo comparte. Copiá el bloque del template opt-in ([`docs/mcp/claude.template.json`](../../mcp/claude.template.json)) y replicalo en los otros dos hosts:
+Para un servidor que el equipo comparte. Copiá el bloque del template opt-in ([`docs/mcp/claude.template.json`](../../mcp/claude.template.json)) y replicalo en el archivo MCP de cada harness que el proyecto usa (`harnesses:` en `.agents/project.yaml`; la fila MCP de la tabla de superficies en `.agents/instructions/agent-harnesses.md` dice qué archivo es de cuál):
 
 ```json
 {
@@ -121,7 +121,7 @@ Verificá que el binario esté en el `PATH` del proceso (`which npx`, `which bun
 ### Herramientas no aparecen
 
 1. `/mcp` dentro de la sesión: muestra el estado de cada servidor y permite reconectar o autenticar.
-2. `bun run agents:compat:check`: si falla, `.mcp.json` divergió de los otros dos hosts.
+2. `bun run agents:compat:check`: si falla, `.mcp.json` divergió del archivo MCP de otro harness en uso.
 3. Reiniciá Claude Code después de cambiar la configuración.
 
 ---

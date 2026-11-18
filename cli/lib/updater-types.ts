@@ -247,6 +247,12 @@ export interface AdoptCollision {
   retired?: boolean
 }
 
+/** A boilerplate-only path the cleanup kept: the project edited its copy, protects it, or upstream's copy could not be read. */
+export interface BoilerplateCopyKept {
+  path: string
+  reason: 'edited' | 'protected' | 'unverified'
+}
+
 export interface RunSummary {
   applied: AppliedFile[]
   skipped: DeltaEntry[]
@@ -275,6 +281,16 @@ export interface RunSummary {
   adoptCollisions?: AdoptCollision[]
   /** Adopted repos only: upstream ignore lines NOT appended because they would hide files the app tracks. */
   ignoreLinesWithheld?: IgnoreLineWithheld[]
+  /** Upstream's unedited copies of boilerplate-only files this run removed (`cleanupBoilerplateCopies`). */
+  boilerplateCopiesRemoved?: string[]
+  /** Boilerplate-only paths the project holds that the cleanup kept, with why. */
+  boilerplateCopiesKept?: BoilerplateCopyKept[]
+  /** Where the removed copies were saved (`.backups/update-<ts>/`), when any were removed. */
+  boilerplateCleanupBackup?: string | null
+  /** Protected updater files a parent older than this updater overwrote, and what the re-exec child did about them (`repairParentOverwrites`). */
+  selfUpdateRepair?: { restored: string[], unloadable: string[], backupDir: string | null }
+  /** The self-update was undone and the run aborted: the new updater does not load (`selfUpdateImportError`), with the protected files it kept. */
+  selfUpdateBlocked?: { protectedPaths: string[], error: string }
 }
 
 export interface MergeResult {
@@ -371,6 +387,8 @@ export interface PackageJsonSpec {
 export interface PackageJsonKeyDrift {
   localValue: string
   upstreamValue: string
+  /** Upstream's value at the last sync (the lock's `lastSyncedSha`), when the clone holds it. */
+  cursorValue?: string
 }
 
 export interface PackageJsonSectionDelta {
@@ -563,13 +581,21 @@ export interface UpdaterConfig {
    * clone omits those files and upstream-comparison hooks silently no-op.
    */
   sparseExtraPaths?: string[]
+  /**
+   * Boilerplate-only files (the boilerplate's own tests, snapshots, fixtures,
+   * maintainer scripts) to REMOVE from a project that already holds upstream's
+   * unedited copy (`cleanupBoilerplateCopies`). Unset in the boilerplate's own
+   * checkout, where the cleanup is inert.
+   */
+  cleanupRepoOnly?: { paths: string[], patterns: RegExp[] }
   agentsFrameworkFiles?: string[]
   /**
    * On top of `repoOnlyPaths`, matched against the repo-relative path: upstream
-   * paths this repo never receives. The wrapper sets it for an ADOPTED app
-   * only (the `--adopt` run and every run after it), e.g. the boilerplate's own
-   * numbered ADRs, which would land in the app's decision log and numbering.
-   * Unset on a greenfield project, which keeps receiving them.
+   * paths this repo never receives. The wrapper always sets the tooling's own
+   * tests and snapshots (`BOILERPLATE_TEST_PATTERNS`), and for an ADOPTED app
+   * (the `--adopt` run and every run after it) the boilerplate's numbered ADRs
+   * too, which would land in the app's decision log and numbering; a greenfield
+   * project keeps receiving those.
    */
   repoOnlyPatterns?: RegExp[]
   /**

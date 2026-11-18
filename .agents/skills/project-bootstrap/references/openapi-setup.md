@@ -1,151 +1,117 @@
-Actúa como Senior API Developer, Documentation Engineer, y Full-Stack Developer.
+# OpenAPI and Zod setup
 
----
+Phase 3 (infrastructure) add-on of `project-bootstrap`. It gives the app one source for its API documentation: a Zod-based OpenAPI registry, a `/api/openapi` endpoint that serves the spec as JSON, and a `/api/docs` page that renders the spec with Scalar (a Next.js route handler). The auth methods live in the spec (`info.description` plus `securitySchemes`), and Scalar renders them natively, so there are no custom React components.
 
-## 🎯 TAREA
+The add-on is done when `/api/openapi` returns valid JSON, `/api/docs` renders the endpoints and the auth section outside production, and the checklist at the end is ticked.
 
-**🔧 FEATURE: OpenAPI + Zod Setup (Fase 3 - Infrastructure)**
+## Read the `stack:` block first
 
-Configurar un sistema completo de **documentación de APIs** que incluye:
+The add-on runs the same way on a greenfield project and on an existing app (verdict `existing-app` of the entry guard, `SKILL.md` Phase 3). Before the first step, read `.agents/project.yaml` `stack:` (contract: `.agents/README.md`, section `stack`) and resolve every literal in this file against it.
 
-- Registry OpenAPI con Zod schemas
-- Endpoint `/api/openapi` que genera spec JSON
-- Ruta `/api/docs` con UI interactiva (**Scalar**, vía route handler)
-- Métodos de autenticación documentados en el spec (`info.description` + `securitySchemes`), que Scalar renderiza nativamente
+- The example paths (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) are the greenfield defaults. Resolve them under `{{stack.app_root}}`. The generated types file is `{{stack.database.types_path}}`. With `stack.framework: nextjs-pages` the API lives in `pages/api/`.
+- App commands are `{{stack.package_manager}} run <script>`, with the script NAME taken from `stack.scripts`. A script set to `null` is skipped and the report says so; do not invent one. Install dependencies with that package manager and do not switch it.
+- What the app already has wins. An existing docs UI, error contract, auth scheme, Supabase client location or major version of a dependency (Zod, Next) is read and extended, never replaced or upgraded by this add-on. When the app and this file disagree, show the user both shapes (see "With nobody at the keyboard").
+- The Supabase project ref is `environments.<env>.db_project_ref`. Any touch to the database follows `agentic-dev-core/references/db-change-doctrine.md`.
 
----
+## Inputs
 
-## 🧭 PASO PREVIO: LEER EL BLOQUE `stack:`
+Read these files:
 
-Esta add-on corre igual en un proyecto greenfield y en una app existente (veredicto `existing-app` del guard de entrada, `SKILL.md` → Phase 3). Antes del primer paso, leer `.agents/project.yaml` → `stack:` (contrato: `.agents/README.md` → `stack`) y resolver con él todo lo que esta referencia escribe como literal:
+- `.context/PRD/executive-summary.md` for the project name and description.
+- `.agents/project.yaml` `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` of the active environment) for the Supabase project ref.
+- `src/lib/config.ts` for the existing configuration.
+- `src/lib/urls.ts` for the URLs per environment, if it exists.
+- `src/app/api/` for the existing endpoints, if any.
+- `package.json` for the current dependencies.
 
-- Las rutas de ejemplo (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) son el default greenfield: se resuelven bajo `{{stack.app_root}}`; el archivo de tipos es `{{stack.database.types_path}}`; con `stack.framework: nextjs-pages` la API vive en `pages/api/`.
-- Los comandos de la app son `{{stack.package_manager}} run <script>` con el NOMBRE de `stack.scripts`; un script en `null` se salta y se dice, nunca se inventa. Las dependencias se instalan con ese package manager, sin cambiarlo.
-- Lo que la app ya tiene gana: una UI de docs, un contrato de error, un esquema de auth, la ubicación de los Supabase clients o la versión mayor de una dependencia (Zod, Next) se leen y se extienden, nunca se reemplazan ni se actualizan desde esta add-on. Un choque se le muestra al usuario con las dos formas.
-- El Supabase project ref es `environments.<env>.db_project_ref`; todo toque a la base sigue `agentic-dev-core/references/db-change-doctrine.md`.
+Extract three things: the project name (the API title), the Supabase project ID (the auth cookie name) and the environment URLs (the `servers` of the spec).
 
----
-
-## 📥 INPUT REQUERIDO
-
-### 1. Contexto del Proyecto
-
-**Leer estos archivos:**
-
-- `.context/PRD/executive-summary.md` - Nombre y descripción del proyecto
-- `.agents/project.yaml` → `environments.<env>.db_project_ref` (`{{DB_PROJECT_REF}}` del ambiente activo) - Supabase project ref
-- `src/lib/config.ts` - Configuración existente
-- `src/lib/urls.ts` - URLs por ambiente (si existe)
-- `src/app/api/` - Endpoints existentes (si hay)
-- `package.json` - Dependencias actuales
-
-### 2. Información a Extraer
-
-- **Nombre del proyecto** → Para título de la API
-- **Supabase Project ID** → Para cookie name en auth
-- **URLs de ambientes** → Para servers en OpenAPI spec
-
----
-
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS
-
-### MCP Requeridos:
-
-1. **MCP Context7** - Para verificar versiones de dependencias
-
-### Dependencias a Instalar:
+Tools: the Context7 MCP, to confirm dependency versions. Dependencies to install:
 
 ```bash
 bun add @asteasolutions/zod-to-openapi zod
 ```
 
----
+## Mode detection
 
-## 🔀 DETECCIÓN DE MODO
-
-**Ejecutar análisis para determinar modo:**
+Run the analysis to pick the mode:
 
 ```bash
-# Verificar si existen endpoints custom
+# Check for custom endpoints
 ls -la src/app/api/ 2>/dev/null | grep -v "openapi" | wc -l
 
-# Verificar si ya existe estructura OpenAPI
+# Check whether an OpenAPI structure already exists
 ls -la src/lib/openapi/ 2>/dev/null
 ```
 
-**Resultado:**
-
-| Condición                                     | Modo         |
+| Condition                                     | Mode         |
 | --------------------------------------------- | ------------ |
-| No existe `src/app/api/` o solo tiene openapi | **PARCIAL**  |
-| Existen endpoints custom en `src/app/api/`    | **COMPLETO** |
+| No `src/app/api/`, or it only has openapi     | **PARTIAL**  |
+| Custom endpoints exist in `src/app/api/`      | **FULL**     |
 
-### Modo PARCIAL:
+PARTIAL mode creates:
 
-- Crea estructura base de OpenAPI
-- Endpoint `/api/openapi` funcional
-- UI `/api/docs` (Scalar) con info genérica
-- Sin schemas de dominio específicos
+- `src/lib/openapi/`: `registry.ts`, `index.ts`, `schemas/common.ts`, `schemas/index.ts`.
+- `src/app/api/openapi/route.ts`, the GET endpoint.
+- `src/app/api/docs/route.ts`, the Scalar route handler. It is one file and serves the UI from the spec. Scalar replaces the bespoke Redoc page and components: the multi-spec selector (`sources` config) and the auth panel (`info.description` and `securitySchemes`) come built in.
+- Generic info only, with no domain schemas.
 
-### Modo COMPLETO (adicional):
+FULL mode adds:
 
-- Analiza endpoints existentes
-- Crea schemas Zod por dominio
-- Registra endpoints en OpenAPI
-- Auth info panel contextualizado
+- Domain types in `src/types/`, the source of truth: `[domain].ts` with Zod schemas using `.openapi()` plus the inferred types, and validation helpers for the API routes.
+- Path registrations in `src/lib/openapi/schemas/`: `[domain].ts` with only `registry.registerPath()`, importing from `@/types`.
+- Every existing endpoint registered, and auth documented in `info.description` plus the registry `securitySchemes`, which Scalar renders at `/api/docs`.
 
----
+## Single source of truth
 
-## ⚠️ PATRÓN CRÍTICO: Single Source of Truth
+Define each schema once, in `src/types/`, and let the OpenAPI registry import it. The reason: if the TypeScript types and the OpenAPI schemas are two definitions, adding a field means editing both, and the documentation drifts the first time someone forgets one.
 
-> **IMPORTANTE:** Este patrón es OBLIGATORIO para evitar desincronización entre tipos y documentación OpenAPI.
-
-### El Problema (Anti-patrón)
+Wrong:
 
 ```
-src/types/user.ts           →  Define tipos TypeScript
-src/lib/openapi/schemas/users.ts  →  Define schemas Zod separados (¡DUPLICADO!)
+src/types/user.ts                 →  defines TypeScript types
+src/lib/openapi/schemas/users.ts  →  defines separate Zod schemas (DUPLICATE)
 
-Resultado: Al agregar un campo, debes actualizar AMBOS archivos.
-           Si olvidas uno, la documentación queda desincronizada.
+Result: adding a field means updating BOTH files.
+        Forget one and the documentation drifts.
 ```
 
-### La Solución (Patrón Correcto)
+Right:
 
 ```
-src/types/user.ts           →  Define schemas Zod con .openapi() + genera tipos
-src/lib/openapi/schemas/users.ts  →  Solo importa y registra paths (NO define schemas)
+src/types/user.ts                 →  defines Zod schemas with .openapi() and generates the types
+src/lib/openapi/schemas/users.ts  →  only imports and registers paths (defines NO schemas)
 
-Resultado: Cambiar types = automáticamente cambiar OpenAPI spec.
-           IMPOSIBLE desincronizarse.
+Result: changing the types changes the OpenAPI spec.
+        The two cannot drift.
 ```
 
-### Estructura de Archivos Correcta
+File layout:
 
 ```
-src/types/                          ← FUENTE DE VERDAD (schemas Zod + tipos)
+src/types/                          ← SOURCE OF TRUTH (Zod schemas + types)
 ├── user.ts                         ← UserSchema.openapi('User') + type User
 ├── booking.ts                      ← BookingSchema.openapi('Booking') + type Booking
 ├── communication.ts                ← ChannelSchema.openapi('Channel') + type Channel
 └── index.ts                        ← Barrel export
 
 src/lib/openapi/
-├── registry.ts                     ← Configuración central
+├── registry.ts                     ← Central configuration
 ├── index.ts                        ← Entry point
 └── schemas/
-    ├── common.ts                   ← Schemas genéricos (ErrorResponse, UUID, etc.)
-    ├── users.ts                    ← Solo registry.registerPath(), importa de @/types
-    ├── bookings.ts                 ← Solo registry.registerPath(), importa de @/types
+    ├── common.ts                   ← Generic schemas (ErrorResponse, UUID, etc.)
+    ├── users.ts                    ← Only registry.registerPath(), imports from @/types
+    ├── bookings.ts                 ← Only registry.registerPath(), imports from @/types
     └── index.ts                    ← Barrel export
 ```
 
-### Ejemplo Práctico
+Worked example. The schema and its inferred type live in `src/types/`:
 
 ```typescript
-// ✅ CORRECTO: src/types/communication.ts (FUENTE DE VERDAD)
-import { z } from '@/lib/openapi/zod'; // instancia única extendida — NUNCA importar de 'zod' si usás .openapi()
+// CORRECT: src/types/communication.ts (SOURCE OF TRUTH)
+import { z } from '@/lib/openapi/zod'; // single extended instance: never import from 'zod' if you use .openapi()
 
-// Schema con metadata OpenAPI
+// Schema with OpenAPI metadata
 export const CommunicationChannelSchema = z
   .object({
     id: z.uuid(),
@@ -155,29 +121,31 @@ export const CommunicationChannelSchema = z
   })
   .openapi('CommunicationChannel');
 
-// Tipo inferido AUTOMÁTICAMENTE (siempre sincronizado)
+// Type inferred AUTOMATICALLY (always in sync)
 export type CommunicationChannel = z.infer<typeof CommunicationChannelSchema>;
 
-// Schema para input (crear/actualizar)
+// Schema for input (create/update)
 export const ChannelInputSchema = CommunicationChannelSchema.omit({ id: true }).openapi(
   'ChannelInput'
 );
 export type ChannelInput = z.infer<typeof ChannelInputSchema>;
 
-// Helper de validación para usar en API routes
+// Validation helper for API routes
 export function isValidChannelType(type: string): boolean {
   return ['zoom', 'google_meet', 'phone', 'whatsapp'].includes(type);
 }
 ```
 
+The path file only registers paths:
+
 ```typescript
-// ✅ CORRECTO: src/lib/openapi/schemas/users.ts (SOLO REGISTRA PATHS)
+// CORRECT: src/lib/openapi/schemas/users.ts (ONLY REGISTERS PATHS)
 import { registry } from '../registry';
-import { z } from '../zod'; // instancia única extendida
-import { CommunicationChannelSchema, ChannelInputSchema } from '@/types/communication'; // ← IMPORTA de types, NO define aquí
+import { z } from '../zod'; // single extended instance
+import { CommunicationChannelSchema, ChannelInputSchema } from '@/types/communication'; // ← imports from types, does NOT define here
 import { ErrorResponseSchema } from './common';
 
-// Solo registra el PATH, no define schemas nuevos
+// Registers the PATH only, defines no new schemas
 registry.registerPath({
   method: 'put',
   path: '/users/me/communication-channels',
@@ -189,7 +157,7 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            channels: z.array(ChannelInputSchema), // ← USA schema importado
+            channels: z.array(ChannelInputSchema), // ← uses the imported schema
           }),
         },
       },
@@ -201,7 +169,7 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            channels: z.array(CommunicationChannelSchema), // ← USA schema importado
+            channels: z.array(CommunicationChannelSchema), // ← uses the imported schema
           }),
         },
       },
@@ -215,181 +183,133 @@ registry.registerPath({
 ```
 
 ```typescript
-// ❌ INCORRECTO: NO hagas esto (duplicación)
+// WRONG: duplicates the schema
 // src/lib/openapi/schemas/users.ts
 export const ChannelSchema = z
   .object({
-    // ← DUPLICADO de src/types/communication.ts
+    // ← DUPLICATE of src/types/communication.ts
     type: z.enum(['zoom', 'google_meet']),
     handle: z.string(),
   })
   .openapi('Channel');
 ```
 
-### Beneficio
-
-Al agregar un campo nuevo, solo editas UN archivo:
+With this layout a new field is one edit:
 
 ```typescript
-// src/types/communication.ts - agregar campo "priority"
+// src/types/communication.ts - add the "priority" field
 export const ChannelInputSchema = z.object({
   type: CommunicationChannelTypeSchema,
   handle: z.string().nullable().optional(),
   isActive: z.boolean().optional().default(true),
   priority: z.number().optional().default(0).openapi({
-    // ← NUEVO
+    // ← NEW
     description: 'Display priority (higher = first)',
   }),
 });
 
-// Automáticamente:
-// ✅ TypeScript types actualizados
-// ✅ Validación en runtime actualizada
-// ✅ OpenAPI spec actualizado
-// ✅ Documentación en /api/docs actualizada
+// Updated automatically:
+// - TypeScript types
+// - Runtime validation
+// - OpenAPI spec
+// - Documentation at /api/docs
 ```
 
-### Relación con los tipos generados de Supabase (`src/types/supabase.ts`)
+### Relation to the generated Supabase types
 
-Hay DOS familias de tipos en `src/types/` — no se pisan, pero hay que entender el límite:
+`src/types/` holds two families of types. They do not collide, but the boundary matters.
 
-| Familia | Origen | Naming | Rol |
+| Family | Origin | Naming | Role |
 | --- | --- | --- | --- |
-| `Database` (`supabase.ts`) | generada por `supabase gen types` (supabase-types-setup) | **snake_case** (`user_id`, `created_at`) — refleja columnas DB | Verdad de la **fila de la DB** (queries del cliente Supabase) |
-| Schemas Zod (`booking.ts`, etc.) | escritos a mano con `.openapi()` | normalmente **camelCase** (`userId`, `createdAt`) | Verdad del **contrato de la API** (validación + OpenAPI) |
+| `Database` (`supabase.ts`) | generated by `supabase gen types` (supabase-types-setup) | **snake_case** (`user_id`, `created_at`), mirrors the DB columns | Truth for the **DB row** (Supabase client queries) |
+| Zod schemas (`booking.ts`, etc.) | hand-written with `.openapi()` | usually **camelCase** (`userId`, `createdAt`) | Truth for the **API contract** (validation plus OpenAPI) |
 
-**Regla:**
+- The API payload (request and response) is defined by the Zod schema in `src/types/`, the single source for the contract and the OpenAPI spec.
+- The DB row is defined by the generated `Database`, the single source for data access.
+- The route handler is the mapping point: it validates with Zod, queries with the `Database` types, and maps snake_case to camelCase explicitly. Do not derive one family from the other blindly.
+- To avoid naming drift, pick ONE convention per project and document it: (a) Zod schemas in snake_case to match the DB (less mapping, a less idiomatic contract), or (b) camelCase in the API plus a mapping function.
 
-- El **payload de la API** (request/response) lo define el schema Zod en `src/types/` → fuente única del contrato + OpenAPI.
-- La **fila de la DB** la define `Database` generado → fuente única del acceso a datos.
-- El **route handler es el punto de mapeo**: valida con Zod, consulta con tipos `Database`, y mapea snake_case ↔ camelCase explícitamente. NO derives uno del otro a ciegas.
-- Para evitar drift de naming, podés: (a) mantener el schema Zod en snake_case para igualar la DB (menos mapeo, contrato menos idiomático), o (b) camelCase en la API + una función de mapeo. Elegí UNA convención por proyecto y documentala.
+## Steps
 
----
+### Phase 0: analysis and preparation
 
-## 📤 OUTPUT GENERADO
-
-### Modo PARCIAL:
-
-**Estructura OpenAPI (`src/lib/openapi/`):**
-
-- ✅ `registry.ts` - Configuración central
-- ✅ `index.ts` - Entry point
-- ✅ `schemas/common.ts` - Schemas base
-- ✅ `schemas/index.ts` - Barrel export
-
-**Endpoint (`src/app/api/openapi/`):**
-
-- ✅ `route.ts` - GET endpoint
-
-**UI (`src/app/api/docs/`):**
-
-- ✅ `route.ts` - Route handler de Scalar (un solo archivo; sirve la UI desde el spec)
-
-> Scalar reemplaza la página + componentes bespoke de Redoc. El selector multi-spec y el panel de auth se obtienen de forma nativa (config `sources` + `info.description`/`securitySchemes` del spec) — no se generan componentes React aparte.
-
-### Modo COMPLETO (adicional):
-
-**Tipos de dominio (`src/types/`):** ← FUENTE DE VERDAD
-
-- ✅ `[dominio].ts` - Zod schemas con `.openapi()` + tipos inferidos
-- ✅ Helpers de validación para API routes
-
-**Path registrations (`src/lib/openapi/schemas/`):**
-
-- ✅ `[dominio].ts` - Solo `registry.registerPath()`, importa de `@/types`
-- ✅ Endpoints registrados en registry
-- ✅ Auth documentada en `info.description` + `securitySchemes` del registry (Scalar la renderiza en `/api/docs`)
-
-> **Nota:** Los schemas de dominio viven en `src/types/`, NO en `src/lib/openapi/schemas/`
-
----
-
-## 🛠️ PASOS DETALLADOS
-
-### FASE 0: Análisis y Preparación
-
-**Paso 0.1: Detectar modo**
+**Step 0.1: detect the mode**
 
 ```bash
-# Contar endpoints (excluyendo openapi)
+# Count endpoints (excluding openapi)
 ENDPOINT_COUNT=$(find src/app/api -name "route.ts" 2>/dev/null | grep -v "openapi" | wc -l)
 
 if [ "$ENDPOINT_COUNT" -gt "0" ]; then
-  echo "Modo: COMPLETO ($ENDPOINT_COUNT endpoints encontrados)"
+  echo "Mode: FULL ($ENDPOINT_COUNT endpoints found)"
 else
-  echo "Modo: PARCIAL (sin endpoints custom)"
+  echo "Mode: PARTIAL (no custom endpoints)"
 fi
 ```
 
-**Paso 0.2: Extraer información del proyecto**
+**Step 0.2: extract the project information**
 
 ```bash
-# Nombre del proyecto
+# Project name
 grep -i "title\|name\|proyecto" .context/PRD/executive-summary.md | head -3
 
-# Supabase project ref (`.agents/instructions/agent-project-variables.md` §7: la identidad del proyecto vive en el yaml)
+# Supabase project ref (`.agents/instructions/agent-project-variables.md` §7: the project identity lives in the yaml)
 yq '.environments.<env>.db_project_ref' .agents/project.yaml
 ```
 
-**Guardar:**
+Keep two values:
 
-- `PROJECT_NAME` - Nombre para título de API
-- `SUPABASE_PROJECT_ID` - Para cookie name (el ref de 20 caracteres; si el yaml lo tiene en `null`, preguntar al usuario y guardarlo ahí con su OK)
+- `PROJECT_NAME`, the API title.
+- `SUPABASE_PROJECT_ID`, for the cookie name. It is the 20-character ref. If the yaml has `null`, ask the user and write the answer there once they confirm.
 
-**Paso 0.3: Verificar URLs**
+**Step 0.3: check the URLs**
 
 ```bash
-# Si existe urls.ts, usarlo
+# If urls.ts exists, use it
 cat src/lib/urls.ts 2>/dev/null | grep -E "staging|production"
 ```
 
-Si no existe, preguntar al usuario por las URLs.
+If `src/lib/urls.ts` does not exist, ask the user for the URLs.
 
----
+### Phase 1: install dependencies
 
-### FASE 1: Instalar Dependencias
-
-**Paso 1.1: Verificar dependencias existentes**
+**Step 1.1: check what is already installed**
 
 ```bash
 grep -E "zod|openapi|@scalar" package.json
 ```
 
-**Paso 1.2: Instalar (si necesario)**
+**Step 1.2: install what is missing**
 
 ```bash
-# Consultar Context7 primero para versiones actuales.
-# Generación del spec (UI-agnóstico) — Zod v4 + zod-to-openapi v8 (combinación oficial actual):
+# Query Context7 first for the latest versions.
+# Spec generation (UI-agnostic): Zod v4 + zod-to-openapi v8 (the supported pairing):
 bun add zod@^4 @asteasolutions/zod-to-openapi@^8
-# UI de documentación (Scalar, route handler para Next.js App Router):
+# Documentation UI (Scalar, route handler for the Next.js App Router):
 bun add @scalar/nextjs-api-reference
 ```
 
-> **Versiones (verificado)**: `@asteasolutions/zod-to-openapi` v8.x soporta **Zod 4.x**. Si el proyecto está pinneado a **Zod 3**, usar `@asteasolutions/zod-to-openapi@7.3.4` (la rama v3, ya sin soporte activo) y la sintaxis legacy `z.email()/.uuid()/.datetime()`. Este documento usa la sintaxis **Zod v4** (`z.email()`, `z.uuid()`, `z.iso.datetime()`, `error.issues`).
->
-> **Peer compat Scalar**: `@scalar/nextjs-api-reference` actual soporta Next.js 15 (versiones <0.5 pinneaban `next@^14`). Si `bun add` reporta conflicto de peer, instalar `@latest` y confirmar la versión.
+Query Context7 first for the latest versions. `@asteasolutions/zod-to-openapi` v8.x supports Zod 4.x. A project pinned to Zod 3 uses `@asteasolutions/zod-to-openapi@7.3.4` (the v3 branch, no longer actively supported) and the legacy syntax `z.email()/.uuid()/.datetime()`. This file uses the Zod v4 syntax (`z.email()`, `z.uuid()`, `z.iso.datetime()`, `error.issues`).
 
-**Verificar instalación:**
+Older `@scalar/nextjs-api-reference` releases (below 0.5) pinned `next@^14`. If `bun add` reports a peer conflict, install `@latest` and confirm the version.
+
+Verify the install:
 
 ```bash
 bun pm ls | grep -E "zod|openapi|@scalar"
 ```
 
----
+### Phase 2: create the OpenAPI structure
 
-### FASE 2: Crear Estructura OpenAPI
-
-**Paso 2.1: Crear directorio + instancia única de Zod**
+**Step 2.1: create the directory and the single Zod instance**
 
 ```bash
 mkdir -p src/lib/openapi/schemas
 ```
 
-> **CRÍTICO (evita crash de `.openapi()` undefined)**: `extendZodWithOpenApi` muta el singleton de Zod. Si unos archivos importan `z` de `'zod'` y otros lo extienden por separado, un módulo que use `.openapi()` puede cargarse ANTES de que se ejecute `extendZodWithOpenApi` → `.openapi` es `undefined` en runtime. Solución: **UN** módulo que extiende y reexporta `z`, y **todo archivo que use `.openapi()` importa `z` desde aquí** (nunca de `'zod'`).
+`extendZodWithOpenApi` mutates the Zod singleton. If some files import `z` from `'zod'` and others extend it separately, a module that calls `.openapi()` can load BEFORE `extendZodWithOpenApi` runs, and `.openapi` is `undefined` at runtime. The fix is ONE module that extends and re-exports `z`; every file that uses `.openapi()` imports `z` from there, never from `'zod'`.
 
 ```typescript
-// src/lib/openapi/zod.ts — instancia única de Zod extendida con OpenAPI.
+// src/lib/openapi/zod.ts: the single Zod instance, extended with OpenAPI.
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
@@ -398,7 +318,7 @@ extendZodWithOpenApi(z);
 export { z };
 ```
 
-**Paso 2.2: Crear `registry.ts`**
+**Step 2.2: create `registry.ts`**
 
 ```typescript
 // src/lib/openapi/registry.ts
@@ -411,7 +331,7 @@ export { z };
  */
 
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
-import { z } from './zod'; // instancia única ya extendida con .openapi()
+import { z } from './zod'; // single instance, already extended with .openapi()
 
 // Create the registry instance
 export const registry = new OpenAPIRegistry();
@@ -424,7 +344,7 @@ export const registry = new OpenAPIRegistry();
 registry.registerComponent('securitySchemes', 'cookieAuth', {
   type: 'apiKey',
   in: 'cookie',
-  name: 'sb-[SUPABASE_PROJECT_ID]-auth-token', // Reemplazar con ID real
+  name: 'sb-[SUPABASE_PROJECT_ID]-auth-token', // Replace with the real ID
   description: 'Supabase session cookie. Obtained automatically after login via the web app.',
 });
 
@@ -448,14 +368,14 @@ registry.registerComponent('securitySchemes', 'cronAuth', {
 // ============================================================================
 
 export function generateOpenAPIDocument() {
-  // 3.0.3 funciona con Scalar. Opcional: para OpenAPI 3.1 (más alineado con
-  // JSON Schema / Zod v4) usar `OpenApiGeneratorV31` + `openapi: '3.1.0'`.
+  // 3.0.3 works with Scalar. Optional: for OpenAPI 3.1 (closer to
+  // JSON Schema / Zod v4) use `OpenApiGeneratorV31` + `openapi: '3.1.0'`.
   const generator = new OpenApiGeneratorV3(registry.definitions);
 
   return generator.generateDocument({
     openapi: '3.0.3',
     info: {
-      title: '[PROJECT_NAME] - API', // Reemplazar
+      title: '[PROJECT_NAME] - API', // Replace
       version: '1.0.0',
       description: `
 ## Custom API Endpoints
@@ -490,17 +410,17 @@ Cron endpoints require Bearer token authorization.
 
 ## Base URLs
 
-Las URLs por ambiente se resuelven desde \`src/lib/urls.ts\` (env-url-setup) o \`.agents/project.yaml\` — NUNCA se hardcodean acá (anti-patrón B4).
+URLs per environment are resolved from \`src/lib/urls.ts\` (env-url-setup) or \`.agents/project.yaml\`. They are never hardcoded here (anti-pattern B4).
       `.trim(),
       contact: {
         name: 'Development Team',
         url: '[REPO_URL]',
       },
     },
-    // ANTI-PATRÓN B4: no hardcodear URLs ni placeholders. Derivar del entorno.
-    // Preferido (si corriste env-url-setup): import { getBaseUrl } from '@/lib/urls'
+    // ANTI-PATTERN B4: do not hardcode URLs or placeholders. Derive them from the environment.
+    // Preferred (if you ran env-url-setup): import { getBaseUrl } from '@/lib/urls'
     //   → url: `${getBaseUrl()}/api`
-    // Fallback sin env-url-setup: leer de .agents/project.yaml / env.
+    // Fallback without env-url-setup: read from .agents/project.yaml / env.
     servers: [
       {
         url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api`,
@@ -508,7 +428,7 @@ Las URLs por ambiente se resuelven desde \`src/lib/urls.ts\` (env-url-setup) o \
       },
     ],
     tags: [
-      // Agregar tags según dominios del proyecto
+      // Add tags per project domain
       {
         name: 'System',
         description: 'System endpoints (health, openapi)',
@@ -521,13 +441,9 @@ Las URLs por ambiente se resuelven desde \`src/lib/urls.ts\` (env-url-setup) o \
 export { z };
 ```
 
-**IMPORTANTE:** Reemplazar todos los placeholders:
+Replace every placeholder before moving on: `[SUPABASE_PROJECT_ID]`, `[PROJECT_NAME]` and `[REPO_URL]`.
 
-- `[SUPABASE_PROJECT_ID]`
-- `[PROJECT_NAME]`
-- `[REPO_URL]`
-
-**Paso 2.3: Crear `index.ts`**
+**Step 2.3: create `index.ts`**
 
 ```typescript
 // src/lib/openapi/index.ts
@@ -536,7 +452,7 @@ export { registry, generateOpenAPIDocument, z } from './registry';
 export * from './schemas';
 ```
 
-**Paso 2.4: Crear `schemas/common.ts`**
+**Step 2.4: create `schemas/common.ts`**
 
 ```typescript
 // src/lib/openapi/schemas/common.ts
@@ -609,26 +525,24 @@ registry.register('ValidationError', ValidationErrorSchema);
 registry.register('SuccessResponse', SuccessResponseSchema);
 ```
 
-**Paso 2.5: Crear `schemas/index.ts`**
+**Step 2.5: create `schemas/index.ts`**
 
 ```typescript
 // src/lib/openapi/schemas/index.ts
 
 export * from './common';
-// Agregar más exports según se creen schemas de dominio
+// Add more exports as domain schemas are created
 ```
 
----
+### Phase 3: create the `/api/openapi` endpoint
 
-### FASE 3: Crear Endpoint /api/openapi
-
-**Paso 3.1: Crear directorio y archivo**
+**Step 3.1: create the directory**
 
 ```bash
 mkdir -p src/app/api/openapi
 ```
 
-**Paso 3.2: Crear `route.ts`**
+**Step 3.2: create `route.ts`**
 
 ```typescript
 // src/app/api/openapi/route.ts
@@ -680,13 +594,11 @@ export async function OPTIONS() {
 }
 ```
 
----
+### Phase 4: create the `/api/docs` route (Scalar)
 
-### FASE 4: Crear ruta /api/docs (Scalar)
+Scalar mounts as a Next.js App Router route handler: one file, no page and no React components. It serves the interactive UI from the spec at `/api/openapi`, behind an environment gate (404 in production).
 
-Scalar se monta como **route handler** de Next.js App Router — un solo archivo, sin página ni componentes React. Sirve la UI interactiva desde el spec de `/api/openapi`, con el gate de entorno (404 en producción).
-
-**Paso 4.1: Crear el route handler**
+**Step 4.1: create the route handler**
 
 ```bash
 mkdir -p "src/app/api/docs"
@@ -697,30 +609,30 @@ mkdir -p "src/app/api/docs"
 
 import { ApiReference } from "@scalar/nextjs-api-reference";
 
-// 404 en producción: la doc de API no se expone públicamente.
+// 404 in production: the API docs are not exposed publicly.
 function isAllowedEnvironment(): boolean {
   const vercelEnv = process.env.VERCEL_ENV;
   if (vercelEnv) {
-    // En Vercel: permitir preview (staging), bloquear production
+    // On Vercel: allow preview (staging), block production
     return vercelEnv !== "production";
   }
-  // Local: permitir solo en development
+  // Local: allow development only
   return process.env.NODE_ENV === "development";
 }
 
-// ApiReference(config) devuelve un handler () => Response (SIN argumentos).
+// ApiReference(config) returns a handler () => Response (NO arguments).
 const handler = ApiReference({
-  // Multi-documento nativo de Scalar. El primero (o `default: true`) es el activo.
+  // Scalar's native multi-document support. The first one (or `default: true`) is active.
   sources: [
     { title: "Next.js API", slug: "nextjs", url: "/api/openapi", default: true },
-    // Opcional — Supabase REST (la publishable key es pública por diseño):
+    // Optional: Supabase REST (the publishable key is public by design):
     // {
     //   title: "Supabase REST",
     //   slug: "supabase",
     //   url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/?apikey=${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}`,
     // },
   ],
-  theme: "purple", // matchear brand (Redoc usaba #7c3aed)
+  theme: "purple", // match the brand (Redoc used #7c3aed)
   pageTitle: "[PROJECT_NAME] — API Reference",
 });
 
@@ -732,52 +644,48 @@ export async function GET(): Promise<Response> {
 }
 ```
 
-> **Auth en la UI**: Scalar renderiza los métodos de autenticación desde el `info.description` + los `securitySchemes` del spec (definidos en `src/lib/openapi/registry.ts`, FASE 2). No hace falta un panel de auth aparte.
->
-> **Multi-spec**: para exponer también el REST de Supabase, descomentar la segunda `source`. Scalar muestra un selector de documentos nativo. Confirmá vía Context7 que la versión instalada de `@scalar/nextjs-api-reference` soporta `sources`; si no, montá una segunda ruta `src/app/api/docs/supabase/route.ts` con su propia `url`.
->
-> **`notFound()` NO se usa en route handlers** (es para RSC/pages) — el gate devuelve `new Response(null, { status: 404 })`.
+Three notes on this handler:
 
-> **Migración desde Redoc**: el antiguo `auth-info-panel.tsx` (y `redoc-viewer.tsx`, `api-doc-selector.tsx`, `page.tsx`, y el layout `(minimal)/layout.tsx`) se eliminan. La info de autenticación (cookie de sesión Supabase `sb-[SUPABASE_PROJECT_ID]-auth-token`, `Authorization: Bearer`, `X-API-Key`, `CRON_SECRET`) vive ahora en los `securitySchemes` del registry (FASE 2) + `info.description`; Scalar la renderiza en `/api/docs`. Reemplazá `[SUPABASE_PROJECT_ID]` donde aparezca en `registry.ts`.
+- Auth in the UI: Scalar renders the auth methods from the spec's `info.description` plus its `securitySchemes` (defined in `src/lib/openapi/registry.ts`, Phase 2). No separate auth panel is needed.
+- Multi-spec: to expose the Supabase REST API too, uncomment the second `source`; Scalar shows a native document selector. Confirm through Context7 that the installed `@scalar/nextjs-api-reference` supports `sources`. If it does not, mount a second route at `src/app/api/docs/supabase/route.ts` with its own `url`.
+- Use `new Response(null, { status: 404 })` for the gate. `notFound()` belongs to RSC and pages, not to route handlers.
 
-**Paso 4.2: (si migrás un proyecto existente) limpiar Redoc**
+Migrating from Redoc: delete the old `auth-info-panel.tsx`, `redoc-viewer.tsx`, `api-doc-selector.tsx`, `page.tsx` and the `(minimal)/layout.tsx`. The auth information (Supabase session cookie `sb-[SUPABASE_PROJECT_ID]-auth-token`, `Authorization: Bearer`, `X-API-Key`, `CRON_SECRET`) now lives in the registry `securitySchemes` (Phase 2) plus `info.description`, and Scalar renders it at `/api/docs`. Replace `[SUPABASE_PROJECT_ID]` wherever it appears in `registry.ts`.
+
+**Step 4.2: when migrating an existing project, remove Redoc**
 
 ```bash
-# Borrar la implementación vieja de Redoc si existe
+# Delete the old Redoc implementation if it exists
 rm -rf "src/app/(minimal)/api-docu"
-# Borrar el layout minimal SOLO si ninguna otra página lo usa
+# Delete the minimal layout ONLY if no other page uses it
 [ -z "$(ls -A 'src/app/(minimal)' 2>/dev/null)" ] && rm -f "src/app/(minimal)/layout.tsx" && rmdir "src/app/(minimal)" 2>/dev/null || true
 ```
 
----
+### Phase 5 (FULL mode): domain schemas with a single source of truth
 
-### FASE 5: (COMPLETO) Crear Schemas de Dominio con Single Source of Truth
+Run this phase only when custom endpoints exist. Define the domain schemas in `src/types/`, never in `src/lib/openapi/schemas/` (see "Single source of truth" above).
 
-**Solo si hay endpoints existentes.**
-
-> **⚠️ CRÍTICO:** Los schemas de dominio deben definirse en `src/types/`, NO en `src/lib/openapi/schemas/`. Ver sección "PATRÓN CRÍTICO: Single Source of Truth" arriba.
-
-**Paso 5.1: Analizar endpoints y tipos existentes**
+**Step 5.1: analyze the existing endpoints and types**
 
 ```bash
-# Listar endpoints existentes
+# List existing endpoints
 find src/app/api -name "route.ts" | grep -v "openapi"
 
-# Listar tipos existentes (pueden ya tener schemas Zod)
+# List existing types (they may already have Zod schemas)
 ls src/types/
 ```
 
-**Paso 5.2: Crear o actualizar schema en src/types/**
+**Step 5.2: create or update the schema in `src/types/`**
 
-Por cada dominio identificado (ej: users, bookings, payments), crear en `src/types/`:
+For each domain found (users, bookings, payments, ...), write the schema in `src/types/`:
 
 ```typescript
-// src/types/booking.ts (FUENTE DE VERDAD)
+// src/types/booking.ts (SOURCE OF TRUTH)
 
-import { z } from '@/lib/openapi/zod'; // instancia única extendida — NUNCA importar de 'zod' si usás .openapi()
+import { z } from '@/lib/openapi/zod'; // single extended instance: never import from 'zod' if you use .openapi()
 
 // ============================================================================
-// SCHEMAS (con metadata OpenAPI)
+// SCHEMAS (with OpenAPI metadata)
 // ============================================================================
 
 export const BookingStatusSchema = z
@@ -797,7 +705,7 @@ export const BookingSchema = z
   })
   .openapi('Booking');
 
-// Schemas para input (omitir campos autogenerados)
+// Input schemas (omit autogenerated fields)
 export const CreateBookingSchema = BookingSchema.omit({
   id: true,
   createdAt: true,
@@ -814,7 +722,7 @@ export const UpdateBookingSchema = BookingSchema.partial()
   .openapi('UpdateBooking');
 
 // ============================================================================
-// TIPOS INFERIDOS (siempre sincronizados con schemas)
+// INFERRED TYPES (always in sync with the schemas)
 // ============================================================================
 
 export type BookingStatus = z.infer<typeof BookingStatusSchema>;
@@ -823,7 +731,7 @@ export type CreateBooking = z.infer<typeof CreateBookingSchema>;
 export type UpdateBooking = z.infer<typeof UpdateBookingSchema>;
 
 // ============================================================================
-// HELPERS DE VALIDACIÓN (para usar en API routes)
+// VALIDATION HELPERS (for use in API routes)
 // ============================================================================
 
 export function isValidBookingStatus(status: string): status is BookingStatus {
@@ -831,20 +739,20 @@ export function isValidBookingStatus(status: string): status is BookingStatus {
 }
 ```
 
-**Paso 5.3: Registrar paths en src/lib/openapi/schemas/**
+**Step 5.3: register the paths in `src/lib/openapi/schemas/`**
 
-Crear archivo que SOLO registra paths, importando schemas de `@/types`:
+Create the file that ONLY registers paths, importing the schemas from `@/types`:
 
 ```typescript
-// src/lib/openapi/schemas/bookings.ts (SOLO PATHS, NO SCHEMAS)
+// src/lib/openapi/schemas/bookings.ts (PATHS ONLY, NO SCHEMAS)
 
 import { registry } from '../registry';
-import { z } from '../zod'; // instancia única extendida
-import { BookingSchema, CreateBookingSchema, UpdateBookingSchema } from '@/types/booking'; // ← IMPORTA de types
+import { z } from '../zod'; // single extended instance
+import { BookingSchema, CreateBookingSchema, UpdateBookingSchema } from '@/types/booking'; // ← imports from types
 import { ErrorResponseSchema, UUIDSchema } from './common';
 
 // ============================================================================
-// REGISTRAR PATHS (no definir schemas aquí)
+// REGISTER PATHS (do not define schemas here)
 // ============================================================================
 
 // GET /bookings
@@ -867,7 +775,7 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            data: z.array(BookingSchema), // ← USA schema importado
+            data: z.array(BookingSchema), // ← uses the imported schema
             total: z.number(),
           }),
         },
@@ -912,7 +820,7 @@ registry.registerPath({
   request: {
     body: {
       content: {
-        'application/json': { schema: CreateBookingSchema }, // ← USA schema importado
+        'application/json': { schema: CreateBookingSchema }, // ← uses the imported schema
       },
     },
   },
@@ -939,7 +847,7 @@ registry.registerPath({
     params: z.object({ id: UUIDSchema }),
     body: {
       content: {
-        'application/json': { schema: UpdateBookingSchema }, // ← USA schema importado
+        'application/json': { schema: UpdateBookingSchema }, // ← uses the imported schema
       },
     },
   },
@@ -956,38 +864,36 @@ registry.registerPath({
 });
 ```
 
-**Paso 5.4: Actualizar index.ts**
+**Step 5.4: update the barrel**
 
 ```typescript
 // src/lib/openapi/schemas/index.ts
 
 export * from './common';
-export * from './bookings'; // Solo exporta los registros de paths
-// Agregar más según se creen
+export * from './bookings'; // Exports the path registrations only
+// Add more as they are created
 ```
 
-**Paso 5.5: Verificar que no hay duplicación**
+**Step 5.5: check for duplication**
 
 ```bash
-# Buscar schemas duplicados (NO debería haber .openapi() en lib/openapi/schemas/)
+# Look for duplicated schemas (there should be NO .openapi() in lib/openapi/schemas/)
 grep -r "\.openapi\(" src/lib/openapi/schemas/ --include="*.ts" | grep -v "common.ts"
 
-# Si encuentra algo, mover esos schemas a src/types/
+# If it finds anything, move those schemas to src/types/
 ```
 
-> **⚠️ ADVERTENCIA:** Si `grep` encuentra schemas con `.openapi()` en `src/lib/openapi/schemas/` (excepto `common.ts`), esos schemas están duplicados. Muévelos a `src/types/` e importa desde ahí.
+A hit means that schema is duplicated. Move it to `src/types/` and import it from there.
 
----
+### Phase 6: validation
 
-### FASE 6: Validación
-
-**Paso 6.1: TypeScript check**
+**Step 6.1: TypeScript check**
 
 ```bash
 bun run types:check
 ```
 
-**Paso 6.2: Verificar endpoint**
+**Step 6.2: check the endpoint**
 
 ```bash
 bun run dev &
@@ -995,53 +901,51 @@ sleep 3
 curl -s http://localhost:3000/api/openapi | jq '.info.title'
 ```
 
-**Output esperado:** El título del proyecto configurado.
+Expected output: the project title you configured.
 
-**Paso 6.3: Verificar UI**
+**Step 6.3: check the UI**
 
-1. Abrir `http://localhost:3000/api/docs`
-2. Verificar que Scalar carga y renderiza los endpoints del spec
-3. Verificar que la sección de autenticación (desde `securitySchemes` + `info.description`) aparece
-4. (Si habilitaste multi-spec) verificar el selector de documentos Next.js/Supabase de Scalar
+1. Open `http://localhost:3000/api/docs`.
+2. Confirm Scalar loads and renders the endpoints from the spec.
+3. Confirm the authentication section (from `securitySchemes` plus `info.description`) appears.
+4. If you enabled multi-spec, confirm Scalar's Next.js / Supabase document selector.
 
----
+## Checklist
 
-## 📋 CHECKLIST FINAL
+PARTIAL mode:
 
-### Modo PARCIAL:
+- [ ] `src/lib/openapi/registry.ts` created with the project info
+- [ ] `src/lib/openapi/index.ts` created
+- [ ] `src/lib/openapi/schemas/common.ts` created
+- [ ] `src/lib/openapi/schemas/index.ts` created
+- [ ] `src/app/api/openapi/route.ts` created
+- [ ] `src/app/api/docs/route.ts` created (Scalar route handler)
+- [ ] `@scalar/nextjs-api-reference` installed
+- [ ] `/api/openapi` returns valid JSON
+- [ ] `/api/docs` renders Scalar (404 in production)
+- [ ] Auth visible in the UI (from `securitySchemes` + `info.description`)
 
-- [ ] `src/lib/openapi/registry.ts` creado con info del proyecto
-- [ ] `src/lib/openapi/index.ts` creado
-- [ ] `src/lib/openapi/schemas/common.ts` creado
-- [ ] `src/lib/openapi/schemas/index.ts` creado
-- [ ] `src/app/api/openapi/route.ts` creado
-- [ ] `src/app/api/docs/route.ts` creado (Scalar route handler)
-- [ ] `@scalar/nextjs-api-reference` instalado
-- [ ] `/api/openapi` retorna JSON válido
-- [ ] `/api/docs` renderiza Scalar (404 en producción)
-- [ ] Auth visible en la UI (desde `securitySchemes` + `info.description`)
+FULL mode, in addition:
 
-### Modo COMPLETO (adicional):
+- [ ] Domain schemas created in `src/types/` (with `.openapi()`)
+- [ ] Types inferred with `z.infer<>` in `src/types/`
+- [ ] Path registrations in `src/lib/openapi/schemas/` (they only import from `@/types`)
+- [ ] Endpoints registered in OpenAPI
+- [ ] Tags configured per domain
+- [ ] No duplicated schemas (check with `grep -r "\.openapi\(" src/lib/openapi/schemas/`)
 
-- [ ] Schemas de dominio creados en `src/types/` (con `.openapi()`)
-- [ ] Tipos inferidos con `z.infer<>` en `src/types/`
-- [ ] Path registrations en `src/lib/openapi/schemas/` (solo importan de `@/types`)
-- [ ] Endpoints registrados en OpenAPI
-- [ ] Tags configurados por dominio
-- [ ] **NO hay schemas duplicados** (verificar con `grep -r "\.openapi\(" src/lib/openapi/schemas/`)
+## Final report
 
----
-
-## 🎉 REPORTE FINAL
+Write the report in English:
 
 ```markdown
-# ✅ OpenAPI Setup Completado
+# OpenAPI setup completed
 
-## Modo: [PARCIAL/COMPLETO]
+## Mode: [PARTIAL/FULL]
 
-## Archivos Creados:
+## Files created:
 
-### OpenAPI Core:
+### OpenAPI core:
 
 - src/lib/openapi/registry.ts
 - src/lib/openapi/index.ts
@@ -1056,42 +960,46 @@ curl -s http://localhost:3000/api/openapi | jq '.info.title'
 
 - src/app/api/docs/route.ts
 
-## URLs Disponibles:
+## Available URLs:
 
-- `/api/openapi` - JSON spec para herramientas
-- `/api/docs` - UI interactiva Scalar (solo dev/staging)
+- `/api/openapi` - JSON spec for tools
+- `/api/docs` - interactive Scalar UI (dev/staging only)
 
-## Próximos Pasos:
+## Next steps:
 
-1. Al crear nuevos endpoints:
-   - Definir schemas Zod en `src/types/[dominio].ts` con `.openapi()`
-   - Registrar paths en `src/lib/openapi/schemas/[dominio].ts`
-   - **NUNCA duplicar schemas** - siempre importar de `@/types`
-2. Al agregar métodos de auth: registrarlos en `securitySchemes` del registry + `info.description` (Scalar los muestra automáticamente en `/api/docs`)
+1. When you create new endpoints:
+   - Define the Zod schemas in `src/types/[domain].ts` with `.openapi()`
+   - Register the paths in `src/lib/openapi/schemas/[domain].ts`
+   - Never duplicate schemas: always import from `@/types`
+2. When you add an auth method, register it in the registry `securitySchemes` plus `info.description` (Scalar shows it automatically at `/api/docs`)
 
-## Patrón Single Source of Truth:
+## Single source of truth pattern:
 
-- ✅ Schemas en `src/types/` → Tipos + Validación + OpenAPI
-- ✅ Paths en `src/lib/openapi/schemas/` → Solo `registerPath()`
-- ❌ NO definir schemas en `src/lib/openapi/schemas/`
+- Schemas in `src/types/` give types, validation and OpenAPI
+- Paths in `src/lib/openapi/schemas/` only call `registerPath()`
+- No schemas are defined in `src/lib/openapi/schemas/`
 ```
 
----
+## With nobody at the keyboard
 
-## ❓ PREGUNTAS FRECUENTES
+A supervised worker sends these questions to its conductor, which holds the gate. A routine with nobody takes the paths below (`agentic-dev-core/references/decision-protocol.md` §5.2).
 
-**P: ¿Por qué /api/docs retorna 404 en production?**
-R: Es intencional. La documentación de API no debe exponerse públicamente. El route handler de Scalar aplica `isAllowedEnvironment()` y devuelve `new Response(null, { status: 404 })` en producción. Solo está disponible en development y staging.
+- Environment URLs missing (Step 0.3): do not ask. Keep the `servers` fallback from Step 2.2 (`NEXT_PUBLIC_APP_URL`, then `http://localhost:3000`) and list the missing URLs in the report.
+- `db_project_ref` is `null` (Step 0.2): do not write the project identity into `.agents/project.yaml`, which is the human's call. Generate the files with `[SUPABASE_PROJECT_ID]` still in place and put "cookie name unresolved" at the top of the report, so nobody mistakes the spec for finished.
+- The app and this file disagree (docs UI, error contract, auth scheme, major version): the app's form wins, as the `stack:` section says. Extend it, do not replace it, and report both shapes.
 
-**P: ¿Cómo registro un nuevo endpoint?**
-R: Primero define el schema en `src/types/`, luego registra el path:
+## Questions that come up
+
+**Why does `/api/docs` return 404 in production?** On purpose: API documentation is not exposed publicly. The Scalar route handler runs `isAllowedEnvironment()` and returns `new Response(null, { status: 404 })` in production. It is available in development and staging.
+
+**How do I register a new endpoint?** Define the schema in `src/types/`, then register the path:
 
 ```typescript
-// 1. src/types/user.ts (PRIMERO - definir schema)
+// 1. src/types/user.ts (FIRST - define the schema)
 export const UserSchema = z.object({...}).openapi('User');
 export type User = z.infer<typeof UserSchema>;
 
-// 2. src/lib/openapi/schemas/users.ts (DESPUÉS - registrar path)
+// 2. src/lib/openapi/schemas/users.ts (THEN - register the path)
 import { UserSchema } from '@/types/user';
 
 registry.registerPath({
@@ -1103,32 +1011,27 @@ registry.registerPath({
 });
 ```
 
-**P: ¿Por qué no puedo definir schemas en `src/lib/openapi/schemas/`?**
-R: Para evitar duplicación y desincronización. Si defines schemas en dos lugares (types + openapi), al agregar un campo puedes olvidar actualizar uno. Con Single Source of Truth, cambias UN archivo y todo se actualiza automáticamente.
+**Why can I not define schemas in `src/lib/openapi/schemas/`?** Two definitions drift apart: add a field in one and forget the other. With one source, a single edit updates types, validation and the spec.
 
-**P: ¿Qué pasa si ya tengo schemas duplicados?**
-R: Migra los schemas a `src/types/`:
+**What if I already have duplicated schemas?** Move them to `src/types/`:
 
 ```bash
-# Encontrar schemas duplicados
+# Find duplicated schemas
 grep -r "\.openapi\(" src/lib/openapi/schemas/ --include="*.ts" | grep -v "common.ts"
 
-# Para cada uno encontrado:
-# 1. Mover el schema a src/types/[dominio].ts
-# 2. Cambiar el import en src/lib/openapi/schemas/[dominio].ts
-# 3. Eliminar la definición duplicada
+# For each one found:
+# 1. Move the schema to src/types/[domain].ts
+# 2. Change the import in src/lib/openapi/schemas/[domain].ts
+# 3. Delete the duplicate definition
 ```
 
-**P: ¿Puedo ejecutar este prompt de nuevo?**
-R: Sí. Si ya existe la estructura, el prompt pasará a modo COMPLETO y analizará nuevos endpoints para registrar.
+**Can I run this add-on again?** Yes. When the structure exists it switches to FULL mode and analyzes new endpoints to register.
 
-**P: ¿Funciona con Stripe webhooks?**
-R: Sí, agrega un security scheme para Stripe-Signature y regístralo en los endpoints de webhook.
+**Does it work with Stripe webhooks?** Yes. Add a security scheme for `Stripe-Signature` and register it on the webhook endpoints.
 
-**P: ¿Cómo sé si mi OpenAPI está sincronizado con los tipos?**
-R: Si seguiste el patrón Single Source of Truth, **siempre** están sincronizados porque vienen del mismo archivo. Verifica con:
+**How do I know the spec is in sync with the types?** With the single-source pattern it always is, because both come from the same file. Check with the same grep as above; it should find nothing outside `common.ts`:
 
 ```bash
-# No debería encontrar nada (excepto common.ts)
+# Should find nothing (except common.ts)
 grep -r "\.openapi\(" src/lib/openapi/schemas/ --include="*.ts" | grep -v "common.ts"
 ```

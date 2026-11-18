@@ -2,7 +2,7 @@
 
 **Codex** es el agente de codificación de OpenAI. La CLI y la app de escritorio (Codex Desktop) leen la misma configuración de repositorio, así que todo lo que sigue aplica a las dos.
 
-> 💡 Para conceptos generales de MCP, consulta [MCP - Guía General](./README.md). Para la arquitectura completa de tres harnesses, `.agents/instructions/agent-harnesses.md` §5.5.
+> 💡 Para conceptos generales de MCP, consulta [MCP - Guía General](./README.md). Para la arquitectura completa de los harnesses, `.agents/instructions/agent-harnesses.md` §5.5.
 
 ---
 
@@ -29,8 +29,8 @@ Codex no necesita ningún shim: consume las dos fuentes canónicas directamente.
 | Instrucciones | `AGENTS.md`                                      | Nativo. Es el mismo archivo que OpenCode lee nativo y que Claude Code lee a través del shim `CLAUDE.md` (`@AGENTS.md` en una línea).                                                                              |
 | Skills        | `.agents/skills/<name>/SKILL.md` + `references/` | Nativo. Una sola copia commiteada; Claude Code llega por el alias generado `.claude/skills`.                                                                                                                      |
 | Comandos      | ninguno                                          | Ningún host trae archivos de comando: una skill se invoca por nombre más modo. Donde en Claude Code tipeás `/project-context dev-roadmap`, acá lo pedís en prosa: "load skill `project-context`, mode `dev-roadmap`". Cada skill lista sus modos en su `## Mode routing` (`.agents/instructions/agent-skills-and-mcps.md` §5 "Skill modes"). |
-| Hook          | `.codex/hooks.json`                              | `UserPromptSubmit` ejecuta `.agents/hooks/personality-reinject.mjs` (el mismo emisor que usan los otros dos harnesses) desde la raíz de git. Trae `command` POSIX y `commandWindows`. |
-| MCP           | `.codex/config.toml`                             | Los servidores que declara `.mcp.json`, en formato Codex. Paridad con `.mcp.json` y `opencode.jsonc` verificada por `bun run agents:compat:check`. La búsqueda web no está acá: se conecta a nivel harness (`~/.codex/config.toml`). |
+| Hook          | `.codex/hooks.json`                              | `UserPromptSubmit` ejecuta `.agents/hooks/personality-reinject.mjs` (el mismo emisor que usan los demás harnesses) desde la raíz de git. Trae `command` POSIX y `commandWindows`. |
+| MCP           | `.codex/config.toml`                             | Los servidores que declara `.mcp.json`, en formato Codex. Paridad con `.mcp.json`, `opencode.jsonc` y `.pi/mcp.json` verificada por `bun run agents:compat:check`. La búsqueda web no está acá: se conecta a nivel harness (`~/.codex/config.toml`). |
 
 ---
 
@@ -46,15 +46,15 @@ Codex carga `.codex/config.toml` y `.codex/hooks.json` **solo en un repositorio 
 
 ## 🔌 MCP en `.codex/config.toml`
 
-### La misma forma en los tres hosts
+### La misma forma en todos los hosts
 
 Codex **no expande `${VAR}`** dentro de `args` ni dentro de los valores de `[mcp_servers.X.env]`: un placeholder ahí llega al server como texto literal. Este repo no lo necesita, porque ningún host lleva secretos en su config:
 
-- cada server stdio que necesita valores de `.env` arranca con el **loader de `.env`** (abajo), igual que en `.mcp.json` y `opencode.jsonc`;
+- cada server stdio que necesita valores de `.env` arranca con el **loader de `.env`** (abajo), igual que en `.mcp.json`, `opencode.jsonc` y `.pi/mcp.json`;
 - `bearer_token_env_var = "NOMBRE"` queda solo para un server **remoto** (HTTP), que manda `Authorization: Bearer <valor>` desde el entorno del proceso;
 - `[mcp_servers.X.env]` queda para settings literales (los de `n8n`: `MCP_MODE`, `LOG_LEVEL`, `DISABLE_CONSOLE_OUTPUT`), nunca para secretos.
 
-`bun run agents:compat:check` compara los **nombres de variables de `.env`** de los que depende cada server (el `--filter` del loader) y la existencia de cada servidor en los tres hosts: un servidor agregado solo acá (o solo en otro host) lo hace fallar.
+`bun run agents:compat:check` compara los **nombres de variables de `.env`** de los que depende cada server (el `--filter` del loader) y la existencia de cada servidor en todos los hosts en uso: un servidor agregado solo acá (o solo en otro host) lo hace fallar.
 
 ### El loader de `.env`
 
@@ -102,12 +102,12 @@ El emisor es `.agents/hooks/personality-reinject.mjs`, el mismo que ejecuta Clau
 ### Los MCPs no aparecen en `/mcp`
 
 1. Confirmá que el repo está trusted (`bun run setup:doctor` lo recuerda como WARN).
-2. `bun run agents:compat:check` en verde: si falla, el TOML y los otros dos configs divergieron.
+2. `bun run agents:compat:check` en verde: si falla, el TOML divergió del archivo MCP de otro harness en uso.
 3. Un server que tarda en arrancar en frío: confirmá que su bloque tiene `startup_timeout_sec`.
 
 ### 401 / 403 en Supabase o n8n
 
-La variable falta o está vacía en el `.env` del checkout (en un worktree, el del worktree). Revisá `.env` (`SUPABASE_ACCESS_TOKEN`, `N8N_API_KEY`, …) contra `.env.example` y **reiniciá la sesión**: las variables se leen una sola vez al arrancar el MCP. Ningún host avisa antes: el 401/403 es la señal (Critical Rule #9 aplica a los tres harnesses).
+La variable falta o está vacía en el `.env` del checkout (en un worktree, el del worktree). Revisá `.env` (`SUPABASE_ACCESS_TOKEN`, `N8N_API_KEY`, …) contra `.env.example` y **reiniciá la sesión**: las variables se leen una sola vez al arrancar el MCP. Ningún host avisa antes: el 401/403 es la señal (Critical Rule #9 aplica a todos los harnesses).
 
 ### Búsqueda web no disponible
 
@@ -122,7 +122,7 @@ No es un MCP del proyecto. Conectá Exa (o Tavily) una vez por máquina en `~/.c
 ## 📚 Recursos
 
 - **Codex MCP**: https://developers.openai.com/codex/mcp/
-- **Arquitectura de tres harnesses**: `.agents/instructions/agent-harnesses.md` §5.5 y la página publicada [harnesses.es.html](https://upex-galaxy.github.io/agentic-dev-boilerplate/harnesses.es.html) (fuente: `packages/pages-home/harnesses.es.html`)
+- **Arquitectura multi-harness**: `.agents/instructions/agent-harnesses.md` §5.5 y la página publicada [harnesses.es.html](https://upex-galaxy.github.io/agentic-dev-boilerplate/harnesses.es.html) (fuente: `packages/pages-home/harnesses.es.html`)
 - **Capacidades MCP y búsqueda web**: `.agents/skills/agentic-dev-core/references/mcp-capabilities.md`
 - **Sintaxis por host**: [`docs/mcp/mcp-configuration-guide.md`](../../mcp/mcp-configuration-guide.md)
 

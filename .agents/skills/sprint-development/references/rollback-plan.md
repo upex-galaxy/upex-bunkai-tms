@@ -1,35 +1,41 @@
-# Prompt: Rollback Plan
+# Rollback plan (Stage 5)
 
-## Cuándo hacer rollback
+The runbook for when a production deploy goes bad: put the last known-good deployment back, then find out why.
 
-- Smoke tests fallan en producción
-- Errores críticos reportados
-- Performance degradada significativamente
-- Bug de seguridad detectado
+## When to roll back
 
-## Proceso de Rollback
+- Smoke tests fail in production.
+- Critical errors are reported.
+- Performance degrades significantly.
+- A security bug is found.
+
+## Process
 
 ### Vercel
 
 ```bash
-# 1. En Vercel dashboard:
-# - Find previous working deployment
+# 1. In the Vercel dashboard:
+# - Find the previous working deployment
 # - Click "Promote to Production"
-# - O usar CLI:
+# - Or use the CLI:
 vercel rollback [deployment-url]
 ```
 
-> Con `{{stack.hosting}}` distinto de `vercel`, usa el rollback de ese host. Un rollback de deploy NO revierte un cambio de base de datos: si el deploy aplicó uno, revertirlo es un cambio nuevo, destructivo, confirmado por el usuario y aplicado según `agentic-dev-core/references/db-change-doctrine.md`.
+With `{{stack.hosting}}` other than `vercel`, use that host's rollback. A deploy rollback does not revert a database change. If the deploy applied one, undoing it is a new, destructive change that the user confirms and that is applied according to `agentic-dev-core/references/db-change-doctrine.md`.
 
-### Post-Rollback
+### After the rollback
 
-1. Validar que producción funciona
-2. Investigar causa del problema
-3. Fix en la rama de integración (`git_strategy.branches.integration`; en un PR a producción cuando es null)
-4. Re-testear en el ambiente de integración
-5. Re-deploy cuando esté listo
+1. Check that production works.
+2. Investigate the cause.
+3. Fix it on the integration branch (`git_strategy.branches.integration`; in a PR to production when that is null).
+4. Re-test in the integration environment.
+5. Deploy again when ready.
+
+## With nobody at the keyboard
+
+A rollback changes what production serves, so it is an outward action. Follow `agentic-dev-core/references/decision-protocol.md` §5.2: run it when a person asked or the delegating brief names it (the brief that authorized the production deploy should name its rollback too). A routine without that finds the previous good deployment, reports it with the failing state (which check went red and what it showed) and the exact rollback command, and stops. The report goes out at once, so a person can run it.
 
 ## Output
 
-- Producción estable
-- RCA (Root Cause Analysis) documentado
+- Production is stable.
+- A root cause analysis (RCA) is documented.

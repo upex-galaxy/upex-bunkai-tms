@@ -16,7 +16,7 @@
  */
 import antfu from '@antfu/eslint-config';
 
-import { BASE_ESLINT_OPTIONS, CLI_IMPORT_CLOSURE } from './eslint.config.base.js';
+import { BASE_ESLINT_OPTIONS, CLI_IMPORT_CLOSURE, GUARD_RULES, GUARD_SHAPE } from './eslint.config.base.js';
 
 export default antfu({
   ...BASE_ESLINT_OPTIONS,
@@ -28,4 +28,4 @@ export default antfu({
     // "not found by the project service".
     parserOptions: { projectService: false, project: ['./tsconfig.tooling.json'], tsconfigRootDir: process.cwd() },
   },
-}, CLI_IMPORT_CLOSURE);
+}, CLI_IMPORT_CLOSURE, GUARD_RULES, GUARD_SHAPE);

@@ -1,109 +1,129 @@
-# Epic Creation
+# Epic creation
 
-> **Purpose**: Create a well-formed epic — naming, structure, decomposition into stories — in Jira, then materialize the read-only `epic.md` cache via the sync script. `epic.md` is a Jira mirror, NEVER hand-authored (`.agents/instructions/agent-local-context-pbi.md` §9; `references/jira-operations.md` → "No local authoring"; `agentic-dev-core/references/acli-integration.md` D9).
-> **Use when**: A new feature is too big for a single story (3+ stories needed) or you are seeding a brand-new product backlog.
+> **Purpose**: create a well-formed epic (naming, structure, decomposition into stories) in Jira, then materialize the read-only `epic.md` cache with the sync script. `epic.md` is a Jira mirror and is never hand-authored (`.agents/instructions/agent-local-context-pbi.md` §9; `references/jira-operations.md`, section "No local authoring"; `agentic-dev-core/references/acli-integration.md` D9).
+> **Use when**: a new feature is too big for a single story (3+ stories) or you are seeding a brand-new product backlog.
 > **Companion references**:
 >
-> - `product-backlog-seed.md` — for the very first backlog (multiple epics at once)
-> - `add-feature.md` — for adding a feature to an existing backlog (decides if you need an epic)
-> - `story-refinement.md` — once the epic is created, refine each story before development
-> - `acceptance-criteria.md` / `edge-cases-enumeration.md` — for refined ACs per story
-> - `jira-operations.md` — issue tracker pseudo-code (create / transition / link)
-> - `dependency-linking.md` — how to link stories via `{{jira.link_types.dependencies}}`
-> - `description-custom-field-dedup.md` — keep description body free of AC / Scope / OOS duplication
-> - `sprint-sequencing.md` — Execution Sprint ordering after the epic decomposition
-> - `jira-publishing-gotchas.md` — rich-text field encoding pitfalls (ADF, code blocks, lists)
+> - `product-backlog-seed.md`: the very first backlog (several epics at once)
+> - `add-feature.md`: adding a feature to an existing backlog (decides whether you need an epic)
+> - `story-refinement.md`: refine each story once the epic exists
+> - `acceptance-criteria.md` / `edge-cases-enumeration.md`: refined ACs per story
+> - `jira-operations.md`: issue tracker pseudo-code (create / transition / link)
+> - `dependency-linking.md`: how to link stories via `{{jira.link_types.dependencies}}`
+> - `description-custom-field-dedup.md`: keep the description body free of AC / Scope / OOS duplication
+> - `sprint-sequencing.md`: Execution Sprint ordering after the decomposition
+> - `jira-publishing-gotchas.md`: rich-text field encoding pitfalls (ADF, code blocks, lists)
 
 ---
 
-## Inputs — read these first
+## Inputs: read these first
 
-Before creating any epic, read these in order. Skip files marked **optional** if they do not exist yet.
+Read these in order before creating any epic. Skip a file marked **optional** when it does not exist yet.
 
-1. `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
-2. `.agents/jira-required.yaml` — canonical slug catalog (fields + statuses + link types).
-3. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping.
-4. `.agents/jira-workflows.json` — workflow + transition catalog.
-5. `.agents/jira-link-types.json` — slug → workspace link-type mapping (when present).
-6. `.context/master-implementation-plan.md` — Master Sprint roadmap (use to set the epic's Master Sprint).
-7. `.context/PRD/mvp-scope.md` — what's in vs out of the MVP.
-8. `.context/PRD/user-personas.md` — actor model.
-9. `.context/PRD/user-journeys.md` — flow-level expectations.
-10. `.context/SRS/functional-specs.md` — FR catalog (source of `**Source spec:** FR-XXX` references on each child story).
-11. `.context/SRS/non-functional-specs.md` — NFRs (performance, security, accessibility).
-12. `bun run context:map business-data-context` — entity graph (source of entity-level dependencies). **Optional** at seed time.
-13. `bun run context:map business-feature-context` — CRUD matrix. **Optional** at seed time.
-14. `bun run context:map business-api-context` — endpoint catalog (auth model, journey breakdown). **Optional** at seed time.
-15. `.context/PBI/epic-tree.md` — current backlog state (skip if seeding from scratch).
+1. `.agents/project.yaml`: project identity, env URLs, project key, MCP names.
+2. `.agents/jira-required.yaml`: canonical slug catalog (fields, statuses, link types).
+3. `.agents/jira-fields.json`: slug to numeric custom-field-ID mapping.
+4. `.agents/jira-workflows.json`: workflow and transition catalog.
+5. `.agents/jira-link-types.json`: slug to workspace link-type mapping (when present).
+6. `.context/master-implementation-plan.md`: Master Sprint roadmap (sets the epic's Master Sprint).
+7. `.context/PRD/mvp-scope.md`: what is in and out of the MVP.
+8. `.context/PRD/user-personas.md`: actor model.
+9. `.context/PRD/user-journeys.md`: flow-level expectations.
+10. `.context/SRS/functional-specs.md`: FR catalog (source of the `**Source spec:** FR-XXX` line on each child story).
+11. `.context/SRS/non-functional-specs.md`: NFRs (performance, security, accessibility).
+12. `bun run context:map business-data-context`: entity graph (source of entity-level dependencies). **Optional** at seed time.
+13. `bun run context:map business-feature-context`: CRUD matrix. **Optional** at seed time.
+14. `bun run context:map business-api-context`: endpoint catalog (auth model, journey breakdown). **Optional** at seed time.
+15. `.context/PBI/epic-tree.md`: current backlog state (skip when seeding from scratch).
 
-**No PRD/SRS (existing app documented by its business maps):** inputs 7-11 have substitutes, listed in `../SKILL.md` → "Product docs: PRD/SRS or business maps". Never write a PRD or SRS to fill them.
+An existing app documented by its business maps has no PRD or SRS. Inputs 7-11 then have substitutes, listed in `../SKILL.md`, section "Product docs: PRD/SRS or business maps". Do not write a PRD or SRS to fill them.
 
-**Optional inputs note.** Items 12-14 arrive after `/project-context` modes `data` / `features` / `api` have been run. In a fresh project, the business maps may not exist yet — proceed without them and re-evaluate dependencies once the maps are seeded.
-
----
-
-## What Is an Epic?
-
-An epic is a body of work that delivers meaningful end-user value and is too large to complete in a single sprint. It groups 3-8 related user stories under one Jira parent and one local folder, gives the team a shared narrative ("why are we building this?"), and tracks progress at a feature scale rather than a task scale.
-
-A good epic is a vertical slice of product: it crosses backend, frontend, data, and (when relevant) infrastructure — but it stops at one coherent capability. If you cannot describe it in two sentences, it is probably two epics.
+Items 12-14 arrive after `/project-context` modes `data` / `features` / `api` have run. In a fresh project the maps may not exist yet: proceed without them and re-check dependencies once they are seeded.
 
 ---
 
-## Identifying When You Need an Epic
+## What is an epic?
 
-Use this classification before creating anything in Jira. It is the same rubric as `add-feature.md` Fase 1, summarized for the epic decision:
+An epic is a body of work that delivers meaningful end-user value and is too large for a single sprint. It groups 3-8 related stories under one Jira parent and one local folder, gives the team a shared narrative ("why are we building this?"), and tracks progress at feature scale rather than task scale.
+
+A good epic is a vertical slice of the product. It crosses backend, frontend, data and (when relevant) infrastructure, and it stops at one coherent capability. If you cannot describe it in two sentences, it is probably two epics.
+
+---
+
+## Identifying when you need an epic
+
+Classify before creating anything in Jira. This is the same rubric as `add-feature.md` Phase 1, summarized for the epic decision:
 
 | Level                    | Signal                                                                                                             | Action                                                                       |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| **Story (Level 1)**      | Single change, fits an existing epic, 1-8 SP, no architectural shift                                               | Skip this guide — go to `add-feature.md` Fase 2A                             |
-| **Epic (Level 2)**       | New capability, does NOT fit existing epics, 3-8 stories, scoped, independent, no critical cross-epic dependencies | Continue with this guide                                                     |
-| **Multi-Epic (Level 3)** | 2+ epics needed, complex dependencies, architectural changes, 20+ stories estimated                                | STOP — write a plan first, then split into epics and run this guide per epic |
+| **Story (Level 1)**      | Single change, fits an existing epic, 1-8 SP, no architectural shift                                               | Skip this guide and go to `add-feature.md` Phase 2A                          |
+| **Epic (Level 2)**       | New capability, does not fit existing epics, 3-8 stories, scoped, independent, no critical cross-epic dependencies | Continue with this guide                                                     |
+| **Multi-Epic (Level 3)** | 2+ epics needed, complex dependencies, architectural changes, 20+ stories estimated                                | Stop and write a plan first, then split into epics and run this guide per epic |
 
-**Quick checks before classifying as Level 2:**
+Quick checks before classifying as Level 2:
 
-1. How many user stories will this need? (3-8 → Level 2; <3 → Level 1; >8 → revisit, likely Level 3)
-2. Does it fit any existing epic? (No → Level 2)
-3. Does it touch multiple system modules? (Yes → likely Level 2-3)
-4. Can you split it into 2+ independent epics? (Yes → Level 3)
+1. How many stories will it need? (3-8 is Level 2; fewer than 3 is Level 1; more than 8 means revisit, probably Level 3.)
+2. Does it fit any existing epic? (No means Level 2.)
+3. Does it touch several system modules? (Yes means likely Level 2-3.)
+4. Can you split it into 2+ independent epics? (Yes means Level 3.)
 
 ---
 
-## Epic vs Feature Flag
+## Epic vs feature flag
 
-Not every "new capability" needs a full epic. Use this table to decide:
+Not every new capability needs a full epic.
 
-| Use a **Feature Flag** when…                                        | Use an **Epic** when…                                              |
+| Use a **feature flag** when                                         | Use an **epic** when                                               |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | You want to gate an existing capability (A/B test, gradual rollout) | You are building a capability that does not exist yet              |
 | The change is 1-2 stories with a toggle on top                      | The work spans 3+ stories with their own ACs                       |
 | You need to ship dark and turn on later                             | You need product-level tracking and stakeholder visibility         |
-| Reversibility (instant rollback) is the main concern                | Long-term ownership, success metrics, and roadmap placement matter |
+| Reversibility (instant rollback) is the main concern                | Long-term ownership, success metrics and roadmap placement matter  |
 
-A flag is an **implementation tactic** for a story. An epic is a **product-level container**. They are not alternatives — large epics often ship behind flags, story-by-story.
-
----
-
-## Epic Sizing & Story Count
-
-| Dimension              | Target Range | Why                                                            |
-| ---------------------- | ------------ | -------------------------------------------------------------- |
-| **Story count**        | 3-8 stories  | <3 → it's a story; >8 → split into multiple epics              |
-| **Story points total** | 20-40 SP     | Predictable across 2-4 sprints; bigger ranges hide uncertainty |
-| **Sprint span**        | 2-4 sprints  | Long enough to deliver value, short enough to stay focused     |
-| **Team count**         | 1 team       | Multi-team epics need coordination overhead — split them       |
-
-If you are above any of these ranges, that is a signal to split before you create the Jira epic.
+A flag is an implementation tactic for a story; an epic is a product-level container. They are not alternatives, and large epics often ship behind flags, story by story.
 
 ---
 
-## Epic Naming & Folder Structure
+## Epic sizing and story count
 
-> Lifted from `product-backlog-seed.md` — same rules apply when adding a single epic.
+| Dimension       | Target range | Why                                                                                              |
+| --------------- | ------------ | ------------------------------------------------------------------------------------------------ |
+| Story count     | 3-8 stories  | Fewer than 3 is a story; more than 8 should split into several epics                             |
+| AI Effort mix   | No `High`    | QA sets it in shift-left; a `High` story only warns the dev; a split is an optional PO proposal  |
+| Sprint span     | 2-4 sprints  | Long enough to deliver value, short enough to stay focused                                       |
+| Team count      | 1 team       | Multi-team epics carry coordination overhead, so split them                                      |
 
-**Folder format:** `EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre-descriptivo}/`
+Above any of these ranges, split before you create the Jira epic.
 
-**Examples (different projects):**
+---
+
+## When the epic is too big to plan
+
+Sizing assumes you can see the whole route. When the work is larger than one session can hold and the route is unclear, planning stories produces fiction: decisions nobody has made yet decide which stories exist. Chart a map first, resolve the open questions one at a time, and cut the stories when the fog clears. Reach for this at Level 3, or at Level 2 when the quick checks above expose unknowns the PRD, SRS and business maps cannot answer.
+
+The map is the epic. Its description holds four sections: the destination (what is true when the epic is done, in the user's words), notes (constraints every later decision needs), decisions so far (one line per closed decision ticket) and not yet specified (open questions with no ticket). Out of scope goes where `description-custom-field-dedup.md` puts it, not in the description body.
+
+To chart it, settle the destination first: Call the Skill tool with "grilling". Then settle the domain terms: Call the Skill tool with "domain-modeling". Where either skill is not installed, ask the same questions inline and say in the report that the method was missing. Grill breadth first to find the fog, meaning the questions whose answers change the shape of the epic, and file a decision ticket for each one you can already state.
+
+A decision ticket is a child of the epic, sized for one session, and typed by how it gets resolved: `research` (facts to gather; give it to a fresh subagent and tell it: Call the Skill tool with "research"; where that skill is not installed, the subagent researches inline and says so), `grilling` (needs a person's answers) or `task` (small work that unblocks a decision). Its issue type is a Task-like type when `.agents/jira-required.yaml` declares one for epic children; otherwise it is a Story carrying the label `decision` plus the ticket type as a second label. It is not a user story, so the persona rule (I19) does not apply, and its summary still follows `{Feature} | {Action}` with the action starting "Decide".
+
+Resolve one ticket per session: write the answer in a comment, add a line to "decisions so far", and move any new question into "not yet specified" or a new ticket. When nothing unspecified is left, write the spec from the decisions (`add-feature.md`) and cut the stories with Step 0 below.
+
+When a skill is not installed, do the same work by hand (questions as a numbered list with your recommended answer, facts gathered yourself) and say once in the report that it was missing. The map still works as a document.
+
+With nobody at the keyboard this section does not run. A map of decision tickets would blow through the `discovery_definitions` cap, and a `grilling` ticket cannot be answered with nobody there. Record "needs a wayfinder map" as a gap in the run report and the escalation log (product category in `agentic-dev-core/references/decision-protocol.md`, a clean stop for that gap only) and take the next candidate.
+
+Source: https://github.com/mattpocock/skills (engineering/wayfinder), MIT, (c) 2026 Matt Pocock. Adapted by UPEX Galaxy.
+
+---
+
+## Epic naming and folder structure
+
+> Lifted from `product-backlog-seed.md`; the same rules apply when adding a single epic.
+
+**Folder format:** `EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{descriptive-name}/`
+
+Examples from different projects:
 
 Project "MYM" (Jira issued #2 and #13):
 
@@ -118,92 +138,93 @@ Project "BLOG" (Jira issued #1):
 
 - `EPIC-BLOG-1-content-management-system/`
 
-**Invalid examples:**
+Invalid examples:
 
 - `EPIC-001-user-auth/` (missing PROJECT_KEY)
-- `EPIC_MYM_2_UserAuth/` (wrong format — must use hyphens)
-- `EPIC-MYM-002-auth/` (no leading zeros — Jira never generates them)
+- `EPIC_MYM_2_UserAuth/` (wrong format, it takes hyphens)
+- `EPIC-MYM-002-auth/` (no leading zeros, Jira never generates them)
 - `EPIC-MYM-2-user-authentication-and-comprehensive-profile-management-system/` (name too long)
 
-**Naming rules for `{nombre-descriptivo}`:**
+Rules for `{descriptive-name}`:
 
 - 2-4 words, kebab-case, lowercase
-- Inferred from PRD/SRS domain vocabulary of the current project
-- Describes the capability, not the implementation (e.g., `payment-processing`, not `stripe-integration`)
+- Taken from the PRD/SRS domain vocabulary of the current project
+- Names the capability, not the implementation (`payment-processing`, not `stripe-integration`)
 
 ---
 
-## Creating an Epic: Step-by-Step
+## Creating an epic, step by step
 
-### Step 1 — Create the Epic in the issue tracker
+### Step 0: Draft the stories as tracer bullets, then quiz
 
-**Action:** Use `[ISSUE_TRACKER_TOOL]` to create the epic. See `references/jira-operations.md` for the pseudo-code patterns (create / transition / link). Description fields are rich-text — review `references/jira-publishing-gotchas.md` before publishing the body.
+Do this before Step 1 creates anything in Jira. Cut the stories on paper first (the worksheet below is the place), because a split that is wrong costs far less before the keys exist.
 
-**Required data:**
+Each story is a tracer bullet: a narrow but complete path through every layer, demonstrable or verifiable on its own, small enough for one fresh session, and declaring which stories block it. Prefactoring comes first as its own story. A wide refactor goes as expand, then migrate in batches sized by blast radius, then contract.
 
-- **Project:** `{{PROJECT_KEY}}`
-- **Issue type:** Epic
-- **Title (Summary):** Epic name from PRD (NEVER embed `FR-XXX —` prefix in the summary)
-- **Description:** Detailed description (2-3 paragraphs) — body only, no AC / Scope / OOS duplication (see `references/description-custom-field-dedup.md`)
-- **Priority:** High | Medium | Low
-- **Labels:** `mvp`, `fase-1` (or `post-mvp`, `new-feature` for additions — adjust as appropriate)
+Then quiz the PM. For each story show its title, what blocks it and what it delivers, and ask three things: is the size right, are the blockers real, should anything merge or split? Create nothing in Jira until that is settled, and create blockers first so their keys exist when the links are made.
 
-**Instructions:**
+With nobody at the keyboard there is no quiz. Write the three questions with your own answers as assumptions in the run report and the epic description, create within `discovery_definitions`, create blockers first, and leave the veto to the operator. A person-started run keeps the quiz, and a worker under a conductor sends it to the conductor, who holds the gate.
+
+Source: https://github.com/mattpocock/skills (engineering/to-tickets), MIT, (c) 2026 Matt Pocock. Adapted by UPEX Galaxy.
+
+### Step 1: Create the epic in the issue tracker
+
+Use `[ISSUE_TRACKER_TOOL]` to create the epic. `references/jira-operations.md` has the pseudo-code patterns (create / transition / link). Description fields are rich text, so read `references/jira-publishing-gotchas.md` before publishing the body.
+
+Required data:
+
+- Project: `{{PROJECT_KEY}}`
+- Issue type: Epic
+- Title (Summary): the epic name from the PRD. Never an `FR-XXX —` prefix
+- Description: 2-3 paragraphs, body only, with no AC / Scope / OOS duplication (see `references/description-custom-field-dedup.md`)
+- Priority: High | Medium | Low
+- Labels: `mvp`, `phase-1` (or `post-mvp`, `new-feature` for additions; adjust as appropriate)
+
+Steps:
 
 1. Invoke `[ISSUE_TRACKER_TOOL]` to create an issue of type "Epic".
-2. Fill in all required fields.
-3. **Capture the Issue Key** the tracker assigns to the epic.
-   - Key format: `{{PROJECT_KEY}}-{ISSUE_NUM}` (e.g., `MYM-13`, `SHOP-45`, `BLOG-1`)
+2. Fill in every required field.
+3. Capture the issue key the tracker assigns, in the format `{{PROJECT_KEY}}-{ISSUE_NUM}` (for example `MYM-13`, `SHOP-45`, `BLOG-1`).
 
-**Expected result:**
+Done when the epic exists in the tracker, the full key is captured, and `ISSUE_NUM` is extracted for the local folder name.
 
-- Epic created in the tracker.
-- Full Issue Key captured (e.g., `MYM-13`).
-- `ISSUE_NUM` extracted for the local folder name.
+### Step 1b: Transition the epic to its default status
 
----
+Right after creation, move the epic to its default working status so it appears on the planning board. Use `[ISSUE_TRACKER_TOOL]` with the transition resolved from `{{jira.statuses.epic_default}}` (literal default: `Planning`). `references/jira-operations.md` shows the transition pseudo-code and how to read the workflow catalog. If the slug is unresolved, fall back to the literal `Planning` and flag the missing catalog entry.
 
-### Step 1b — Transition the epic to its default status
+Done when the epic has left the tracker's initial creation state for `Planning` (or the workspace-configured equivalent).
 
-**Action:** Right after creation, transition the epic to its default working status so it appears on the planning board.
+### Step 2: Materialize the local epic cache (sync, do not hand-write)
 
-Use `[ISSUE_TRACKER_TOOL]` with the transition resolved from `{{jira.statuses.epic_default}}` (literal default: `Planning`). See `references/jira-operations.md` for the transition pseudo-code and how to read the workflow catalog. If the slug is unresolved, fall back to the literal `Planning` and flag the missing catalog entry.
-
-**Expected result:** epic moves from the tracker's initial creation state to `Planning` (or the workspace-configured equivalent).
-
----
-
-### Step 2 — Materialize the Local Epic Cache (sync, do NOT hand-write)
-
-**Action:** The epic already lives in Jira (Step 1). Its local `epic.md` is a **read-only cache** — never hand-authored (`.agents/instructions/agent-local-context-pbi.md` §9; `references/jira-operations.md` → "No local authoring"; `agentic-dev-core/references/acli-integration.md` D9). Materialize it with the sync script using the Jira Key captured in Step 1:
+The epic already lives in Jira (Step 1). Its local `epic.md` is a read-only cache and is never hand-authored (`.agents/instructions/agent-local-context-pbi.md` §9; `references/jira-operations.md`, section "No local authoring"; `agentic-dev-core/references/acli-integration.md` D9). Materialize it with the sync script, using the key captured in Step 1:
 
 ```
 bun run jira:sync-issues get {PROJECT_KEY}-{ISSUE_NUM}
 ```
 
-This creates the canonical folder + `epic.md` index plus one Markdown file per non-empty epic custom field (e.g. `feature-implementation-plan.md`, `feature-test-plan.md`). The child-story list starts empty and is filled once the stories exist and are linked (re-sync after Story Decomposition).
+This creates the canonical folder and the `epic.md` index, plus one Markdown file per non-empty epic custom field (for example `feature-implementation-plan.md`, `feature-test-plan.md`). The child-story list starts empty and fills once the stories exist and are linked, so re-sync after story decomposition.
 
-**Canonical location:**
+Canonical location:
 
 ```
-.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre-segun-dominio}/epic.md
+.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{domain-name}/epic.md
 ```
 
-(Where `{nombre-segun-dominio}` is inferred from the current project's PRD/SRS — e.g. `EPIC-MYM-13-entity-discovery-search/`.)
+(`{domain-name}` comes from the current project's PRD/SRS, for example `EPIC-MYM-13-entity-discovery-search/`.)
 
-**Do NOT use `acli` view to read fields back** — its default projection omits every `customfield_*`, so AC / Scope / plans return `null` (`agentic-dev-core/references/acli-integration.md` D8). All detailed reads go through `bun run jira:sync-issues get <KEY> --include-comments`.
+Do not read fields back with `acli` view. Its default projection omits every `customfield_*`, so AC / Scope / plans come back `null` (`agentic-dev-core/references/acli-integration.md` D8). Read details with `bun run jira:sync-issues get <KEY> --include-comments`.
 
 ---
 
 ## No content duplication
 
-> **Callout — applies to the epic body AND every child story.** The epic description body MUST NOT duplicate content that belongs in dedicated custom fields on child stories (Acceptance Criteria, In Scope, Out of Scope). The epic body carries narrative + outcomes; the AC / Scope / OOS detail lives on each child story in its dedicated custom field, NOT inside the description text. See `references/description-custom-field-dedup.md` for the full rule and examples. Rich-text encoding pitfalls when writing any of these fields: `references/jira-publishing-gotchas.md`.
+> Applies to the epic body and to every child story. The epic description must not duplicate content that belongs in dedicated custom fields on child stories (Acceptance Criteria, In Scope, Out of Scope). The epic body carries narrative and outcomes; AC / Scope / OOS detail lives on each child story in its own custom field, never inside the description text. `references/description-custom-field-dedup.md` has the full rule and examples, and `references/jira-publishing-gotchas.md` covers rich-text encoding pitfalls for any of these fields.
 
 ---
 
-## Epic Cache Shape (synced `epic.md` — read-back reference only)
+## Epic cache shape (synced `epic.md`, read-back reference only)
 
-> **NOT an authoring template.** `epic.md` is materialized by `bun run jira:sync-issues get <KEY>` (Step 2) and OVERWRITTEN on every pull. The shape below is for **read-back verification** — to confirm the synced file reflects the Jira issue. To change any content, edit the Jira field (or `fallback:` comment per `.agents/jira-required.yaml`), then re-sync. Epic-level AC / Scope / Out-of-Scope, when present, live in their epic custom fields and sync into their own per-field files — they are NEVER `## Scope` / `## Acceptance Criteria` H2 sections in `epic.md` (`references/description-custom-field-dedup.md`).
+> This is not an authoring template. `bun run jira:sync-issues get <KEY>` (Step 2) materializes `epic.md` and overwrites it on every pull. Use the shape below to verify that the synced file reflects the Jira issue. To change content, edit the Jira field (or the `fallback:` comment per `.agents/jira-required.yaml`) and re-sync. Epic-level AC / Scope / Out-of-Scope, when present, live in their epic custom fields and sync into their own per-field files. They are never `## Scope` / `## Acceptance Criteria` H2 sections in `epic.md` (`references/description-custom-field-dedup.md`).
 
 ```markdown
 # [Epic Title]
@@ -328,7 +349,7 @@ See: refined acceptance criteria + edge cases for the epic — refer to `accepta
 
 ## Implementation Plan
 
-See: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/feature-implementation-plan.md` — synced [SYNC] from the epic's feature-implementation-plan custom field once populated in Jira (authored in Jira during sprint planning, then materialized by `bun run jira:sync-issues get <KEY>`; never hand-written).
+See: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{name}/feature-implementation-plan.md` — synced [SYNC] from the epic's feature-implementation-plan custom field once populated in Jira (authored in Jira during sprint planning, then materialized by `bun run jira:sync-issues get <KEY>`; never hand-written).
 
 ### Recommended Story Order
 
@@ -336,11 +357,11 @@ See: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/feature-implementatio
 2. [KEY-2] - [Story title] - Core logic
    ...
 
-### Estimated Effort
+### Delivery shape
 
-- **Development:** [X sprints / Y weeks]
-- **Testing:** [X sprint / Y weeks]
-- **Total:** [X sprints]
+- **Execution Sprints (topological levels):** [N]
+- **Stories per level:** [counts]
+- Durations and capacity are human-owned and not stated here.
 
 ---
 
@@ -360,9 +381,9 @@ See: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/feature-implementatio
 
 ---
 
-## Epic-Level Acceptance Criteria
+## Epic-level acceptance criteria
 
-Epic-level ACs are **outcomes**, not test scenarios. They describe what must be true at the end of the epic for it to count as "done":
+Epic-level ACs are outcomes, not test scenarios. They state what must be true at the end of the epic for it to count as done:
 
 ```markdown
 ## Acceptance Criteria (Epic Level)
@@ -373,117 +394,129 @@ Epic-level ACs are **outcomes**, not test scenarios. They describe what must be 
 4. ✅ All N user stories under this epic are marked Done
 ```
 
-Story-level ACs (Gherkin Scenario / Given-When-Then) live in each story's `{{jira.acceptance_criteria}}` custom field in Jira and sync into the story's per-field `acceptance-criteria.md` cache — never into `epic.md`. Do not duplicate them at the epic level. Refinement details: `references/acceptance-criteria.md`.
+Story-level ACs (Gherkin Scenario / Given-When-Then) live in each story's `{{jira.acceptance_criteria}}` custom field in Jira and sync into the story's per-field `acceptance-criteria.md` cache, never into `epic.md`. Do not repeat them at the epic level. Refinement details are in `references/acceptance-criteria.md`.
 
 ---
 
-## Step N — Link dependencies (after all child stories exist)
+## Step N: Link dependencies (after all child stories exist)
 
-**When:** This phase runs AFTER every child story under the epic has been created in the tracker (so the keys exist and can be referenced). Do not attempt linking before then — it will fail or create dangling references.
+Run this after every child story has been created in the tracker, so the keys exist and can be referenced. Linking earlier fails or leaves dangling references.
 
-**Action:** For each dependency edge surfaced by an active discovery pass (sources: PRD/SRS sequencing, master-implementation-plan Master Sprints, the data map (`business-data-context`) entity relations, explicit author intent surfaced this session — see `references/dependency-linking.md`; the synced `epic.md` Dependencies block is read-only context, not the authoring source), create an issue link in the tracker. After linking, re-sync so the cache reflects the live links.
+For each dependency edge surfaced by an active discovery pass, create an issue link in the tracker, then re-sync so the cache reflects the live links. The sources are PRD/SRS sequencing, the Master Sprints in `.context/master-implementation-plan.md`, the entity relations in the data map (`business-data-context`), and explicit author intent from this session (`references/dependency-linking.md`). The synced `epic.md` Dependencies block is read-only context, not an authoring source.
 
 - Use `[ISSUE_TRACKER_TOOL]` with the link type resolved from `{{jira.link_types.dependencies}}`.
-- If `{{jira.link_types.dependencies}}` is unresolved in the workspace, degrade to the fallback `{{jira.link_types.dependencies.fallback}}` (literal: `relates`) and flag the degradation in the run report — `relates` loses directional semantics.
-- For "this epic blocks X" relationships, use `{{jira.link_types.blocks}}` (directional). For symmetric coupling without a blocker semantic, `relates` is acceptable.
-- Description / comment fields touched during linking are rich-text — see `references/jira-publishing-gotchas.md` if you attach a justification comment.
+- If `{{jira.link_types.dependencies}}` is unresolved in the workspace, degrade to the fallback `{{jira.link_types.dependencies.fallback}}` (literal: `relates`) and flag the degradation in the run report, because `relates` loses direction.
+- For "this epic blocks X", use `{{jira.link_types.blocks}}` (directional). For symmetric coupling with no blocker semantics, `relates` is fine.
+- Description and comment fields touched during linking are rich text. See `references/jira-publishing-gotchas.md` if you attach a justification comment.
 
-See `references/dependency-linking.md` for the full pseudo-code, slug-resolution algorithm, and degradation handling.
+`references/dependency-linking.md` has the full pseudo-code, the slug-resolution algorithm and the degradation handling.
 
-**Expected result:** Every documented dependency edge has a corresponding tracker link; the run report records any fallback uses.
-
----
-
-## Step N+1 — Sprint sequencing (final step before handoff)
-
-**When:** Runs LAST, after the epic is decomposed into child stories and the dependency graph is complete (Step N done). This is the bridge between epic planning and `/sprint-development`.
-
-**Action:** Order the child stories into **Execution Sprints** using the dependency graph as the primary constraint and value / risk as tie-breakers. Invoke `/project-context dev-roadmap` to write the execution-sprint sort to `.context/dev-roadmap.md` §4 (which also preserves the hand-authored backbone/edges/gates) — this skill DELEGATES the write, it no longer authors the file itself.
-
-- Sequence stories so that no story is scheduled before its `{{jira.link_types.dependencies}}` predecessors.
-- Group stories into Execution Sprints by topological level only (the sort in `references/sprint-sequencing.md`): no capacity fill, because Story Points stay empty by default (anti-pattern `I16`) and capacity belongs to the human sprint-planning meeting that consumes the ordering.
-- Cross-reference the epic's Master Sprint context from §`Master Sprint` above.
-
-See `references/sprint-sequencing.md` for the full algorithm, conflict resolution, and the exact shape of the §4 schema `/project-context dev-roadmap` emits into `.context/dev-roadmap.md`.
-
-**Expected result:** A persisted Execution-Sprint ordering ready for `/sprint-development` to pick up story-by-story. Any cycles or unresolved dependencies are flagged before handoff.
+Done when every documented dependency edge has a tracker link and the run report records any fallback use.
 
 ---
 
-## Story Decomposition Worksheet
+## Step N+1: Sprint sequencing (last step before handoff)
 
-> Lifted from `add-feature.md` Fase 2B, Step 1. Use this worksheet to capture the breakdown before opening Jira.
+Run this last, once the epic is decomposed into child stories and the dependency graph is complete (Step N). It is the bridge between epic planning and `/sprint-development`.
+
+Order the child stories into Execution Sprints, with the dependency graph as the main constraint and value and risk as tie-breakers. Invoke `/project-context dev-roadmap` to write the execution-sprint sort to `.context/dev-roadmap.md` §4. That mode also preserves the hand-authored backbone, edges and gates, so this skill delegates the write and does not author the file.
+
+- Sequence stories so none is scheduled before its `{{jira.link_types.dependencies}}` predecessors.
+- Group stories into Execution Sprints by topological level only (the sort in `references/sprint-sequencing.md`). Do not fill by capacity: capacity is human-owned and belongs to the sprint-planning meeting that consumes the ordering.
+- Cross-reference the epic's Master Sprint from the `Master Sprint` section above.
+
+`references/sprint-sequencing.md` has the full algorithm, the conflict resolution and the exact shape of the §4 schema that `/project-context dev-roadmap` emits into `.context/dev-roadmap.md`.
+
+Done when an Execution-Sprint ordering is persisted for `/sprint-development` to pick up story by story, and any cycle or unresolved dependency was flagged before handoff.
+
+---
+
+## Story decomposition worksheet
+
+> Lifted from `add-feature.md` Phase 2B, Step 1. Capture the breakdown here before opening Jira, and let Step 0 judge it.
 
 ```markdown
-## Nueva Épica
+## New Epic
 
 **Title:** [Epic name]
 **Description:** [2-3 paragraphs explaining the epic]
 **Priority:** High | Medium | Low
 **Business Value:** [Why it matters]
 
-## User Stories Identificadas
+## Identified User Stories
 
-1. As a [user], I want to [action], so that [benefit] - [X pts]
-2. As a [user], I want to [action], so that [benefit] - [X pts]
-3. As a [user], I want to [action], so that [benefit] - [X pts]
+1. As a [user], I want to [action], so that [benefit]
+2. As a [user], I want to [action], so that [benefit]
+3. As a [user], I want to [action], so that [benefit]
    ...
 
-**Total estimated:** [sum of story points]
 **Number of stories:** [count]
 ```
 
-After this worksheet is complete, run the INVEST checklist (below) per story before creating them in Jira.
+When the worksheet is complete, run the INVEST checklist below on each story before creating it in Jira.
 
 ---
 
-## INVEST Checklist for Stories Inside an Epic
+## INVEST checklist for stories inside an epic
 
-Each story under an epic must pass INVEST. This is a lightweight pass at epic-creation time — `story-refinement.md` covers the full INVEST treatment.
+Each story under an epic must pass INVEST. This is a light pass at epic-creation time; `story-refinement.md` covers the full treatment.
 
-| Criterion       | Check                                                         |
-| --------------- | ------------------------------------------------------------- |
-| **I**ndependent | Can it be completed without depending on sibling stories?     |
-| **N**egotiable  | Is there flexibility in the implementation?                   |
-| **V**aluable    | Does the "so that…" clearly state user/business value?        |
-| **E**stimable   | Can the team assign story points with the info available?     |
-| **S**mall       | Under 8 SP? If not, split before creating the Jira story.     |
-| **T**estable    | Are acceptance criteria verifiable (Gherkin Scenario format)? |
+| Criterion       | Check                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| **I**ndependent | Can it be completed without depending on sibling stories?                                 |
+| **N**egotiable  | Is there flexibility in the implementation?                                               |
+| **V**aluable    | Does the "so that…" clearly state user or business value?                                 |
+| **E**stimable   | Can QA tell Low, Medium or High from the story as written?                                |
+| **S**mall       | AI Effort `High`? Optionally propose a split before creating (a warning, not a gate)      |
+| **T**estable    | Are acceptance criteria verifiable (Gherkin Scenario format)?                             |
 
-For the full INVEST treatment + 3-amigos refinement guidance, see `story-refinement.md`.
-
----
-
-## Epic Success Criteria
-
-Before marking an epic as ready for development, verify:
-
-- [ ] **Classification confirmed:** Level 2 (not a story, not multi-epic)
-- [ ] **Naming compliant:** `EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{kebab-name}`
-- [ ] **Jira issue created:** Real `ISSUE_NUM` captured (no `TBD`, no leading zeros)
-- [ ] **Epic content set in Jira:** description body + any epic custom fields populated on the issue (not in a local file)
-- [ ] **`epic.md` cache materialized:** `bun run jira:sync-issues get <KEY>` ran; synced folder exists under `.context/PBI/epics/` and reflects the issue (read-back clean, no `[placeholder]`)
-- [ ] **3-8 stories listed** in the synced User Stories section, each with a clear "As a / I want / so that"
-- [ ] **In Scope / Out of Scope** set in the epic/story Scope + Out-of-Scope custom fields (sync into per-field files), not duplicated in any description body
-- [ ] **Epic-level ACs are outcomes**, not story-level Gherkin
-- [ ] **Dependencies published as Jira links** (External / Internal / Blocks) and re-synced into the cache
-- [ ] **Success metrics defined** (functional + business)
-- [ ] **Story totals are within 20-40 SP**
-- [ ] **Each story passes INVEST** (lightweight check; full check during refinement)
-
-When all are checked, hand off each story to `story-refinement.md` for development-ready preparation.
+For the full INVEST treatment and 3-amigos guidance, see `story-refinement.md`.
 
 ---
 
-## Related References (in this skill)
+## Epic success criteria
 
-- `product-backlog-seed.md` — full backlog seeding flow (multiple epics at once)
-- `add-feature.md` — feature classification flow (Levels 1, 2, 3)
-- `story-refinement.md` — refining individual stories before sprint
-- `acceptance-criteria.md` — refined ACs per story
-- `edge-cases-enumeration.md` — edge case discovery per story
-- `jira-operations.md` — issue tracker pseudo-code (create / transition / link)
-- `dependency-linking.md` — linking stories via `{{jira.link_types.dependencies}}`
-- `description-custom-field-dedup.md` — keep description body free of AC / Scope / OOS duplication
-- `sprint-sequencing.md` — Execution Sprint ordering after epic decomposition
-- `jira-publishing-gotchas.md` — rich-text encoding pitfalls (ADF, code blocks, lists)
+Before marking an epic ready for development, check that:
+
+- [ ] Classification is confirmed: Level 2 (not a story, not multi-epic)
+- [ ] The name follows `EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{kebab-name}`
+- [ ] The Jira issue exists with a real `ISSUE_NUM` (no `TBD`, no leading zeros)
+- [ ] Epic content is set in Jira: description body plus any epic custom fields, on the issue and not in a local file
+- [ ] The `epic.md` cache is materialized: `bun run jira:sync-issues get <KEY>` ran, the synced folder exists under `.context/PBI/epics/`, and it reflects the issue (read-back clean, no `[placeholder]`)
+- [ ] 3-8 stories are listed in the synced User Stories section, each with a clear "As a / I want / so that"
+- [ ] In Scope and Out of Scope are set in the Scope and Out-of-Scope custom fields (they sync into per-field files) and are not duplicated in any description body
+- [ ] Epic-level ACs are outcomes, not story-level Gherkin
+- [ ] Dependencies (External / Internal / Blocks) are published as Jira links and re-synced into the cache
+- [ ] Success metrics are defined (functional and business)
+- [ ] Story totals are within 20-40 SP
+- [ ] Each story passes INVEST (light check here, full check during refinement)
+
+When all are checked, hand each story to `story-refinement.md` for development-ready preparation.
+
+---
+
+## With nobody at the keyboard
+
+A routine or discovery run creates epics with nobody to answer. Step 0 and the "too big to plan" section carry their own unattended paths. The other two points that wait for a person:
+
+| Point                                  | Person present                     | Nobody there                                                                                       |
+| -------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Level 3, "stop and write a plan first" | Stop, plan, split into epics       | Record the gap in the run report and escalation log, create nothing for it, take the next candidate |
+| Dependency discovery matrix (Step N)   | Show the matrix, confirm the edges | Keep only explicit feature-level edges, list the matrix in the run report, flag each degradation   |
+
+A worker under a conductor hands its questions to the conductor, who holds the gate. Every other decision follows `agentic-dev-core/references/decision-protocol.md`. Keep the work reversible: stop before any push or message that cannot be undone, and say in the report what you assumed.
+
+---
+
+## Related references (in this skill)
+
+- `product-backlog-seed.md`: full backlog seeding flow (several epics at once)
+- `add-feature.md`: feature classification flow (Levels 1, 2, 3)
+- `story-refinement.md`: refining individual stories before a sprint
+- `acceptance-criteria.md`: refined ACs per story
+- `edge-cases-enumeration.md`: edge-case discovery per story
+- `jira-operations.md`: issue tracker pseudo-code (create / transition / link)
+- `dependency-linking.md`: linking stories via `{{jira.link_types.dependencies}}`
+- `description-custom-field-dedup.md`: keep the description body free of AC / Scope / OOS duplication
+- `sprint-sequencing.md`: Execution Sprint ordering after epic decomposition
+- `jira-publishing-gotchas.md`: rich-text encoding pitfalls (ADF, code blocks, lists)

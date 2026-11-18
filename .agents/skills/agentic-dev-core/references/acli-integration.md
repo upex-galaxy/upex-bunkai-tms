@@ -1,126 +1,125 @@
-# `acli` repo integration — agentic-dev-boilerplate
+# `acli` repo integration for the DEV boilerplate
 
-> **Purpose**: Plug the tool-agnostic `acli` skill (`.agents/skills/acli/SKILL.md`) into the DEV boilerplate's workflow doctrine, slug catalog, sync-script pipeline, and anti-patterns. The `acli/SKILL.md` itself is byte-identical between the DEV and QA boilerplates; everything DEV-specific lives here so the tool surface stays single-source-of-truth.
-> **Use when**: Any DEV workflow skill (`sprint-development`, `product-management`, `project-foundation`, `project-bootstrap`, `unit-testing`, `testability-guide`) calls `[ISSUE_TRACKER_TOOL]` and resolves it to `/acli`. Load this BEFORE invoking the tool — it answers *which slug, which status, which custom field, which sync script* before `acli/SKILL.md` answers *how the binary works*.
-> **Companion references**: `acli/SKILL.md` (tool surface), `acli/references/*.md` (per-command deep refs), `product-management/references/jira-publishing-gotchas.md` (ADF publish edges — what breaks), `acli/references/adf-authoring-style.md` (ADF visual-formatting style — what reads well), `.agents/jira-fields.json` + `.agents/jira-required.yaml` + `.agents/jira-workflows.json` + `.agents/jira-link-types.json` (slug catalogs), `scripts/sync-jira-*.ts` (catalog regeneration, run as `bun run jira:sync-*`), `sprint-development/SKILL.md` (the primary consumer).
+> This file plugs the tool-agnostic `acli` skill (`.agents/skills/acli/SKILL.md`) into the DEV workflow: the slug catalog, the sync-script pipeline and the repo-wide anti-patterns. `acli/SKILL.md` is shared with the QA boilerplate, so everything DEV-specific lives here and the tool surface stays in one place.
+> Load it before the first Jira call of a session. It answers which slug, which status, which custom field and which sync script; `acli/SKILL.md` then answers how the binary works.
+> Callers: `sprint-development`, `product-management`, `project-foundation`, `project-bootstrap`, `unit-testing` and `testability-guide`, whenever they write `[ISSUE_TRACKER_TOOL]` and it resolves to `/acli`.
+> Companions: `acli/references/*.md` (per-command depth), `acli/references/adf-authoring-style.md` (what reads well in ADF), `product-management/references/jira-publishing-gotchas.md` (what breaks when publishing ADF), `scripts/sync-jira-*.ts` (catalog regeneration, run as `bun run jira:sync-*`), `sprint-development/SKILL.md` (the primary consumer).
 
 ---
 
 ## Role inside the DEV workflow
 
-`acli` resolves a single tool tag in this repo: `[ISSUE_TRACKER_TOOL]`. The Atlassian MCP fallback is OPT-IN and documented in `docs/mcp/`; default resolution is unconditional `/acli`.
+`acli` resolves one tool tag in this repo: `[ISSUE_TRACKER_TOOL]`. The Atlassian MCP fallback is opt-in and documented in `docs/mcp/`; the default is `/acli`.
 
-Workflow skills MUST NOT invoke `acli` directly. They invoke the pseudocode tag, the AI resolves the tag, then loads the matching skill (this file plus `acli/SKILL.md`). The indirection is what lets the methodology survive a future tool swap.
+Workflow skills write the tag and never call `acli` themselves. The AI resolves the tag, then loads this file and `acli/SKILL.md`. That indirection is what lets the methodology survive a tool swap.
 
-### Reads vs writes — the `jira:sync-issues` split (CRITICAL)
+### Reads and writes resolve to different tools
 
-`[ISSUE_TRACKER_TOOL]` covers two very different operations that resolve to **different tools**:
+`[ISSUE_TRACKER_TOOL]` covers two kinds of operation, and they go to different places:
 
 | Operation | Tool | Why |
 |---|---|---|
-| **Detailed READ** (custom fields: ACs, Gherkin, Scope, Mockup, Workflow, impl plans, bug fields; description; comments) | **`bun run jira:sync-issues get <KEY> [--include-comments]`** then read the synced `.md` under `.context/PBI/` | `acli`'s `view` returns `null` for `customfield_*` unless you pass `--fields "*all"` + hand-parse jq. The sync script resolves every slug, converts ADF→Markdown, writes per-field files. ONE canonical read path. |
-| **Batch READ** (many issues by JQL) | **`bun run jira:sync-issues jql "<query>"`** | Same materialization for every match. |
-| **WRITE** (create / transition / comment / link / assign / custom-field update, bulk-create) | `/acli` | The sync is read-only (pull). All mutations stay on `acli`. |
-| **Trivial lookup / sprint search** (key / summary / status only — no custom fields) | `/acli` search is fine | No materialization needed. |
+| Detailed read (custom fields: ACs, Gherkin, Scope, Mockup, Workflow, implementation plans, bug fields; description; comments) | `bun run jira:sync-issues get <KEY> [--include-comments]`, then read the synced `.md` under `.context/PBI/` | `acli` `view` returns `null` for `customfield_*` unless you pass `--fields "*all"` and parse the JSON by hand. The sync script resolves every slug, converts ADF to Markdown and writes one file per field. |
+| Batch read (many issues by JQL) | `bun run jira:sync-issues jql "<query>"` | Same materialization for every match. |
+| Write (create, transition, comment, link, assign, custom-field update, bulk create) | `/acli` | The sync only pulls. Every mutation stays on `acli`. |
+| Trivial lookup or sprint search (key, summary, status only) | `/acli` search | No materialization needed. |
 
-Rule: **if you need the content of a custom field (ACs, impl plan, bug fields), NEVER `acli` `view` — sync it.** Synced files live under `.context/PBI/` per `.agents/instructions/agent-local-context-pbi.md` §9 (Jira = source of truth; local `.md` = read-only cache). When a field is absent, the sync emits a pointer stub and the content lives in the issue's comments/description per `.agents/jira-required.yaml` → `fallback:`. This matches the already-correct doctrine in `product-management/references/jira-operations.md` + `acceptance-criteria.md`.
+Whenever you need the content of a custom field, sync it instead of calling `acli` `view`. Synced files live under `.context/PBI/` (`.agents/instructions/agent-local-context-pbi.md` §9): Jira is the source of truth and the local `.md` is a read-only cache. When a field is absent, the sync writes a pointer stub and the content lives in the issue's comments or description, per `fallback:` in `.agents/jira-required.yaml`. `product-management/references/jira-operations.md` and `acceptance-criteria.md` already work this way.
 
-### Concrete `/sprint-development` integration
+### How `/sprint-development` and `/product-management` use it
 
-This skill complements the `/sprint-development` mega-orchestrator. It does NOT drive the sprint loop — it is the underlying CLI surface that `/sprint-development` and other DEV skills call when they need to talk to Jira. Command shapes live in `acli/SKILL.md`; the table below maps each DEV moment to the action and slug substitutions.
+`acli` is the CLI surface underneath the `/sprint-development` orchestrator. It does not drive the sprint loop. Command shapes live in `acli/SKILL.md`; this table maps each DEV moment to the action and the slug substitutions.
 
-| DEV moment | Action (see `acli/SKILL.md`) | DEV-specific substitutions |
+| DEV moment | Action (shape in `acli/SKILL.md`) | DEV-specific substitutions |
 |---|---|---|
-| `/sprint-development` Stage 1 (Planning) — fetch ticket DETAIL | **NOT acli** → `bun run jira:sync-issues get <KEY> --include-comments` | `<KEY>` = `{{PROJECT_KEY}}-NNN`. ACs / Gherkin / Scope / Mockup / Workflow are custom fields — `acli` `view` returns null; read them from the synced `.md`. See "Reads vs writes" above. |
-| `/sprint-development` Stage 1 — transition story to In Progress | `jira workitem transition --key <KEY> --status <STATUS>` | `<STATUS>` = `{{jira.status.story.in_progress}}` |
-| `/sprint-development` Stage 3 (Code Review) — transition to In Review | `jira workitem transition --key <KEY> --status <STATUS>` | `<STATUS>` = `{{jira.status.story.in_review}}` |
-| `/sprint-development` Stage 4 — handoff to QA | `jira workitem transition --key <KEY> --status <STATUS>` | `<STATUS>` = `{{jira.status.story.ready_for_qa}}` |
-| `/sprint-development` Stage 3 — defect mid-implementation | `jira workitem create --project <P> --type Bug --summary <S> --parent <PARENT>` | `<P>` = `{{PROJECT_KEY}}`; `<PARENT>` = parent Story key |
-| Linking merged PR back to the ticket | `jira workitem link create --out <KEY> --in <PR>` | `<KEY>` = Story key; `<PR>` = remote-link issue or PR identifier |
-| `/product-management` — bulk-create stories from CSV | `jira workitem create-bulk --from-csv <FILE> --yes` | `<FILE>` = path to seed CSV |
-| `/product-management` (workflow G) — sprint report | `jira workitem search --jql <JQL> --paginate --json` | `<JQL>` = sprint scope query rooted in `{{PROJECT_KEY}}` |
+| `/sprint-development` Stage 1 (Planning), fetch ticket detail | not acli: `bun run jira:sync-issues get <KEY> --include-comments` | `<KEY>` = `{{PROJECT_KEY}}-NNN`. ACs, Gherkin, Scope, Mockup and Workflow are custom fields, so read them from the synced `.md`. |
+| Stage 1, transition the story to In Progress | `jira workitem transition --key <KEY> --status <STATUS>` | `<STATUS>` = `{{jira.status.story.in_progress}}` |
+| Stage 3 (Code Review), transition to In Review | same command | `<STATUS>` = `{{jira.status.story.in_review}}` |
+| Stage 4, hand off to QA | same command | `<STATUS>` = `{{jira.status.story.ready_for_qa}}` |
+| Stage 3, defect found mid-implementation | `jira workitem create --project <P> --type Bug --summary <S> --parent <PARENT>` | `<P>` = `{{PROJECT_KEY}}`; `<PARENT>` = parent Story key |
+| Link a merged PR back to the ticket | `jira workitem link create --out <KEY> --in <PR>` | `<KEY>` = Story key; `<PR>` = remote-link issue or PR identifier |
+| `/product-management`, bulk-create stories from CSV | `jira workitem create-bulk --from-csv <FILE> --yes` | `<FILE>` = path to the seed CSV |
+| `/product-management` workflow G, sprint report | `jira workitem search --jql <JQL> --paginate --json` | `<JQL>` = sprint scope query rooted in `{{PROJECT_KEY}}` |
 
-Issue types DEV cares about: **Story**, **Bug**, **Task**, **Epic**. Test-management issue types (Test, Test Plan, Test Execution) live in the sister QA repo and are not handled here.
+The issue types DEV handles are Story, Bug, Task and Epic. Test, Test Plan and Test Execution live in the sister QA repo.
 
 ---
 
-## DEV Quick Start (slug substitutions on top of `acli/SKILL.md`)
+## DEV quick start (slug substitutions on top of `acli/SKILL.md`)
 
-The command shapes live in `acli/SKILL.md` §Quick Start. The DEV flow uses the same shapes with slug-resolved arguments. Each row below maps a DEV step to the action and the substitutions; never re-type the literal binary call from here — load `acli/SKILL.md` for the canonical form.
+The DEV flow uses the same command shapes as `acli/SKILL.md` §Quick Start, with slug-resolved arguments. Load that file for the canonical form instead of retyping a binary call from here.
 
-| DEV step | Action (see `acli/SKILL.md`) | DEV-specific substitutions |
+| DEV step | Action (shape in `acli/SKILL.md`) | DEV-specific substitutions |
 |---|---|---|
-| Auth | `jira auth login` | `--site "$(bun run --silent jira:url --slug)"` (host from `.agents/project.yaml`, NOT an env var), `--email "$ATLASSIAN_EMAIL"`, token piped from `$ATLASSIAN_API_TOKEN` (both from `.env`) |
-| Verify auth | `jira auth status` | None (same as generic). MUST run before every `bun run jira:sync-*` and before any bulk mutation — see D1 below. |
-| Fetch story you are about to implement DETAIL (impl-plan input) | **NOT acli** → `bun run jira:sync-issues get <KEY> --include-comments` | `<KEY>` = `{{PROJECT_KEY}}-NNN`. Reads ACs + Scope from the synced `.md` — `acli` `view` returns null for custom fields. See "Reads vs writes" above. |
+| Auth | `jira auth login` | `--site "$(bun run --silent jira:url --slug)"` (the host comes from `.agents/project.yaml`, not an env var), `--email "$ATLASSIAN_EMAIL"`, token piped from `$ATLASSIAN_API_TOKEN` (both from `.env`) |
+| Verify auth | `jira auth status` | None. Run it before every `bun run jira:sync-*` and before any bulk mutation (D1). |
+| Fetch the story you are about to implement (plan input) | not acli: `bun run jira:sync-issues get <KEY> --include-comments` | `<KEY>` = `{{PROJECT_KEY}}-NNN`. Read ACs and Scope from the synced `.md`. |
 | Move into In Progress (Stage 1 start) | `jira workitem transition --key <KEY> --status <STATUS>` | `<STATUS>` = `{{jira.status.story.in_progress}}` |
-| Sprint dashboard — what you own still open | `jira workitem search --jql <JQL> --paginate --json` | `<JQL>` = `assignee = currentUser() AND project = {{PROJECT_KEY}} AND status in ('Ready For Dev','In Progress','In Review')` |
-| File bug mid-implementation | `jira workitem create --project <P> --type Bug --summary <S> --parent <PARENT>` | `<P>` = `{{PROJECT_KEY}}`; `<PARENT>` = parent Story key (`{{PROJECT_KEY}}-NNN`) |
+| Sprint dashboard, what you own that is still open | `jira workitem search --jql <JQL> --paginate --json` | `<JQL>` = `assignee = currentUser() AND project = {{PROJECT_KEY}} AND status in ('Ready For Dev','In Progress','In Review')` |
+| File a bug mid-implementation | `jira workitem create --project <P> --type Bug --summary <S> --parent <PARENT>` | `<P>` = `{{PROJECT_KEY}}`; `<PARENT>` = parent Story key (`{{PROJECT_KEY}}-NNN`) |
 
-Slug resolution rule: anything wrapped in `{{jira.<slug>}}` MUST be resolved against `.agents/jira-fields.json` (custom-field IDs) or `.agents/jira-workflows.json` (status / transition names) before the command runs. Never substitute literal `customfield_` IDs or literal status names — see anti-patterns below.
+Anything wrapped in `{{jira.<slug>}}` resolves against `.agents/jira-fields.json` (custom-field IDs) or `.agents/jira-workflows.json` (status and transition names) before the command runs. Literal `customfield_` IDs and literal status names are out (D7).
 
 ---
 
-## Slug catalog + sync-script pipeline
+## Slug catalog and sync-script pipeline
 
 | File | Owns | Regenerate with |
 |---|---|---|
-| `.agents/jira-fields.json` | Custom-field slug → numeric ID map | `bun run jira:sync-fields` |
-| `.agents/jira-workflows.json` | Status + transition slugs per work type | `bun run jira:sync-workflows` |
+| `.agents/jira-fields.json` | Custom-field slug to numeric ID map | `bun run jira:sync-fields` |
+| `.agents/jira-workflows.json` | Status and transition slugs per work type | `bun run jira:sync-workflows` |
 | `.agents/jira-link-types.json` | Issue-link-type slug map | `bun run jira:sync-link-types` |
-| `.agents/jira-required.yaml` | Which fields are required per work type | Hand-curated; aligns with `jira-fields.json` |
+| `.agents/jira-required.yaml` | Which fields are required per work type | Hand-curated; stays aligned with `jira-fields.json` |
 
-Slug syntax (per `.agents/instructions/agent-project-variables.md` §7):
+Slug syntax (`.agents/instructions/agent-project-variables.md` §7):
 
-- `{{jira.<slug>}}` — custom field ID (e.g. `{{jira.acceptance_criteria}}` → numeric workspace-specific ID)
-- `{{jira.status.<work_type>.<slug>}}` — status name (`{{jira.status.story.in_progress}}` → `"In Progress"`)
-- `{{jira.transition.<work_type>.<slug>}}` — transition name (`{{jira.transition.story.start_working}}` → `"Start working"`)
-- `{{jira.work_type.<slug>}}` — Jira issue-type name (`{{jira.work_type.story}}` → `"Story"`)
+- `{{jira.<slug>}}` is a custom-field ID (`{{jira.acceptance_criteria}}` is the workspace-specific numeric ID).
+- `{{jira.status.<work_type>.<slug>}}` is a status name (`{{jira.status.story.in_progress}}` is `"In Progress"`).
+- `{{jira.transition.<work_type>.<slug>}}` is a transition name (`{{jira.transition.story.start_working}}` is `"Start working"`).
+- `{{jira.work_type.<slug>}}` is a Jira issue-type name (`{{jira.work_type.story}}` is `"Story"`).
 
-The sync scripts call `acli` under the hood. Stale auth poisons the output silently — see anti-pattern D1 below. If a slug fails to resolve at runtime, STOP — do not fall back to a literal. Report the missing entry and re-run the matching sync script. A missing TRANSITION or STATUS slug has its own protocol (list the live transitions, ask ONE question, fire the live id, then re-sync): `artifact-lifecycle.md` §4, which also maps which stage fires which slug.
-
----
-
-## Anti-patterns — DEV-specific (NEVER do these)
-
-These are repo-flavored companions to the tool-level anti-patterns T1-T4 in `acli/SKILL.md`. Both layers apply.
-
-- **D1. NEVER run `bun run jira:sync-*` without a fresh `acli jira auth login`** — stale or expired auth produces silent partial-data syncs that poison `.agents/jira-fields.json` / `jira-workflows.json` / `jira-link-types.json` downstream. Every workflow skill that resolves a slug then resolves to the wrong field. The failure surfaces hours later as "Jira rejected payload" — the root cause is hours old.
-- **D2. NEVER invoke `acli` directly from workflow skills** (`sprint-development`, `product-management`, `project-foundation`, `project-bootstrap`, `unit-testing`, `testability-guide`). Workflow skills cite `[ISSUE_TRACKER_TOOL]` pseudo-code and load THIS file + `acli/SKILL.md` instead — methodology survives tool rotation only if the HOW lives behind the tag.
-- **D3. NEVER hardcode project keys** (`UPEX`, `MYM`, `SQ`, etc.) in commands, JQL, or docs. Resolve via `{{PROJECT_KEY}}` from `.agents/project.yaml`. Hardcoding breaks portability across downstream consumers and re-installs of the boilerplate.
-- **D4. NEVER use `acli` against a production Jira workspace from a developer workstation without an explicit per-operation confirmation step.** Transitions, deletions, and bulk edits are irreversible — `--yes` in CI is fine; `--yes` ad-hoc against prod is not. CI pipelines run against agreed-on scopes; local sessions do not.
-- **D5. NEVER batch transitions or mutations with quiet flags in CI without capturing the full per-item response** (HTTP code, trace ID, JSON). Failures hide otherwise, and trace IDs are the only debug signal Atlassian Support accepts.
-- **D6. NEVER assume teammates run the same `acli` version.** Pin a minimum version in CI and document it in `docs/`. Subcommand surfaces (e.g. `workitem` vs legacy `issue`) and flag shapes have shifted across minor releases.
-- **D7. NEVER hardcode Jira `customfield_NNNNN` IDs** in skills, scripts, prompts, or AI output. Resolve via the slug catalog (`{{jira.<slug>}}` against `.agents/jira-required.yaml` + `.agents/jira-fields.json`). IDs differ per workspace; slugs travel. Regenerate the catalog with `bun run jira:sync-fields` if a field is missing.
-- **D8. NEVER read a custom field via `acli` `view`.** It returns `null` for `customfield_*` (ACs, Gherkin, Scope, impl plans, bug fields). For ANY detailed read use `bun run jira:sync-issues get <KEY> [--include-comments]` / `jql "<query>"` and read the synced `.md` under `.context/PBI/`. `acli` view/search is allowed ONLY for trivial summary/status/key-list lookups. See "Reads vs writes" above.
-- **D9. NEVER hand-write a Jira-mirrored file in `.context/PBI/`** (`story.md`, `epic.md`, `epic-tree.md`, `acceptance-*.md`, `scope.md`, `out-of-scope.md`, `implementation-plan.md`, `feature-implementation-plan.md`, per-field files). Author content → push to the Jira field (or `fallback:` comment) → run the sync → read the materialized file. Only the `[LOCAL]` non-Jira files of `.agents/instructions/agent-local-context-pbi.md` §9 (`context.md`, `progress.md`, `evidence/`) are hand-authored there. The sync OVERWRITES `[SYNC]` files every run (NO files are hard-protected — Jira is the source of truth; the sync overwrites every `[SYNC]` file every run). This is the doctrine `product-management/references/jira-operations.md` already enforces — it is now repo-wide.
-- **D10. NEVER publish ADF rich text to a Jira field without first reading `product-management/references/jira-publishing-gotchas.md`** — the two converter / API edges (inline `code` co-occurring with `strong`/`em`, and the MCP variant of `[ISSUE_TRACKER_TOOL]` silently dropping ADF on batched custom-field updates) both surface as HTTP 400 only at publish time. Pre-empt both. AND for any field whose content is naturally mappable, format it per `acli/references/adf-authoring-style.md` (tables / panels / nested lists) instead of flat prose — richness with purpose, never decoration; the field's hard-rule wins (AC stays fenced Gherkin, `I17`).
+The sync scripts call `acli` underneath, so stale auth poisons their output silently (D1). A slug that fails to resolve at runtime stops the step: report the missing entry and re-run the matching sync script, because a literal fallback moves the wrong thing. A missing transition or status slug has its own protocol in `artifact-lifecycle.md` §4, which also maps which stage fires which slug.
 
 ---
 
-## Composability — who loads this
+## Anti-patterns for DEV
 
-The following DEV workflow skills load `agentic-dev-core/references/acli-integration.md` on demand (alongside `acli/SKILL.md`):
+These add to the tool-level anti-patterns T1 to T5 in `acli/SKILL.md`. Both layers apply.
+
+- **D1.** Before any `bun run jira:sync-*`, log in fresh with `jira auth login` (shapes in `acli/SKILL.md`). Stale or expired auth produces silent partial syncs that poison `.agents/jira-fields.json`, `jira-workflows.json` and `jira-link-types.json`, so every later skill resolves a slug to the wrong field. The failure surfaces hours later as "Jira rejected payload" and the cause is hours old.
+- **D2.** Workflow skills (`sprint-development`, `product-management`, `project-foundation`, `project-bootstrap`, `unit-testing`, `testability-guide`) cite `[ISSUE_TRACKER_TOOL]` and load this file plus `acli/SKILL.md`. They do not call `acli` directly, because the methodology survives a tool rotation only if the how lives behind the tag.
+- **D3.** Resolve the project key through `{{PROJECT_KEY}}` from `.agents/project.yaml`. A hardcoded key (`UPEX`, `MYM`, `SQ`) in a command, JQL or doc breaks portability across downstream consumers and re-installs.
+- **D4.** Against a production Jira workspace from a developer workstation, ask for an explicit confirmation per operation. Transitions, deletions and bulk edits are irreversible: `--yes` is fine in CI, which runs against agreed scopes, and not ad hoc against prod. A supervised worker asks its conductor; a routine with nobody stops before the write and reports (`decision-protocol.md`).
+- **D5.** In CI, capture the full per-item response (HTTP code, trace ID, JSON) of a batched transition or mutation. Quiet flags hide failures, and the trace ID is the only debug signal Atlassian Support accepts.
+- **D6.** Pin a minimum `acli` version in CI and document it in `docs/`. Teammates do not all run the same one, and subcommand surfaces (`workitem` vs the legacy `issue`) and flag shapes have shifted between minor releases.
+- **D7.** Resolve every custom field through the slug catalog (`{{jira.<slug>}}` against `.agents/jira-required.yaml` and `.agents/jira-fields.json`), never a literal `customfield_NNNNN` in a skill, script, prompt or AI output. IDs differ per workspace and slugs travel. A missing field means `bun run jira:sync-fields`.
+- **D8.** Read custom fields (ACs, Gherkin, Scope, implementation plans, bug fields) through `bun run jira:sync-issues get <KEY> [--include-comments]` or `jql "<query>"`, then the synced `.md` under `.context/PBI/`. `acli` `view` returns `null` for them. `acli` view and search stay for trivial summary, status and key-list lookups.
+- **D9.** Treat Jira-mirrored files in `.context/PBI/` as read-only: `story.md`, `epic.md`, `epic-tree.md`, `acceptance-*.md`, `scope.md`, `out-of-scope.md`, `implementation-plan.md`, `feature-implementation-plan.md` and the per-field files. The order is author the content, push it to the Jira field (or its `fallback:` comment), run the sync, read the materialized file. The sync overwrites every `[SYNC]` file on every run, because Jira is the source of truth. Only the `[LOCAL]` files of `agent-local-context-pbi.md` §9 (`context.md`, `progress.md`, `evidence/`) are hand-authored there. `product-management/references/jira-operations.md` already enforces this; it is repo-wide.
+- **D10.** Read `product-management/references/jira-publishing-gotchas.md` before publishing ADF rich text to a Jira field. Its two edges (inline `code` together with `strong` or `em`, and the MCP variant of `[ISSUE_TRACKER_TOOL]` silently dropping ADF on batched custom-field updates) both show up as HTTP 400 only at publish time. Format a naturally mappable field per `acli/references/adf-authoring-style.md` (tables, panels, nested lists) when it adds something, and let the field's hard rule win (AC stays fenced Gherkin, `I17`).
+
+---
+
+## Composability: who loads this
+
+These DEV skills load this file on demand, next to `acli/SKILL.md`, and declare both in their `## Dependencies` block.
 
 | Skill | When this file is loaded |
 |---|---|
-| `sprint-development` | Stage 1 (Planning): fetch Story, transition through `in_progress` / `in_review` / `ready_for_qa`. Stage 3: file Bug under parent Story. |
-| `product-management` | Bulk-create Stories/Epics from CSV; sprint reporting via JQL searches; backlog grooming |
-| `project-foundation` / `project-bootstrap` | Reverse-engineering: inventory existing issue types, statuses, custom fields; seed `.agents/jira-*` catalogs |
+| `sprint-development` | Stage 1 (Planning): fetch the Story, transition through `in_progress`, `in_review`, `ready_for_qa`. Stage 3: file a Bug under the parent Story. |
+| `product-management` | Bulk-create Stories and Epics from CSV, sprint reporting by JQL, backlog grooming |
+| `project-foundation`, `project-bootstrap` | Reverse-engineering: inventory existing issue types, statuses and custom fields; seed the `.agents/jira-*` catalogs |
 | `unit-testing` | Comment unit-test status on the parent Story when applicable |
 | `testability-guide` | Read Story ACs to assess testability before code |
-
-Each of these skills declares `acli` + this integration file in their `## Dependencies` block.
 
 ---
 
 ## When the integration changes
 
-This file evolves whenever:
+Edit this file when:
 
-- New Jira custom field is added to `.agents/jira-fields.json` and a DEV workflow needs to read or write it.
-- A new sync script lands under `scripts/sync-jira-*.ts`.
-- A new anti-pattern surfaces from a real DEV session and applies repo-wide.
-- The slug syntax in `.agents/instructions/agent-project-variables.md` §7 evolves.
+- a new Jira custom field enters `.agents/jira-fields.json` and a DEV workflow reads or writes it;
+- a new sync script lands under `scripts/sync-jira-*.ts`;
+- a repo-wide anti-pattern surfaces from a real DEV session;
+- the slug syntax in `agent-project-variables.md` §7 changes.
 
-Do NOT push tool-binary changes here — those belong in `acli/SKILL.md` (and therefore propagate to both DEV and QA boilerplates identically). Boundary rule: if the change is about `acli` the binary, it goes in `acli/SKILL.md`. If it's about how DEV uses `acli`, it goes here.
+The boundary: a change about the `acli` binary goes in `acli/SKILL.md` and reaches DEV and QA alike; a change about how DEV uses `acli` goes here.

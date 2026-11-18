@@ -3,10 +3,10 @@
  *
  * Principle (ADR-0005): a remote MCP server whose only project-side content is
  * an API key is the harness's business. It is connected once per machine (a
- * claude.ai connector, a user-scope server, the OpenCode / Codex user config),
+ * claude.ai connector, a user-scope server, the OpenCode / Codex / Pi user config),
  * and the skills resolve it by CAPABILITY, whatever prefix the host gives its
  * tools (`agentic-dev-core/references/mcp-capabilities.md`). Only LOCAL
- * (stdio) servers stay in the three project MCP files.
+ * (stdio) servers stay in the project MCP files.
  *
  * This module is the ONE list of the harness-level servers the repo
  * recommends (the ones that moved out, plus Exa, which never was committed),
@@ -26,7 +26,7 @@ import { join } from 'node:path';
 
 import { stripJsonComments, stripTrailingCommas } from './agent-compatibility-contracts.ts';
 
-export type HarnessId = 'claude' | 'opencode' | 'codex';
+export type HarnessId = 'claude' | 'opencode' | 'codex' | 'pi';
 
 export interface HarnessLevelMcp {
   /** The server id a user-level config usually registers it under. */
@@ -83,6 +83,10 @@ export const HARNESS_LEVEL_HOWTO: Record<HarnessId, { where: string, how: string
     where: '~/.codex/config.toml ([mcp_servers.<name>]), shared by the Codex CLI and the desktop app',
     how: 'codex mcp add <name> --url <url>, then codex mcp login <name> (OAuth). Avoid --bearer-token-env-var for the desktop app: it reads a process environment a Dock launch does not have',
   },
+  pi: {
+    where: '~/.pi/agent/mcp.json (key "mcpServers"); claude.ai connectors do not exist on Pi',
+    how: 'pi mcp add <name> --url <url>, or pi mcp add <name> -- <command> [args...]. Check it with `pi mcp list` or `/mcp` inside a session. Pi hides tools under its default `codemode` exposure: set `"exposure": "deferred"` so a capability resolves by tool-name suffix, with hyphens as underscores.',
+  },
 };
 
 export interface UserLevelMcpServers {
@@ -90,6 +94,7 @@ export interface UserLevelMcpServers {
   claude: string[]
   opencode: string[]
   codex: string[]
+  pi: string[]
   /** Files that were read, for the report. Never their contents. */
   sources: string[]
 }
@@ -101,6 +106,7 @@ export function userLevelConfigPaths(home = homedir(), env: NodeJS.ProcessEnv = 
     claude: [join(home, '.claude.json')],
     opencode: [join(xdg, 'opencode', 'opencode.json'), join(xdg, 'opencode', 'opencode.jsonc')],
     codex: [join(home, '.codex', 'config.toml')],
+    pi: [join(env.PI_CODING_AGENT_DIR && env.PI_CODING_AGENT_DIR.trim() !== '' ? env.PI_CODING_AGENT_DIR : join(home, '.pi', 'agent'), 'mcp.json')],
   };
 }
 
@@ -123,7 +129,7 @@ function collectRegistry(registry: unknown, out: Set<string>): void {
 }
 
 /**
- * Read the user-level MCP registries of the three harnesses. Read-only, never
+ * Read the user-level MCP registries of every harness. Read-only, never
  * throws: an unreadable or unparseable file contributes nothing. Values (a
  * bearer token in a header) are never returned: ids and url hosts only.
  *
@@ -131,10 +137,11 @@ function collectRegistry(registry: unknown, out: Set<string>): void {
  *     `projects.<path>.mcpServers` (local scope, any project).
  *   - OpenCode: the global config -> `mcp.servers` (V2) or `mcp` (V1).
  *   - Codex: `~/.codex/config.toml` -> `mcp_servers`.
+ *   - Pi: `~/.pi/agent/mcp.json` -> `mcpServers`.
  */
 export function readUserLevelMcpServers(home = homedir(), env: NodeJS.ProcessEnv = process.env): UserLevelMcpServers {
   const paths = userLevelConfigPaths(home, env);
-  const found: Record<HarnessId, Set<string>> = { claude: new Set(), opencode: new Set(), codex: new Set() };
+  const found: Record<HarnessId, Set<string>> = { claude: new Set(), opencode: new Set(), codex: new Set(), pi: new Set() };
   const sources: string[] = [];
 
   for (const file of paths.claude) {
@@ -175,10 +182,20 @@ export function readUserLevelMcpServers(home = homedir(), env: NodeJS.ProcessEnv
     }
     catch { /* contributes nothing */ }
   }
+  for (const file of paths.pi) {
+    if (!existsSync(file)) { continue; }
+    try {
+      const parsed = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
+      sources.push(file);
+      collectRegistry(parsed.mcpServers, found.pi);
+    }
+    catch { /* contributes nothing */ }
+  }
   return {
     claude: [...found.claude].sort(),
     opencode: [...found.opencode].sort(),
     codex: [...found.codex].sort(),
+    pi: [...found.pi].sort(),
     sources,
   };
 }
@@ -202,7 +219,7 @@ export interface HarnessLevelVerdict {
  * route on Claude Code, writes no file this can read.
  */
 export function classifyHarnessLevelMcp(entry: HarnessLevelMcp, servers: Pick<UserLevelMcpServers, HarnessId>): HarnessLevelVerdict {
-  const hosts = (['claude', 'opencode', 'codex'] as const).filter(h =>
+  const hosts = (['claude', 'opencode', 'codex', 'pi'] as const).filter(h =>
     servers[h].includes(entry.id.toLowerCase()) || servers[h].includes(entry.urlHost.toLowerCase()));
   if (hosts.length > 0) {
     return { id: entry.id, capability: entry.capability, state: 'provided elsewhere', hosts, detail: `declared in the user-level config of: ${hosts.join(', ')}` };
@@ -213,7 +230,7 @@ export function classifyHarnessLevelMcp(entry: HarnessLevelMcp, servers: Pick<Us
     state: 'not detectable',
     hosts: [],
     detail: 'not in any user-level config this machine exposes; a claude.ai connector leaves no file behind, so absence here proves nothing. '
-      + `Connect it per host: ${(['claude', 'opencode', 'codex'] as const).map(h => `${h}: ${HARNESS_LEVEL_HOWTO[h].where}`).join('; ')}`,
+      + `Connect it per host: ${(['claude', 'opencode', 'codex', 'pi'] as const).map(h => `${h}: ${HARNESS_LEVEL_HOWTO[h].where}`).join('; ')}`,
   };
 }
 

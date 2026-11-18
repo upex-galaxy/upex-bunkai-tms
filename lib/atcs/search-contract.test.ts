@@ -23,19 +23,30 @@ const SRS_PATH = resolve(process.cwd(), '.context/SRS/api-contracts.yaml');
 const GENERATED_PATH = resolve(process.cwd(), 'public/openapi.json');
 
 interface JsonSchema {
-  properties?: Record<string, { enum?: string[] }>
+  properties?: Record<string, JsonSchema>
+  items?: JsonSchema
+  enum?: string[]
   ['$ref']?: string
 }
 
-function readSrs(): any {
-  return yaml.parse(readFileSync(SRS_PATH, 'utf8'));
+interface OpenApiOperation {
+  responses?: Record<string, { content?: Record<string, { schema?: JsonSchema }> }>
 }
 
-function readGenerated(): any {
-  return JSON.parse(readFileSync(GENERATED_PATH, 'utf8'));
+interface OpenApiDoc {
+  paths?: Record<string, { get?: OpenApiOperation } | undefined>
+  components: { schemas: Record<string, JsonSchema> }
 }
 
-function resolveSchema(spec: any, schemaOrRef: JsonSchema): any {
+function readSrs(): OpenApiDoc {
+  return yaml.parse(readFileSync(SRS_PATH, 'utf8')) as OpenApiDoc;
+}
+
+function readGenerated(): OpenApiDoc {
+  return JSON.parse(readFileSync(GENERATED_PATH, 'utf8')) as OpenApiDoc;
+}
+
+function resolveSchema(spec: OpenApiDoc, schemaOrRef: JsonSchema): JsonSchema | undefined {
   const ref = schemaOrRef?.$ref;
   if (ref) {
     const name = ref.split('/').pop() ?? '';
@@ -44,7 +55,7 @@ function resolveSchema(spec: any, schemaOrRef: JsonSchema): any {
   return schemaOrRef;
 }
 
-function getSrsSearchItemSchema(srs: any): any {
+function getSrsSearchItemSchema(srs: OpenApiDoc): JsonSchema | undefined {
   const op = srs.paths?.['/atcs/search']?.get;
   const itemsSchema = op?.responses?.['200']?.content?.['application/json']?.schema?.properties?.items?.items;
   return itemsSchema ? resolveSchema(srs, itemsSchema) : undefined;
@@ -66,8 +77,8 @@ describe('BK-187 — /atcs/search response contract (SRS vs generated)', () => {
     expect(srsItemSchema).toBeDefined();
     expect(generatedItemSchema).toBeDefined();
 
-    const srsFields = Object.keys(srsItemSchema.properties).sort();
-    const generatedFields = Object.keys(generatedItemSchema.properties).sort();
+    const srsFields = Object.keys(srsItemSchema!.properties!).sort();
+    const generatedFields = Object.keys(generatedItemSchema.properties!).sort();
 
     expect(srsFields).toEqual(generatedFields);
   });
@@ -79,8 +90,8 @@ describe('BK-187 — /atcs/search response contract (SRS vs generated)', () => {
     const srsItemSchema = getSrsSearchItemSchema(srs);
     const generatedItemSchema = generated.components.schemas.AtcSearchResult;
 
-    const srsEnum = [...(srsItemSchema.properties.status.enum as string[])].sort();
-    const generatedEnum = [...(generatedItemSchema.properties.status.enum as string[])].sort();
+    const srsEnum = [...(srsItemSchema!.properties!.status.enum as string[])].sort();
+    const generatedEnum = [...(generatedItemSchema.properties!.status.enum as string[])].sort();
 
     expect(srsEnum).toEqual(generatedEnum);
   });
@@ -88,7 +99,7 @@ describe('BK-187 — /atcs/search response contract (SRS vs generated)', () => {
   test('SRS does not use atc_id / status_dot as ATC search response field names (the BK-187 trap)', () => {
     const srs = readSrs();
     const srsItemSchema = getSrsSearchItemSchema(srs);
-    const fields = Object.keys(srsItemSchema.properties);
+    const fields = Object.keys(srsItemSchema!.properties!);
 
     expect(fields).not.toContain('atc_id');
     expect(fields).not.toContain('status_dot');
@@ -96,7 +107,7 @@ describe('BK-187 — /atcs/search response contract (SRS vs generated)', () => {
 
   test('Tree.tree[].status_dot enum includes unrun (the schema default and the endpoint\'s most common value)', () => {
     const srs = readSrs();
-    const treeStatusDot = srs.components.schemas.Tree.properties.tree.items.properties.status_dot.enum as string[];
+    const treeStatusDot = srs.components.schemas.Tree.properties!.tree.items!.properties!.status_dot.enum as string[];
 
     expect(treeStatusDot).toContain('unrun');
   });

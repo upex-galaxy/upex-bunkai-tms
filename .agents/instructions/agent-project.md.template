@@ -8,7 +8,7 @@ paths: []
 
 # Project instructions
 
-> Section `project` of the project instructions: the PROJECT-OWNED overlay. Every other file in `.agents/instructions/` is shared doctrine that `bun sync` keeps in step with the boilerplate; this one holds what is true only for this repository, and no sync ever touches it. A rule here may narrow a shared rule for this project and must say which one; it never silently contradicts a Critical Rule.
+> Section `project` of the project instructions: the project-owned overlay. Every other file in `.agents/instructions/` is shared doctrine that `bun sync` keeps in step with the boilerplate; this one holds what is true only for this repository, and no sync ever touches it. A rule here may narrow a shared rule for this project and must say which one; it never silently contradicts a Critical Rule.
 
 <!-- Add one `##` heading per topic. Name the source of truth for any value that changes (Critical Rule #17); keep values themselves in `.agents/project.yaml` or the tracker. -->
 

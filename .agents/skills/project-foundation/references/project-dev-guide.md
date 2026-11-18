@@ -1,110 +1,86 @@
 # Development Guide
 
-Actúa como un **compañero senior** que conoce profundamente el proyecto y está explicando a otro desarrollador cómo funciona todo y qué considerar al trabajar en él.
+Generate a conversational guide that a senior teammate would give a new developer (human or AI) who is about to work on this project. It covers how the project is structured, what to consider when working on each flow, which features depend on which, and where the traps are.
 
----
+The guide says WHAT to consider, never HOW to do it, and assumes the reader already knows how to program and only lacks this project's context. It reads like a colleague explaining the project, and it uses ASCII diagrams where they show a relationship or a flow better than prose. It has no code snippets, templates or specific commands.
 
-## MISIÓN
-
-Generar una **guía conversacional** que oriente a cualquier desarrollador (humano o IA) sobre:
-
-- Cómo está estructurado el proyecto
-- Qué considerar al trabajar en cada flujo
-- Qué dependencias existen entre features
-- Qué puntos de atención hay que tener en cuenta
-
-**Filosofía:**
-
-- **Conversacional:** Como si un compañero te explicara el proyecto
-- **QUÉ, no CÓMO:** Orientar sobre qué considerar, no dictar pasos exactos
-- **Asumir experiencia:** El lector ya sabe programar, solo necesita contexto del proyecto
-- **Visual cuando ayude:** Usar diagramas ASCII para explicar relaciones y flujos
-
-**NO incluir:** Snippets de código, templates, comandos específicos
-
-**Prerequisito:** El mapa de datos (`business-data-context`) debe estar generado: `bun run context:map business-data-context` imprime secciones, no el aviso de placeholder
+**Prerequisite:** the data map (`business-data-context`) is generated: `bun run context:map business-data-context` prints sections, not the placeholder notice.
 
 **Output:** `.context/business/project-dev-guide.md`
 
 ---
 
-## FASE 0: VALIDACIÓN
+## Phase 0: Validation
 
-### 0.1 Verificar Business Data Map
+### 0.1 Verify the business data map
 
 ```
-¿Está generado el mapa de datos? (bun run context:map business-data-context)
-  → NO (imprime el aviso de placeholder): DETENER. Indicar que primero debe ejecutarse /project-context data
-  → SÍ: Continuar
+Is the data map generated? (bun run context:map business-data-context)
+  -> NO (it prints the placeholder notice): stop. Say that /project-context data has to run first.
+  -> YES: continue
 ```
 
-### 0.2 Comprender el Sistema
+### 0.2 Understand the system
 
-Leer el mapa de datos (`bun run context:map business-data-context`) y comprender:
+Read the data map (`bun run context:map business-data-context`) and understand:
 
-- Entidades y sus roles de negocio
-- Flujos principales y cómo se conectan
-- State machines y sus transiciones
-- Procesos automáticos
-- Integraciones externas
+- The entities and their business roles
+- The main flows and how they connect
+- The state machines and their transitions
+- The automatic processes
+- The external integrations
 
-### 0.3 Explorar la Estructura del Código
+### 0.3 Explore the code structure
 
-Identificar:
+Identify:
 
-- Cómo está organizado el proyecto
-- Dónde vive cada tipo de código
-- Patrones que ya se usan
+- How the project is organized
+- Where each kind of code lives
+- The patterns already in use
 
 ---
 
-## FASE 1: GENERACIÓN DEL DOCUMENTO
+## Phase 1: Generate the document
 
-### Genera: `.context/business/project-dev-guide.md`
+Write `.context/business/project-dev-guide.md` with the structure below. Keep the section order.
 
-El documento debe sentirse como una conversación con un compañero que conoce el proyecto.
-
----
-
-### ESTRUCTURA DEL OUTPUT
+### Output structure
 
 ```markdown
-# Development Guide: [Nombre del Proyecto]
+# Development Guide: [Project Name]
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║ GUÍA DE DESARROLLO ║
-║ "Lo que necesitas saber para trabajar aquí" ║
+║                              DEVELOPMENT GUIDE                               ║
+║                     "What you need to know to work here"                     ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-> Este documento asume que ya leíste el mapa de datos (`bun run context:map business-data-context`) para
-> entender los flujos de negocio. Aquí te explico qué considerar al desarrollar.
+> This document assumes you have read the data map (`bun run context:map business-data-context`)
+> to understand the business flows. Here I explain what to consider when you develop.
 ```
 
----
-
-#### 1. ENTENDIENDO EL PROYECTO
+#### 1. Understanding the project
 
 ```markdown
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 🏗️ ENTENDIENDO EL PROYECTO │
+│ UNDERSTANDING THE PROJECT                                                    │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-## Cómo está organizado
+## How it is organized
 
-[Descripción conversacional de la estructura del proyecto]
+[Conversational description of the project structure]
 
-Por ejemplo:
-"El proyecto sigue la estructura típica de [framework]. Lo importante es
-entender que la lógica de negocio está separada de los handlers de API,
-lo que facilita testear y modificar sin romper otras cosas..."
+For example:
+"The project follows the typical structure of [framework]. The important thing
+is that business logic is separate from the API handlers, which makes it easier
+to test and change without breaking other things..."
 
-## Diagrama de la arquitectura
+## Architecture diagram
 
-[Diagrama ASCII mostrando cómo se conectan las partes]
+[ASCII diagram showing how the parts connect]
 
     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
     │   Routes    │ ──► │  Services   │ ──► │  Database   │
-    │  (API/UI)   │     │  (Lógica)   │     │  (Supabase) │
+    │  (API/UI)   │     │  (Logic)    │     │  (Supabase) │
     └─────────────┘     └─────────────┘     └─────────────┘
           │                   │
           │                   ▼
@@ -113,224 +89,212 @@ lo que facilita testear y modificar sin romper otras cosas..."
                        │  Services   │
                        └─────────────┘
 
-## El flujo general de datos
+## The general data flow
 
-[Explicación conversacional de cómo viajan los datos]
+[Conversational explanation of how data travels]
 
-"Cuando un usuario hace una acción, generalmente el flujo es..."
+"When a user takes an action, the flow is usually..."
 ```
 
----
-
-#### 2. TRABAJANDO CON CADA FLUJO
+#### 2. Working with each flow
 
 ```markdown
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 🔄 TRABAJANDO CON CADA FLUJO │
+│ WORKING WITH EACH FLOW                                                       │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-[Para cada flujo principal del mapa de datos, explicar conversacionalmente
-qué tener en cuenta al trabajar con él]
+[For each main flow in the data map, explain conversationally what to keep in
+mind when working on it]
 
 ---
 
-## Flujo: [Nombre del Flujo]
+## Flow: [Flow Name]
 
-[Diagrama ASCII simplificado del flujo]
+[Simplified ASCII diagram of the flow]
 
-### Contexto
+### Context
 
-[Explicación de qué hace este flujo y por qué es importante]
+[What this flow does and why it matters]
 
-"Este flujo es el corazón del sistema porque..."
+"This flow is the heart of the system because..."
 
-### Qué tener en cuenta
+### What to keep in mind
 
-[Puntos importantes a considerar, en tono conversacional]
+[Important points, in a conversational tone]
 
-"Si vas a modificar algo aquí, ten presente que:
+"If you are going to change something here, remember that:
 
-- Este flujo está conectado con [otros flujos], así que cualquier cambio
-  podría afectarlos...
+- This flow is connected to [other flows], so any change
+  could affect them...
 
-- La entidad principal tiene una máquina de estados. Las transiciones válidas
-  son específicas, así que no intentes saltar estados...
+- The main entity has a state machine. The valid transitions
+  are specific, so do not try to skip states...
 
-- Hay un trigger/webhook/cron que depende de esto. Si cambias la estructura,
-  asegúrate de que siga funcionando..."
+- A trigger/webhook/cron depends on this. If you change the structure,
+  make sure it keeps working..."
 
-### Dependencias
+### Dependencies
 
-[Diagrama o lista de qué depende de qué]
+[Diagram or list of what depends on what]
 
-    Este flujo
+    This flow
          │
-         ├──► afecta → [Flujo X]
-         ├──► dispara → [Proceso automático Y]
-         └──► notifica → [Integración Z]
+         ├──► affects → [Flow X]
+         ├──► triggers → [Automatic process Y]
+         └──► notifies → [Integration Z]
 
 ---
 
-[Repetir para cada flujo importante]
+[Repeat for each important flow]
 ```
 
----
-
-#### 3. LAS MÁQUINAS DE ESTADO
+#### 3. The state machines
 
 ```markdown
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 📊 LAS MÁQUINAS DE ESTADO │
+│ THE STATE MACHINES                                                           │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-[Para cada entidad con estados, explicar qué considerar]
+[For each entity with states, explain what to consider]
 
-## [Entidad con estados]
+## [Entity with states]
 
-[Diagrama ASCII de la máquina de estados]
+[ASCII diagram of the state machine]
 
-### Por qué importa
+### Why it matters
 
-"Esta máquina de estados es importante porque controla [qué]. Si intentas
-hacer una transición inválida, [qué pasa]..."
+"This state machine matters because it controls [what]. If you try an
+invalid transition, [what happens]..."
 
-### Cosas a recordar
+### Things to remember
 
-- "El estado [X] es terminal, no se puede salir de él..."
-- "Cuando pasas a [Y], se dispara [efecto secundario]..."
-- "Solo [actor] puede hacer la transición de [A] a [B]..."
+- "State [X] is terminal: there is no way out of it..."
+- "When you move to [Y], [side effect] fires..."
+- "Only [actor] can make the transition from [A] to [B]..."
 ```
 
----
-
-#### 4. PROCESOS AUTOMÁTICOS
+#### 4. Automatic processes
 
 ```markdown
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ⚡ PROCESOS AUTOMÁTICOS │
+│ AUTOMATIC PROCESSES                                                          │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-"El sistema tiene varios procesos que corren automáticamente. Es importante
-conocerlos porque pueden afectar tu trabajo..."
+"The system has several processes that run on their own. You need to know
+them because they can affect your work..."
 
-## [Proceso 1: Trigger/Cron/Webhook]
+## [Process 1: Trigger/Cron/Webhook]
 
-### Qué hace y cuándo
+### What it does and when
 
-[Explicación conversacional]
+[Conversational explanation]
 
-### Por qué te importa
+### Why it matters to you
 
-"Si estás trabajando en [área], este proceso podría [afectarte de esta manera]..."
+"If you are working on [area], this process could [affect you this way]..."
 
-### Diagrama del proceso
+### Process diagram
 
-[Diagrama ASCII si ayuda a entender]
+[ASCII diagram if it helps]
 
-    Evento               Proceso              Efecto
+    Event                Process              Effect
        │                    │                   │
        ▼                    ▼                   ▼
-    [trigger] ──────► [qué ejecuta] ──────► [resultado]
+    [trigger] ──────► [what it runs] ──────► [result]
 ```
 
----
-
-#### 5. INTEGRACIONES EXTERNAS
+#### 5. External integrations
 
 ```markdown
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 🔗 INTEGRACIONES EXTERNAS │
+│ EXTERNAL INTEGRATIONS                                                        │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-"El sistema se conecta con servicios externos. Aquí te explico qué hace
-cada uno y qué considerar..."
+"The system connects to external services. Here is what each one does
+and what to consider..."
 
-## [Servicio Externo]
+## [External service]
 
-### Qué hace en el sistema
+### What it does in the system
 
-[Explicación conversacional]
+[Conversational explanation]
 
-### Puntos de contacto
+### Touch points
 
-[Diagrama ASCII mostrando dónde toca el sistema]
+[ASCII diagram showing where the system touches it]
 
-### Qué considerar
+### What to consider
 
-"Cuando trabajes con algo que involucre [servicio], recuerda que:
+"When you work on anything that involves [service], remember that:
 
-- Los webhooks de este servicio llegan a [endpoint]...
-- Si el servicio falla, el sistema [comportamiento]...
-- Para desarrollo local, [consideración]..."
+- This service's webhooks arrive at [endpoint]...
+- If the service fails, the system [behavior]...
+- For local development, [consideration]..."
 ```
 
----
-
-#### 6. PUNTOS DE ATENCIÓN
+#### 6. Points of attention
 
 ```markdown
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ⚠️ PUNTOS DE ATENCIÓN │
+│ POINTS OF ATTENTION                                                          │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-"Después de trabajar en este proyecto, estos son los puntos que más
-sorprenden o causan problemas..."
+"After working on this project, these are the points that surprise people
+or cause problems..."
 
-## Cosas que podrían morderte
+## Things that could bite you
 
-[Lista conversacional de gotchas y consideraciones]
+[Conversational list of gotchas and considerations]
 
-- "**[Punto 1]:** Parece que [X], pero en realidad [Y]..."
+- "**[Point 1]:** It looks like [X], but it is really [Y]..."
 
-- "**[Punto 2]:** Cuidado con [situación] porque [consecuencia]..."
+- "**[Point 2]:** Be careful with [situation] because [consequence]..."
 
-- "**[Punto 3]:** Si ves [síntoma], probablemente es porque [causa]..."
+- "**[Point 3]:** If you see [symptom], it is probably because [cause]..."
 
-## Dependencias no obvias
+## Non-obvious dependencies
 
-[Diagrama ASCII si ayuda]
+[ASCII diagram if it helps]
 
-"Hay algunas conexiones que no son obvias a primera vista:"
+"Some connections are not obvious at first sight:"
 
-    [Cosa A] ──── afecta secretamente ────► [Cosa B]
+    [Thing A] ──── secretly affects ────► [Thing B]
          │
-         └──── también ────► [Cosa C]
+         └──── also ────► [Thing C]
 ```
 
----
-
-#### 7. CONSIDERACIONES FINALES
+#### 7. Final considerations
 
 ```markdown
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 💡 CONSIDERACIONES FINALES │
+│ FINAL CONSIDERATIONS                                                         │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-## Antes de empezar cualquier cambio
+## Before you start any change
 
-[Lista de cosas a verificar o considerar]
+[List of things to verify or consider]
 
-"Siempre es buena idea:
+"It is always a good idea to:
 
-- Revisar el mapa de datos para entender el contexto...
-- Identificar qué flujos podrían verse afectados...
-- Verificar si hay procesos automáticos relacionados..."
+- Review the data map to understand the context...
+- Identify which flows could be affected...
+- Check whether related automatic processes exist..."
 
-## Recursos útiles
+## Useful resources
 
-[Referencias a otros documentos o recursos del proyecto]
+[References to other documents or resources of the project]
 
-- `bun run context:map business-data-context` - Para entender los flujos
-- [Otros recursos relevantes]
+- `bun run context:map business-data-context` - to understand the flows
+- [Other relevant resources]
 ```
 
 ---
 
-## FASE 2: INTEGRACIÓN
+## Phase 2: Integration
 
-### Actualizar System Prompt
+### Update the system prompt
 
-Si no existe una sección de "Development Guide" en el system prompt, agregar:
+If the system prompt has no "Development Guide" section, add:
 
 ```markdown
 ## Development Guide
@@ -347,48 +311,38 @@ See `.context/business/project-dev-guide.md` for orientation on:
 
 ---
 
-## CHECKLIST FINAL
+## Final checklist
 
-Antes de guardar, verificar:
+Before saving, verify:
 
-- [ ] El tono es conversacional, como un compañero explicando
-- [ ] NO hay snippets de código ni templates
-- [ ] Cada flujo tiene su sección con consideraciones
-- [ ] Los diagramas ASCII ayudan a visualizar relaciones
-- [ ] Los puntos de atención son útiles y no obvios
-- [ ] Referencia al mapa de datos (`business-data-context`)
+- [ ] The tone is conversational, like a teammate explaining
+- [ ] There are no code snippets or templates
+- [ ] Each flow has its section with considerations
+- [ ] The ASCII diagrams help visualize relationships
+- [ ] The points of attention are useful and not obvious
+- [ ] The guide refers to the data map (`business-data-context`)
 
 ---
 
-## REPORTE FINAL
+## Final report
 
 ```markdown
-# ✅ Development Guide Generado
+# Development Guide Generated
 
-## Archivo Creado:
+## File created:
 
 `.context/business/project-dev-guide.md`
 
-## Basado en:
+## Based on:
 
-El mapa de datos (`business-data-context`)
+The data map (`business-data-context`)
 
-## Contenido:
+## Contents:
 
-- Estructura del proyecto explicada
-- [N] flujos con consideraciones
-- [N] máquinas de estado documentadas
-- [N] procesos automáticos explicados
-- [N] integraciones descritas
-- Puntos de atención identificados
+- Project structure explained
+- [N] flows with considerations
+- [N] state machines documented
+- [N] automatic processes explained
+- [N] integrations described
+- Points of attention identified
 ```
-
----
-
-## FILOSOFÍA DE ESTE PROMPT
-
-- **Conversacional:** Como si un compañero te explicara el proyecto
-- **Orientativo:** QUÉ considerar, no CÓMO hacerlo
-- **Visual:** Diagramas ASCII para explicar relaciones
-- **Práctico:** Información útil para trabajar, no teoría
-- **Asume experiencia:** El lector ya sabe desarrollar, solo necesita contexto

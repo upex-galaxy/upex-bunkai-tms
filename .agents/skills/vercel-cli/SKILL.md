@@ -1,74 +1,81 @@
 ---
 name: vercel-cli
-description: 'Vercel CLI cookbook for this Next.js + Supabase + Vercel boilerplate. Covers deployment verification (poll by commit SHA + `vercel inspect --wait`), env var sync between `.env` and Vercel scopes (Preview / Production / Development), build and runtime log streaming, rollback, and `.vercel/` project linking detection. Trigger whenever the user runs `vercel`, asks to "check deploy status", "wait until ready", "is my deploy live", "sync env vars to Vercel", "push env to Vercel", "see build logs", "tail Vercel logs", "rollback last deploy", "promote to production", "link this repo to Vercel", or any vercel-CLI-shaped task. Composes with `/deploy-to-vercel` (community skill, owns the deploy method selection) and `/sprint-development` (Stages 4 & 5 own the deploy orchestration). Do NOT use for: choosing a deploy method or doing a first-time link (use `/deploy-to-vercel`), driving the full sprint deploy stage (use `/sprint-development`), reading Supabase as source-of-truth for env values (use Supabase MCP — Vercel only mirrors them), or Bitbucket / Netlify / Cloudflare deployment (out of scope).'
+description: 'Vercel CLI cookbook for verifying deploys, syncing env vars, reading logs and rolling back. Use when checking that a deploy is READY by commit SHA, syncing `.env` keys to Vercel scopes, tailing build or runtime logs, rolling back or promoting a deploy, or detecting the `.vercel/` link. Choosing a deploy method or a first-time link belongs to /deploy-to-vercel.'
 license: MIT
-compatibility: [claude-code, codex, opencode]
+compatibility: [claude-code, codex, opencode, pi]
 allowed-tools: Bash(vercel:*)
 complementary_categories:
   - deploy
 phase: implementation
 # compact_rules is consumed VERBATIM by scripts/build-skill-registry.ts (frontmatter-first,
-# no truncation). Keep in sync with the "Five gotchas" + "Working style" sections in the body below.
+# no truncation). The body points here for the rules; it does not repeat them.
 compact_rules: |
-  - **`--no-wait` on deploy, `--wait` on inspect — never the other way around.** Inverting these means you either block for 10 minutes waiting on a deploy URL you needed immediately, or you race an unfinished deployment with a smoke test.
-  - **`vercel ls -m githubCommitSha=<sha>` is the canonical "find MY deploy" query.** No grep, no parsing, no race. Use `--format json` and `jq`.
-  - **Status filter values are UPPERCASE.** `vercel ls --status READY` works; `--status ready` returns empty with no error.
-  - **`vercel env pull` writes to `.env.local` by default.** That file is in `.gitignore` for a reason — never commit it. If you need a different filename, pass it as a positional arg.
-  - **Multi-team accounts need `--scope <team-slug>` on EVERY mutating command.** Otherwise the operation hits the wrong team's project, or fails with a confusing 404.
-  - **Always `--format json`** on `ls`, `env ls`, `teams ls`. Human tables include ANSI color and lose columns at narrow widths.
-  - **Always `--no-wait` on `vercel deploy`** in scripts. Capture the URL, then poll with `vercel inspect --wait` separately.
-  - **Always `--wait --timeout=10m`** on `vercel inspect` when verifying. Default behavior returns immediately with whatever state the deploy is in when the command runs — usually `BUILDING`, which tells you nothing.
-  - **Always pass `--scope <team-slug>`** if `vercel teams ls` shows more than one team. If the project is already linked, the `orgId` in `.vercel/project.json` / `.vercel/repo.json` resolves the team automatically and you can omit `--scope`.
-  - **Never grep `vercel ls` output for URLs.** Use metadata filters (`-m githubCommitSha=$SHA`) + `--format json` + `jq`. ANSI codes will break naive regex.
-  - **Never commit `.env.local`** produced by `vercel env pull`. It's gitignored; keep it that way.
-  - **Verify exit codes.** `vercel inspect --wait` exits 0 only on `READY`. Any non-zero is a real failure — surface it, don't swallow it.
-  - **Pin the CLI version in CI.** New majors have shifted flag shapes (e.g. `--confirm` → `--yes`). Document the pinned version in `package.json` devDependencies or in the CI workflow.
+  - Use `--no-wait` on `vercel deploy` and `--wait` on `vercel inspect`, never the other way round. Inverted, you either block for 10 minutes on a URL you needed at once, or you smoke-test a deployment that has not finished.
+  - Find your own deploy with `vercel ls -m githubCommitSha=<sha> --format json` and `jq`. It needs no grep and no parsing, and it cannot race a sibling branch.
+  - Status filter values are UPPERCASE. `vercel ls --status READY` works; `--status ready` returns an empty list with no error.
+  - `vercel env pull` writes `.env.local` by default. That file is gitignored, so keep it out of every commit. To write a different file, pass the name as a positional argument.
+  - Pass `--format json` to `ls`, `env ls` and `teams ls`. The human tables carry ANSI colour and lose columns at narrow widths.
+  - Pass `--no-wait` to `vercel deploy` in scripts, capture the URL, then poll with `vercel inspect --wait` as a separate step.
+  - Verify with `vercel inspect <url> --wait --timeout=10m`. Without `--wait` it returns the state at call time, usually `BUILDING`, which tells you nothing.
+  - On an account with more than one team (`vercel teams ls`), pass `--scope <team-slug>` on every mutating command, or the operation hits the wrong team's project or fails with a confusing 404. A linked project resolves the team from `orgId` in `.vercel/project.json` or `.vercel/repo.json`, so `--scope` can then be omitted.
+  - Do not grep `vercel ls` output for URLs. ANSI codes break the regex; use the metadata filter, `--format json` and `jq`.
+  - Treat a non-zero exit from `vercel inspect --wait` as a real failure (only `READY` exits 0), and surface it.
+  - Pin the CLI version in CI (in `package.json` devDependencies or the workflow). Majors have changed flag shapes, for example `--confirm` to `--yes`.
+  - A production deploy, a rollback and any env write or removal on the `production` scope are outward actions. Run them when a person asked for them or the delegating brief covers them; otherwise do the reads, stop and report.
 metadata:
   kind: utility
 ---
 
 # Vercel CLI (`vercel`)
 
-`vercel` is Vercel's official command-line client. In this boilerplate it is the primary verification + env-management surface for our standard stack: **Next.js + Supabase + Vercel + Resend**, with branch-based auto-deploys (the integration branch, `git_strategy.branches.integration` in `.agents/project.yaml`, e.g. `staging` → Vercel Preview / staging; the production branch, `git_strategy.branches.production` → Vercel Production; when the integration branch is `null`, as under `solo-main`, the PR branch's Preview deployment is the staging surface).
+`vercel` is Vercel's official command-line client. In this boilerplate it verifies deploys and manages env vars for the standard stack: Next.js, Supabase, Vercel and Resend, with branch-based auto-deploys. The integration branch (`git_strategy.branches.integration` in `.agents/project.yaml`, for example `staging`) builds a Vercel Preview. The production branch (`git_strategy.branches.production`) builds Vercel Production. When the integration branch is `null`, as under `solo-main`, the PR branch's Preview deployment is the staging surface.
 
-This skill teaches the operations that live AROUND a deploy — confirming it actually shipped, pushing the right env vars before it ships, tailing logs when it breaks, rolling back when it breaks badly. The act of TRIGGERING a deploy (choosing between git push, `vercel deploy`, or first-time `vercel link`) is owned by the community skill `/deploy-to-vercel`. This skill points at it; it does not duplicate it.
+This skill covers what happens around a deploy: confirming it shipped, pushing the right env vars before it ships, reading logs when it breaks, and rolling back when it breaks badly. Triggering the deploy (git push, `vercel deploy`, first-time `vercel link`) belongs to the community skill `/deploy-to-vercel`, and this skill points there instead of duplicating it.
 
 ## Why this skill exists
 
-`vercel` is easy to misuse in three specific ways that have burned past sessions:
+Three misuses have burned past sessions.
 
-1. **`vercel ls | grep` is the wrong tool to check whether YOUR deploy is ready.** ANSI color codes break the regex, and the output mixes new and old deploys for the same branch. The canonical "is this exact commit deployed" question has a different answer: `vercel ls -m githubCommitSha=<sha> --format json` to find the URL, then `vercel inspect <url> --wait --timeout=10m` to block until terminal state.
-2. **`vercel deploy` blocks by default; `vercel inspect` does NOT.** That asymmetry is backwards from intuition and trips agents constantly. Rule: **always pass `--no-wait` to `vercel deploy`** (return URL immediately), **always pass `--wait` to `vercel inspect`** (block until READY / ERROR / CANCELED). See `references/gotchas.md`.
-3. **Env-var scopes are not the same string in the CLI and the dashboard.** CLI uses lowercase `production` / `preview` / `development`; the dashboard shows "Production" / "Preview" / "Development". The CLI is the authoritative spelling — if you need to script env mutations, use the CLI form.
+1. `vercel ls | grep` cannot tell you whether your deploy is ready. ANSI codes break the regex, and the output mixes new and old deploys of the same branch. The exact-commit question has its own answer: `vercel ls -m githubCommitSha=<sha> --format json` finds the URL, then `vercel inspect <url> --wait --timeout=10m` blocks until a terminal state.
+2. `vercel deploy` blocks by default and `vercel inspect` does not, which is backwards from intuition. The compact rules fix the flags; `references/gotchas.md` has the reasoning.
+3. Env scopes are spelled differently in the CLI (`production`, `preview`, `development`) and the dashboard ("Production", "Preview", "Development"). The CLI spelling is the one to script.
 
-The body below covers the operations that apply to almost every Vercel session. The `references/` directory holds the deep material — load only the one you need.
+The compact rules in the frontmatter are the working rules for every session. The body below has the commands, and `references/` holds the deep material: load only the file the task needs.
 
-## Composable Skills (auto-resolved at skill entry)
+## Composable Skills
 
 This skill is a CLI companion, not a deploy orchestrator. Other skills own the surrounding workflow:
 
-| Companion skill         | What it owns                                                                                                          | When to defer to it                                                       |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `/deploy-to-vercel`     | Deploy method selection (git push vs `vercel deploy`), first-time `vercel link`, team scope selection (community v3.0.0+, author: vercel)             | The user has NOT deployed yet, or `.vercel/project.json` + `.vercel/repo.json` are both absent. Load FIRST in those cases.       |
-| `/sprint-development`   | Per-story deploy stages — Stage 4 (environment config + staging deploy), Stage 5 (production deploy + rollback)        | The deploy is part of a story workflow (Jira ticket open, branch `feat/UPEX-*`). Let it drive; this skill provides the verbs. |
-| `/git-flow-master`      | `git push` mechanics, branch protection, PR creation — the push that TRIGGERS the Vercel webhook                       | Any git-shaped step. Push first, then come back here to verify.            |
+| Companion skill | What it owns | Defer to it when |
+| --- | --- | --- |
+| `/deploy-to-vercel` | Deploy method selection (git push or `vercel deploy`), first-time `vercel link`, team scope selection (community skill by vercel) | The user has not deployed yet, or both `.vercel/project.json` and `.vercel/repo.json` are absent. Load it first in those cases. |
+| `/sprint-development` | The per-story deploy stages: Stage 4 (environment config and staging deploy), Stage 5 (production deploy and rollback) | The deploy is part of a story workflow (open ticket, feature branch). Let it drive; this skill supplies the commands. |
+| `/git-flow-master` | `git push` mechanics, branch protection, PR creation: the push that triggers the Vercel webhook | Any git step. Push first, then come back here to verify. |
 
-Resolution steps (per `agentic-dev-core/references/skill-composition-strategy.md`):
+Resolve companions as `agentic-dev-core/references/skill-composition-strategy.md` describes:
 
 1. Read `complementary_categories` from this skill's frontmatter (`deploy`).
-2. Scan the skills actually installed (strategy doc §3.1): the session's skill list plus every `.agents/skills/*/SKILL.md` on disk, git-ignored community folders included. `.agents/skills/REGISTRY.md` lists committed skills only, so it is never this scan.
-3. If `/deploy-to-vercel` is installed (default project-level community skill per `cli/install.ts`), prefer it for any "I haven't deployed this project yet" intent.
+2. Scan the skills installed (strategy doc §3.1): the session's skill list plus every `.agents/skills/*/SKILL.md` on disk, git-ignored community folders included. `.agents/skills/REGISTRY.md` lists committed skills only, so it is never this scan.
+3. When `/deploy-to-vercel` is installed (a project-level community skill from `cli/install.ts`), prefer it for any "I haven't deployed this project yet" intent.
 
 ## Role inside the DEV workflow
 
-| DEV moment                                                       | What this skill does                                                                                                          |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `/sprint-development` Stage 4 — pre-deploy env audit             | `vercel env ls preview` → diff against `.env.example` keys; push the missing ones                                              |
-| `/sprint-development` Stage 4 — after merging `feature/*` → the integration branch | Poll `vercel ls -m githubCommitSha=$(git rev-parse <integration>)` (`<integration>` = `git_strategy.branches.integration`; when `null`, the PR branch) → `vercel inspect <url> --wait` until READY → smoke test |
-| `/sprint-development` Stage 5 — after merging into the production branch | Same poll + inspect, on the production deployment                                                                              |
-| `/sprint-development` Stage 5 — production blew up               | `vercel rollback <previous-prod-url>` (or dashboard "Promote to Production" on the prior good deploy)                          |
-| Any session, after a deploy fails                                | `vercel inspect <url> --logs` to grab the build log; `vercel logs <url>` for runtime logs                                       |
-| First-time onboarding to a new Vercel project                    | Defer to `/deploy-to-vercel` for `vercel link`; come back here for `vercel env pull .env.local`                                |
+| DEV moment | What this skill does |
+| --- | --- |
+| `/sprint-development` Stage 4, before the deploy | `vercel env ls preview`, diff the names against `.env.example`, push the missing keys |
+| `/sprint-development` Stage 4, after the merge into the integration branch | Poll `vercel ls -m githubCommitSha=$(git rev-parse <integration>)` (`<integration>` is `git_strategy.branches.integration`; when `null`, the PR branch), `vercel inspect <url> --wait` until READY, then smoke test |
+| `/sprint-development` Stage 5, after the merge into the production branch | The same poll and inspect on the production deployment |
+| `/sprint-development` Stage 5, production broke | `vercel rollback <previous-prod-url>`, or "Promote to Production" in the dashboard on the prior good deploy |
+| Any session, a deploy failed | `vercel inspect <url> --logs` for the build log, `vercel logs <url>` for runtime logs |
+| First-time onboarding to a Vercel project | `/deploy-to-vercel` runs `vercel link`; come back here for `vercel env pull .env.local` |
+
+## Who approves what
+
+Reads are always safe: `ls`, `inspect`, `logs`, `env ls`, `env pull`, `whoami`, `teams ls`. The outward actions are `vercel deploy --prod`, `vercel rollback`, and `vercel env add` or `rm` on the `production` scope. `vercel link` and `env add` on `preview` change state too but are reversible.
+
+- A person is present: ask before an outward action, as usual.
+- A supervised worker: the conductor holds the gate. Report the intended command and wait for its answer.
+- A routine with nobody: the delegating brief is the approval when it names the action. Without that, do the reads (verify, diff, logs), stop before the outward action, and report what you would run. `agentic-dev-core/references/decision-protocol.md` sets who decides what.
 
 ## Command structure
 
@@ -76,20 +83,20 @@ Resolution steps (per `agentic-dev-core/references/skill-composition-strategy.md
 vercel <command> [<subcommand>] [flags]
 ```
 
-| Command                              | Purpose                                                                                                              |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `vercel` (no args)                   | Deploy CWD as a preview (interactive). **Prefer `vercel deploy --no-wait` for scripted use.**                        |
-| `vercel deploy`                      | Explicit deploy. Add `--prod` for production, `--no-wait` to return the URL immediately.                              |
-| `vercel inspect <url>`               | Probe a deployment's state. Add `--wait` to block until terminal state, `--logs` to stream build output, `--timeout`. |
-| `vercel ls`                          | List deployments. Add `-m <key>=<value>` to filter by deployment metadata (e.g. `githubCommitSha`).                   |
-| `vercel logs <url>`                  | Stream runtime function logs from a deployment.                                                                       |
-| `vercel env <add\|ls\|pull\|rm>`     | Manage env vars per environment (production / preview / development).                                                 |
-| `vercel link`                        | Bind the CWD to a Vercel project. Creates `.vercel/project.json` (single) or `.vercel/repo.json` (with `--repo`).      |
-| `vercel rollback <url>`              | Promote a previous deployment to production.                                                                          |
-| `vercel whoami`                      | Print the authenticated user / team. The ONLY safe state probe in an unlinked directory.                              |
-| `vercel teams ls --format json`      | List teams the user belongs to. Use the slug as `--scope <slug>` on every subsequent command.                         |
+| Command | Purpose |
+| --- | --- |
+| `vercel` (no args) | Deploy CWD as a preview (interactive). Prefer `vercel deploy --no-wait` in scripts. |
+| `vercel deploy` | Explicit deploy. Add `--prod` for production, `--no-wait` to return the URL immediately. |
+| `vercel inspect <url>` | Probe a deployment's state. Add `--wait` to block until a terminal state, `--logs` to stream build output, `--timeout`. |
+| `vercel ls` | List deployments. Add `-m <key>=<value>` to filter by deployment metadata (for example `githubCommitSha`). |
+| `vercel logs <url>` | Stream runtime function logs from a deployment. |
+| `vercel env <add\|ls\|pull\|rm>` | Manage env vars per environment (production / preview / development). |
+| `vercel link` | Bind the CWD to a Vercel project. Creates `.vercel/project.json` (single) or `.vercel/repo.json` (with `--repo`). |
+| `vercel rollback <url>` | Promote a previous deployment to production. |
+| `vercel whoami` | Print the authenticated user or team. The only safe state probe in an unlinked directory. |
+| `vercel teams ls --format json` | List the teams the user belongs to. Use the slug as `--scope <slug>` on later commands. |
 
-Every command supports `--help`. Use it aggressively when unsure:
+Every command supports `--help`; use it when unsure:
 
 ```bash
 vercel --help
@@ -116,7 +123,7 @@ done
 vercel inspect "$URL" --wait --timeout=10m   # exit 0 = READY, non-zero = ERROR / CANCELED / TIMEOUT
 ```
 
-See `references/deployment-verification.md` for the full pattern including `--logs` streaming and status-filter caveats.
+`references/deployment-verification.md` has the full pattern, including `--logs` streaming and the status-filter caveats.
 
 ### 2. Sync the current `.env` to Vercel Preview
 
@@ -130,7 +137,7 @@ echo "$NEXT_PUBLIC_APP_URL" | vercel env add NEXT_PUBLIC_APP_URL preview
 # Bulk: see references/env-vars.md for the loop pattern across the boilerplate keys
 ```
 
-### 3. Tail logs to debug a failing build / runtime
+### 3. Tail logs to debug a failing build or runtime
 
 ```bash
 # Build logs (one-shot, full log of last build)
@@ -142,14 +149,14 @@ vercel logs "$URL" --follow
 
 ## Top-level utilities
 
-### `vercel whoami` — auth + state probe
+### `vercel whoami`: auth and state probe
 
 ```bash
 vercel whoami         # prints "you@example.com" or fails with exit 1
 vercel teams ls --format json   # list teams; pick a slug for --scope
 ```
 
-`whoami` is the only `vercel` subcommand safe to run in an unlinked directory without side-effects. Do NOT use `vercel ls`, `vercel project inspect`, or `vercel link` for state detection — they prompt interactively (or, with `--yes`, silently link as a side-effect).
+`whoami` is the only `vercel` subcommand that is side-effect free in an unlinked directory. `vercel ls`, `vercel project inspect` and `vercel link` prompt interactively there (or, with `--yes`, link the directory as a side effect), so they are the wrong way to detect state.
 
 ### `.vercel/` linking detection
 
@@ -159,43 +166,20 @@ cat .vercel/project.json 2>/dev/null    # single-project link
 cat .vercel/repo.json    2>/dev/null    # repo-mode link (monorepo)
 ```
 
-If neither exists, the project is unlinked. Defer to `/deploy-to-vercel` for the link flow. See `references/linking.md` for the file shapes + monorepo notes.
+With neither file the project is unlinked, and `/deploy-to-vercel` owns the link flow. `references/linking.md` has the file shapes and the monorepo notes.
 
-## Five gotchas to keep in mind always
+## Which reference to load
 
-1. **`--no-wait` on deploy, `--wait` on inspect — never the other way around.** Inverting these means you either block for 10 minutes waiting on a deploy URL you needed immediately, or you race an unfinished deployment with a smoke test.
-2. **`vercel ls -m githubCommitSha=<sha>` is the canonical "find MY deploy" query.** No grep, no parsing, no race. Use `--format json` and `jq`.
-3. **Status filter values are UPPERCASE.** `vercel ls --status READY` works; `--status ready` returns empty with no error.
-4. **`vercel env pull` writes to `.env.local` by default.** That file is in `.gitignore` for a reason — never commit it. If you need a different filename, pass it as a positional arg.
-5. **Multi-team accounts need `--scope <team-slug>` on EVERY mutating command.** Otherwise the operation hits the wrong team's project, or fails with a confusing 404.
-
-See `references/gotchas.md` for the long-form list (ANSI in `ls` output, scope spellings, monorepo edge cases, env-var ordering, etc.).
-
-## Navigation — when to load which reference
-
-Load the reference that matches the user's current need. Do not preload all of them.
-
-| If the user wants to…                                                                                  | Load                                          |
-| ------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
-| Wait for a deploy to be READY, poll by commit SHA, stream build logs while waiting                     | `references/deployment-verification.md`       |
-| Push env vars to Vercel, pull them back, manage Preview vs Production scopes, sync `.env.example` keys | `references/env-vars.md`                      |
-| Debug a build failure or runtime error — logs, common Next.js + Supabase pitfalls                      | `references/debugging.md`                     |
-| Roll back a bad production deploy or promote a prior preview                                            | `references/rollback.md`                      |
-| Understand `.vercel/project.json` vs `.vercel/repo.json`, link a new directory                          | `references/linking.md`                       |
-| Diagnose surprising CLI behavior — UPPERCASE status, ANSI in `ls`, scope spellings, blocking defaults  | `references/gotchas.md`                       |
-| Choose a deploy method or do a first-time link                                                         | **Defer to `/deploy-to-vercel`** (community)  |
-| Drive the per-story deploy stages                                                                      | **Defer to `/sprint-development`** Stages 4, 5 |
-
-## Working style
-
-- **Always `--format json`** on `ls`, `env ls`, `teams ls`. Human tables include ANSI color and lose columns at narrow widths.
-- **Always `--no-wait` on `vercel deploy`** in scripts. Capture the URL, then poll with `vercel inspect --wait` separately.
-- **Always `--wait --timeout=10m`** on `vercel inspect` when verifying. Default behavior returns immediately with whatever state the deploy is in when the command runs — usually `BUILDING`, which tells you nothing.
-- **Always pass `--scope <team-slug>`** if `vercel teams ls` shows more than one team. If the project is already linked, the `orgId` in `.vercel/project.json` / `.vercel/repo.json` resolves the team automatically and you can omit `--scope`.
-- **Never grep `vercel ls` output for URLs.** Use metadata filters (`-m githubCommitSha=$SHA`) + `--format json` + `jq`. ANSI codes will break naive regex.
-- **Never commit `.env.local`** produced by `vercel env pull`. It's gitignored; keep it that way.
-- **Verify exit codes.** `vercel inspect --wait` exits 0 only on `READY`. Any non-zero is a real failure — surface it, don't swallow it.
-- **Pin the CLI version in CI.** New majors have shifted flag shapes (e.g. `--confirm` → `--yes`). Document the pinned version in `package.json` devDependencies or in the CI workflow.
+| If the task is to | Load |
+| --- | --- |
+| Wait for a deploy to be READY, poll by commit SHA, stream build logs while waiting | `references/deployment-verification.md` |
+| Push env vars to Vercel, pull them back, manage Preview vs Production scopes, sync `.env.example` keys | `references/env-vars.md` |
+| Debug a build failure or runtime error: logs, common Next.js + Supabase pitfalls | `references/debugging.md` |
+| Roll back a bad production deploy or promote a prior preview | `references/rollback.md` |
+| Understand `.vercel/project.json` vs `.vercel/repo.json`, link a new directory | `references/linking.md` |
+| Diagnose surprising CLI behaviour: UPPERCASE status, ANSI in `ls`, scope spellings, blocking defaults | `references/gotchas.md` |
+| Choose a deploy method or do a first-time link | `/deploy-to-vercel` (community) |
+| Drive the per-story deploy stages | `/sprint-development` Stages 4 and 5 |
 
 ## Installation (reference only)
 
@@ -216,6 +200,6 @@ vercel --version
 ```
 
 - Official guide: <https://vercel.com/docs/cli>
-- Auth token for CI (non-interactive): `vercel login --token` then export `VERCEL_TOKEN` in CI env
+- Auth token for CI (non-interactive): `vercel login --token`, then export `VERCEL_TOKEN` in the CI env.
 
-For first-time PROJECT setup (linking this directory to a Vercel project), use `/deploy-to-vercel` — it owns the link flow.
+First-time project setup (linking this directory to a Vercel project) belongs to `/deploy-to-vercel`.

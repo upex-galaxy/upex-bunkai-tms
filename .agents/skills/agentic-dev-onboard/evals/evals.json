@@ -36,6 +36,20 @@
       "category": "positive"
     },
     {
+      "name": "should-trigger-spanish-adopted-next-step",
+      "prompt": "Acabamos de adoptar nuestra app con create-agentic-dev --adopt y ya hicimos el commit. Qué sigue?",
+      "expected_skill": "agentic-dev-onboard",
+      "expected_behavior": "Activates agentic-dev-onboard. Reads `.template/installer.lock.json`, finds `adopted: true`, and tours the adoption hand-off in order, one session each: `/project-adoption`, `/project-context refresh-all`, `/project-foundation` Discovery-only, `/git-flow-master` Strategy Setup, optionally `/design-system extract` and `/testability-guide`. Does NOT send the user to `/project-bootstrap` base phases. May respond in Spanish to mirror the user.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-spanish-how-it-works",
+      "prompt": "Soy nuevo en el equipo, me explicas cómo funciona este repo y por dónde empiezo?",
+      "expected_skill": "agentic-dev-onboard",
+      "expected_behavior": "Activates agentic-dev-onboard as a guided tour. Says which entry path the repo took, presents the stack from the `stack:` block of `.agents/project.yaml`, walks the `/sprint-development` loop, the MCP capabilities and the critical env vars, gives the docs hub URL and ends with the next-steps checklist. Does NOT start implementing anything. May respond in Spanish to mirror the user.",
+      "category": "positive"
+    },
+    {
       "name": "unsupported-stack-said-plainly",
       "prompt": "Onboard me. Our app is a Remix app on MySQL with pnpm, can we use this?",
       "expected_skill": "agentic-dev-onboard",

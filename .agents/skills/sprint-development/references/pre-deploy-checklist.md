@@ -1,48 +1,47 @@
-# Prompt: Pre-Deploy Checklist
+# Pre-deploy checklist (Stage 5 go/no-go)
 
-## Contexto
+Run this before deploying to production. Every box must be ticked, or the item named as skipped with its reason. One unticked box with no reason is a no-go.
 
-Antes de desplegar a producción, validar que todo está listo.
+## 1. Tests (dev scope)
 
-## Checklist
+- [ ] Unit tests pass (100%).
+- [ ] Type-check passes (`{{stack.package_manager}} run {{stack.scripts.types}}`).
+- [ ] Lint passes (`{{stack.package_manager}} run {{stack.scripts.lint}}`).
+- [ ] The production build succeeds (`{{stack.package_manager}} run {{stack.scripts.build}}`).
+- [ ] A null role in `stack.scripts` is named as a skipped check, not counted as passed.
+- [ ] Dev smoke checks pass on staging (curl the health endpoint, verify the deployed version, basic UI load; this is not the QA test suite).
 
-### 1. Tests (dev scope)
+Full QA verification (E2E, exploratory, regression) is out of scope here.
 
-- [ ] Unit tests pasando (100%)
-- [ ] Type-check pasando (`{{stack.package_manager}} run {{stack.scripts.types}}`)
-- [ ] Lint pasando (`{{stack.package_manager}} run {{stack.scripts.lint}}`)
-- [ ] Build de producción exitoso (`{{stack.package_manager}} run {{stack.scripts.build}}`)
-- [ ] Un rol null en `stack.scripts` está nombrado como check omitido, no dado por bueno
-- [ ] Dev smoke checks OK en staging (curl health endpoint, verify deploy version, basic UI load — not QA test suite)
+## 2. Code quality
 
-> Full QA verification (E2E, exploratory, regression) is out of scope here.
+- [ ] Code review approved.
+- [ ] No critical TODOs.
+- [ ] Security scan clean.
 
-### 2. Code Quality
+## 3. Infrastructure
 
-- [ ] Code review aprobado
-- [ ] No hay TODOs críticos
-- [ ] Linting pasando
-- [ ] Security scan OK
+- [ ] Environment variables are configured in production.
+- [ ] Secrets are configured correctly.
+- [ ] Database changes are ready (when there are any): each applied and verified in the integration environment, present in `list_migrations` of the DB MCP, and with its plan to apply in production according to `{{stack.database.migrations_tool}}` (`agentic-dev-core/references/db-change-doctrine.md`).
+- [ ] A recent production backup exists.
 
-### 3. Infraestructura
+## 4. Monitoring
 
-- [ ] Variables de entorno configuradas en producción
-- [ ] Secrets configurados correctamente
-- [ ] Cambios de base de datos listos (si aplica): cada uno aplicado y verificado en el ambiente de integración, presente en `list_migrations` del DB MCP, y con su plan de aplicación a producción según `{{stack.database.migrations_tool}}` (`agentic-dev-core/references/db-change-doctrine.md`)
-- [ ] Backup de producción reciente
+- [ ] Sentry or DataDog is configured.
+- [ ] Alerts are configured.
+- [ ] Dashboards are ready.
 
-### 4. Monitoreo
+## 5. Stakeholders
 
-- [ ] Sentry/DataDog configurado
-- [ ] Alertas configuradas
-- [ ] Dashboards listos
+- [ ] The PM approved the deployment.
+- [ ] QA gave a go/no-go (QA validation is managed in QA's own flow).
+- [ ] DevOps is ready to monitor.
 
-### 5. Stakeholders
+## With nobody at the keyboard
 
-- [ ] PM aprobó deployment
-- [ ] QA dio go/no-go (validación QA gestionada en su propio flujo)
-- [ ] DevOps listo para monitorear
+Section 5 is a person's decision, and a routine cannot tick it. Follow `agentic-dev-core/references/decision-protocol.md` §5.2: run sections 1 to 4 (all reads and local checks), then report the result with the approvals still missing and stop. A brief that records the PM and QA approvals counts as them.
 
 ## Output
 
-✅ Listo para deploy a producción
+Ready to deploy to production, or the list of unticked items with their reasons.

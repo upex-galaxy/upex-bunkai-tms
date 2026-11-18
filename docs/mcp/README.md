@@ -1,24 +1,34 @@
 # MCP Configuration
 
-This directory holds **opt-in MCP blocks** the repo does not enable, one template per supported host, plus the DBHub example and the long-form per-host syntax guide. The servers the repo actually runs are not here: they live in the three committed configs below.
+This directory holds **opt-in MCP blocks** the repo does not enable, one template per supported host, plus the DBHub example and the long-form per-host syntax guide. The servers the repo actually runs are not here: they live in the committed configs below, one per host.
 
 ## Runtime configs committed in this repo
 
-The boilerplate runs on three harnesses from one source (`AGENTS.md` + `.agents/skills/`, see `.agents/instructions/agent-harnesses.md` §5.5). The MCP inventory is the one surface that genuinely differs per host, so it exists once per format, committed, with the same server set on every host: whatever `.mcp.json` declares. Only LOCAL (stdio) servers are committed; web search is connected at harness level (see [Capabilities](#capabilities-not-server-names)).
+The boilerplate runs on every harness in `HARNESSES` (`cli/lib/harness-selection.ts`) from one source (`AGENTS.md` + `.agents/skills/`, see `.agents/instructions/agent-harnesses.md` §5.5). The MCP inventory is the one surface that genuinely differs per host, so it exists once per format, committed, with the same server set on every host: whatever `.mcp.json` declares. Only LOCAL (stdio) servers are committed; web search is connected at harness level (see [Capabilities](#capabilities-not-server-names)).
 
 | Harness             | Committed config     | How a server gets its `.env` values                     | How to open it                |
 | ------------------- | -------------------- | ------------------------------------------------------- | ----------------------------- |
 | Claude Code         | `.mcp.json`          | the `.env` loader, `--filter` = the names it reads      | `claude`, or the desktop app  |
 | OpenCode            | `opencode.jsonc`     | the same loader, same filter                            | `opencode`                    |
 | Codex CLI + Desktop | `.codex/config.toml` | the same loader, same filter, `startup_timeout_sec = 30` | `codex`, or Codex Desktop     |
+| Pi                  | `.pi/mcp.json`       | the same loader, same filter                            | `pi` (then `/trust`)          |
 
-`bun run agents:compat:check` normalizes the three files into one shape (transport, command, args, url, env vars, enabled) and compares them; a server behind the loader is read as its own command, with its `--filter` as its `.env` dependencies. The canonical set is whatever `.mcp.json` declares: a server missing from another host, present in one host only, or depending on a different set of `.env` variables, fails the check (it runs inside `repo:check` and the pre-push hook). The servers the boilerplate ships (`KNOWN_MCP_IDS` in `cli/lib/agent-compatibility-contracts.ts`) additionally get a strict per-host shape check when the project declares them; a project that declares a different set passes on the generic check alone. `.codex/config.toml` is read only in a repository Codex trusts; `bun run setup:doctor` warns about that.
+`bun run agents:compat:check` normalizes the files of the harnesses in use into one shape (transport, command, args, url, env vars, enabled) and compares them; a server behind the loader is read as its own command, with its `--filter` as its `.env` dependencies. The canonical set is whatever `.mcp.json` declares: a server missing from another host, present in one host only, or depending on a different set of `.env` variables, fails the check (it runs inside `repo:check` and the pre-push hook). The servers the boilerplate ships (`KNOWN_MCP_IDS` in `cli/lib/agent-compatibility-contracts.ts`) additionally get a strict per-host shape check when the project declares them; a project that declares a different set passes on the generic check alone. `.codex/config.toml` is read only in a repository Codex trusts; `bun run setup:doctor` warns about that.
+
+### Pi
+
+Open it bare in the repo folder: `pi`. Pi's project trust gates `.agents/skills`, `.pi/mcp.json` and `.pi/extensions`: an untrusted folder gets `AGENTS.md` and nothing else, so run `/trust` inside Pi (`bun run setup:doctor` reports the trust state). `.pi/mcp.json` is Claude's `mcpServers` shape plus `"exposure": "deferred"` and a one-line `description` per server; with deferred exposure the capabilities below resolve by tool-name suffix, hyphens becoming underscores (`query-docs` is `query_docs`).
+
+- **User-level servers:** `pi mcp add <name> --url <url>` stores the server in `~/.pi/agent/mcp.json`; set `"exposure": "deferred"` on it too.
+- **Engram** is connected by hand once per machine, because `engram setup` does not name Pi: `pi mcp add engram --exposure deferred -- engram mcp --tools=agent`.
+- **Runtime state:** Pi packages write loops, tasks and subagents under `.pi/`. `.gitignore` ignores `.pi/*` and allowlists `mcp.json`, `settings.json`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `extensions/`, `skills/`, `prompts/` and `themes/`.
+- **Secret block:** a seatbelt, not a boundary. Pi has no deny config and no approvals; the adapter `.pi/extensions/agentic-dev.js` refuses direct reads of `.env*` (except `.env.example` and `*.schema`), `.auth/**` and `.claude/settings.local.json`, the commands `printenv`, bare `env` and `varlock printenv|reveal`, and drops secret-file lines from `grep` output. `cat .env` and other shell variants pass, and an untrusted session has no block. Critical Rule #1 is what binds. Design record: `.context/ADR/ADR-0022-pi-as-a-declared-harness.md`.
 
 ### Getting `.env` into the MCP servers
 
 - **Every host, every launch:** a stdio server that needs `.env` values starts through the `.env` loader, `bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter <its vars> -- <command>` (`MCP_ENV_LOADER_*` / `mcpEnvLoaderArgs` in `cli/lib/agent-compatibility-contracts.ts`, ADR-0012; the pin equals the `varlock` devDependency). It reads the varlock schema plus `.env` / `.env.local` (or the secret manager the schema names, ADR-0011) from the project root at spawn time, however the harness was launched (terminal, desktop app, a natively launched supervised worker), and hands the server ONLY the names in its filter. `--no-redact-stdout` keeps the JSON-RPC stream byte-intact. A server that needs no value (context7) launches bare.
 - **Nothing beside the loader:** no `${VAR}`, `{env:VAR}`, `{file:...}` or `env_vars` for the names the filter delivers. An unset `${VAR}` breaks a desktop launch, and an empty inherited value shadows `.env`. `bun run agents:compat:check` fails on either in the boilerplate and warns downstream with the exact launch to use.
-- **Opening the agent:** its own binary in the project folder (`claude`, `opencode`, `codex`) or its desktop app. There is no wrapper script: nothing loads `.env` into the agent's process, so no secret reaches the AI's shell (ADR-0016). A command the agent runs that needs a value runs it through the loader in a subprocess, `bunx varlock run -- sh -c '<command using "$VAR">'`; `bun` scripts load `.env` themselves.
+- **Opening the agent:** its own binary in the project folder (`claude`, `opencode`, `codex`, `pi`) or its desktop app. There is no wrapper script: nothing loads `.env` into the agent's process, so no secret reaches the AI's shell (ADR-0016). A command the agent runs that needs a value runs it through the loader in a subprocess, `bunx varlock run -- sh -c '<command using "$VAR">'`; `bun` scripts load `.env` themselves.
 - **An MCP that behaves as if `.env` were ignored:** varlock lets a variable your shell already exports win over `.env`. `bun run vars:env:check` names the variables whose inherited value differs (names and lengths only); `unset` them or open a clean shell.
 - **After a `.env` change:** restart the agent session. OpenCode caches the resolved config per directory, so also run `opencode service restart` (or quit every OpenCode session).
 - **A worktree** carries its own `.env`; `bun run worktree:provision` copies it and derives nothing from it.
@@ -26,7 +36,7 @@ The boilerplate runs on three harnesses from one source (`AGENTS.md` + `.agents/
 
 ### A missing credential fails silently
 
-None of the three hosts refuses to start when a variable is missing. The loader hands the server the variable unset or empty, the server starts, and it dies on its first authenticated call. A value that FAILS the schema stops only the server that needs it: `bunx varlock load --agent` shows which, redacted. So a 401/403 or a mystery tool failure is the signal, not a parse error. Check with `/mcp` inside the session, fix `.env`, then restart the session: values are read when the MCP server spawns (`AGENTS.md` Critical Rule #9).
+No host refuses to start when a variable is missing. The loader hands the server the variable unset or empty, the server starts, and it dies on its first authenticated call. A value that FAILS the schema stops only the server that needs it: `bunx varlock load --agent` shows which, redacted. So a 401/403 or a mystery tool failure is the signal, not a parse error. Check with `/mcp` inside the session, fix `.env`, then restart the session: values are read when the MCP server spawns (`AGENTS.md` Critical Rule #9).
 
 ## Capabilities, not server names
 
@@ -46,7 +56,7 @@ Vocabulary, suffixes and the stop procedure: `.agents/skills/agentic-dev-core/re
 | `opencode.template.json`     | OpenCode           | JSON   | opt-in blocks for `opencode.jsonc` (each one `"enabled": false`), same loader               |
 | `codex.template.toml`        | Codex CLI + Desktop | TOML  | opt-in blocks for `.codex/config.toml`, the stdio ones that need values already on the `.env` loader |
 | `dbhub.example.toml`         | DBHub (SQL)        | TOML   | starting point for a `dbhub.toml`, used by the opt-in `sql` block                           |
-| `mcp-configuration-guide.md` | all three hosts    | md     | per-host syntax reference (scopes, CLI commands, remote servers, OAuth)                     |
+| `mcp-configuration-guide.md` | every host         | md     | per-host syntax reference (scopes, CLI commands, remote servers, OAuth)                     |
 
 `bun sync --update-mcp-template <claude|opencode|codex>` refreshes one template from upstream.
 
@@ -54,7 +64,7 @@ Vocabulary, suffixes and the stop procedure: `.agents/skills/agentic-dev-core/re
 
 Never `cp` a template over a committed config: it would replace the parity-checked server set. Copy single blocks instead.
 
-1. Copy the server's block from each of the three templates into `.mcp.json`, `opencode.jsonc` and `.codex/config.toml`. A server added to one host only fails `bun run agents:compat:check`.
+1. Copy the server's block from each template into `.mcp.json`, `opencode.jsonc`, `.codex/config.toml` and `.pi/mcp.json`. Pi has no template of its own: it takes the Claude block as is (same `mcpServers` shape) and adds `"exposure": "deferred"` and a one-line `description`. A server added to one host only fails `bun run agents:compat:check`.
 2. Replace each `{{VAR}}` (see below). A stdio block that needs secrets already starts through the `.env` loader: its `--filter` lists the exact names the server reads, and those names go in `.env` as they are.
 3. Declare the variables in `.env.schema` (`@sensitive` on a secret), add them with an empty value to `.env.example`, and set them in `.env`.
 4. Run `bun run agents:compat:check`.
@@ -72,8 +82,9 @@ The one secret marker left is on a REMOTE (HTTP) server, which cannot start thro
 | Claude Code | `${POSTMAN_API_KEY}`                                |
 | OpenCode    | `{env:POSTMAN_API_KEY}`                             |
 | Codex       | `bearer_token_env_var = "POSTMAN_API_KEY"` (already in the template) |
+| Pi          | `${POSTMAN_API_KEY}`, as Claude Code                |
 
-Those three resolve from the harness's own process environment, which `.env` reaches on no launch. Prefer the server's OAuth login (as the Atlassian remote MCP through `mcp-remote` does). A token-only remote server means you export that ONE variable in the shell before launching, which knowingly puts it in the agent's environment.
+Those references resolve from the harness's own process environment, which `.env` reaches on no launch. Prefer the server's OAuth login (as the Atlassian remote MCP through `mcp-remote` does). A token-only remote server means you export that ONE variable in the shell before launching, which knowingly puts it in the agent's environment.
 
 Non-secret placeholders (`{{API_BASE_URL}}`, `{{OPENAPI_SPEC_URL}}`, `{{SENTRY_ORG}}`, `{{SENTRY_PROJECT}}`) are pasted as literal values.
 
@@ -81,28 +92,28 @@ Pasting a literal secret into a config is only acceptable in a personal, gitigno
 
 ## Key differences by host
 
-| Feature        | Claude Code    | OpenCode                    | Codex                                                       |
-| -------------- | -------------- | --------------------------- | ----------------------------------------------------------- |
-| Root key       | `mcpServers`   | `mcp`                       | `mcp_servers`                                               |
-| Command        | string + `args` | array                      | string + `args`                                             |
-| Literal env    | `env`          | `environment`               | `[mcp_servers.X.env]`                                       |
-| Stdio secret   | `.env` loader  | `.env` loader               | `.env` loader                                               |
-| Remote secret  | `${VAR}`       | `{env:VAR}`                 | not in the URL: `url` + `bearer_token_env_var`              |
-| Remote type    | `type: "http"` | `type: "remote"`            | `url`                                                       |
-| Enable/disable | N/A            | `enabled`                   | `enabled`                                                   |
+| Feature        | Claude Code    | OpenCode                    | Codex                                                       | Pi                                  |
+| -------------- | -------------- | --------------------------- | ----------------------------------------------------------- | ----------------------------------- |
+| Root key       | `mcpServers`   | `mcp`                       | `mcp_servers`                                               | `mcpServers`                        |
+| Command        | string + `args` | array                      | string + `args`                                             | string + `args`                     |
+| Literal env    | `env`          | `environment`               | `[mcp_servers.X.env]`                                       | `env`                               |
+| Stdio secret   | `.env` loader  | `.env` loader               | `.env` loader                                               | `.env` loader                       |
+| Remote secret  | `${VAR}`       | `{env:VAR}`                 | not in the URL: `url` + `bearer_token_env_var`              | `${VAR}` in `headers`            |
+| Remote type    | `type: "http"` | `type: "remote"`            | `url`                                                       | as Claude Code                      |
+| Enable/disable | N/A            | `enabled`                   | `enabled`                                                   | N/A                                 |
 
 Full syntax per host: [`mcp-configuration-guide.md`](./mcp-configuration-guide.md).
 
 ## Security
 
 - **Templates** (this folder) are safe for git: `{{VAR}}` placeholders only.
-- **Committed configs** (`.mcp.json`, `opencode.jsonc`, `.codex/config.toml`) hold variable names only; values live in `.env` (gitignored), and no plaintext copy is written anywhere else.
+- **Committed configs** (`.mcp.json`, `opencode.jsonc`, `.codex/config.toml`, `.pi/mcp.json`) hold variable names only; values live in `.env` (gitignored), and no plaintext copy is written anywhere else.
 - **DBHub:** a project that adds it commits `dbhub.toml` with `${VAR}` references only, filled by the `sql` block's loader filter; literal overrides go in `dbhub.local.toml`, which `.gitignore` already covers.
 
 ## Atlassian MCP (opt-in)
 
-The Atlassian MCP server is **not enabled by default**: the boilerplate uses `acli` for all Jira and Confluence work. If you need MCP-level access to Atlassian (tools `acli` does not expose), enable it on all three hosts:
+The Atlassian MCP server is **not enabled by default**: the boilerplate uses `acli` for all Jira and Confluence work. If you need MCP-level access to Atlassian (tools `acli` does not expose), enable it on every host:
 
-1. Copy the `atlassian` block from each template into `.mcp.json`, `opencode.jsonc` and `.codex/config.toml`. It is the same server everywhere, Atlassian's remote MCP through `mcp-remote`, and it launches bare: no `.env` loader, no variable.
+1. Copy the `atlassian` block from each template into `.mcp.json`, `opencode.jsonc`, `.codex/config.toml` and `.pi/mcp.json`. It is the same server everywhere, Atlassian's remote MCP through `mcp-remote`, and it launches bare: no `.env` loader, no variable.
 2. Run `bun run agents:compat:check`, then restart the session.
 3. On the first tool call, `mcp-remote` opens the Atlassian OAuth consent in the browser. It reads neither `ATLASSIAN_EMAIL` nor `ATLASSIAN_API_TOKEN`, so those stay `acli`'s alone.

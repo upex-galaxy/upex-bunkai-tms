@@ -1,130 +1,78 @@
-Actúa como Senior Full-Stack Developer.
+# Continue an implementation
 
----
+Resume **STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}** after it was paused. The goal is to find out what is really done before writing anything new: compare the plan with the code, report the state, then carry on from the first pending step under the same rules as `implement-story.md`.
 
-## 🎯 TAREA
+## Tool check
 
-Continuar la implementación de **STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}** que fue pausada.
+Check which MCPs are available before continuing:
 
----
+1. Context7 MCP, for library documentation.
+2. DB MCP (capability `db`), only when the story needs database changes. They are applied according to `agentic-dev-core/references/db-change-doctrine.md`.
+3. shadcn MCP, for UI components (when the project uses shadcn).
 
-## ⚠️ VERIFICACIÓN DE MCPs
+`references/implement-story.md` ("Tool check (MCP)") has the detail on each one, including what to do when one is missing and what a routine does with nobody at the keyboard.
 
-**Antes de continuar, verifica MCPs disponibles:**
-
-1. **Context7 MCP** - Úsalo si necesitas consultar documentación de librerías
-2. **DB MCP** (capability `db`) - Solo si la story requiere cambios de DB; se aplican según `agentic-dev-core/references/db-change-doctrine.md`
-3. **shadcn MCP** - Úsalo si necesitas componentes UI (y el proyecto usa shadcn)
-
-**Nota:** Ver `references/implement-story.md` (sección "Verificación de Herramientas") para más detalles sobre cada MCP.
-
----
-
-## 📚 CONTEXTO A LEER
+## Context to read
 
 ```
-.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/implementation-plan.md
+.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}/implementation-plan.md
 ```
 
-**Además:**
+Also read the code already implemented in the project and the files modified recently.
 
-- Código ya implementado en el proyecto
-- Archivos modificados recientemente
+## Process
 
----
+### Step 1: Analyze the current state
 
-## 🔄 PROCESO
+1. Review `implementation-plan.md`: which steps are complete and what is still missing.
+2. Review the existing code: the files already created or modified and the functionality already implemented.
+3. Validate the state: run `{{stack.package_manager}} run {{stack.scripts.build}}` to see whether it compiles (with the role null, use the `types` script and say so), and do a quick manual test of what works.
 
-### Paso 1: Análisis del Estado Actual
+### Step 2: Report the state
 
-1. **Revisa el `implementation-plan.md`**
-   - Identifica qué steps están completos
-   - Identifica qué falta por hacer
-
-2. **Revisa el código existente**
-   - Archivos ya creados/modificados
-   - Funcionalidad ya implementada
-
-3. **Valida estado actual**
-   - Ejecuta `{{stack.package_manager}} run {{stack.scripts.build}}` (verificar si compila; rol null: usa el script `types` y dilo)
-   - Prueba manual rápida (qué funciona)
-
----
-
-### Paso 2: Genera Resumen de Estado
-
-**Output esperado:**
+Output:
 
 ```markdown
-## 📊 Estado Actual de STORY-{PROJECT_KEY}-{ISSUE_NUM}
+## Current state of STORY-{PROJECT_KEY}-{ISSUE_NUM}
 
-### ✅ Completado:
+### Completed
 
-- Step 1: [Nombre] - [Archivos: x, y, z]
-- Step 2: [Nombre] - [Archivos: a, b]
+- Step 1: [Name] - [Files: x, y, z]
+- Step 2: [Name] - [Files: a, b]
 
-### ⏳ En Progreso:
+### In progress
 
-- Step 3: [Nombre] - Parcialmente implementado
-  - ✅ [Parte completada]
-  - ⏸️ [Parte pendiente]
+- Step 3: [Name] - partially implemented
+  - Done: [completed part]
+  - Pending: [pending part]
 
-### ⏸️ Pendiente:
+### Pending
 
-- Step 4: [Nombre]
-- Step 5: [Nombre]
+- Step 4: [Name]
+- Step 5: [Name]
 
-### 🧪 Validación Actual:
+### Current validation
 
-- Build: ✅ Compila / ❌ Errores
-- Funcionalidad: [Qué funciona ahora]
+- Build: compiles / errors
+- Functionality: [what works now]
 
-### 🎯 Próximo Paso:
+### Next step
 
-[Descripción del siguiente step a implementar]
+[Description of the next step to implement]
 ```
 
----
+### Step 3: Continue the implementation
 
-### Paso 3: Continuar Implementación
+From the first pending step:
 
-**Desde el step pendiente:**
+1. Implement the next step in full.
+2. Validate that it works (build plus a manual test).
+3. Move on to the next one.
 
-1. Implementa el siguiente step completo
-2. Valida que funciona (build + prueba manual)
-3. Continúa con el siguiente
+The same rules as `implement-story.md` hold:
 
-**Sigue las mismas restricciones de `implement-story.md`:**
+- No integration or E2E tests: that is QA's work, outside this skill.
+- Follow the code standards, the error handling rules and the design system.
+- Create unit tests with `/unit-testing` when you finish.
 
-- ❌ NO integration/E2E tests (eso es QA, fuera de este skill)
-- ✅ Code standards
-- ✅ Error handling
-- ✅ Design system
-- ✅ Crea unit tests con `unit-testing.md` al finalizar
-
----
-
-## 🎯 EJEMPLO DE USO
-
-```markdown
-Continúa la implementación de STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}.
-
-**Proceso:**
-
-1. Analiza qué steps ya están completados
-2. Dame resumen del estado actual
-3. Continúa desde donde quedó
-4. Valida que funciona
-
-**Importante:**
-
-- Lee el implementation plan
-- Revisa código ya existente
-- Crea unit tests con `unit-testing.md` al finalizar
-
-(Donde {PROJECT_KEY}, {ISSUE_NUM}, {nombre} se obtienen de la story que estás continuando)
-```
-
----
-
-**Nota:** Si encuentras errores en código ya implementado, usa `fix-issues.md` para debuggear primero.
+If you find errors in code that was already implemented, debug them first with `fix-issues.md`.

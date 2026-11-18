@@ -129,7 +129,7 @@ const MANIFEST_PATH = join(REPO_ROOT, '.agents', 'jira-required.yaml');
  *
  * Pinned to `main` so `--upex` always means "current UPEX standard".
  */
-const UPEX_UPSTREAM_URL = 'https://raw.githubusercontent.com/upex-galaxy/agentic-dev-boilerplate/main/.agents/jira-link-types.json';
+const UPEX_UPSTREAM_URL = 'https://raw.githubusercontent.com/upex-galaxy/agentic-qa-boilerplate/main/.agents/jira-link-types.json';
 
 // ============================================================================
 // TYPES

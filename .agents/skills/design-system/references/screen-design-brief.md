@@ -1,95 +1,98 @@
 # Screen design brief generator
 
 > Loaded by `references/screen-design-mapping.md` (step 2) when the drop zone is empty or new
-> screens are needed. Produces a **portable design brief** — a self-contained prompt the user
-> copies into the external design tool (Claude Design / Open Design / any prototyper) so the
-> mockup session starts already aligned with the project's frozen tokens and backlog, instead
+> screens are needed. Produces a **portable design brief**: a self-contained prompt the user
+> copies into the external design tool (Claude Design, Open Design or any prototyper), so the
+> mockup session starts already aligned with the project's frozen tokens and backlog instead
 > of the user re-explaining the project from scratch.
 
 ## Why this exists
 
 The external tool cannot read this repo. Without a brief, the user arrives at `claude.ai/design`
-or Open Design empty-handed, improvises context, and the resulting mockup drifts from `DESIGN.md`
-before the fidelity contract even starts. The brief closes that gap: it carries the design
-contract OUT to the tool, so the bundle that comes BACK is born compliant.
+or Open Design empty-handed, improvises context, and the mockup drifts from `DESIGN.md`
+before the fidelity contract even starts. The brief carries the design contract out to the
+tool, so the bundle that comes back is born compliant.
 
-The brief is a **mission**, not a mockup. Generating the brief does NOT violate D7/S1 — the AI
-still never produces screens; it produces the instructions the human takes to the tool that does.
+The brief is a mission, not a mockup. Generating it does not violate D7/S1: the AI still never
+produces screens. It writes the instructions the human takes to the tool that does.
 
-## Delegation principle — functional intent, not visual prescription
+## Delegation principle: functional intent, not visual prescription
 
-**The external tool is the design expert, not us.** The brief carries exactly TWO kinds of
-specificity and nothing more:
+The external tool is the design expert, not us. The brief carries two kinds of specificity and
+nothing more:
 
-1. **The design-system contract** (tokens from `DESIGN.md`) — the only visual constraint we impose.
-2. **Functional intent** (what the user must be able to DO on each screen, drawn from the ACs) —
-   expressed as verbs and outcomes, never as widgets or layouts.
+1. The design-system contract (tokens from `DESIGN.md`), the only visual constraint we impose.
+2. Functional intent (what the user must be able to do on each screen, drawn from the ACs),
+   written as verbs and outcomes and never as widgets or layouts.
 
-Everything else — layout, composition, visual hierarchy, component choice, density, spacing
-rhythm, micro-interactions, empty-state personality — is the tool's domain. A brief that dictates
-"dropdown top-right, three-column grid, cards with avatars" strangles the tool's creativity and
-produces worse design than the tool would on its own. Say "the user filters runs by status and
-date", not "add a filter dropdown".
+Everything else belongs to the tool: layout, composition, visual hierarchy, component choice,
+density, spacing rhythm, micro-interactions, empty-state personality. A brief that dictates
+"dropdown top-right, three-column grid, cards with avatars" strangles the tool and produces
+worse design than it would on its own. Say "the user filters runs by status and date", not
+"add a filter dropdown".
 
-Litmus test per line: *does this sentence describe what the screen must accomplish, or how it
-must look?* "How it must look" is only legitimate when it comes from the frozen tokens or from
-an AC that literally specifies appearance.
+Test each line by asking whether it describes what the screen must accomplish or how it must
+look. "How it must look" is legitimate only when it comes from the frozen tokens or from an AC
+that literally specifies appearance.
 
-## Brief modes — first vs follow-up (tool project continuity)
+## Brief modes: first and follow-up (tool project continuity)
 
-Claude Design and Open Design both keep **persistent projects**: every prompt lands in the same
-tool-side workspace/chat, so the design AI accumulates context and converges on the design system
-after the first screens. Exploit that — do not re-teach what the tool already knows:
+Claude Design and Open Design both keep persistent projects. Every prompt lands in the same
+tool-side workspace, so the design AI accumulates context and converges on the design system
+after the first screens. Use that, and do not re-teach what the tool already knows:
 
 | Mode | When | Brief carries |
 |------|------|---------------|
-| **FULL** | First brief in a new tool project | Everything: product context + full frozen contract (tokens inlined) + screens + export instructions |
-| **FOLLOW-UP** | Same tool project, later batch | Mission + new screens (functional intent) + one-line contract reminder ("same design system as the previous screens in this project — `DESIGN.md` tokens still govern") + export instructions. NO re-pasted token block, NO repeated product context. Add: "keep visual consistency with the screens already designed in this project." |
+| **FULL** | First brief in a new tool project | Everything: product context, the full frozen contract (tokens inlined), screens and export instructions |
+| **FOLLOW-UP** | Same tool project, later batch | Mission, new screens (functional intent), one line reminding the contract ("same design system as the previous screens in this project, `DESIGN.md` tokens still govern") and export instructions. No re-pasted token block and no repeated product context. Add: "keep visual consistency with the screens already designed in this project." |
 
 Mechanics:
 
-- Ask the user before generating: "¿Sigues en el mismo proyecto de {tool} o empiezas uno nuevo?"
-  Same project → FOLLOW-UP mode.
-- **Cross-tool continuity does NOT exist.** FOLLOW-UP assumes the SAME tool project holds the
-  token memory. If the earlier screens came from a different tool (e.g. batch 1 in Claude Design,
-  batch 2 in Open Design), the new tool knows nothing: keep the FOLLOW-UP framing for consistency
-  language ("match the existing screens") but RE-INLINE the full frozen contract (B7 does not
-  apply across tools). With Open Design specifically, prefer attaching the repo design system as a
-  `user:<slug>` package (see `open-design-app.md` §repo → OD) over pasting tokens into the brief —
+- Before generating, ask the user whether they are continuing in the same tool project or
+  starting a new one (in the user's language). Same project means FOLLOW-UP mode. With nobody at
+  the keyboard, read the previous `BRIEF.md` header (`Tool session:` line): when it names a
+  project for the same tool, use FOLLOW-UP, otherwise FULL. FULL is the safe default because it
+  only costs a longer brief.
+- Continuity does not cross tools. FOLLOW-UP assumes the same tool project holds the token
+  memory. If the earlier screens came from a different tool (batch 1 in Claude Design, batch 2
+  in Open Design), the new tool knows nothing. Keep the FOLLOW-UP framing for the consistency
+  language ("match the existing screens") but inline the full frozen contract again (B7 does not
+  apply across tools). With Open Design, attach the repo design system as a `user:<slug>`
+  package (see `open-design-app.md` §repo → OD) instead of pasting tokens into the brief. The
   package beats prose.
-- Record the mode + tool project name in the BRIEF.md header (`Tool session:` line) so the next
-  brief knows continuity exists.
-- **Tool memory is convenience, NOT contract.** The repo-side validation never relaxes: every
-  returned bundle is still checked against `DESIGN.md` at mapping time (scorecard §1, divergences
-  §5). If the tool drifts across iterations, the mapping catches it — that's the safety net that
-  makes full delegation safe.
-- Bootstrap special case: if `DESIGN.md` does not exist yet and the user wants the tool to *invent*
-  the design system on the first mockup session, that is Path D ordering — ingest the first bundle
-  into `DESIGN.md` first (`references/claude-design-handoff.md` → Path E), THEN freeze and continue
-  with screen briefs against it.
+- Record the mode and the tool project name in the BRIEF.md header (`Tool session:` line) so
+  the next brief knows continuity exists.
+- Tool memory is a convenience, not the contract. Repo-side validation never relaxes: every
+  returned bundle is still checked against `DESIGN.md` at mapping time (scorecard §1,
+  divergences §5). If the tool drifts across iterations, the mapping catches it, and that safety
+  net is what makes full delegation safe.
+- Bootstrap special case: if `DESIGN.md` does not exist yet and the user wants the tool to
+  invent the design system on the first mockup session, that is Path D ordering. Ingest the
+  first bundle into `DESIGN.md` first (`references/claude-design-handoff.md` → Path E), then
+  freeze it and continue with screen briefs against it.
 
 ## When to generate
 
-- Screen-mapping phase opted in AND drop zone (`.context/designs/<project-slug>/`) is empty.
+- The screen-mapping phase is opted in and the drop zone (`.context/designs/<project-slug>/`) is empty.
 - Incremental mode: a UI story reaches `/sprint-development` with no row in §8 of
   `master-design-plan.md` and the user chooses "just-in-time mockup" (see sprint-dev input #10).
-- The user explicitly asks: "generate a design brief", "brief de diseño", "prepara el prompt
-  para Claude Design / Open Design".
+- The user explicitly asks for a design brief, in English or Spanish ("generate a design brief",
+  "brief de diseño", "prepara el prompt para Claude Design / Open Design").
 
 ## Inputs (read before generating)
 
-1. `DESIGN.md` frontmatter — the frozen tokens (colors, typography, spacing, radius, shadows).
-   **Inline the actual values into the brief** — the external tool can't follow a file reference.
-2. Backlog stories needing screens — `.context/PBI/epics/**/stories/**/` (`story.md`,
-   `acceptance-criteria.md`) or the issue tracker. Only the stories whose screens are being
-   requested in THIS brief, not the whole backlog.
-3. `.context/business/business-model.md` / `PRD/executive-summary.md` — for the 1–2 line product
-   context. Summarize; never paste whole documents.
-4. `.agents/project.yaml` — `<project-slug>` for the drop-zone path.
+1. `DESIGN.md` frontmatter: the frozen tokens (colors, typography, spacing, radius, shadows).
+   Inline the actual values into the brief, since the external tool cannot follow a file reference.
+2. The backlog stories needing screens: `.context/PBI/epics/**/stories/**/` (`story.md`,
+   `acceptance-criteria.md`) or the issue tracker. Take only the stories whose screens this
+   brief requests, not the whole backlog.
+3. `.context/business/business-model.md` and `PRD/executive-summary.md`, for the one or two lines
+   of product context. Summarize and never paste whole documents.
+4. `.agents/project.yaml`, for the `<project-slug>` of the drop-zone path.
 
 ## Batch folder convention
 
-Each brief targets one **batch** of screens (typically the screens of one feature / sprint
+Each brief targets one batch of screens (typically the screens of one feature or sprint
 frontier). Destination:
 
 ```
@@ -98,13 +101,13 @@ frontier). Destination:
   ...               # the exported bundle lands here when the user returns
 ```
 
-`<batch-slug>` = short kebab feature/sprint id (e.g. `settings-batch`, `test-runs-index`).
-Saving `BRIEF.md` first is mandatory: it versions WHAT was asked alongside WHAT came back, and
-step 3 of the mapping procedure records it as provenance in each §4 screen spec.
+`<batch-slug>` is a short kebab-case feature or sprint id (for example `settings-batch`,
+`test-runs-index`). Save `BRIEF.md` first: it versions what was asked next to what came back,
+and step 3 of the mapping procedure records it as provenance in each §4 screen spec.
 
 ## Brief template
 
-Generate the brief with exactly these sections (fill `{...}`; drop a section only if truly empty):
+Generate the brief with exactly these sections (fill `{...}`, and drop a section only if it is truly empty):
 
 ```markdown
 # Design brief — {project name} / {batch-slug}
@@ -171,74 +174,78 @@ When the files are in place, come back to the agent session and confirm — the 
 phase resumes automatically (session checkpoint is waiting).
 ```
 
-## MCP consumption — per-screen prompt slices (Mode A)
+## MCP consumption: per-screen prompt slices (Mode A)
 
-When the delegation runs MCP-driven (`screen-design-mapping.md` step 2 Mode A), the brief is not
-pasted anywhere by a human: the orchestrating AI slices it into ONE `start_run` prompt per screen.
-`BRIEF.md` is still saved whole (provenance + the batch's single source of truth); the slices are
-derived from it, never diverge from it.
+When the delegation runs through MCP (`screen-design-mapping.md` step 2 Mode A), no human pastes
+the brief anywhere. The orchestrating AI slices it into one `start_run` prompt per screen.
+`BRIEF.md` is still saved whole (provenance, and the batch's single source of truth), and the
+slices derive from it and never diverge from it.
 
-Anatomy of each per-screen prompt (order matters, all in the product's artifact language):
+Each per-screen prompt has this anatomy, in this order, all in the product's artifact language:
 
-1. **Mission line** — "Screen N of M for this project: {human name}" + 1-line product register
-   (from §Product context). Numbering gives the tool's project memory a sense of series.
-2. **Design-system reminder** — 1 short paragraph: the project has the `user:<slug>` design system
-   attached; use NATIVE token names ({3-4 exemplar names}); no new tokens. Do NOT re-paste the
-   token tables — the attached package carries them.
-3. **File contract** — exact `{screen-slug}.html`, self-contained, target viewport. The slug is
-   what lets the repo map file → §4 spec later; treat it as an API.
-4. **Functional intent** — the screen's capability bullets from §Screens requested, verbatim
+1. Mission line: "Screen N of M for this project: {human name}" plus a one-line product register
+   (from §Product context). The numbering gives the tool's project memory a sense of series.
+2. Design-system reminder: one short paragraph saying the project has the `user:<slug>` design
+   system attached, to use its native token names ({3-4 exemplar names}), and to add no new
+   tokens. Do not re-paste the token tables, since the attached package carries them.
+3. File contract: the exact `{screen-slug}.html`, self-contained, with the target viewport. The
+   slug is what lets the repo map file to §4 spec later, so treat it as an API.
+4. Functional intent: the screen's capability bullets from §Screens requested, in the same
    spirit (verbs and outcomes, never widgets).
-5. **States** — the AC-demanded states; on screens 2+ add "consistent with the states treatment
-   you used on screen 1" so the batch stays coherent.
-6. **Hard constraints** — the brief's Hard constraints block, compressed, PLUS the standing rules
+5. States: the AC-demanded states. On screens 2 and later add "consistent with the states
+   treatment you used on screen 1" so the batch stays coherent.
+6. Hard constraints: the brief's Hard constraints block, compressed, plus the standing rules
    learned on earlier screens (see below).
 
-Standing rules & drift control:
+Standing rules and drift control:
 
-- **UI copy language is a hard constraint, not an assumption.** The inner design agent mirrors the
-  ORCHESTRATION conversation's language — if you orchestrate in Spanish, screen copy can come out
-  Spanish even with an English prompt. State "UI copy in {product language}" explicitly in EVERY
+- UI copy language is a hard constraint, not an assumption. The inner design agent mirrors the
+  language of the orchestration conversation, so if you orchestrate in Spanish, screen copy can
+  come out Spanish even with an English prompt. State "UI copy in {product language}" in every
   prompt. On the first violation, send a translate-only refinement run and have it persist the
   rule tool-side (Open Design accepts `rule-proposal` cards that auto-verify on later runs).
-- **Screens 2+ cite screen 1** — "reuse the shell anatomy of `{screen-1-slug}.html`, with {section}
-  active". This is why runs are sequential, never parallel.
-- **Refinements are runs, not edits.** A defect in a generated screen (wrong language, missing
-  state, off-contract value) is fixed by a follow-up `start_run` describing the correction — never
-  by the orchestrator editing the HTML (S1).
+- Screens 2 and later cite screen 1: "reuse the shell anatomy of `{screen-1-slug}.html`, with
+  {section} active". That is why runs are sequential and never parallel.
+- Refinements are runs, not edits. A defect in a generated screen (wrong language, missing
+  state, off-contract value) is fixed by a follow-up `start_run` describing the correction. The
+  orchestrator never edits the HTML (S1).
 
 ## Procedure
 
 1. Read the inputs (§Inputs). Dispatch a Single subagent if the backlog read is heavy.
-2. Determine the batch: which screens, which stories. Confirm the list with the user (one
-   AskUserQuestion — they may want to add/remove a screen). In the same question, ask whether
-   this continues an existing tool project (→ FOLLOW-UP mode) or starts a new one (→ FULL mode).
+2. Determine the batch: which screens, which stories. Confirm the list with the user in one
+   AskUserQuestion, since they may want to add or remove a screen. In the same question, ask
+   whether this continues an existing tool project (FOLLOW-UP mode) or starts a new one (FULL
+   mode). With nobody at the keyboard, take the batch from the brief or the sprint frontier
+   named in it, choose the mode as described under Brief modes, and report both choices.
 3. Fill the template in the chosen mode. Compress ACs to capabilities (verbs, not widgets) per
-   §Delegation principle; FULL mode inlines real token values, FOLLOW-UP replaces the contract
-   block with the consistency one-liner.
-4. Save to `.context/designs/<project-slug>/<batch-slug>/BRIEF.md` (create folders).
-5. Print the brief to the user + the one-line mission: "Copy BRIEF.md into {tool}, design,
+   §Delegation principle. FULL mode inlines real token values, and FOLLOW-UP replaces the
+   contract block with the consistency one-liner.
+4. Save to `.context/designs/<project-slug>/<batch-slug>/BRIEF.md` (create the folders).
+5. Print the brief to the user with the one-line mission: "Copy BRIEF.md into {tool}, design,
    export into the same folder, come back and confirm."
 6. Write the `progress.md` checkpoint (`status: started`, `notes: "brief <batch-slug> delivered,
-   waiting for mockups"`) and PAUSE — same wait contract as Paths C/D.
+   waiting for mockups"`) and pause, with the same wait contract as Paths C and D. A routine
+   that cannot wait ends here: the checkpoint and the saved `BRIEF.md` are the hand-off, and
+   the report says the mockups are pending.
 
-## Anti-patterns — NEVER do these
+## Anti-patterns
 
-- **B1.** NEVER include secrets, credentials, `.env` values, internal URLs, or customer data in
-  a brief — it is pasted into an external service.
-- **B2.** NEVER paste whole PRD/SRS documents — the brief is a compression, not an attachment.
-  Context beyond ~2 lines + AC bullets dilutes the design signal.
-- **B3.** NEVER skip saving `BRIEF.md` to the batch folder before handing it over — an unsaved
-  brief breaks mockup provenance (§4 specs cite it).
-- **B4.** NEVER generate the mockup yourself "while waiting" — D7/S1 stand. Brief out, human
+- **B1.** Keep secrets, credentials, `.env` values, internal URLs and customer data out of a
+  brief, because it is pasted into an external service.
+- **B2.** Do not paste whole PRD/SRS documents. The brief is a compression, not an attachment,
+  and context beyond about 2 lines plus the AC bullets dilutes the design signal.
+- **B3.** Save `BRIEF.md` to the batch folder before handing it over. An unsaved brief breaks
+  mockup provenance (§4 specs cite it).
+- **B4.** Do not generate the mockup yourself "while waiting". D7/S1 stand: brief out, human
   designs, bundle in.
-- **B5.** NEVER write token values in the brief that differ from `DESIGN.md` — the brief is a
-  carrier of the frozen contract, not a place to redesign it.
-- **B6.** NEVER prescribe layout, composition, component choices, or visual hierarchy in a brief —
-  the external tool is the design expert. The brief's only visual specificity is the token
-  contract; everything else is functional intent (verbs and outcomes from the ACs). Over-specified
-  briefs produce worse mockups than the tool would create freely.
-- **B7.** NEVER re-paste the full token contract in a FOLLOW-UP brief for the same tool project —
-  the tool's project memory already holds it; redundant contracts add noise and invite
-  contradictions. The repo-side mapping validation (§1 scorecard / §5 divergences) remains the
-  real enforcement either way.
+- **B5.** Write no token value in the brief that differs from `DESIGN.md`. The brief carries the
+  frozen contract and is not the place to redesign it.
+- **B6.** Do not prescribe layout, composition, component choices or visual hierarchy. The
+  external tool is the design expert, and the brief's only visual specificity is the token
+  contract. Everything else is functional intent (verbs and outcomes from the ACs), because an
+  over-specified brief produces worse mockups than the tool would create freely.
+- **B7.** Do not re-paste the full token contract in a FOLLOW-UP brief for the same tool project.
+  The tool's project memory already holds it, and a redundant contract adds noise and invites
+  contradictions. The repo-side mapping validation (§1 scorecard, §5 divergences) is the real
+  enforcement either way.

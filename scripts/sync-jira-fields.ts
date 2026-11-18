@@ -615,7 +615,7 @@ async function fetchChildOptions(
  *   "🔥 Severity (Bug)"        → "severity"
  *   "Plan de Aceptación"       → "plan_de_aceptacion"
  *   "Acceptance Test Plan"     → "acceptance_test_plan"
- *   "Story Points (Numeric)"   → "story_points"
+ *   "Sprint Goal (Text)"       → "sprint_goal"
  *
  * Parenthetical decorators ("(Dev)", "(QA)", "(Bug)", etc.) are STRIPPED
  * before slugify. Workspaces use parens to disambiguate field names visually;

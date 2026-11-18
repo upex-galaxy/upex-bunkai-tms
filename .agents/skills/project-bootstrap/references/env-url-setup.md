@@ -1,147 +1,110 @@
-Actúa como Senior Full-Stack Developer y DevOps Engineer.
+# Environment URLs setup (add-on)
 
----
+This add-on creates one central place for the URLs of each environment (development, staging, production) that detects the current environment and returns the right base URL. It is an infrastructure add-on of `project-bootstrap`: it runs on a greenfield project and on an existing app, and it needs no special MCP.
 
-## 🎯 TAREA
+## Read the `stack:` block first
 
-**🔧 FEATURE: Environment URLs Setup (Fase 3 - Infrastructure)**
+On an existing app the guard's verdict is `existing-app` (`SKILL.md` → Phase 3). Before the first step, read `.agents/project.yaml` → `stack:` (contract: `.agents/README.md` → `stack`) and resolve every literal this reference writes through it:
 
-Crear un sistema **centralizado de URLs por ambiente** que detecte automáticamente el entorno (development, staging, production) y proporcione la URL base correcta.
+- The example paths (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) are the greenfield default. Resolve them under `{{stack.app_root}}`. The types file is `{{stack.database.types_path}}`, and with `stack.framework: nextjs-pages` the API lives in `pages/api/`.
+- App commands are `{{stack.package_manager}} run <script>` with the script name from `stack.scripts`. A null script is skipped and said so, never invented. Dependencies install with that package manager, which is never changed.
+- What the app already has wins. An existing docs UI, error contract, auth scheme, Supabase client location or major version of a dependency (Zod, Next) is read and extended, never replaced or upgraded by this add-on. When they conflict, show the user both shapes.
+- The Supabase project ref is `environments.<env>.db_project_ref`, and any database touch follows `agentic-dev-core/references/db-change-doctrine.md`.
 
----
+## Required input
 
-## 🧭 PASO PREVIO: LEER EL BLOQUE `stack:`
+Read these files:
 
-Esta add-on corre igual en un proyecto greenfield y en una app existente (veredicto `existing-app` del guard de entrada, `SKILL.md` → Phase 3). Antes del primer paso, leer `.agents/project.yaml` → `stack:` (contrato: `.agents/README.md` → `stack`) y resolver con él todo lo que esta referencia escribe como literal:
+- `package.json`: the project name.
+- `.agents/project.yaml`: the `environments:` block (`web_url` and `api_url` per environment: `{{WEB_URL}}`, `{{environments.<env>.web_url}}`).
+- `.env.example`: the current environment variables.
+- `src/lib/config.ts`: the existing configuration, if there is one.
 
-- Las rutas de ejemplo (`src/app/api/`, `src/lib/supabase/`, `src/types/supabase.ts`) son el default greenfield: se resuelven bajo `{{stack.app_root}}`; el archivo de tipos es `{{stack.database.types_path}}`; con `stack.framework: nextjs-pages` la API vive en `pages/api/`.
-- Los comandos de la app son `{{stack.package_manager}} run <script>` con el NOMBRE de `stack.scripts`; un script en `null` se salta y se dice, nunca se inventa. Las dependencias se instalan con ese package manager, sin cambiarlo.
-- Lo que la app ya tiene gana: una UI de docs, un contrato de error, un esquema de auth, la ubicación de los Supabase clients o la versión mayor de una dependencia (Zod, Next) se leen y se extienden, nunca se reemplazan ni se actualizan desde esta add-on. Un choque se le muestra al usuario con las dos formas.
-- El Supabase project ref es `environments.<env>.db_project_ref`; todo toque a la base sigue `agentic-dev-core/references/db-change-doctrine.md`.
+Ask the user only for what `.agents/project.yaml` holds as `null` (Step 0.2).
 
----
+Preconditions: a configured Next.js project, and optionally Vercel configured for deployments.
 
-## 📥 INPUT REQUERIDO
+## Output
 
-### 1. Contexto del Proyecto
+Files:
 
-**Leer estos archivos:**
+- `src/lib/urls.ts`: the central URL helper.
+- `.env.example`: updated with documentation.
+- `.agents/project.yaml`: `environments.<env>.web_url` and `api_url` filled in (with the user's OK).
 
-- `package.json` - Nombre del proyecto
-- `.agents/project.yaml` - Bloque `environments:` (`web_url` / `api_url` por ambiente: `{{WEB_URL}}`, `{{environments.<env>.web_url}}`)
-- `.env.example` - Variables de entorno actuales
-- `src/lib/config.ts` - Configuración existente (si existe)
-
-### 2. Información del Usuario
-
-**Preguntar al usuario solo lo que `.agents/project.yaml` tenga en `null`:**
-
-```
-Para configurar las URLs de tu proyecto, necesito conocer:
-
-1. ¿Cuál es la URL de STAGING? (ej: https://staging-miproyecto.vercel.app)
-2. ¿Cuál es la URL de PRODUCTION? (ej: https://miproyecto.vercel.app)
-3. ¿Usas Vercel para deployments? (sí/no)
-```
-
----
-
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS
-
-### Precondiciones:
-
-- ✅ Proyecto Next.js configurado
-- ✅ (Opcional) Vercel configurado para deployments
-
-### No requiere MCP especiales.
-
----
-
-## 📤 OUTPUT GENERADO
-
-### Archivos:
-
-- ✅ `src/lib/urls.ts` - Helper centralizado de URLs
-- ✅ `.env.example` - Actualizado con documentación
-- ✅ `.agents/project.yaml` - `environments.<env>.web_url` / `api_url` completados (con OK del usuario)
-
-### Funciones Exportadas:
+Exported functions:
 
 ```typescript
-APP_URLS; // Constante con todas las URLs
-getEnvironment(); // Detecta ambiente actual
-getBaseUrl(); // Retorna URL base del ambiente
-buildUrl(path); // Construye URL completa
+APP_URLS; // Constant with all the URLs
+getEnvironment(); // Detects the current environment
+getBaseUrl(); // Returns the base URL of the environment
+buildUrl(path); // Builds the full URL
 ```
 
----
+## Steps
 
-## 🛠️ PASOS DETALLADOS
+### Phase 0: Gather information
 
-### FASE 0: Recopilar Información
-
-**Paso 0.1: Detectar configuración existente**
+**Step 0.1: Detect the existing configuration**
 
 ```bash
-# Verificar si ya existe urls.ts
-ls -la src/lib/urls.ts 2>/dev/null && echo "Ya existe" || echo "No existe"
+# Check whether urls.ts already exists
+ls -la src/lib/urls.ts 2>/dev/null && echo "Already exists" || echo "Does not exist"
 
-# Leer las URLs ya declaradas en .agents/project.yaml
+# Read the URLs already declared in .agents/project.yaml
 yq '.environments' .agents/project.yaml
 ```
 
-**Paso 0.2: Obtener URLs del usuario**
+**Step 0.2: Get the URLs from the user**
 
-Si `environments.<env>.web_url` está en `null` para algún ambiente, preguntar:
+If `environments.<env>.web_url` is `null` for any environment, ask (in the user's language):
 
 ```
-Necesito las URLs de tu proyecto:
+To set up your project's URLs I need:
 
-1. URL de Staging: _______________
-   (ej: https://staging-miapp.vercel.app)
+1. Staging URL: _______________
+   (e.g. https://staging-myapp.vercel.app)
 
-2. URL de Production: _______________
-   (ej: https://miapp.vercel.app)
+2. Production URL: _______________
+   (e.g. https://myapp.vercel.app)
 
-3. ¿Tu proyecto usa Vercel? (sí/no): ___
+3. Does your project deploy on Vercel? (yes/no): ___
 ```
 
-**Guardar respuestas para usar en el código.**
+Keep the answers for the code. With nobody to ask, see "With nobody at the keyboard".
 
----
+### Phase 1: Create `src/lib/urls.ts`
 
-### FASE 1: Crear src/lib/urls.ts
+**Step 1.1: Create the file**
 
-**Paso 1.1: Crear archivo**
-
-Crear `src/lib/urls.ts` con el siguiente contenido:
+Create `src/lib/urls.ts` with this content:
 
 ````typescript
 // src/lib/urls.ts
 
 /**
- * URLs oficiales de la aplicación por ambiente
- * Fuente única de verdad para todos los redirects y links
+ * Official application URLs per environment.
+ * Single source of truth for every redirect and link.
  *
- * Ambientes:
- * - development: localhost:3000 (servidor local)
- * - staging: rama 'staging' en Vercel (custom environment tipo preview)
- * - production: rama 'main' en Vercel
+ * Environments:
+ * - development: localhost:3000 (local server)
+ * - staging: the 'staging' branch on Vercel (a custom preview-type environment)
+ * - production: the 'main' branch on Vercel
  */
 export const APP_URLS = {
   development: 'http://localhost:3000',
-  staging: '[STAGING_URL]', // Reemplazar con URL real
-  production: '[PRODUCTION_URL]', // Reemplazar con URL real
+  staging: '[STAGING_URL]', // Replace with the real URL
+  production: '[PRODUCTION_URL]', // Replace with the real URL
 } as const;
 
 export type AppEnvironment = keyof typeof APP_URLS;
 
 /**
- * Detecta el ambiente actual basándose en variables de Vercel/Node
+ * Detects the current environment from the Vercel/Node variables.
  *
  * - VERCEL_ENV='production' → production
- * - VERCEL_ENV='preview' → staging (nuestro custom environment)
- * - Sin VERCEL_ENV → development (local)
+ * - VERCEL_ENV='preview' → staging (our custom environment)
+ * - No VERCEL_ENV → development (local)
  */
 export function getEnvironment(): AppEnvironment {
   if (process.env.VERCEL_ENV === 'production') {
@@ -156,9 +119,9 @@ export function getEnvironment(): AppEnvironment {
 }
 
 /**
- * Retorna la URL base de la aplicación para el ambiente actual
+ * Returns the application's base URL for the current environment.
  *
- * Uso:
+ * Usage:
  * ```ts
  * const baseUrl = getBaseUrl()
  * // development: 'http://localhost:3000'
@@ -172,84 +135,80 @@ export function getBaseUrl(): string {
 }
 
 /**
- * Construye una URL completa a partir de un path
+ * Builds a full URL from a path.
  *
- * Uso:
+ * Usage:
  * ```ts
  * buildUrl('/dashboard/settings')
- * // → '[PRODUCTION_URL]/dashboard/settings' (en production)
+ * // → '[PRODUCTION_URL]/dashboard/settings' (in production)
  * ```
  */
 export function buildUrl(path: string): string {
   const baseUrl = getBaseUrl();
-  // Asegurar que el path empiece con /
+  // Make sure the path starts with /
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${baseUrl}${normalizedPath}`;
 }
 ````
 
-**Paso 1.2: Reemplazar placeholders**
+**Step 1.2: Replace the placeholders**
 
-Reemplazar `[STAGING_URL]` y `[PRODUCTION_URL]` con los valores reales proporcionados por el usuario.
+Replace `[STAGING_URL]` and `[PRODUCTION_URL]` with the real values the user gave.
 
----
+### Phase 2: Update the documentation
 
-### FASE 2: Actualizar Documentación
+**Step 2.1: Update `.env.example`**
 
-**Paso 2.1: Actualizar .env.example**
-
-Agregar sección de URLs al final de `.env.example`:
+Add a URL section at the end of `.env.example`:
 
 ```env
 # =============================================================================
-# Environment URLs (Informativo - NO son variables de entorno)
+# Environment URLs (Informational - these are NOT environment variables)
 # =============================================================================
-# Las URLs se gestionan en src/lib/urls.ts
+# The URLs are managed in src/lib/urls.ts
 #
-# Ambientes configurados:
+# Configured environments:
 # - Development: http://localhost:3000
 # - Staging: [STAGING_URL]
 # - Production: [PRODUCTION_URL]
 #
-# Uso en código:
+# Usage in code:
 # import { getBaseUrl, buildUrl } from '@/lib/urls'
-# const url = getBaseUrl()  // Retorna URL según ambiente
+# const url = getBaseUrl()  // Returns the URL for the current environment
 # =============================================================================
 ```
 
-**Paso 2.2: Actualizar `.agents/project.yaml`**
+**Step 2.2: Update `.agents/project.yaml`**
 
-Las URLs por ambiente viven en `.agents/project.yaml` → `environments:` y en ningún otro lugar versionado (`.agents/instructions/agent-project-variables.md` §7). Con OK del usuario:
+The URLs per environment live in `.agents/project.yaml` → `environments:` and nowhere else that is versioned (`.agents/instructions/agent-project-variables.md` §7). With the user's OK:
 
-- Completar `environments.staging.web_url` / `api_url` y `environments.local.*` si están en `null`.
-- Si el proyecto tiene producción y no existe `environments.production`, agregar el bloque con las tres claves (`web_url`, `api_url`, `db_project_ref`).
-- No escribir una tabla de ambientes en `AGENTS.md` ni en otro doc: el yaml es la fuente y `src/lib/urls.ts` el único punto del código que resuelve URLs.
+- Fill in `environments.staging.web_url` and `api_url`, and `environments.local.*`, wherever they are `null`.
+- If the project has production and `environments.production` does not exist, add the block with its three keys (`web_url`, `api_url`, `db_project_ref`).
+- Do not write an environments table into `AGENTS.md` or any other doc. The yaml is the source, and `src/lib/urls.ts` is the only place in the code that resolves URLs.
 
-**NEVER hardcode URLs** - always use the helper functions.
+Use the helper functions wherever the code needs a URL. A hardcoded URL breaks on the next environment (B4).
 
----
+### Phase 3: Validate
 
-### FASE 3: Validación
-
-**Paso 3.1: TypeScript Check**
+**Step 3.1: TypeScript check**
 
 ```bash
 bun run types:check
 ```
 
-**Si hay errores:**
+If it reports errors:
 
-- Verificar que el path alias `@/lib/urls` está configurado en `tsconfig.json`
-- Verificar sintaxis del archivo
+- Check that the path alias `@/lib/urls` is configured in `tsconfig.json`.
+- Check the file's syntax.
 
-**Paso 3.2: Verificar exportaciones**
+**Step 3.2: Check the exports**
 
 ```bash
-# Verificar que el archivo exporta las funciones esperadas
+# Check that the file exports the expected functions
 grep "export" src/lib/urls.ts
 ```
 
-**Output esperado:**
+Expected output:
 
 ```
 export const APP_URLS
@@ -259,10 +218,10 @@ export function getBaseUrl
 export function buildUrl
 ```
 
-**Paso 3.3: Test manual (opcional)**
+**Step 3.3: Manual test (optional)**
 
 ```typescript
-// Puedes probar en un componente temporalmente:
+// You can try it in a component temporarily:
 import { getEnvironment, getBaseUrl, buildUrl } from '@/lib/urls';
 
 console.log('Environment:', getEnvironment());
@@ -270,97 +229,97 @@ console.log('Base URL:', getBaseUrl());
 console.log('Dashboard URL:', buildUrl('/dashboard'));
 ```
 
----
+## With nobody at the keyboard
 
-## 📋 CHECKLIST FINAL
+The general rule and the per-gate table are in `SKILL.md` → "With nobody at the keyboard". For this add-on:
 
-### Archivos:
+- Staging or production URL is `null` and nobody can answer: take the URL from the delegating brief when it gives one. Otherwise stop before Phase 1 and report the question. `urls.ts` never ships with a `[STAGING_URL]` or `[PRODUCTION_URL]` placeholder.
+- Writing `.agents/project.yaml`: a supervised worker needs its conductor's OK, and a routine writes only values its brief supplied. With neither, leave the yaml untouched and put the proposed values in the report. When no `environments.<env>` field is `null`, there is nothing to write.
 
-- [ ] `src/lib/urls.ts` creado con URLs correctas
-- [ ] `.env.example` actualizado con documentación
-- [ ] `.agents/project.yaml` → `environments:` completado
+## Final checklist
 
-### Validaciones:
+Files:
 
-- [ ] `bun run types:check` pasa sin errores
-- [ ] URLs de staging y production son correctas
-- [ ] Funciones exportadas correctamente
+- [ ] `src/lib/urls.ts` created with the right URLs
+- [ ] `.env.example` updated with documentation
+- [ ] `.agents/project.yaml` → `environments:` filled in
 
-### Documentación:
+Validation:
 
-- [ ] Desarrolladores saben usar `getBaseUrl()` y `buildUrl()`
-- [ ] Está claro que NO se deben hardcodear URLs
+- [ ] `bun run types:check` passes without errors
+- [ ] The staging and production URLs are correct
+- [ ] The functions are exported correctly
 
----
+Documentation:
 
-## 🎉 REPORTE FINAL
+- [ ] Developers know to use `getBaseUrl()` and `buildUrl()`
+- [ ] It is clear that URLs are never hardcoded
+
+## Final report
 
 ````markdown
-# ✅ Environment URLs Setup Completado
+# Environment URLs setup completed
 
-## Archivo Creado:
+## File created:
 
 - `src/lib/urls.ts`
 
-## URLs Configuradas:
+## URLs configured:
 
-| Ambiente    | URL                   |
+| Environment | URL                   |
 | ----------- | --------------------- |
 | Development | http://localhost:3000 |
 | Staging     | [STAGING_URL]         |
 | Production  | [PRODUCTION_URL]      |
 
-## Funciones Disponibles:
+## Available functions:
 
 ```typescript
 import { getBaseUrl, buildUrl, getEnvironment, APP_URLS } from '@/lib/urls';
 
-// Obtener URL base del ambiente actual
+// Get the base URL of the current environment
 const baseUrl = getBaseUrl();
 
-// Construir URL completa
+// Build a full URL
 const loginUrl = buildUrl('/login');
 
-// Obtener nombre del ambiente
+// Get the environment name
 const env = getEnvironment(); // 'development' | 'staging' | 'production'
 
-// Acceder a URLs específicas
+// Access specific URLs
 const stagingUrl = APP_URLS.staging;
 ```
 
-## Uso Recomendado:
+## Recommended usage:
 
 ```typescript
-// ✅ Correcto - usar helper
+// ✅ Correct: use the helper
 import { buildUrl } from '@/lib/urls';
 const redirectUrl = buildUrl('/auth/callback');
 
-// ❌ Incorrecto - hardcodear URL
-const redirectUrl = 'https://miapp.vercel.app/auth/callback';
+// ❌ Wrong: hardcoded URL
+const redirectUrl = 'https://myapp.vercel.app/auth/callback';
 ```
 
-## Documentación Actualizada:
+## Documentation updated:
 
-- `.env.example` - Referencia de URLs
-- `.agents/project.yaml` - `environments:` (URLs por ambiente)
+- `.env.example`: URL reference
+- `.agents/project.yaml`: `environments:` (URLs per environment)
 
 ````
 
----
+## FAQ
 
-## ❓ PREGUNTAS FRECUENTES
+**Why not use environment variables for the URLs?** The URLs are known constants. Environment variables add complexity and a risk of misconfiguration for no gain.
 
-**P: ¿Por qué no usar variables de entorno para las URLs?**
-R: Las URLs son constantes conocidas. Usar variables de entorno agrega complejidad innecesaria y riesgo de errores de configuración.
+**What is `VERCEL_ENV`?** A variable Vercel sets automatically to name the environment:
 
-**P: ¿Qué es VERCEL_ENV?**
-R: Variable automática de Vercel que indica el ambiente:
-- `production` para rama main
-- `preview` para otras ramas (incluyendo staging)
-- No existe en desarrollo local
+- `production` for the `main` branch
+- `preview` for the other branches (staging included)
+- absent in local development
 
-**P: ¿Puedo agregar más ambientes?**
-R: Sí, modifica `APP_URLS` y `getEnvironment()`. Por ejemplo, para QA:
+**Can I add more environments?** Yes. Change `APP_URLS` and `getEnvironment()`. For QA, for example:
+
 ```typescript
 export const APP_URLS = {
   development: '...',
@@ -370,19 +329,16 @@ export const APP_URLS = {
 }
 ```
 
-**P: ¿Funciona en Server Components?**
-R: Sí, `process.env.VERCEL_ENV` está disponible tanto en server como client (es variable de sistema, no `.env`).
+**Does it work in Server Components?** Yes. `process.env.VERCEL_ENV` is available on the server and the client, because it is a system variable and not a `.env` entry.
 
----
+## Integration with other features
 
-## 🔗 INTEGRACIÓN CON OTROS FEATURES
-
-### Con Supabase Auth Redirects:
+### Supabase Auth redirects
 
 ```typescript
 import { buildUrl } from '@/lib/urls';
 
-// En login/signup
+// In login/signup
 const { error } = await supabase.auth.signInWithOAuth({
   provider: 'google',
   options: {
@@ -391,21 +347,21 @@ const { error } = await supabase.auth.signInWithOAuth({
 });
 ```
 
-### Con Email Templates:
+### Email templates
 
 ```typescript
 import { buildUrl } from '@/lib/urls';
 
-// En templates de email
+// In email templates
 const confirmUrl = buildUrl(`/confirm?token=${token}`);
 ```
 
-### Con OpenAPI Registry:
+### OpenAPI registry
 
 ```typescript
 import { APP_URLS } from '@/lib/urls';
 
-// En registry.ts
+// In registry.ts
 servers: [
   { url: `${APP_URLS.development}/api`, description: 'Development' },
   { url: `${APP_URLS.staging}/api`, description: 'Staging' },

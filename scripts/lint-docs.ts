@@ -77,6 +77,7 @@
 import type { VolatileKind } from './lib/volatile-facts';
 import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
+import { isBoilerplateOnlyPath } from '../cli/lib/boilerplate-only.ts';
 import { contractsEnforced, scanContracts } from './lib/doc-contracts';
 import { L0_FILE, parseProjectSkills, parseRouter, PROJECT_FILE, SECTIONS_DIR, skillTableSource } from './lib/instructions';
 import { isVolatileExemptPath, scanVolatile, volatileRemedy } from './lib/volatile-facts';
@@ -538,7 +539,12 @@ export function lintDocs(root: string): { files: number, findings: DocFinding[] 
     ? stripSuffix(f.target).replace(/:\d+(?:-\d+)?$/, '')
     : relativePosix(root, resolve(root, dirname(f.file), decodeURIComponent(stripSuffix(f.target))));
   const ignored = gitIgnored(root, [...new Set(raw.filter(isRef).map(resolvedOf))]);
-  const findings = raw.filter(f => !isRef(f) || !ignored.has(resolvedOf(f)));
+  // Outside the boilerplate's checkout its own tests, fixtures and maintainer
+  // scripts (`isBoilerplateOnlyPath`) never reach the project, and a page it
+  // kept from an earlier release (`INSTALLER.md` is not synced) may still cite
+  // one: not a dead reference there.
+  const neverShipped = (rel: string): boolean => !contractsEnforced(root) && isBoilerplateOnlyPath(rel);
+  const findings = raw.filter(f => !isRef(f) || !(ignored.has(resolvedOf(f)) || neverShipped(resolvedOf(f))));
   const agentsFile = join(root, 'AGENTS.md');
   findings.push(...lintRoster(root));
   const instructions = [...(existsSync(agentsFile) ? [agentsFile] : []), ...instructionFiles(root)];

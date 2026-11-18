@@ -2,20 +2,20 @@
  * @fileoverview Which host harnesses a project uses (`harnesses:` in
  * `.agents/project.yaml`).
  *
- * The boilerplate ships adapters for three harnesses (Claude Code, OpenCode,
- * Codex). A downstream project that runs on one of them deletes the other
- * two's files, and every gate that checks the three of them (the compat check,
+ * The boilerplate ships adapters for each harness in `HARNESSES`. A downstream
+ * project that runs on one of them deletes the others' files, and every gate
+ * that checks all of them (the compat check,
  * `setup:doctor`, the installer, the updater) would then fail on files the
  * project chose not to keep. This module answers, once, which harnesses the
  * gates check (ADR-0013):
  *
- *  1. The boilerplate itself (`isSchemaOwner`) checks all three, whatever its
- *     yaml says: a deleted OpenCode or Codex file in the template must fail.
+ *  1. The boilerplate itself (`isSchemaOwner`) checks every harness, whatever
+ *     its yaml says: a deleted adapter in the template must fail.
  *  2. An explicit `harnesses:` list wins.
  *  3. Absent or `null`: detect from the files present. A harness is in use
  *     while ANY of its files exists, so deleting one file of a harness still
  *     fails its contract; only deleting all of them retires it. Nothing found
- *     at all checks all three, which fails toward checking more.
+ *     at all checks every harness, which fails toward checking more.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -24,7 +24,7 @@ import { parse as parseYaml } from 'yaml';
 
 import { applySplices, isSchemaOwner, locateLeaf } from './agents-schema.ts';
 
-export const HARNESSES = ['claude', 'opencode', 'codex'] as const;
+export const HARNESSES = ['claude', 'opencode', 'codex', 'pi'] as const;
 export type Harness = (typeof HARNESSES)[number];
 
 /** The yaml key, top level of `.agents/project.yaml`. */
@@ -35,18 +35,22 @@ export const HARNESS_LABEL: Record<Harness, string> = {
   claude: 'Claude Code',
   opencode: 'OpenCode',
   codex: 'Codex',
+  pi: 'Pi',
 };
 
 /**
  * The versioned files each harness owns, repo-relative. Detection reads them,
  * the installer offers to delete them, the updater stops delivering them for
  * a harness the project does not use. `.claude/skills` is not here: it is a
- * generated alias, never committed.
+ * generated alias, never committed. Pi lists two files and never `.pi/settings.json`
+ * or a directory: Pi packages write runtime state under `.pi/` (ADR-0022), which
+ * must not flip detection to "in use".
  */
 export const HARNESS_FILES: Record<Harness, readonly string[]> = {
   claude: ['CLAUDE.md', '.mcp.json', '.claude/settings.json'],
   opencode: ['opencode.jsonc', '.opencode/plugins/personality-reinject.js'],
   codex: ['.codex/config.toml', '.codex/hooks.json', '.codex/environments/environment.toml'],
+  pi: ['.pi/mcp.json', '.pi/extensions/agentic-dev.js'],
 };
 
 export type HarnessSource = 'boilerplate' | 'declared' | 'detected' | 'fallback';
@@ -166,21 +170,19 @@ export function explicitHarnesses(root: string): Harness[] {
   return raw.filter(isHarness).filter((entry, index, all) => all.indexOf(entry) === index);
 }
 
-/** The block appended when the yaml has no `harnesses:` key yet. */
+/**
+ * The line appended when the yaml has no `harnesses:` key yet. Value only:
+ * `.agents/project.schema.yaml` documents the key.
+ */
 function harnessesBlock(value: string): string {
-  return [
-    '# Host harnesses this project uses (ADR-0013), any of: claude, opencode, codex.',
-    '# The compatibility gates check only these. null = detect from the files present.',
-    `${HARNESSES_KEY}: ${value}`,
-    '',
-  ].join('\n');
+  return `${HARNESSES_KEY}: ${value}\n`;
 }
 
 /**
  * The yaml text with `harnesses:` set to `harnesses`, as a parser-located
  * splice (never a re-serialization: see the `.agents/` rule in
  * `agent-harnesses.md`). The value lands on the key's own line and a trailing
- * comment survives; an absent key is appended as a commented block. The
+ * comment survives; an absent key is appended as one value line. The
  * result is re-parsed, and a mismatch throws instead of returning a file that
  * means something else.
  */
@@ -208,6 +210,8 @@ export const HARNESS_SYNC_PATHS: Record<Harness, readonly string[]> = {
   claude: ['CLAUDE.md', '.mcp.json', '.claude/settings.json', 'docs/mcp/claude.template.json'],
   opencode: ['opencode.jsonc', '.opencode/plugins', 'docs/mcp/opencode.template.json'],
   codex: ['.codex', 'docs/mcp/codex.template.toml'],
+  // Single files, so a project's own extensions and Pi's runtime state stay out of the sync.
+  pi: ['.pi/mcp.json', '.pi/extensions/agentic-dev.js'],
 };
 
 /** `HARNESS_SYNC_PATHS` of every harness not in use (none in the boilerplate). */

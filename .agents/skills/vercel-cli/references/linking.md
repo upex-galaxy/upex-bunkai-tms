@@ -1,13 +1,13 @@
-# Linking — `.vercel/project.json` vs `.vercel/repo.json`
+# Linking: `.vercel/project.json` vs `.vercel/repo.json`
 
-A directory is "linked" to a Vercel project when one of these files exists:
+A directory is linked to a Vercel project when one of these files exists:
 
-| File                     | Created by                  | Shape                                                                                    | When you see it                       |
-| ------------------------ | --------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------- |
-| `.vercel/project.json`   | `vercel link`               | `{ "projectId": "...", "orgId": "..." }`                                                 | Single-project link (one app per repo) |
-| `.vercel/repo.json`      | `vercel link --repo`        | `{ "orgId": "...", "remoteName": "...", "projects": [{ "directory": "...", "id": "..."}] }` | Monorepo link (many apps per repo)    |
+| File | Created by | Shape | When you see it |
+| --- | --- | --- | --- |
+| `.vercel/project.json` | `vercel link` | `{ "projectId": "...", "orgId": "..." }` | Single-project link (one app per repo) |
+| `.vercel/repo.json` | `vercel link --repo` | `{ "orgId": "...", "remoteName": "...", "projects": [{ "directory": "...", "id": "..."}] }` | Monorepo link (many apps per repo) |
 
-Both files are git-ignored by Vercel's default `.gitignore` entry (and by this boilerplate's `.gitignore`). They are per-developer-machine artifacts, NOT shared via VCS.
+Vercel's default `.gitignore` entry and this boilerplate's `.gitignore` both exclude these files. They are per-developer-machine artifacts and never travel through version control.
 
 ## Detect link state safely
 
@@ -20,9 +20,9 @@ else
 fi
 ```
 
-**Do NOT** use `vercel ls`, `vercel project inspect`, or `vercel link` for state detection — without a `.vercel/` config they prompt interactively. With `--yes` added, they silently link as a side-effect, which is even worse: the script now mutates the directory just by checking.
+Detect state from the files, not from `vercel ls`, `vercel project inspect` or `vercel link`. Without a `.vercel/` config those commands prompt interactively, and with `--yes` they link the directory as a side effect, so a script that only wanted to check has changed the directory.
 
-The ONLY safe state probes in an unlinked directory:
+Two probes are safe in an unlinked directory:
 
 ```bash
 vercel whoami          # exit 0 = authenticated, prints email/team
@@ -35,7 +35,7 @@ vercel teams ls --format json   # list teams; safe regardless of link state
 vercel link --yes
 ```
 
-Creates `.vercel/project.json`. Use when the repo has one Next.js app at the root.
+Creates `.vercel/project.json`. Use it when the repo has one Next.js app at the root.
 
 ## Repo-mode link (monorepo)
 
@@ -43,9 +43,9 @@ Creates `.vercel/project.json`. Use when the repo has one Next.js app at the roo
 vercel link --repo --scope <team-slug>
 ```
 
-Creates `.vercel/repo.json`. Use when the repo has multiple deployable apps in subdirectories. Each app gets its own Vercel project but shares the link state file.
+Creates `.vercel/repo.json`. Use it when the repo has several deployable apps in subdirectories. Each app gets its own Vercel project and they share the link state file.
 
-After repo-mode link, run subsequent `vercel` commands from inside the app subdirectory you want to operate on — Vercel infers which project from the directory path.
+After a repo-mode link, run later `vercel` commands from inside the app subdirectory you want to operate on, because Vercel infers the project from the directory path.
 
 ## Re-link or switch projects
 
@@ -56,22 +56,21 @@ rm -rf .vercel
 vercel link --yes
 ```
 
-`vercel link` without removing first will detect the existing link and refuse to overwrite. The `rm -rf .vercel` step is intentional — it does NOT delete anything on Vercel's side, only the local pointer.
+`vercel link` detects an existing link and refuses to overwrite it, so the `rm -rf .vercel` is deliberate. It deletes only the local pointer and nothing on Vercel's side.
 
 ## Multi-team accounts
 
-If `vercel teams ls --format json` shows more than one team:
+If `vercel teams ls --format json` shows more than one team, pick the team on link:
 
 ```bash
-# Pick the team explicitly on link
 vercel link --scope <team-slug> --yes
 ```
 
-Once linked, the `orgId` in `.vercel/project.json` resolves the team automatically — you can omit `--scope` on subsequent `vercel deploy`, `vercel env`, `vercel inspect` calls.
+Once linked, the `orgId` in `.vercel/project.json` resolves the team, so later `vercel deploy`, `vercel env` and `vercel inspect` calls can omit `--scope`.
 
 ## Defer to `/deploy-to-vercel`
 
-For first-time link decisions (which project, which team, deploy method selection), defer to the community `/deploy-to-vercel` skill. That skill owns the decision tree; this reference exists only to help you READ the link state once it's set.
+First-time link decisions (which project, which team, which deploy method) belong to the community `/deploy-to-vercel` skill. This reference only helps you read the link state once it is set.
 
 ## Reference
 

@@ -3,25 +3,25 @@
     {
       "name": "should-trigger-constitution-ideation",
       "prompt": "Estoy ideando un nuevo producto, ayúdame a construir la constitución del proyecto desde cero.",
-      "expected_behavior": "Activates project-foundation in Constitution mode. Reads phase-1-constitution references (business-model.md, market-context.md, problem-statement.md), walks the user through value proposition, target market, competitive landscape, and success metrics. Produces business/* artifacts (constitution + maps) and explicitly stops before architecture (handed to next stage of the same skill).",
+      "expected_behavior": "Activates project-foundation in Constitution mode. Reads references/constitution-business-model.md and references/constitution-market-context.md, and walks the user through the value proposition, target market, competitive landscape and success metrics, calling the Skill tool with \"grilling\" for any vague founding answer. Produces .context/business/business-model.md and .context/business/market-context.md, and stops before architecture. Any figure the user cannot source stays a [PLACEHOLDER] open TODO (F2).",
       "category": "positive"
     },
     {
       "name": "should-trigger-prd-architecture",
       "prompt": "Define the PRD: executive summary, personas, user journeys and MVP scope. Then map the system architecture and API contracts.",
-      "expected_behavior": "Activates project-foundation in Architecture mode. Reads the PRD references (prd-executive-summary, prd-personas, prd-user-journeys, prd-mvp-scope) and the SRS references (srs-functional, srs-non-functional, srs-architecture, srs-api-contracts). Produces PRD/* and SRS/* artifacts. Coordinates the two phases sequentially and waits for user OK between PRD and SRS.",
+      "expected_behavior": "Activates project-foundation in Architecture mode. Reads the PRD references (prd-executive-summary, prd-personas, prd-user-journeys, prd-mvp-scope) and the SRS references (srs-functional, srs-non-functional, srs-architecture, srs-api-contracts). Produces .context/PRD/* and .context/SRS/* artifacts, runs the two phases in sequence with the Phase 2.5 /design-system hand-off between them, and seeds the ADRs that pass the three-gate test.",
       "category": "positive"
     },
     {
       "name": "should-trigger-discovery-on-existing-codebase",
       "prompt": "Generate the business data map and api architecture for this codebase — I want the discovery context files.",
-      "expected_behavior": "Activates project-foundation in Discovery mode (Phase 4). Phase 4 is now an orchestrator that delegates to project-context modes: invokes /project-context data (produces the data map inside the business-data-context skill), /project-context features (produces the feature map inside business-feature-context), /project-context api (produces the API map inside business-api-context — note: replaces the legacy api-architecture.md filename), then executes references/project-dev-guide.md in-skill (produces .context/business/project-dev-guide.md), and optionally invokes /project-context master-plan (produces .context/master-implementation-plan.md). Uses [DB_TOOL] and [API_TOOL] per AGENTS.md tool resolution. Final report lists artifacts created.",
+      "expected_behavior": "Activates project-foundation in Discovery mode (Phase 4), an orchestrator that delegates to project-context modes. Invokes /project-context data (the data map inside business-data-context), /project-context features (the feature map inside business-feature-context) and /project-context api (the API map inside business-api-context, which replaces the legacy api-architecture.md output). Then runs references/project-dev-guide.md in-skill (.context/business/project-dev-guide.md) and optionally /project-context master-plan (.context/master-implementation-plan.md). Uses [DB_TOOL] and [API_TOOL] per AGENTS.md tool resolution. The final report lists the artifacts created.",
       "category": "positive"
     },
     {
       "name": "should-trigger-srs-mapping",
       "prompt": "Mapear arquitectura del sistema y definir el SRS con data model y API contracts.",
-      "expected_behavior": "Activates project-foundation in Architecture mode (SRS phase). Reads the SRS references (srs-functional.md, srs-non-functional.md, srs-architecture.md, srs-api-contracts.md). Produces SRS/* artifacts and asks the user whether to continue with discovery or hand off to /project-bootstrap for infrastructure scaffolding.",
+      "expected_behavior": "Activates project-foundation in Architecture mode (SRS phase). Reads srs-functional.md, srs-non-functional.md, srs-architecture.md and srs-api-contracts.md. Produces .context/SRS/* artifacts and asks the user whether to continue with discovery or hand off to /project-bootstrap for infrastructure scaffolding.",
       "category": "positive"
     },
     {
@@ -43,21 +43,33 @@
       "category": "positive"
     },
     {
+      "name": "should-trigger-prd-personas-es",
+      "prompt": "Necesito redactar el PRD de mi producto: personas, recorridos de usuario y el alcance del MVP.",
+      "expected_behavior": "Activates project-foundation in PRD mode (Phase 2). Reads prd-executive-summary, prd-personas, prd-user-journeys and prd-mvp-scope. Every persona, problem statement and KPI quotes its evidence (F6), the PRD carries an explicit out-of-scope section (F7), and the documents it writes are in English whatever the language of the request.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-document-existing-app-es",
+      "prompt": "Documenta esta app que ya existe: quiero la guía de desarrollo y el glosario de dominio.",
+      "expected_behavior": "Activates project-foundation and follows \"Existing app: Discovery-only foundation\". Phases 1 to 3 do not run (F9). Phase 4 produces the maps through the project-context modes, .context/business/project-dev-guide.md from the code and the stack: block, and .context/business/domain-glossary.md (skipped when it already exists). The documents are written in English and the report mirrors the user's language.",
+      "category": "positive"
+    },
+    {
       "name": "should-not-trigger-openapi-setup",
       "prompt": "Setup OpenAPI in the backend and configure the Scalar UI.",
-      "expected_behavior": "Does NOT activate project-foundation. Should route to /project-bootstrap (openapi-setup.md reference) because the request is infrastructure scaffolding (code/config), not architectural definition. project-foundation produces SRS docs; project-bootstrap implements them.",
+      "expected_behavior": "Does not activate project-foundation. Should route to /project-bootstrap (openapi-setup.md reference) because the request is infrastructure scaffolding (code/config), not architectural definition. project-foundation produces SRS docs; project-bootstrap implements them.",
       "category": "negative"
     },
     {
       "name": "should-not-trigger-backlog-add",
       "prompt": "Add a feature to the backlog: real-time notifications for the dashboard.",
-      "expected_behavior": "Does NOT activate project-foundation. Should route to /product-management (add-feature.md reference) because the request is backlog management, not foundational product definition. project-foundation runs once at project birth; product-management runs continuously.",
+      "expected_behavior": "Does not activate project-foundation. Should route to /product-management (add-feature.md reference) because the request is backlog management, not foundational product definition. project-foundation runs once at project birth; product-management runs continuously.",
       "category": "negative"
     },
     {
       "name": "should-not-trigger-story-implementation",
       "prompt": "Implement this story UPEX-277, it's about empty states in the dashboard.",
-      "expected_behavior": "Does NOT activate project-foundation. Should route to /sprint-development because the request is per-story implementation. project-foundation defines the product/architecture once; sprint-development runs every sprint per ticket.",
+      "expected_behavior": "Does not activate project-foundation. Should route to /sprint-development because the request is per-story implementation. project-foundation defines the product/architecture once; sprint-development runs every sprint per ticket.",
       "category": "negative"
     }
   ]

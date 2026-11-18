@@ -44,6 +44,7 @@ import { hiddenPaths } from './adopt-gitignore.ts';
 import { ADOPT_ISOLATION_PROMPT, analyzeIsolation, isolationFindings, isolationPrompt } from './adopt-isolation.ts';
 import { CLAUDE_INSTRUCTIONS_SHIM } from './agent-compatibility.ts';
 import { SCHEMA_FILE, SCHEMA_SOURCE, seedFromSchema } from './agents-schema.ts';
+import { BOILERPLATE_TEST_PATHS, BOILERPLATE_TEST_PATTERNS } from './boilerplate-only.ts';
 import { resetGitStrategyProvenance } from './git-strategy-provenance.ts';
 import { detectHookManager, withoutHuskyStep } from './hook-manager.ts';
 import { ADOPT_UPSTREAM_SKILLS_DIR, collectUpstreamOwned, writeUpstreamOwned } from './tooling-scope.ts';
@@ -52,20 +53,20 @@ import { deliverProjectInstructionsStub, PROJECT_INSTRUCTIONS_FILE } from './upd
 import { diffNoIndex, PROTECT_HINT, protectNote } from './updater-parity';
 import { CLAUDE_SETTINGS_FILE, mergeAdoptPromptHook } from './updater-settings.ts';
 
+// The tooling's own tests, snapshots and fixtures, which NO project receives
+// (cli/lib/boilerplate-only.ts); re-exported for the callers that read them here.
+export { BOILERPLATE_TEST_PATHS, BOILERPLATE_TEST_PATTERNS };
+
 /**
  * Upstream paths an adopted app never receives, on the `--adopt` run and on
- * every plain run after it (`UpdaterConfig.repoOnlyPatterns`):
- *  - the boilerplate's own numbered ADRs would land in the app's decision log
- *    and take its numbers (the ADR README and `ADR-NNNN-template.md` travel);
- *  - the tooling's own test files: they verify the boilerplate in its CI, and
- *    an app's test runner picks them up (measured: `bun test lib` matched
- *    `cli/lib/*.test.ts` and the app's suite went red on the boilerplate's
- *    self-checks).
+ * every plain run after it (`UpdaterConfig.repoOnlyPatterns`): the
+ * boilerplate's own numbered ADRs would land in the app's decision log and
+ * take its numbers (the ADR README and `ADR-NNNN-template.md` travel), plus
+ * the tests every project goes without (`BOILERPLATE_TEST_PATTERNS`).
  */
 export const ADOPT_REPO_ONLY_PATTERNS: RegExp[] = [
   /^\.context\/ADR\/ADR-\d{4}-/,
-  /^(?:cli|scripts)\/.*\.test\.[cm]?[jt]s$/,
-  /^\.agents\/skills\/[^/]+\/.*\.test\.[cm]?[jt]s$/,
+  ...BOILERPLATE_TEST_PATTERNS,
 ];
 
 /**
@@ -851,7 +852,7 @@ export async function runAdopt(input: AdoptHookInput): Promise<AdoptOutcome> {
   // 5. The installer lock, with what upstream owns in the namespaces the app
   //    shares (`./tooling-scope.ts`): the isolation below and the tooling gates
   //    read it. The wrapper refreshes the list on every later sync.
-  const owned = collectUpstreamOwned(upstreamDir, rel => ADOPT_REPO_ONLY_PATTERNS.some(re => re.test(rel)));
+  const owned = collectUpstreamOwned(upstreamDir, rel => ADOPT_REPO_ONLY_PATTERNS.some(re => re.test(rel)) || BOILERPLATE_TEST_PATHS.includes(rel));
   if (!dryRun) {
     writeInstallerLock(root);
     writeUpstreamOwned(root, owned);

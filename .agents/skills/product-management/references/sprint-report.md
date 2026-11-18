@@ -1,43 +1,38 @@
-# Sprint Report Guide
+# Sprint report guide
 
-> **Purpose**: Generate a development-oriented snapshot of the current sprint and backlog — epics, stories, PRs grouped by status — so the team (PM, PO, dev leads) can see at a glance what's blocked, what's in flight, what's ready to start, and what's done.
-> **Output**: A markdown report assembled in the conversation (not persisted as a file unless the user asks).
+> **Purpose:** give the team (PM, PO, dev leads) a development-oriented snapshot of the current sprint and backlog, with epics, stories and PRs grouped by status, so they see at a glance what is blocked, in flight, ready to start and done.
+> **Output:** a markdown report assembled in the conversation. It is not saved as a file unless the user asks.
 >
-> **READ-ONLY**: This workflow MUST NOT transition statuses, create or modify issues, change links, or mutate any tracker state. It only reads. Sibling read-only workflow that also reads state but persists its sort (via `/project-context dev-roadmap`) to `.context/dev-roadmap.md` §4 → `references/sprint-sequencing.md`.
+> **Read-only.** This workflow reads tracker state and changes nothing: no status transitions, no created or edited issues, no link changes. A sibling read-only workflow, `/project-context dev-roadmap`, saves its sort to `.context/dev-roadmap.md` §4 (see `references/sprint-sequencing.md`).
 
 ---
 
 ## When to use
 
-Read this reference whenever the user asks for any of:
+Read this reference when the user asks for a sprint report, an epic and story progress report, what is in the sprint, the state of the PRs, in-flight stories, a backlog dashboard or a project snapshot.
 
-- "sprint report" / "reporte de sprint" / "estado del sprint"
-- "reporte de épicas y stories" / "progress report" / "what's in the sprint"
-- "qué hay en el sprint" / "estado de los PRs" / "in-flight stories"
-- "dashboard del backlog" / "snapshot del proyecto"
-
-This is a **read-only PM visibility workflow**. It does not change Jira state, does not create issues, and does not write to `.context/`. Its single job is to gather state from the issue tracker (and optionally GitHub) and render a structured report.
+It is a read-only PM visibility workflow. It does not change Jira state, create issues or write to `.context/`. Its one job is to gather state from the issue tracker (and optionally GitHub) and render a structured report.
 
 ---
 
 ## Prerequisites
 
-- `[ISSUE_TRACKER_TOOL]` reachable (`acli` preferred — see the `/acli` skill — or MCP Atlassian as fallback). Resolve via the Tool Resolution table in `AGENTS.md`.
-- `{{PROJECT_KEY}}` available in `.agents/project.yaml` (ships with the installed layer; if missing, the agentic layer is not installed: `bunx create-agentic-dev@latest <name>` for a new project, `bunx create-agentic-dev@latest --adopt` then `/project-adoption` for an existing app (`agentic-dev-core` → Install model)).
-- (Optional) `gh` authenticated against the project's GitHub repo if the user wants PR state included.
+- `[ISSUE_TRACKER_TOOL]` is reachable: `acli` preferred (see the `/acli` skill), MCP Atlassian as the fallback. Resolve it through the Tool Resolution table in `AGENTS.md`.
+- `{{PROJECT_KEY}}` is set in `.agents/project.yaml`. It ships with the installed layer; if it is missing, the agentic layer is not installed: run `bunx create-agentic-dev@latest <name>` for a new project, or `bunx create-agentic-dev@latest --adopt` then `/project-adoption` for an existing app (`agentic-dev-core`, section "Install model").
+- Optional: `gh` authenticated against the project's GitHub repo, if the user wants PR state included.
 
 ---
 
 ## Inputs to gather from the user
 
-Before running, confirm:
+Confirm these before running:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ SPRINT REPORT PARAMETERS                                                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│ Project key:     {{PROJECT_KEY}} (default — confirm with user)              │
+│ Project key:     {{PROJECT_KEY}} (default, confirm with user)               │
 │                                                                             │
 │ Report scope:    ○ Active sprint only                                       │
 │                  ○ Full backlog                                             │
@@ -45,24 +40,24 @@ Before running, confirm:
 │                                                                             │
 │ Optional filters:                                                           │
 │ ─────────────────────────────────────────────────────────────────────────  │
-│ Sprint name:     (e.g. "Sprint 5") — leave empty for openSprints()         │
-│ Assignee:        (e.g. "Juan Perez") — empty = all                         │
-│ Epic:            (e.g. "UPEX-100") — empty = all epics                     │
+│ Sprint name:     (e.g. "Sprint 5") empty = openSprints()                    │
+│ Assignee:        (e.g. "Juan Perez") empty = all                            │
+│ Epic:            (e.g. "UPEX-100") empty = all epics                        │
 │                                                                             │
 │ Include PRs:     ○ Yes (requires gh)   ○ No                                │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-If the user doesn't specify, default to: **Both scope**, **all assignees**, **all epics**, **PRs Yes if `gh` is available**.
+Without a preference, use both scopes, all assignees, all epics, and PRs when `gh` is available.
 
 ---
 
 ## Workflow
 
-### Step 0 — Discover issue types in the project (dynamic)
+### Step 0: Discover issue types in the project
 
-Different Jira projects use different issue type names. Before the main queries, fetch one sample issue and inspect its `issuetype`:
+Jira projects name their issue types differently. Before the main queries, fetch one sample issue and read its `issuetype`:
 
 ```
 Use [ISSUE_TRACKER_TOOL] to search issues:
@@ -71,7 +66,7 @@ Use [ISSUE_TRACKER_TOOL] to search issues:
   fields: "issuetype"
 ```
 
-Relevant types for a dev-oriented report:
+The types a dev-oriented report covers:
 
 | Type            | Description               | Include in report |
 | --------------- | ------------------------- | ----------------- |
@@ -80,9 +75,9 @@ Relevant types for a dev-oriented report:
 | **Improvement** | Tech debt / enhancements  | ✅ If present     |
 | **Task**        | Technical tasks / spikes  | ⚪ Optional       |
 
-If the project uses alternate names (`Initiative` for Epic, `Feature` for Story, `Enhancement` for Improvement, `Technical Task` for Task, etc.), substitute throughout the queries below — see "Workflow adaptation" at the bottom.
+If the project uses other names (`Initiative` for Epic, `Feature` for Story, `Enhancement` for Improvement, `Technical Task` for Task), substitute them in the queries below; see "Workflow adaptation" at the bottom.
 
-### Step 1 — Get active epics
+### Step 1: Get active epics
 
 ```
 Use [ISSUE_TRACKER_TOOL] to search issues:
@@ -91,7 +86,7 @@ Use [ISSUE_TRACKER_TOOL] to search issues:
   fields: "summary,status,priority,assignee"
 ```
 
-### Step 2 — Get active stories (sprint)
+### Step 2: Get active stories (sprint)
 
 ```
 Use [ISSUE_TRACKER_TOOL] to search issues:
@@ -100,7 +95,7 @@ Use [ISSUE_TRACKER_TOOL] to search issues:
   fields: "summary,status,priority,assignee,issuetype,parent"
 ```
 
-### Step 3 — Get backlog (if scope includes it)
+### Step 3: Get the backlog (if the scope includes it)
 
 ```
 Use [ISSUE_TRACKER_TOOL] to search issues:
@@ -109,9 +104,9 @@ Use [ISSUE_TRACKER_TOOL] to search issues:
   fields: "summary,status,priority,assignee,issuetype,parent"
 ```
 
-### Step 4 — (Optional) Get PR state
+### Step 4: Get PR state (optional)
 
-If the user asked to include PRs and `gh` is authenticated:
+When the user asked for PRs and `gh` is authenticated:
 
 ```bash
 # Open PRs
@@ -121,20 +116,25 @@ gh pr list --state open --json number,title,headRefName,author,isDraft,reviewDec
 gh pr list --state merged --search "merged:>=$(date -d '7 days ago' +%Y-%m-%d)" --json number,title,mergedAt,author
 ```
 
-Cross-reference `headRefName` against the ticket key (e.g. branch `feature/UPEX-123-...` → ticket `UPEX-123`) to associate each PR with its story.
+Match `headRefName` against the ticket key (branch `feature/UPEX-123-...` belongs to ticket `UPEX-123`) to attach each PR to its story.
 
-### Step 5 — Group results by status
+### Step 5: Group results by status
 
-Bucket the issues by **status**, ordered by development urgency:
+Bucket the issues by status, in this order of development urgency:
 
-1. **BLOCKED** — critical, demands attention now
-2. **In Progress** — active development
-3. **In Review** — PR open
-4. **Ready For Dev** — refined and waiting to start
-5. **To Do / Backlog** — not yet pulled in
-6. **Done** — completed in this sprint
+1. BLOCKED: critical, needs attention now.
+2. In Progress: active development.
+3. In Review: PR open.
+4. Ready For Dev: refined and waiting to start.
+5. Shift-Left QA: QA is refining the story before dev.
+6. Ready For QA: delivered by dev, waiting for QA.
+7. In Test: QA is testing.
+8. QA Approved: verified by QA.
+9. Ready For Release: queued for the release window.
+10. To Do / Backlog: not yet pulled in.
+11. Done: completed in this sprint, including released stories.
 
-**Type icons** (use these consistently in the output tables):
+Use these type icons consistently in the output tables:
 
 | Type        | Icon |
 | ----------- | ---- |
@@ -147,7 +147,7 @@ Bucket the issues by **status**, ordered by development urgency:
 
 ## Output template
 
-Render the report in this exact structure (omit sections with zero items unless the absence itself is meaningful — e.g., always show BLOCKED so a green `✅ No items blocked` is visible).
+Render the report in exactly this structure. Omit a section with zero items unless the absence itself matters: always show BLOCKED, so a green `✅ No items blocked` is visible.
 
 ```markdown
 # 📋 Sprint Report - {{PROJECT_KEY}}
@@ -179,7 +179,7 @@ Render the report in this exact structure (omit sections with zero items unless 
 
 | Type          | Key   | Summary   | Priority   | Assignee   | Epic       | PR      |
 | ------------- | ----- | --------- | ---------- | ---------- | ---------- | ------- |
-| {icon} {type} | {key} | {summary} | {priority} | {assignee} | {epic-key} | {pr#/–} |
+| {icon} {type} | {key} | {summary} | {priority} | {assignee} | {epic-key} | {pr#/-} |
 
 ---
 
@@ -227,6 +227,11 @@ Render the report in this exact structure (omit sections with zero items unless 
 | In Progress   | {n}     | {n}          | {n}     | {total}           |
 | In Review     | {n}     | {n}          | {n}     | {total}           |
 | Ready For Dev | {n}     | {n}          | {n}     | {total}           |
+| Shift-Left QA | {n}     | {n}          | {n}     | {total}           |
+| Ready For QA  | {n}     | {n}          | {n}     | {total}           |
+| In Test       | {n}     | {n}          | {n}     | {total}           |
+| QA Approved   | {n}     | {n}          | {n}     | {total}           |
+| Ready For Release | {n} | {n}          | {n}     | {total}           |
 | Backlog       | {n}     | {n}          | {n}     | {total}           |
 | Done          | {n}     | {n}          | {n}     | {total}           |
 | **Total**     | **{n}** | **{n}**      | **{n}** | **{grand_total}** |
@@ -261,12 +266,12 @@ Render the report in this exact structure (omit sections with zero items unless 
 
 | Metric                     | Value                           |
 | -------------------------- | ------------------------------- |
-| **Blocked items**          | {blocked_count} {⚠️ if > 0}     |
-| **Stories in development** | {in_progress_count}             |
-| **Open PRs**               | {open_pr_count}                 |
-| **PRs awaiting review**    | {review_required_count}         |
-| **Stories completed**      | {done_count}                    |
-| **Sprint progress**        | {(done / total_sprint) \* 100}% |
+| Blocked items              | {blocked_count} {⚠️ if > 0}     |
+| Stories in development | {in_progress_count}             |
+| Open PRs               | {open_pr_count}                 |
+| PRs awaiting review    | {review_required_count}         |
+| Stories completed      | {done_count}                    |
+| Sprint progress        | {(done / total_sprint) \* 100}% |
 
 ---
 
@@ -293,7 +298,7 @@ Render the report in this exact structure (omit sections with zero items unless 
 
 ## JQL reference snippets
 
-### Active sprint — stories and tasks
+### Active sprint: stories and tasks
 
 ```jql
 project = {{PROJECT_KEY}}
@@ -367,7 +372,7 @@ If unsure which types the project uses, run:
 project = {{PROJECT_KEY}} ORDER BY created DESC
 ```
 
-…and inspect the `issuetype` field on the results.
+Then read the `issuetype` field on the results.
 
 ---
 
@@ -436,8 +441,8 @@ No items blocked ✅
 | Type           | Key      | Summary           | Priority | Assignee         | Epic     | PR  |
 | -------------- | -------- | ----------------- | -------- | ---------------- | -------- | --- |
 | 📗 Story       | UPEX-2   | User Registration | Highest  | Samuel Amonzabel | UPEX-100 | #42 |
-| 📗 Story       | UPEX-4   | Password Recovery | High     | Maxe Aguilera    | UPEX-100 | –   |
-| 💡 Improvement | UPEX-101 | Optimize queries  | Medium   | Dev Team         | UPEX-150 | –   |
+| 📗 Story       | UPEX-4   | Password Recovery | High     | Maxe Aguilera    | UPEX-100 | -   |
+| 💡 Improvement | UPEX-101 | Optimize queries  | Medium   | Dev Team         | UPEX-150 | -   |
 
 ---
 
@@ -478,7 +483,7 @@ No items blocked ✅
 
 ## Report variants
 
-The user may ask for a slimmer cut. Adapt accordingly:
+When the user asks for a slimmer cut, use one of these:
 
 ### Epics + progress only
 
@@ -525,10 +530,10 @@ ORDER BY priority DESC
 
 ## Follow-up after generating the report
 
-The report itself is read-only, but it almost always surfaces follow-up work. Suggest these next steps to the user when conditions are met:
+The report is read-only, but it usually surfaces follow-up work. Suggest these next steps when the condition holds:
 
-- **BLOCKED items present** → investigate and unblock immediately (likely a `/sprint-development` planning session or escalation)
-- **Open PRs with no activity** → push for reviews or reassign reviewers (consider `/git-flow-master` for PR hygiene)
-- **In Progress stories without PR > N days** → follow up with assignee, possibly re-scope
-- **Issues without assignee in active states** → assign owners
-- **Backlog growing without prioritization** → schedule a refinement session and re-invoke `/product-management` → workflow B (add-feature) or D (story-refinement)
+- Blocked items: investigate and unblock now, likely through a `/sprint-development` planning session or an escalation.
+- Open PRs with no activity: push for reviews or reassign reviewers (`/git-flow-master` covers PR hygiene).
+- In Progress stories without a PR for more than N days: follow up with the assignee, and consider re-scoping.
+- Issues without an assignee in active states: assign owners.
+- A backlog growing without prioritization: schedule a refinement session and re-invoke `/product-management` in workflow B (add-feature) or D (story-refinement).

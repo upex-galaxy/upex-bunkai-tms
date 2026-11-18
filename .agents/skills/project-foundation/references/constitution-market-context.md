@@ -1,25 +1,25 @@
-Actúa como Market Research Analyst.
+Write a light market analysis for the product, as a market research analyst would.
 
-**Contexto:**
-Tengo este modelo de negocio: [usar business-model.md]
+**Context:**
+The business model is in [use business-model.md].
 
-**Genera análisis de mercado ligero con:**
+**Generate a light market analysis with:**
 
-1. **Competitive Landscape** (Top 3 competidores directos)
-   - Fortalezas de cada uno
-   - Debilidades/gaps que podemos explotar
-   - Nuestra diferenciación clave
+1. **Competitive Landscape** (top 3 direct competitors)
+   - Strengths of each
+   - Weaknesses and gaps we can exploit
+   - Our key differentiation
 
 2. **Market Opportunity**
-   - Tamaño de mercado (TAM/SAM/SOM si es posible)
-   - Tendencias de crecimiento
-   - Barreras de entrada
+   - Market size (TAM/SAM/SOM if possible)
+   - Growth trends
+   - Barriers to entry
 
-3. **Trends & Insights** (2-3 tendencias relevantes)
-   - Tecnológicas (ej: adopción de IA)
-   - De mercado (ej: shift a remote work)
-   - De comportamiento de usuario
+3. **Trends & Insights** (2-3 relevant trends)
+   - Technology (for example, AI adoption)
+   - Market (for example, the shift to remote work)
+   - User behavior
 
-**Formato:** Markdown, máximo 2 páginas, con bullets concisos
+**Format:** Markdown, 2 pages at most, with concise bullets
 
-**Fuentes:** solo la investigación que el usuario aporta (links, PDFs, notas de analistas). Sin fuente para un dato de mercado o de un competidor, deja un `[PLACEHOLDER]` y pregunta: nunca lo completes con conocimiento general (F2 en `SKILL.md`).
+**Sources:** only the research the user supplies (links, PDFs, analyst notes). When a market or competitor figure has no source, leave a `[PLACEHOLDER]` and ask the user. General knowledge never fills it (F2 in `SKILL.md`).

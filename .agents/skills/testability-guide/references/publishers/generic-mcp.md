@@ -1,82 +1,72 @@
-# Publisher — Generic MCP-Reachable Tool
+# Publisher: Generic MCP-Reachable Tool
 
-> **When this adapter runs**: Q1 answered with `Other MCP-reachable tool` and the user named a specific destination (e.g. Linear, GitBook, an internal wiki, 1Password Connect, a custom secrets-store MCP).
->
-> **Tool**: the user-named MCP. The skill probes the configured MCP list at runtime.
->
-> **Body**: `references/credentials-content-template.md`.
+Runs when the Q1 answer is `Other MCP-reachable tool` and the user named a destination (for example Linear, GitBook, an internal wiki, 1Password Connect, or a custom secrets-store MCP).
 
----
+Tool: the user-named MCP. The skill probes the configured MCP list at runtime.
+
+Body: `references/credentials-content-template.md`.
+
+## When to prefer it
+
+Use this adapter when the destination has an MCP in the host's config but no dedicated adapter in this folder. It knows nothing about the destination's API in advance, so it works from the MCP's own tool schema.
 
 ## Adapter contract
 
-This adapter is intentionally generic. It does not know the destination tool's API in advance. The orchestrator follows this contract:
+1. Identify the MCP. Read `.mcp.json` (or the host's MCP config) and match the user-named destination against the configured servers. With no match, switch to `publishers/manual-paste.md` and tell the user which MCPs are configured.
+2. Inspect the MCP's tools. Call its `list_tools`, or use its documentation in the server config, to find a "create page", "create document", "create note" or "create issue" tool.
+3. Map the body. Most MCPs accept Markdown directly. If the destination needs HTML, Confluence storage format or custom XML, ask the user to confirm the conversion or to point at a `body_format` parameter.
+4. Check access gating. Tell the user the access scope the new artifact will have, and refuse to publish if the scope is `public` or `anyone with link`.
 
-1. **Identify the MCP.** Read `.mcp.json` (or the host's MCP config). Match the user-named destination against configured MCP servers. If no match → switch to `publishers/manual-paste.md` and tell the user which MCPs are configured.
-2. **Inspect the MCP's tools.** Call the MCP's `list_tools` (or rely on the MCP's documentation in its server config) to find a "create page" / "create document" / "create note" / "create issue" tool.
-3. **Map the body.** Most MCPs accept Markdown directly. If the destination needs HTML, Confluence storage format, or some custom XML → ask the user to confirm the conversion or to point at a `body_format` parameter.
-4. **Validate access gating.** Most destinations have a permission model. Surface to the user the access scope the new artifact will have. Refuse to publish if scope is `public` / `anyone with link`.
+## Before publishing
 
----
-
-## Pre-publish checks
-
-1. The user named the destination tool explicitly (e.g. "Linear", "GitBook"). Do NOT infer.
+1. The user named the destination tool explicitly (for example "Linear" or "GitBook"). Do not infer it.
 2. The MCP for that tool is in the host's MCP config.
-3. The MCP authenticates (no `401` / `403` on a list call). On failure → STOP, fix env var, restart session.
-4. The user named the parent location (workspace / project / space / team). Do NOT guess.
-5. Run `security-rules.md` checklist.
-
----
+3. The MCP authenticates, with no `401` or `403` on a list call. On failure, stop, fix the env var and restart the session (Critical Rule 9).
+4. The user named the parent location (workspace, project, space or team). Do not guess it.
+5. Run the `security-rules.md` checklist.
 
 ## Create flow (template)
 
-```
+```text
 mcp__<TOOL_NAME>__<CREATE_TOOL>(
   <parent_field>: "<user-supplied parent>",
-  <title_field>: "{{PROJECT_NAME}} — Credenciales de Acceso para Testing (DB / API / UI)",
+  <title_field>: "{{PROJECT_NAME}}: QA Testing Credentials (DB / API / UI)",
   <body_field>: <rendered credentials-content body>,
   <permissions_field>: <restrict to QA group>,
 )
 ```
 
-Replace the placeholders with the MCP's actual tool name + parameter names. The orchestrator reads them from the MCP's exposed schema (via `ToolSearch` or the MCP's `list_tools` if the runtime exposes one).
+Replace the placeholders with the MCP's real tool name and parameter names, which the orchestrator reads from the MCP's exposed schema (through `ToolSearch`, or `list_tools` when the runtime exposes one).
 
----
+## Update flow (artifact exists)
 
-## Update flow (artifact exists per snapshot)
+1. Compare `content-hash` and skip the update if it is unchanged.
+2. Use the MCP's "update" or "edit" tool. If the MCP exposes only `create` and `delete`, leave the old artifact, create a new one and point the snapshot's `credentials-source` at it. The audit trail matters more than tidiness.
 
-1. Compare `content-hash`. Skip if unchanged.
-2. Use the MCP's "update" / "edit" tool. If the MCP only exposes `create` and `delete`, prefer leaving the old artifact + creating a new one + flipping the snapshot's `credentials-source` (audit trail wins over tidiness).
+## What this adapter does not do
 
----
-
-## What this adapter explicitly does NOT do
-
-- It does NOT install a new MCP. The skill never adds dependencies — that includes MCP servers.
-- It does NOT cache MCP credentials. AGENTS.md Critical Rule #9 (env vars cached at MCP-spawn time) applies.
-- It does NOT auto-translate the body to a destination-specific format unless the destination genuinely cannot render Markdown. When unsure → ask the user.
-
----
+- It does not install an MCP. The skill adds no dependencies, MCP servers included.
+- It does not cache MCP credentials. Critical Rule 9 applies: env vars are cached at MCP-spawn time.
+- It does not translate the body to a destination format unless the destination genuinely cannot render Markdown. When unsure, ask the user.
 
 ## Failure modes
 
-| Symptom                                      | Cause                                        | Fix                                                                                             |
-| -------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Named MCP is not in config                   | Not installed                                | Fall through to `publishers/manual-paste.md`. Tell user how to install if they want automation. |
-| MCP returns 401 / 403                        | Expired token                                | STOP, fix env var, restart session.                                                             |
-| MCP exposes no "create page / document" tool | Wrong destination class (e.g. read-only MCP) | Fall through to manual paste; surface why.                                                      |
-| Artifact created but body renders broken     | Destination needed format conversion         | Convert + update; if the destination format is opaque, ask the user for the right adapter.      |
-
----
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Named MCP is not in config | Not installed | Fall through to `publishers/manual-paste.md`. Tell the user how to install it if they want automation. |
+| MCP returns 401 or 403 | Expired token | Stop, fix the env var, restart the session. |
+| MCP exposes no "create page or document" tool | Wrong destination class (for example a read-only MCP) | Fall through to manual paste and say why. |
+| Artifact created but the body renders broken | Destination needed format conversion | Convert and update. If the destination format is opaque, ask the user for the right adapter. |
 
 ## After publish
 
-1. Set the snapshot's `credentials-source` to the destination's URL (the MCP usually returns it; ask the user if not).
+1. Set the snapshot's `credentials-source` to the destination's URL. The MCP usually returns it; ask the user if it does not.
 2. Update the `/qa` page's credentials CTA `href`.
 3. Re-run §verification.
 
----
+## Without a person present
+
+Creating or updating an artifact through an MCP is an outward write. A routine publishes only when its brief covers it, and the brief also names the destination tool and parent location this file asks the user for. Without a covering brief, the routine stops before the write, saves the body as the `manual-paste.md` handover and reports the destination. A `401` or `403` ends the publish step with a report naming the env variable and the restart. A supervised worker sends each question to its launcher. The full table is in `SKILL.md` §"With nobody at the keyboard"; the rule is `agentic-dev-core/references/decision-protocol.md`.
 
 ## Cross-reference
 

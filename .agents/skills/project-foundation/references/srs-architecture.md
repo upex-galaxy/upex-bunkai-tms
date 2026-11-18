@@ -1,61 +1,61 @@
-Actúa como Software Architect y Tech Lead.
+Write the architecture specification of the project, as a software architect and tech lead would.
 
 **Input:**
 
-- PRD completo: [usar .context/PRD/*.md]
-- Functional Specs: [usar .context/SRS/functional-specs.md]
-- Tech Stack: [especificar stack del proyecto]
+- Full PRD: [use .context/PRD/*.md]
+- Functional Specs: [use .context/SRS/functional-specs.md]
+- Tech Stack: [specify the project's stack]
 
-**Genera archivo: architecture-specs.md**
+**Generate file: architecture-specs.md**
 
-Incluye:
+Include:
 
-**1. System Architecture** (diagrama C4 Level 1-2 en Mermaid)
+**1. System Architecture** (C4 Level 1-2 diagram in Mermaid)
 
-Genera diagrama Mermaid que muestre:
+Generate a Mermaid diagram that shows:
 
-- Usuario (actor)
-- Frontend (Next.js App)
+- User (actor)
+- Frontend (Next.js app)
 - Backend API (Next.js API Routes)
 - Database (Supabase/PostgreSQL)
-- External Services (Auth, Email, etc.)
+- External Services (Auth, Email, and so on)
 
-Relaciones entre componentes con flechas indicando flujo de datos.
+Draw the relationships between components with arrows that show the data flow.
 
-**2. Database Design** (ERD en Mermaid)
+**2. Database Design** (ERD in Mermaid)
 
-Genera Entity-Relationship Diagram en Mermaid que muestre:
+Generate an Entity-Relationship Diagram in Mermaid that shows:
 
-- Entidades principales (basadas en FRs del SRS)
-- Atributos clave (id, campos principales, timestamps)
-- Relaciones (1:1, 1:N, N:M)
-- Cardinalidad
+- Main entities (based on the SRS FRs)
+- Key attributes (id, main fields, timestamps)
+- Relationships (1:1, 1:N, N:M)
+- Cardinality
 
-**IMPORTANTE:** NO generar SQL schemas estáticos. Indicar que el schema real se lee y se cambia por el DB MCP (`agentic-dev-core/references/db-change-doctrine.md`).
+**IMPORTANT:** do not generate static SQL schemas: they drift from the real database the moment a migration lands. State that the real schema is read and changed through the DB MCP (`agentic-dev-core/references/db-change-doctrine.md`).
 
 **3. Tech Stack Justification**
 
-Por cada componente del stack, incluir:
+For each stack component, include:
 
-- **Componente:** (ej: Next.js)
-- **Por qué elegido:**
-  - ✅ Ventaja 1
-  - ✅ Ventaja 2
-  - ❌ Trade-off / Desventaja
+- **Component:** (for example, Next.js)
+- **Why it was chosen:**
+  - ✅ Advantage 1
+  - ✅ Advantage 2
+  - ❌ Trade-off / disadvantage
 
-**Ejemplo:**
+**Example:**
 
 - **Frontend: Next.js (App Router)**
-  - ✅ React Server Components (mejor performance)
-  - ✅ Routing file-based (DX mejorada)
-  - ✅ Full-stack framework (API routes integrados)
-  - ❌ Trade-off: Curva de aprendizaje App Router vs Pages Router
+  - ✅ React Server Components (better performance)
+  - ✅ File-based routing (better DX)
+  - ✅ Full-stack framework (API routes built in)
+  - ❌ Trade-off: App Router has a steeper learning curve than Pages Router
 
-**4. Data Flow** (request → response flow)
+**4. Data Flow** (request to response)
 
-Describir flujo típico de una operación:
+Describe the typical flow of one operation.
 
-**Ejemplo: User Registration Flow**
+**Example: User Registration Flow**
 
 1. User submits form (Frontend)
 2. Client-side validation (Zod schema)
@@ -67,32 +67,36 @@ Describir flujo típico de una operación:
 8. Return response (201 success or 400 error)
 9. Frontend handles response (redirect or show error)
 
-**5. Security Architecture**
+**5. Code Architecture**
 
-Incluir:
+Name GUARD as the product architecture: four layers (app, features, adapters, platform), one direction, one door per feature, a registry. Link `agentic-dev-core/references/guard-architecture.md` instead of restating it, and list the project's first features by their business names, since each becomes a `src/features/<name>/` folder.
+
+**6. Security Architecture**
+
+Include:
 
 - **Auth Flow Diagram:** (login, registration, token refresh)
-- **RBAC Implementation:** (cómo se manejan roles y permisos)
+- **RBAC Implementation:** (how roles and permissions are handled)
 - **Data Protection:** (encryption, input sanitization)
 
-**Formato:** Markdown con diagramas Mermaid embebidos, listo para copiar a .context/SRS/architecture-specs.md
+**Format:** Markdown with embedded Mermaid diagrams, ready to copy into `.context/SRS/architecture-specs.md`
 
-**Restricciones:**
+**Constraints:**
 
-- Diagramas Mermaid válidos y renderizables
-- Arquitectura escalable para MVP
-- Decisiones justificadas (no solo "porque sí")
+- Valid Mermaid diagrams that render
+- An architecture that scales for an MVP
+- Justified decisions (never "just because")
 
 ---
 
 ## 6. Seed the first ADRs (Architecture Decision Records)
 
-Esta es la fase donde se toman las decisiones más difíciles de revertir. Después de redactar `architecture-specs.md`, promové cada decisión que pase el **doble filtro** (es **arquitectónica** Y **difícil de revertir**) a un registro permanente `ADR-NNNN-<slug>.md` bajo `.context/ADR/`, y referenciá esos ADRs desde este documento.
+This phase is where the decisions that are hardest to reverse get made. After you write `architecture-specs.md`, promote each architectural decision that passes the three gates of `adr-doctrine.md` (hard to reverse, surprising without context, a real trade-off) to a permanent record `ADR-NNNN-<slug>.md` under `.context/ADR/`, and reference those ADRs from this document.
 
-Candidatos típicos en esta fase: modelo de auth/authorization, patrón de data-access, contrato de error/response, modelo de tenancy, topología de deployment, y elecciones de framework/librería con lock-in real (lo mismo que la sección **Tech Stack Justification** documenta con sus trade-offs).
+Typical candidates in this phase: the auth and authorization model, the data-access pattern, the error and response contract, the tenancy model, the deployment topology, and framework or library choices with real lock-in (the same ones the **Tech Stack Justification** section documents with their trade-offs).
 
-- **Detección + procedimiento de autoría**: `agentic-dev-core/references/adr-doctrine.md` (los dos filtros, regla de promoción, paso a paso).
-- **Template + lifecycle + índice**: `.context/ADR/README.md`.
-- **Lo que NO es un ADR**: trade-offs locales de una story (van en su `implementation-plan.md`), bugfixes, refactors locales, naming.
-- **Append-only**: un ADR Accepted no se reescribe; se **supersede** con uno nuevo que enlaza de vuelta.
-- Estado: una decisión que el humano ya aprobó (está en el SRS/PRD que firmó, o la decidió en el chat o en un deck) se escribe `Accepted` desde el inicio, citando dónde se aprobó; solo una pregunta todavía abierta va como `Proposed`. Persistí la decisión en engram (`mem_save`, type `architecture`).
+- **Detection and authoring procedure**: `agentic-dev-core/references/adr-doctrine.md` (the three gates, the promotion rule, the steps).
+- **Template, lifecycle and index**: `.context/ADR/README.md`.
+- **What is not an ADR**: a story's local trade-offs (they go in its `implementation-plan.md`), bug fixes, local refactors, naming.
+- **Append-only**: an Accepted ADR is never rewritten. A new ADR supersedes it and links back.
+- Status: a decision the human already approved (it is in the SRS or PRD they signed, or they decided it in chat or in a deck) is written `Accepted` from the start, citing where it was approved. Only a question that is still open goes in as `Proposed`. Save the decision to engram (`mem_save`, type `architecture`).

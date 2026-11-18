@@ -1,557 +1,351 @@
-Actúa como Senior Frontend Architect, UI/UX Designer, y Full-Stack Developer experto.
+# Frontend setup
+
+This phase scaffolds the frontend once, after backend setup, and leaves a base every later story reuses: the design system, the project structure, the Supabase types wired in, and two or three demo pages that prove the system works. It is not feature work. The goal is a coherent, good-looking foundation the team can build on.
+
+The user-facing templates below are written in English. Say them in the language the user writes in.
 
 ---
 
-## 🎯 TAREA
+## Entry guard: greenfield only
 
-**🔄 FASE 3: FRONTEND SETUP (Sincrónica - UNA sola vez)**
+This phase only creates things (`next@latest`, `tailwind.config` and `globals.css` from `DESIGN.md`, `shadcn init`, the layout, `/login` with demo credentials, `middleware.ts`, the demo pages, the README), so on an existing app it would overwrite real work. A script owns the verdict, not your reading of the file tree (`SKILL.md`, "Entry gate", rule **B0**). Before any step:
 
-Crear el **Design System base** y **scaffolding del proyecto frontend** que será REUTILIZADO en todas las stories del MVP.
+- `.session/project-bootstrap/plan.md` has the line `Bootstrap guard: greenfield, exit 0`: continue.
+- There is no plan (a loose request, or a subagent briefed with only this reference): run `bun run bootstrap:guard`. Exit 0 continues; exit 2 stops.
+- The verdict is `existing-app`, unreadable or missing: stop and touch nothing. Quote the signals the script printed, say what this phase would have overwritten, and route to `/project-adoption` (and to `/design-system extract` when the request was about how the UI looks). The Phase 3 add-ons of the skill stay available and read the `stack:` block.
 
-**Esta fase se ejecuta UNA SOLA VEZ** después de haber completado Backend Setup (Fase 3 - backend-setup.md).
-
----
-
-## ⛔ GUARD DE ENTRADA: SOLO GREENFIELD
-
-Esta fase SOLO crea (`next@latest`, `tailwind.config` + `globals.css` desde `DESIGN.md`, `shadcn init`, layout, `/login` con credenciales demo, `middleware.ts`, páginas demo, README). Antes de cualquier paso, confirmar el veredicto del guard (`SKILL.md` → "Entry gate", anti-pattern **B0**):
-
-- Hay `.session/project-bootstrap/plan.md` con la línea `Bootstrap guard: greenfield, exit 0` → continuar.
-- No hay plan (pedido suelto, subagente con solo esta referencia) → correr `bun run bootstrap:guard`. Exit 0 → continuar. Exit 2 → **DETENER**.
-- Veredicto `existing-app`, ilegible o ausente → **DETENER** sin tocar nada: citar las señales que imprimió el script, decir qué habría pisado esta fase y derivar a `/project-adoption` (y a `/design-system extract` si el pedido era sobre el aspecto de la UI). Las add-ons de la Fase 3 siguen disponibles y leen el bloque `stack:`.
-
-Nunca reemplazar el veredicto mirando el árbol a mano, ni aceptar "es greenfield" como dispensa del usuario.
+Do not replace the verdict by inspecting the tree yourself, and do not accept "it is greenfield" from the user as a waiver. `SKILL.md` says how to fix a wrong reading.
 
 ---
 
-## 📥 INPUT REQUERIDO
+## Inputs
 
-### 1. Contexto del Proyecto
+### Project context
 
-**Leer TODOS estos archivos:**
+Read all of these:
 
-- `.context/PRD/executive-summary.md` - **CRÍTICO** - Nombre del proyecto, descripción, industry
-- `.context/PRD/mvp-scope.md` - Épicas principales del MVP, features
-- `.context/SRS/architecture-specs.md` - Tech stack frontend, frameworks, librerías
-- `DESIGN.md` - Paleta, tipografía, estilos visuales (lo produce `/design-system`)
-- `.context/SRS/functional-specs.md` - Features principales (inspiran páginas demo)
-- `.context/PBI/epic-tree.md` - (Opcional) Épicas y estructura general para contexto
+- `.context/PRD/executive-summary.md`: project name, description, industry (essential)
+- `.context/PRD/mvp-scope.md`: the main MVP epics and features
+- `.context/SRS/architecture-specs.md`: frontend stack, frameworks, libraries
+- `DESIGN.md`: palette, typography, visual style (produced by `/design-system`)
+- `.context/SRS/functional-specs.md`: the main features, which inspire the demo pages
+- `.context/PBI/epic-tree.md` (optional): epics and overall structure
 
-### 2. Backend Integration
+### Backend integration
 
-**CRÍTICO - Backend debe estar completado primero:**
+Backend setup must be finished first. This phase needs:
 
-- `src/types/supabase.ts` - **Tipos generados desde database schema** (los genera `backend-setup.md` / `supabase-types-setup.md`)
-- `src/lib/supabase/client.ts` - Supabase browser client
-- `src/lib/supabase/server.ts` - Supabase server client
-- `src/lib/config.ts` - Configuración centralizada
+- `src/types/supabase.ts`: types generated from the database schema (by `backend-setup.md` / `supabase-types-setup.md`)
+- `src/lib/supabase/client.ts`: the Supabase browser client
+- `src/lib/supabase/server.ts`: the Supabase server client
+- `src/lib/config.ts`: the central configuration
 
-**Qué identificar:**
+From them, identify which database tables exist (they become type helpers), how login and signup work (they shape the auth pages) and which queries are available.
 
-1. **Database tables:** Qué entidades existen (para crear helpers de tipos)
-2. **Auth flow:** Cómo funciona el login/signup (para crear páginas auth)
-3. **API structure:** Qué queries están disponibles
+### A partial frontend
 
-### 3. Proyecto Existente (Si Aplica)
-
-**Si el frontend ya existe parcialmente:**
-
-- `package.json` - Dependencias actuales, package manager lock file
-- `src/**` - Estructura de carpetas actual
-- `tailwind.config.js` - Configuración de TailwindCSS existente
-
-**Qué identificar:**
-
-1. ¿Ya existe un proyecto Next.js/React/etc.?
-2. ¿Qué dependencias ya están instaladas?
-3. ¿Qué package manager se está usando?
+If the frontend already exists in part (a resumed run, for example), read `package.json` (dependencies, and the lock file for the package manager), `src/**` (folder structure) and `tailwind.config.js`. Identify whether a Next.js or React project exists, which dependencies are installed and which package manager it uses.
 
 ---
 
-## ⚙️ VERIFICACIÓN DE HERRAMIENTAS (MCP)
+## Tools
 
-### MCP Recomendados:
+### MCP servers
 
-1. **MCP Context7** - ALTAMENTE RECOMENDADO
-   - Consultar docs oficiales antes de escribir código
-   - Queries recomendadas:
-     - "Next.js 15 App Router latest setup"
-     - "TailwindCSS v4 configuration latest"
-     - "Shadcn/ui installation Next.js App Router"
-     - "Lucide React icons usage"
+1. Context7 is highly recommended. Read the official docs before writing code. Useful queries:
+   - "Next.js 15 App Router latest setup"
+   - "TailwindCSS v3 configuration latest"
+   - "Shadcn/ui installation Next.js App Router"
+   - "Lucide React icons usage"
 
-2. **MCP shadcn/ui** - ALTAMENTE RECOMENDADO (si usuario eligió shadcn/ui)
-   - ⭐ **IMPORTANTE:** Si está disponible, úsalo para búsqueda de componentes
-   - Permite buscar cualquier componente por lenguaje natural
-   - Mucho más rápido que buscar manualmente
-   - **Recomendación al usuario:** "Activa el MCP de shadcn/ui para desarrollo más eficiente"
-   - Si NO está disponible: usar Context7 o búsqueda manual (funciona igual, pero más lento)
+2. The shadcn/ui MCP is highly recommended when the user picks shadcn/ui. It finds any component from a natural-language query, far faster than browsing by hand. When it is available, use it and suggest the user keeps it enabled. Without it, Context7 or a manual search works, only slower.
 
-3. **NO se requieren otros MCP** para esta fase
+No other MCP is needed for this phase.
 
-### Herramientas Locales:
+### Local tools
 
-- Node.js instalado (v18+ recomendado)
-- Package manager (npm/pnpm/yarn/bun) - se preguntará al usuario
-- Git (para verificar estado)
+Node.js (v18+ recommended), a package manager (npm, pnpm, yarn or bun; Phase 0 asks the user) and Git (to check state).
 
-### ⚠️ IMPORTANTE - Sobre Tailwind CSS (Versión 3):
+### Tailwind CSS v3, pinned on purpose
 
-**Usaremos Tailwind CSS v3** (versión estable y probada):
+Install the latest v3 release (3.4.x). It works with Next.js 15 and React 19, keeps the traditional `tailwind.config.js/ts` configuration and the `@tailwind base/components/utilities` syntax, and the shadcn/ui CLI installs components without errors. Tailwind v4 has known compatibility problems with the shadcn CLI (validation errors while installing components) and a more complex CSS-first configuration.
 
-- ✅ **Versión recomendada:** v3.4.x (última estable de la serie v3)
-- ✅ **Compatible con Next.js 15** + React 19
-- ✅ **Totalmente compatible con shadcn/ui** (sin problemas de CLI)
-- ✅ Configuración tradicional con `tailwind.config.js/ts`
-- ✅ Sintaxis conocida: `@tailwind base/components/utilities`
-
-**¿Por qué v3 en lugar de v4?**
-
-- ❌ Tailwind v4 tiene problemas conocidos de compatibilidad con shadcn-cli
-- ❌ Errores de validación durante instalación de componentes
-- ❌ Configuración CSS-first más compleja
-- ✅ v3 es más estable, probado y sin errores con shadcn/ui
-
-**IMPORTANTE:** Al instalar, especificar explícitamente `tailwindcss@3` (npm install ahora usa v4 por defecto).
+npm now installs v4 by default, so always write `tailwindcss@3` explicitly.
 
 ---
 
-## 🎯 OBJETIVO DE FASE 3 - FRONTEND
+## What this phase delivers
 
-Crear el **Design System base** y **scaffolding del proyecto frontend** que será REUTILIZADO en todas las stories del MVP.
+Not in scope: every MVP page (only the demos), real business functionality (the UI is visual, with mock data), story-specific designs (those belong to story implementation in `/sprint-development`) and full E2E tests (visual validation only).
 
-**Incluye:**
+Files:
 
-- ✅ Setup del proyecto frontend (estructura de carpetas, configuración)
-- ✅ **Importar tipos TypeScript del backend** (`src/types/supabase.ts`)
-- ✅ **Design System completo** (paleta, tipografía, componentes UI reutilizables)
-- ✅ Layout system (Navbar, Sidebar, Footer según diseño)
-- ✅ **2-3 páginas demo estratégicas** (validar que el design system funciona)
-- ✅ Documentación completa (`.context/design-system.md`)
+| Area | Files |
+|---|---|
+| Project config | `package.json`, `tsconfig.json`, `tailwind.config.js` (with the project palette), `next.config.js` (or equivalent), `postcss.config.js` |
+| Types | `src/lib/types.ts`: type helpers extracted from the database, importing `src/types/supabase.ts` (created in backend setup) |
+| Design system | `src/components/ui/[componentName].tsx` and more components as the project needs them |
+| Layout | `src/components/layout/[componentName].tsx` (Navbar, Sidebar, Footer, ...) and `src/app/layout.tsx`, the root layout with providers |
+| Auth, if it applies | `middleware.ts` to protect routes; `src/app/login/page.tsx`, a working login page with demo credentials |
+| Demo pages | `src/app/page.tsx` (landing: hero, features, CTA) only when it fits the business; `src/app/[pageName]/page.tsx` for the core pages of the priority epics. Keep to the minimum a demo needs |
+| Styles | `src/app/globals.css` (Tailwind imports, CSS variables for the palette applied consistently, typography system) |
+| Docs | `.context/design-system.md` (palette, components and usage; the one doc the later phases cannot do without), `SETUP.md` or `README.md` with setup instructions |
 
-**NO incluye:**
+The phase is done when:
 
-- ❌ Implementar TODAS las páginas del MVP (solo demos)
-- ❌ Implementar funcionalidad real de negocio (solo UI visual)
-- ❌ Diseños específicos de cada story (eso es Fase 7: Implementation)
-- ❌ Tests E2E completos (solo validación visual)
-
-**Resultado:** Base visual reutilizable + tipos del backend integrados + demo funcional para mostrar al equipo.
-
----
-
-## 📤 OUTPUT GENERADO
-
-### Configuración del Proyecto:
-
-- ✅ `package.json` - Dependencias frontend actualizadas
-- ✅ `tsconfig.json` - TypeScript configuration
-- ✅ `tailwind.config.js` - TailwindCSS con paleta personalizada
-- ✅ `next.config.js` (o equivalente) - Framework configuration
-- ✅ `postcss.config.js` - PostCSS setup
-
-### Tipos y Helpers:
-
-- ✅ `src/lib/types.ts` - Helpers de tipos extraídos desde database
-- ✅ Importa de `src/types/supabase.ts` (creado en backend-setup)
-
-### Design System:
-
-- ✅ `src/components/ui/[componentName].tsx` - Componente reutilizable
-- ✅ (Más componentes según necesidad del proyecto)
-
-### Layout Components:
-
-- ✅ `src/components/layout/[componentName].tsx` - Navs, Sidebar, Footer, etc.
-- ✅ `src/app/layout.tsx` - Root layout con providers
-
-### Auth (si aplica):
-
-- ✅ `middleware.ts` - Middleware de Next.js para proteger rutas
-- ✅ `src/app/login/page.tsx` - Página de login funcional con credenciales demo
-
-### Páginas Demo (las mínimas más importantes para una Demo):
-
-- ✅ `src/app/page.tsx` - Landing/Home page (hero, features, CTA) **SOLO si aplica al negocio**
-- ✅ `src/app/[pageName]/page.tsx` - Páginas core según épicas prioritarias y contexto del proyecto
-
-### Estilos:
-
-- ✅ `src/app/globals.css` - Global styles + TailwindCSS imports
-- ✅ Custom CSS variables para paleta de colores aplicadas **consistentemente**
-- ✅ Typography system (font families, sizes)
-
-### Documentación:
-
-- ✅ `.context/design-system.md` - **CRÍTICO** - Documenta paleta, componentes, uso
-- ✅ `SETUP.md` o `README.md` - Setup instructions para developers
-
-### Validation:
-
-- ✅ TypeScript build successful (sin errores de tipos): `[package-manager] run build`
-- ✅ **UI refleja el estilo visual de `DESIGN.md`**
-- ✅ **Paleta de colores aplicada consistentemente** en todas las páginas
-- ✅ **Content Writing real** basado en contexto de negocio (NO texto genérico)
-- ✅ Pídele al usuario que corra el servidor para verificar que compile sin warnings y que las páginas se vean bien
-- ✅ Design system visualmente coherente y atractivo (`/playwright-cli` en una sesión con nombre, o verificación manual del usuario)
+- the TypeScript build passes with no type errors: `[package-manager] run build`
+- the UI reflects the visual style of `DESIGN.md` and the palette is applied consistently on every page
+- the copy is real, written from the business context, not generic filler
+- the user has run the server and confirmed it compiles without warnings and the pages look right (ask them to run it). With nobody at the keyboard, run `[pm] run build`, check the demo pages with `/playwright-cli` in a named session, and list the person's run-and-look check as pending in the report
+- the design system is visually coherent and attractive, checked with `/playwright-cli` in a named session or by the user manually
 
 ---
 
-## 🔗 FASE 0.5: INTEGRACIÓN CON BACKEND (NUEVO)
+## Boundaries
 
-**Objetivo:** Importar tipos TypeScript generados por el backend para zero type errors.
+Each of these protects against a likely mistake:
 
-### Paso 0.5.1: Verificar tipos del backend
+- Run this phase only on a greenfield repo. The entry guard (`bun run bootstrap:guard`) refuses an existing app, which is adopted with `/project-adoption`.
+- Leave an existing visual identity alone. A `tailwind.config`, `globals.css` or `components.json` this session did not write is recorded with `/design-system extract`, never overwritten.
+- Scaffold in the current directory. `create-next-app`, `create-vite` and `create-react-app` create a subdirectory, and the project is already in the right folder.
+- Install only the fundamental dependencies.
+- Build two or three demo pages, not the MVP. Use mock data: the demos validate the design system, not business logic, and the acceptance criteria belong to story implementation.
+- Take the vocabulary from this project's PRD, SRS and PBI. Example names from other domains make the demos look generic.
+- Run only commands that terminate. `npm run dev` and other interactive commands hang the session.
+- Recommend commits to the user and do not make them.
+- Make the design visually impressive, with personality. A generic one defeats the point of the phase.
+
+The questions this phase asks the user cover layout, priority components, package manager and UI strategy. Palette and style are never asked, because they come from `DESIGN.md`, and values are never invented: the palette is the one in `DESIGN.md`. Explain each decision to the user as you go.
+
+---
+
+## Workflow
+
+| Phase | What happens |
+|---|---|
+| 0 | Package manager selection |
+| 0.5 | Backend types integration |
+| 1 | Context analysis: 1.4 `DESIGN.md` pre-flight, 1.5 layout and priority components, 1.5.4 Baseline target, 1.6 UI component strategy |
+| 2 | Demo page decision |
+| 3 | Project setup: dependencies, folders, Tailwind, global styles |
+| 4 | Design system components (4.5: layout components) |
+| 5 | Demo pages |
+| 6 | Validation |
+| 7 | Documentation |
+
+### With nobody at the keyboard
+
+A supervised worker sends a question to its launcher (`agentic-dev-core/references/decision-protocol.md` §5.2). A routine with nobody never waits for an answer. The four questions (package manager, layout, priority components, UI strategy) are technical choices that each offer a "Choose for me" option, so a run with no person takes that option, with the rule written for it in the step, and reports each as `DECIDED: <choice> | beat: <options> | why: <reason>`. The dev-server confirmation in the completion list is a person's check: an unattended run builds, checks the pages with `/playwright-cli` and reports that check as pending. The stops do not have a default: the entry guard, missing backend types, a missing `DESIGN.md` and an existing theme end the run with a report that says what is missing and what to run next.
+
+---
+
+## Phase 0.5: backend integration
+
+Import the TypeScript types the backend generated, so frontend and backend share one set and type errors surface at build time.
+
+### Step 0.5.1: check the backend types
+
+Run `ls -la src/types/supabase.ts`. When the file exists, the types are available to import. When it does not, stop: backend setup (`backend-setup.md`) has to run first, and it generates the types with `npx supabase gen types typescript --project-id xxx > src/types/supabase.ts`.
+
+### Step 0.5.2: create the types helper
+
+File: `lib/types.ts`. Its purpose is to extract the database-specific types components use.
+
+Instruction: import `Database` from `@/types/supabase` and extract the table types (Row, Insert, Update). Add helper types for API responses when needed.
+
+Then explain it to the user:
 
 ```markdown
-## 🔍 Verificando tipos generados por Backend
+**Backend types integrated**
 
-**Archivo esperado:** `src/types/supabase.ts` (generado por `backend-setup.md`)
+Benefits:
 
-**¿Existe el archivo?**
-[Ejecutar: ls -la src/types/supabase.ts]
+1. No type mismatches: frontend and backend share the same types.
+2. Autocomplete: TypeScript knows exactly which fields each entity has.
+3. Safe refactoring: schema changes show up automatically.
 
-**Si existe:**
-✅ Tipos del backend disponibles
-✅ Podemos importarlos en el frontend
+Components import their types from `@/lib/types`, and TypeScript validates the available fields.
 
-**Si NO existe:**
-⚠️ IMPORTANTE: Debes ejecutar `backend-setup.md` primero
-⚠️ Los tipos se generan con: `npx supabase gen types typescript --project-id xxx > src/types/supabase.ts`
-```
+When the schema changes:
 
-### Paso 0.5.2: Crear types helper
-
-```markdown
-### 📄 Creando Helper de Tipos
-
-**Archivo:** `lib/types.ts`
-
-**Propósito:** Extraer tipos específicos de la base de datos para usar en componentes.
-
-**Creando archivo...**
-```
-
-**Directiva:**
-
-Importar `Database` de `@/types/supabase` y extraer tipos específicos de tablas (Row, Insert, Update). Crear helper types para respuestas de API si es necesario.
-
-**Explicación al usuario:**
-
-```markdown
-**✅ Tipos del backend integrados**
-
-**Beneficios:**
-
-1. **Zero type mismatches:** Frontend y backend comparten los mismos tipos
-2. **Autocomplete:** TypeScript sabe exactamente qué campos tiene cada entidad
-3. **Refactoring seguro:** Cambios en el schema se reflejan automáticamente
-
-**Ejemplo conceptual:**
-
-Los componentes importan tipos de `@/lib/types` y TypeScript valida automáticamente los campos disponibles.
-
-**Si el schema cambia:**
-
-- Re-generas tipos: `npx supabase gen types typescript...`
-- TypeScript te avisa dónde hay errores
-- Actualizas el código
-- Zero bugs en producción por campos inexistentes
+- Regenerate the types: `npx supabase gen types typescript...`
+- TypeScript points to where the code breaks
+- Update the code
+- No production bugs from fields that no longer exist
 ```
 
 ---
 
-## 🚨 RESTRICCIONES CRÍTICAS
+## Phase 0: package manager
 
-### ❌ NO HACER:
+The user picks the package manager that installs everything else.
 
-- **NO correr esta fase sobre una app existente** - El guard de entrada (`bun run bootstrap:guard`) la rechaza; la app se adopta con `/project-adoption`
-- **NO reemplazar una identidad visual existente** - `tailwind.config`, `globals.css` o `components.json` que esta sesión no escribió se registran con `/design-system extract`, nunca se pisan
-- **NO usar comandos como `create-next-app`, `create-vite`, `create-react-app`** - Estos crean subdirectorios
-- **NO crear subcarpetas para el proyecto** - Ya estamos en el directorio correcto
-- **NO instalar dependencias innecesarias** - Solo fundamentales
-- **NO implementar todas las páginas del MVP** - Solo 2-3 páginas demo estratégicas
-- **NO implementar funcionalidad real** - Solo UI bonita con mock data para validar design system
-- **NO implementar criterios de aceptación completos** - Eso es para Fase 7 (Implementation)
-- **NO usar nombres de ejemplo de otros dominios** - Analiza el PRD/SRS/PBI del proyecto actual e identifica el vocabulario específico del dominio de este negocio
-- **NO ejecutar comandos interactivos** (ej: `npm run dev`) - Solo comandos que terminen
-- **NO hacer commits automáticos** - Solo recomendar al usuario
-- **NO crear diseños genéricos/aburridos** - Debe ser visualmente impresionante
-
-### ✅ SÍ HACER:
-
-- **Hacer preguntas al usuario** - Layout, componentes prioritarios, package manager, etc. (nunca paleta ni estilo: vienen de `DESIGN.md`)
-- **Usar Context7 MCP** - Consultar docs oficiales (Next.js, Supabase, TailwindCSS, etc.)
-- **Importar tipos del backend** - Usar src/types/supabase.ts y crear helpers
-- **Crear design system completo** - Botones, cards, inputs, etc. con estilo coherente
-- **Aplicar paleta de colores** - La de `DESIGN.md`, sin inventar valores
-- **Páginas visualmente atractivas** - Modernas, con personalidad
-- **Explicar cada decisión** - Educar al usuario
-- **Documentar diseño** - Crear `.context/design-system.md`
-- **Validar con build** - Comando según package manager elegido
-
----
-
-## 🔄 WORKFLOW
-
-El proceso se divide en múltiples fases ejecutadas secuencialmente:
-
-1. **Fase 0:** Setup y selección de package manager
-2. **Fase 0.5:** Integración con tipos del backend
-3. **Fase 1:** Análisis de contexto y decisiones de diseño
-4. **Fase 2:** Instalación de dependencias
-5. **Fase 3:** Design System (componentes UI)
-6. **Fase 4:** Layout Components (Navbar, Sidebar, Footer)
-7. **Fase 5:** Páginas Demo (2-3 estratégicas)
-8. **Fase 6:** Documentación
-9. **Fase 7:** Validación y Build
-
----
-
-## 📦 FASE 0: SETUP & PACKAGE MANAGER
-
-**Objetivo:** Educar al usuario sobre package managers y que elija cuál usar.
-
-### Paso 0.1: Educar sobre Package Managers
-
-**Explica al usuario:**
+### Step 0.1: explain package managers
 
 ```markdown
-## 📦 Selección de Package Manager
+## Package manager selection
 
-Antes de comenzar, necesito saber qué **package manager** quieres usar para instalar dependencias.
+Before starting I need to know which **package manager** you want for installing dependencies.
 
-### ¿Qué es un Package Manager?
+A package manager installs, updates and manages the libraries your project needs.
 
-Un **package manager** es una herramienta que instala, actualiza y gestiona las librerías (paquetes) que tu proyecto necesita.
+**npm** (Node Package Manager) ships with Node.js. It works, but it is the slowest of the options. It uses the traditional `node_modules/`. Commands: `npm install`, `npm run dev`.
 
-**npm (Node Package Manager):**
-
-- El package manager **por defecto** que viene con Node.js
-- Funciona bien, pero es el más lento de los tres
-- Usa `node_modules/` tradicional
-- Comando: `npm install`, `npm run dev`
-
-**Las alternativas modernas (más rápidas):**
-
-### 🚀 Opciones Recomendadas:
-
-Hoy en día, hay alternativas **mucho más rápidas y eficientes** que npm:
+There are modern alternatives that are much faster and more efficient. I will list them next.
 ```
 
-### Paso 0.2: Preguntar Package Manager
+### Step 0.2: ask
 
-**Usa `AskUserQuestion` tool:**
+Ask with the `AskUserQuestion` tool.
 
-```markdown
-**Pregunta al usuario** usando la herramienta `AskUserQuestion`:
+Question: "Which package manager do you want to use for this project?" Header: "Package Manager". MultiSelect: false.
 
-**Pregunta:** "¿Qué package manager quieres usar para este proyecto?"
+Options:
 
-**Opciones:**
+1. **pnpm** (fast and disk-efficient). Very fast, saves disk space with hard links, installs up to 2x faster than npm, popular in monorepos and large projects. Commands: `pnpm install`, `pnpm run dev`.
+2. **bun** (all-in-one toolkit), recommended. The fastest option (up to 25x faster than npm). It also runs JavaScript and TypeScript directly, and it is the most modern choice. Commands: `bun install`, `bun run dev`.
+3. **Choose for me.** The AI selects the most appropriate package manager for the project and operating system. The default is **bun** for its speed.
 
-1. **pnpm** (Fast and disk-efficient)
-   - **Descripción:** "Extremadamente rápido, ahorra espacio en disco usando hard links. Instalaciones hasta 2x más rápidas que npm. Muy popular en monorepos y proyectos grandes."
-   - **Ventajas:** Eficiente en espacio, rápido, compatible con npm
-   - **Comandos:** `pnpm install`, `pnpm run dev`
+### Step 0.3: process the answer
 
-2. **bun** (Blazingly fast, all-in-one toolkit) ⭐ **RECOMENDADO**
-   - **Descripción:** "El más rápido de todos (hasta 25x más rápido que npm). No solo instala paquetes, también ejecuta JavaScript y TypeScript directamente. Es la opción más moderna."
-   - **Ventajas:** Velocidad extrema, ejecuta código JS/TS sin transpilación, todo-en-uno
-   - **Comandos:** `bun install`, `bun run dev`
-
-3. **Elige por mí** (Recomendación automática)
-   - **Descripción:** "La IA seleccionará el package manager más apropiado basándose en tu proyecto y sistema operativo. Por defecto se recomienda **bun** por su velocidad y modernidad."
-
-**Header de la pregunta:** "Package Manager"
-**MultiSelect:** false
-```
-
-### Paso 0.3: Procesar Respuesta
-
-**Según la respuesta del usuario:**
-
-- Si elige **pnpm** → Usar pnpm en todos los comandos
-- Si elige **bun** → Usar bun en todos los comandos
-- Si elige **"Elige por mí"** → Seleccionar **bun** (recomendado) y explicar por qué
-
-**Output esperado:**
+- pnpm: use pnpm in every command.
+- bun: use bun in every command.
+- "Choose for me" (or nobody to ask): pick **bun** and explain why.
 
 ```markdown
-## ✅ Package Manager Seleccionado: [pnpm/bun]
+## Package manager selected: [pnpm/bun]
 
-**Razón:** [Si fue "Elige por mí", explicar: "He seleccionado **bun** porque es el más rápido y moderno, perfecto para desarrollo ágil. Instalaciones hasta 25x más rápidas que npm."]
+**Reason:** [For "Choose for me", say: "I selected **bun** because it is the fastest and most modern, a good fit for agile development. Installs are up to 25x faster than npm."]
 
-**Comandos que usaremos:**
+**Commands we will use:**
 
-- Instalar dependencias: `[pnpm/bun] install`
-- Agregar paquetes: `[pnpm/bun] add [paquete]`
-- Ejecutar dev: `[pnpm/bun] run dev`
+- Install dependencies: `[pnpm/bun] install`
+- Add packages: `[pnpm/bun] add [package]`
+- Run dev: `[pnpm/bun] run dev`
 - Build: `[pnpm/bun] run build`
 
-**Próximo paso:** Análisis del contexto del proyecto.
+**Next step:** analyze the project context.
 ```
 
 ---
 
-## 📊 FASE 1: ANÁLISIS DE CONTEXTO
+## Phase 1: context analysis
 
-**Objetivo:** Comprender profundamente el proyecto antes de crear cualquier código.
+Understand the project before writing any code.
 
-### Paso 1.1: Leer Documentación del Proyecto
+### Step 1.1: read the project documentation
 
-**Archivos a leer (TODOS):**
+Read all of these.
 
-**PRD (Product Requirements):**
+PRD (product requirements):
 
-- `.context/PRD/executive-summary.md` → Problema, solución, usuarios
-- `.context/PRD/user-personas.md` → Quiénes usarán el sistema
-- `.context/PRD/mvp-scope.md` → Épicas y funcionalidades principales
-- `.context/PRD/user-journeys.md` → Flujos de usuario principales
+- `.context/PRD/executive-summary.md`: problem, solution, users
+- `.context/PRD/user-personas.md`: who will use the system
+- `.context/PRD/mvp-scope.md`: epics and main functionality
+- `.context/PRD/user-journeys.md`: the main user flows
 
-**SRS (Software Requirements):**
+SRS (software requirements):
 
-- `.context/SRS/functional-specs.md` → Requerimientos funcionales detallados
-- `.context/SRS/non-functional-specs.md` → Performance, security, etc.
-- `.context/SRS/architecture-specs.md` → **MUY IMPORTANTE:** Stack técnico, framework, patrones
-- `.context/SRS/api-contracts.yaml` → Endpoints disponibles
+- `.context/SRS/functional-specs.md`: detailed functional requirements
+- `.context/SRS/non-functional-specs.md`: performance, security and so on
+- `.context/SRS/architecture-specs.md`: the most important one: technical stack, framework, patterns
+- `.context/SRS/api-contracts.yaml`: the available endpoints
 
-**PBI (Product Backlog):**
+PBI (product backlog):
 
-- `.context/PBI/epic-tree.md` → Vista completa de épicas del MVP
-- `.context/PBI/epics/*/epic.md` → Revisar TODAS las épicas
-- `.context/PBI/epics/*/stories/*/story.md` → Escanear stories principales
+- `.context/PBI/epic-tree.md`: the full view of the MVP epics
+- `.context/PBI/epics/*/epic.md`: review every epic
+- `.context/PBI/epics/*/stories/*/story.md`: scan the main stories
 
-**Backend Types (NUEVO):**
+Backend types:
 
-- `src/types/supabase.ts` → Tipos generados del schema de Supabase
-- Identificar entidades principales disponibles
+- `src/types/supabase.ts`: types generated from the Supabase schema; identify the main entities available
 
-**Qué identificar:**
+What to identify:
 
-1. **Dominio del negocio:**
-   - ¿Qué problema resuelve? (PRD)
-   - ¿Quiénes son los usuarios? (PRD)
-   - ¿Cuál es el vocabulario del dominio? (nombres, entidades)
-   - **¿Qué personalidad/tono debe tener?** (formal, creativo, corporativo, startup)
+1. Business domain: the problem it solves (PRD), the users (PRD), the domain vocabulary (names, entities), and the personality or tone the app should have (formal, creative, corporate, startup).
+2. Technical stack: frontend framework (Next.js, React+Vite, SvelteKit, ...), UI library (TailwindCSS, Material UI, Chakra, ...), auth provider (Supabase, Auth0, Firebase, NextAuth, ...), backend and database (Supabase, Firebase, custom API, ...) and state management (Zustand, Redux, Jotai, ...).
+3. Core functionality: the highest-priority epics, the pages that appear in several user journeys, the main business entities.
+4. Design hints, if the docs have any: specific colors, a visual style (minimalist, modern, ...) or design references.
 
-2. **Stack técnico:**
-   - Framework frontend (Next.js, React+Vite, SvelteKit, etc.)
-   - UI Library (TailwindCSS, Material UI, Chakra, etc.)
-   - Auth provider (Supabase, Auth0, Firebase, NextAuth, etc.)
-   - Backend/DB (Supabase, Firebase, custom API, etc.)
-   - State management (Zustand, Redux, Jotai, etc.)
-
-3. **Funcionalidades core:**
-   - Épicas con mayor prioridad
-   - Páginas que aparecen en múltiples user journeys
-   - Entidades principales del negocio
-
-4. **Pistas de diseño (si existen en docs):**
-   - ¿Menciona colores específicos?
-   - ¿Menciona estilo visual (minimalista, moderno, etc.)?
-   - ¿Menciona referencias de diseño?
-
-**Output de este paso (NO mostrar al usuario, uso interno):**
-
-- Stack técnico identificado
-- Dominio del negocio comprendido
-- Personalidad/tono de la aplicación
-- Lista de épicas prioritarias
-- Vocabulario del dominio
-- Pistas de diseño (si existen)
-- **Entidades disponibles en src/types/supabase.ts**
+The output of this step is for your own use and is not shown to the user: the stack, the domain, the tone, the priority epics, the vocabulary, the design hints and the entities available in `src/types/supabase.ts`.
 
 ---
 
-### Paso 1.2: Consultar Documentación Oficial (Context7 MCP)
+### Step 1.2: read the official docs (Context7 MCP)
 
-**Acción:** Usa el MCP de Context7 para consultar la documentación oficial de las tecnologías del stack identificado.
+Use Context7 to read the official documentation of the stack you identified, so the components you write follow current patterns. Suggested queries:
 
-**Queries recomendadas:**
+1. Framework: "[Framework] project structure best practices latest version", "[Framework] routing configuration"
+2. Auth provider: "[Auth Provider] client setup [Framework]", "[Auth Provider] authentication flow [Framework]"
+3. UI library (the most important): "[UI Library] setup [Framework]", "[UI Library] theming and customization", "[UI Library] component patterns"
 
-1. **Framework:**
-   - "[Framework] project structure best practices latest version"
-   - "[Framework] routing configuration"
-
-2. **Auth Provider:**
-   - "[Auth Provider] client setup [Framework]"
-   - "[Auth Provider] authentication flow [Framework]"
-
-3. **UI Library (MUY IMPORTANTE):**
-   - "[UI Library] setup [Framework]"
-   - "[UI Library] theming and customization"
-   - "[UI Library] component patterns"
-
-**Objetivo:** Obtener información actualizada sobre cómo crear componentes bonitos y aplicar diseño.
-
-**Output esperado (mostrar al usuario):**
+Show the user the result:
 
 ```markdown
-## 📚 Análisis Completado
+## Analysis complete
 
-### Stack Técnico Identificado:
+### Technical stack identified
 
-- **Framework:** [Nombre y versión del SRS]
-- **UI Library:** [Identificado del SRS]
-- **Auth Provider:** [Identificado del SRS]
-- **Backend/DB:** [Identificado del SRS]
+- **Framework:** [name and version from the SRS]
+- **UI library:** [from the SRS]
+- **Auth provider:** [from the SRS]
+- **Backend/DB:** [from the SRS]
 
-### Dominio del Negocio:
+### Business domain
 
-- **Problema que resuelve:** [Resumen 1 línea del PRD]
-- **Usuarios principales:** [Listar personas del PRD]
-- **Entidades core:** [Listar entidades principales]
-- **Personalidad/Tono:** [Formal/Creativo/Corporativo/Startup - inferir del PRD]
+- **Problem it solves:** [one-line summary from the PRD]
+- **Main users:** [personas from the PRD]
+- **Core entities:** [main entities]
+- **Personality/tone:** [Formal/Creative/Corporate/Startup, inferred from the PRD]
 
-### Épicas Prioritarias (del PBI):
+### Priority epics (from the PBI)
 
-1. EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}: [Descripción] - [Razón de prioridad]
-2. EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}: [Descripción] - [Razón de prioridad]
-3. EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}: [Descripción] - [Razón de prioridad]
+1. EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}: [description] - [why it is a priority]
+2. EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}: [description] - [why it is a priority]
+3. EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}: [description] - [why it is a priority]
 
-### Tipos Backend Disponibles:
+### Backend types available
 
-[Listar entidades identificadas en src/types/supabase.ts]
+[Entities found in src/types/supabase.ts]
 
-### Documentación Consultada:
+### Documentation consulted
 
-- **[Framework]**: [Conceptos clave]
-- **[UI Library]**: [Patrones de diseño disponibles]
-- **[Auth Provider]**: [Setup recomendado]
+- **[Framework]**: [key concepts]
+- **[UI Library]**: [design patterns available]
+- **[Auth Provider]**: [recommended setup]
 
-**Próximo paso:** Pre-flight de `DESIGN.md` (Fase 1.4).
+**Next step:** `DESIGN.md` pre-flight (Phase 1.4).
 ```
 
 ---
 
-## FASE 1.4: PRE-FLIGHT DESIGN.md (NUEVO)
+## Phase 1.4: `DESIGN.md` pre-flight
 
-**Objetivo:** Confirmar que existe el `DESIGN.md` que produce `/design-system` y derivar los tokens visuales (paleta, tipografía, espaciado, radios) directamente del archivo. Sin `DESIGN.md` no hay scaffold de frontend (SKILL.md, anti-pattern **B5**).
+Confirm that the `DESIGN.md` produced by `/design-system` exists, and derive the visual tokens (palette, typography, spacing, radii) straight from it. Without `DESIGN.md` there is no frontend scaffold (`SKILL.md`, rule **B5**).
 
-### Paso 1.4.1: Detectar DESIGN.md
+### Step 1.4.1: detect `DESIGN.md`
 
 ```bash
 DESIGN_MD_PATH=$(yq '.frontend.design_md_path // "./DESIGN.md"' .agents/project.yaml 2>/dev/null || echo "./DESIGN.md")
 
 if [ -f "$DESIGN_MD_PATH" ]; then
-  echo "DESIGN.md encontrado en $DESIGN_MD_PATH: derivando tokens."
+  echo "DESIGN.md found at $DESIGN_MD_PATH: deriving tokens."
 else
-  echo "DESIGN.md no encontrado en $DESIGN_MD_PATH. DETENIDO (B5): correr /design-system y volver a esta fase."
+  echo "DESIGN.md not found at $DESIGN_MD_PATH. STOPPED (B5): run /design-system and come back to this phase."
   exit 1
 fi
 ```
 
-**Decisión:**
+When `DESIGN.md` exists, parse its YAML frontmatter, map it to `tailwind.config.js` and `globals.css` (table below) and continue with Phase 1.5.
 
-- **Si existe `DESIGN.md`**: parsear el frontmatter YAML, mapear a `tailwind.config.js` + `globals.css` (ver tabla abajo) y continuar con Fase 1.5 (layout y componentes prioritarios).
-- **Si NO existe**: **DETENER** el scaffold del frontend. Decirle al usuario que corra `/design-system` (fase de tokens) y retomar esta fase cuando `DESIGN.md` exista. No hay camino alternativo: nunca inventar una paleta ni preguntar preferencias visuales para reemplazar los tokens (B5). Un proyecto que ya tiene frontend no llega a esta fase: el guard de entrada la rechaza, y su identidad visual se registra tal como está con `/design-system extract`.
+When it does not, stop the frontend scaffold and tell the user to run `/design-system` (the tokens phase), then resume here once `DESIGN.md` exists. There is no alternative path: a palette invented or assembled from asked preferences would replace the tokens (B5). A project that already has a frontend never reaches this phase, because the entry guard refuses it, and its visual identity is recorded as it is with `/design-system extract`.
 
-**Guard duro de identidad visual (B5).** Aunque el veredicto haya sido `greenfield`, si al llegar a este paso ya existe un tema que esta sesión no escribió (`tailwind.config.*`, un `globals.css` con CSS variables, `components.json`), **DETENER**: no generar ni sobrescribir esos archivos desde `DESIGN.md`. Una identidad visual existente se registra con `/design-system extract`; nunca se reemplaza. Reportar los archivos encontrados y preguntar.
+Visual identity hard guard (B5). Even after a `greenfield` verdict, a theme this session did not write may exist by the time you reach this step (`tailwind.config.*`, a `globals.css` with CSS variables, `components.json`). Then stop: do not generate or overwrite those files from `DESIGN.md`. An existing visual identity is recorded with `/design-system extract` and never replaced. Report the files you found and ask how to proceed. With nobody to ask, report and stop.
 
-### Paso 1.4.2: Mapeo DESIGN.md → Tailwind config
+### Step 1.4.2: map `DESIGN.md` to the Tailwind config
 
-Los tokens del frontmatter mapean así:
+The frontmatter tokens map like this:
 
 | DESIGN.md frontmatter        | Tailwind config target                    |
 | ---------------------------- | ----------------------------------------- |
@@ -566,435 +360,385 @@ Los tokens del frontmatter mapean así:
 | `typography.body.fontFamily` | `theme.fontFamily.sans`                   |
 | `typography.body.fontSize`   | `theme.fontSize.base[0]`                  |
 | `rounded.sm/md/lg/full`      | `theme.borderRadius.{sm,DEFAULT,lg,full}` |
-| `spacing.sm/md/lg`           | `theme.spacing.{2,4,8}` (escala base 4px) |
+| `spacing.sm/md/lg`           | `theme.spacing.{2,4,8}` (4px base scale)  |
 
-Por qué este mapeo: respeta la convención Tailwind sin reescribir el theme desde cero, y los semantic-tokens (primary/secondary/accent) coinciden con la nomenclatura de shadcn/ui.
+The mapping follows the Tailwind convention without rewriting the theme from scratch, and the semantic tokens (primary, secondary, accent) match shadcn/ui naming.
 
-### Paso 1.4.3: Generar archivos derivados
+### Step 1.4.3: generate the derived files
 
-Una vez parseado el frontmatter:
+Once the frontmatter is parsed:
 
-1. Generar `tailwind.config.js` con los tokens mapeados — no preguntar al user, el `DESIGN.md` ya es la fuente. Solo sobre un repo sin tema previo (guard duro de identidad visual, Paso 1.4.1); si el `DESIGN.md` vino de `/design-system extract`, el tema ya existe en el código y esta fase no corre.
-2. Generar `globals.css` con las CSS custom properties (`--color-primary`, `--font-heading`, etc.) apuntando a los mismos valores.
-3. Continuar con Fase 1.5 (layout y componentes prioritarios) y después Fase 1.6 (estrategia de componentes UI: shadcn vs manual vs híbrido).
+1. Generate `tailwind.config.js` with the mapped tokens. Do not ask the user: `DESIGN.md` is already the source. Do this only on a repo with no previous theme (the hard guard in Step 1.4.1); when the `DESIGN.md` came from `/design-system extract`, the theme already exists in the code and this phase does not run.
+2. Generate `globals.css` with the CSS custom properties (`--color-primary`, `--font-heading`, and so on) pointing at the same values.
+3. Continue with Phase 1.5 (layout and priority components), then Phase 1.6 (UI component strategy: shadcn, manual or hybrid).
 
-**No saltar Fase 1.5 ni 1.6**: la elección de cómo implementar componentes es ortogonal al design system. shadcn/ui sigue siendo una pregunta válida incluso con DESIGN.md.
-
----
-
-## 🎨 FASE 1.5: LAYOUT Y COMPONENTES PRIORITARIOS (INTERACTIVA)
-
-> Paleta, tipografía y estilo visual NO se preguntan: vienen de `DESIGN.md` (Fase 1.4). Esta fase solo decide lo que los tokens no dicen: la estructura de navegación y qué componentes construir primero.
-
-**Objetivo:** Definir el layout principal y los componentes UI prioritarios de la aplicación.
-
-### Paso 1.5.1: Pregunta 1 - Layout Principal
-
-**Usa `AskUserQuestion` tool:**
-
-**Pregunta:** "¿Qué tipo de layout prefieres para la aplicación?"
-
-**Header:** "Layout Principal"
-
-**Opciones:**
-
-1. **Sidebar + Top Navbar** (Dashboard clásico)
-   - **Descripción:** "Navegación lateral fija con barra superior. Ideal para: Aplicaciones con muchas secciones (5+), dashboards, herramientas complejas."
-
-2. **Solo Top Navbar** (Clean y simple)
-   - **Descripción:** "Solo barra de navegación superior. Ideal para: Aplicaciones simples (2-4 secciones), landing pages, apps enfocadas."
-
-3. **Sidebar Collapsible** (Flexible y moderno)
-   - **Descripción:** "Sidebar que se puede ocultar/expandir. Ideal para: Aplicaciones medianas, necesitas espacio flexible, UX moderna."
-
-4. **Elige por mí** (Según páginas del MVP)
-   - **Descripción:** "La IA analizará cuántas páginas tiene tu MVP y seleccionará el layout más apropiado (2-3 páginas → Top Nav, 4+ → Sidebar)."
-
-**MultiSelect:** false
+Do not skip Phases 1.5 and 1.6. How the components get implemented is independent of the design system, and shadcn/ui is still a valid question when `DESIGN.md` exists.
 
 ---
 
-### Paso 1.5.2: Pregunta 2 - Componentes UI Prioritarios
+## Phase 1.5: layout and priority components (interactive)
 
-**Usa `AskUserQuestion` tool:**
+Palette, typography and visual style are not asked here: they come from `DESIGN.md` (Phase 1.4). This phase decides only what the tokens do not say: the navigation structure and which components to build first.
 
-**Pregunta:** "¿Qué componentes UI son prioritarios para tu aplicación? (puedes elegir varios)"
+### Step 1.5.1: question 1, main layout
 
-**Header:** "Componentes UI"
+Ask with the `AskUserQuestion` tool.
 
-**Opciones:**
+Question: "Which layout do you prefer for the application?" Header: "Main Layout". MultiSelect: false.
 
-1. **Botones & CTAs** (Siempre recomendado)
-   - **Descripción:** "Botones primary, secondary, outline, ghost. Esenciales para cualquier aplicación."
+Options:
 
-2. **Cards & Containers** (Muy común)
-   - **Descripción:** "Tarjetas para mostrar información, contenedores con sombras/bordes. Útil para: Listas, dashboards, grids."
+1. **Sidebar + Top Navbar** (classic dashboard). Fixed side navigation with a top bar. Fits applications with many sections (5+), dashboards and complex tools.
+2. **Top Navbar only** (clean and simple). Fits simple applications (2-4 sections), landing pages and focused apps.
+3. **Collapsible Sidebar** (flexible and modern). A sidebar that hides and expands. Fits medium applications that need flexible space and a modern UX.
+4. **Choose for me** (based on the MVP pages). Count the MVP pages and pick the layout that fits: 2-3 pages, Top Nav; 4 or more, Sidebar.
 
-3. **Forms & Inputs** (Si tienes formularios)
-   - **Descripción:** "Inputs, textareas, selects, checkboxes. Esencial para: Auth, formularios de creación/edición."
+### Step 1.5.2: question 2, priority UI components
 
-4. **Modals & Dialogs** (Interacciones)
-   - **Descripción:** "Ventanas modales, confirmaciones, diálogos. Útil para: Confirmaciones, detalles, formularios rápidos."
+Ask with the `AskUserQuestion` tool.
 
-5. **Elige por mí** (Según épicas del MVP)
-   - **Descripción:** "La IA analizará las épicas de tu MVP y seleccionará los componentes que más necesitarás."
+Question: "Which UI components are a priority for your application? (you can pick several)" Header: "UI Components". MultiSelect: true.
 
-**MultiSelect:** true (puede elegir varios)
+Options:
 
----
+1. **Buttons and CTAs** (always recommended). Primary, secondary, outline and ghost buttons, which any application needs.
+2. **Cards and containers** (very common). Cards for showing information and containers with shadows or borders. Useful for lists, dashboards and grids.
+3. **Forms and inputs** (if you have forms). Inputs, textareas, selects and checkboxes. Needed for auth and create/edit forms.
+4. **Modals and dialogs** (interactions). Modal windows, confirmations and dialogs. Useful for confirmations, details and quick forms.
+5. **Choose for me** (based on the MVP epics). Analyze the MVP epics and select the components the project will need most.
 
-### Paso 1.5.3: Procesar Respuestas y Generar Plan de Diseño
+### Step 1.5.3: process the answers and produce the design plan
 
-**Después de recibir todas las respuestas, genera un plan:**
+After the answers, generate the plan:
 
 ```markdown
-## 🎨 Plan de Diseño Generado
+## Design plan
 
-Basándome en `DESIGN.md`, tus respuestas y el análisis del proyecto, aquí está el plan de diseño:
-
----
-
-### Tokens (de `DESIGN.md`)
-
-- **Colores:** primary [hex] · secondary [hex] · accent [hex] · background [hex] · text [hex] · border [hex]
-- **Tipografía:** heading [familia] · body [familia, tamaño]
-- **Radios y espaciado:** [valores del frontmatter]
+Based on `DESIGN.md`, your answers and the project analysis, here is the design plan:
 
 ---
 
-### Layout: [Seleccionado]
+### Tokens (from `DESIGN.md`)
 
-**Estructura:**
-
-- Navegación: [Sidebar/Top Nav/Sidebar Collapsible]
-- Header: [Presente/Ausente] - [Contenido]
-- Footer: [Presente/Ausente] - [Contenido si aplica]
-
-**Razón:** [Si fue "Elige por mí", explicar: "Tu MVP tiene [X] páginas, por lo que [layout] es ideal."]
+- **Colors:** primary [hex] · secondary [hex] · accent [hex] · background [hex] · text [hex] · border [hex]
+- **Typography:** heading [family] · body [family, size]
+- **Radii and spacing:** [values from the frontmatter]
 
 ---
 
-### Componentes UI a Crear:
+### Layout: [selected]
 
-**Nivel 1 (Esenciales - siempre se crean):**
+**Structure:**
 
-- ✅ Button (primary, secondary, outline, ghost, danger)
-- ✅ Card (default, hover, clickable)
-- ✅ Layout components (Navbar, Sidebar si aplica)
+- Navigation: [Sidebar/Top Nav/Collapsible Sidebar]
+- Header: [present/absent] - [content]
+- Footer: [present/absent] - [content if it applies]
 
-**Nivel 2 (Según selección):**
-[Listar componentes seleccionados por el usuario]
-
-**Nivel 3 (Específicos del dominio):**
-[Basándote en épicas, listar componentes específicos que se necesitarán]
+**Reason:** [For "Choose for me", say: "Your MVP has [X] pages, so [layout] fits best."]
 
 ---
 
-**Próximo paso:** Decidir estrategia de componentes UI.
+### UI components to create
+
+**Level 1 (essential, always created):**
+
+- Button (primary, secondary, outline, ghost, danger)
+- Card (default, hover, clickable)
+- Layout components (Navbar, Sidebar if it applies)
+
+**Level 2 (by selection):**
+[the components the user selected]
+
+**Level 3 (domain-specific):**
+[from the epics, the specific components that will be needed]
+
+---
+
+**Next step:** decide the UI component strategy.
 ```
 
----
+### Step 1.5.4: question 3, Baseline target
 
-## 🧩 FASE 1.6: ESTRATEGIA DE COMPONENTES UI (INTERACTIVA)
+Ask with the `AskUserQuestion` tool.
 
-**Objetivo:** Decidir cómo implementar el design system (componentes UI).
+Question: "Which Baseline target should the UI code hold to?" Header: "Baseline". MultiSelect: false.
 
-**CRÍTICO:** Esta decisión afecta significativamente el tiempo y esfuerzo de desarrollo.
+Options:
 
-**Required skills (load before Paso 1.6.1):** the design set (`/frontend-design` + `/ui-ux-pro-max` + `/impeccable` + `/emil-design-eng`) + `/shadcn` + `/tailwind-css-patterns` (category `frontend-ui`). They own component composition, the shadcn CLI and registry, and the Tailwind patterns every component below is written with; the shadcn MCP, when present, is the catalog, not a substitute. Not installed → say so once, point at `bun setup` or the single `bunx skills add` line from `PROJECT_LEVEL_SKILLS` in `cli/install.ts`, then continue (`agentic-dev-core/references/skill-composition-strategy.md` §3.5).
+1. **Baseline Widely available** (recommended). Features every major browser has shipped for roughly 30 months. Right unless the product needs newer features.
+2. **Baseline <year>** (a named year, for example the current or previous one). Admits features that became Baseline Newly available up to that year. Fits a product with a known modern-browser audience.
+3. **Choose for me**. Use Baseline Widely available.
 
----
-
-### Paso 1.6.1: Pregunta - Estrategia de Componentes UI
-
-**Usa `AskUserQuestion` tool:**
-
-**Pregunta:** "¿Cómo prefieres implementar los componentes UI del design system?"
-
-**Header:** "Estrategia UI"
-
-**Opciones:**
-
-1. **shadcn/ui** (Recomendado - Rápido y profesional) ⭐
-   - **Descripción:** "Componentes pre-hechos, modernos y accesibles que se instalan con CLI. Compatible con Tailwind v4. Se integran directamente en tu código (no en node_modules) para total customización. Ahorra 80-90% del tiempo. Incluye: Button, Card, Input, Dialog, Select, Dropdown, Tooltip, y 40+ componentes más. Usado por Vercel, shadcn, y miles de proyectos."
-
-2. **Componentes desde cero** (Control total y educativo)
-   - **Descripción:** "La IA creará cada componente manualmente desde cero usando TypeScript + Tailwind CSS. Control absoluto sobre cada línea de código. Ideal para: aprender desarrollo de componentes, requisitos muy específicos, o proyectos con design system único. Más lento pero educativo."
-
-3. **Headless UI + estilos custom** (Balance intermedio)
-   - **Descripción:** "Usa Headless UI de Tailwind Labs para la lógica (accesibilidad, estados, keyboard navigation) y la IA crea los estilos visuales con Tailwind. Balance entre rapidez y control. Ideal para: necesitas accesibilidad garantizada pero quieres estilos únicos."
-
-4. **Elige por mí** (Recomendación automática)
-   - **Descripción:** "La IA analizará el tipo de proyecto y elegirá la mejor opción. Por defecto recomienda shadcn/ui por eficiencia, calidad y tiempo de desarrollo. Solo elegirá manual si detecta requisitos muy específicos."
-
-**MultiSelect:** false
+Write the answer as one line under a `## Web platform` heading in `.agents/instructions/agent-project.md` (project-owned, so `bun sync` keeps it), in the form `This project's Baseline target is Baseline Widely available.` or `This project's Baseline target is Baseline <year>.`. Without the line, `modern-web-guidance` assumes Baseline Widely available. Say once that volatile features (not yet Baseline) stay gated and off by default, and that a person enables them with `npx modern-web-guidance@latest set-allow-volatile-features`; never run that command here.
 
 ---
 
-### Paso 1.6.2: Procesar Respuesta y Documentar Decisión
+## Phase 1.6: UI component strategy (interactive)
 
-**Según la respuesta del usuario:**
+Decide how to implement the design system's components. This choice changes development time and effort a lot.
 
-**Si elige "shadcn/ui":**
+Required skills, loaded before Step 1.6.1: the design set (`/frontend-design` + `/ui-ux-pro-max` + `/impeccable` + `/emil-design-eng` + `/modern-web-guidance`), `/shadcn` and `/tailwind-css-patterns` (category `frontend-ui`). They own component composition, the shadcn CLI and registry, and the Tailwind patterns every component below is written with; the shadcn MCP, when present, is the catalog, not a substitute. Not installed: say so once, point at `bun setup` or the single `bunx skills add` line from `PROJECT_LEVEL_SKILLS` in `cli/install.ts`, then continue (`agentic-dev-core/references/skill-composition-strategy.md` §3.5).
+
+### Step 1.6.1: question, UI component strategy
+
+Ask with the `AskUserQuestion` tool.
+
+Question: "How do you prefer to implement the design system's UI components?" Header: "UI Strategy". MultiSelect: false.
+
+Options:
+
+1. **shadcn/ui** (recommended, fast and professional). Ready-made, modern, accessible components installed with a CLI. They land in your own code, not in `node_modules`, so you can customize them fully. Includes Button, Card, Input, Dialog, Select, Dropdown, Tooltip and 40+ more components.
+2. **Components from scratch** (full control, educational). The AI writes each component by hand in TypeScript and Tailwind CSS. Fits learning component development, very specific requirements or a unique design system. Slower.
+3. **Headless UI + custom styles** (middle ground). Headless UI from Tailwind Labs supplies the logic (accessibility, state, keyboard navigation) and the AI writes the visual styles with Tailwind. Fits projects that need guaranteed accessibility with unique styling.
+4. **Choose for me.** The AI analyzes the project type and picks the best option. Without a reason to do otherwise it recommends shadcn/ui, for efficiency, quality and development time, and it picks manual components only when it detects very specific requirements.
+
+### Step 1.6.2: process the answer and record the decision
+
+For "shadcn/ui":
 
 ```markdown
-## ✅ Estrategia Seleccionada: shadcn/ui
+## Strategy selected: shadcn/ui
 
-**Ventajas para tu proyecto:**
+**Advantages for your project:**
 
-- ✅ 40+ componentes profesionales en minutos (vs días/semanas)
-- ✅ Accesibilidad WAI-ARIA incluida (screen readers, keyboard navigation)
-- ✅ Responsive por defecto
-- ✅ Compatible con Tailwind v4 (verificado)
-- ✅ Compatible con React 19 + Next.js 15
-- ✅ Código en tu proyecto (100% customizable)
-- ✅ TypeScript con tipos completos
-- ✅ Comunidad activa (miles de proyectos)
+- 40+ professional components in minutes instead of days or weeks
+- WAI-ARIA accessibility included (screen readers, keyboard navigation)
+- Responsive by default
+- Works with the Tailwind v3 setup this phase installs
+- Compatible with React 19 and Next.js 15
+- The code lives in your project (fully customizable)
+- Complete TypeScript types
 
-**Componentes disponibles:**
+**Components available:**
 
-- UI Básico: Button, Card, Badge, Avatar, Separator
-- Formularios: Input, Textarea, Select, Checkbox, Radio, Switch, Label
+- Basic UI: Button, Card, Badge, Avatar, Separator
+- Forms: Input, Textarea, Select, Checkbox, Radio, Switch, Label
 - Overlays: Dialog, Popover, Tooltip, Sheet, Drawer
 - Navigation: Tabs, Dropdown Menu, Command Menu
 - Feedback: Alert, Toast, Progress, Skeleton
 - Layout: Accordion, Collapsible, Separator
-- Data: Table, Data Table (con sorting, filtering)
-- Y 20+ más...
+- Data: Table, Data Table (with sorting and filtering)
+- And 20+ more
 
-**Instalación:** Se realizará en Fase 4.
+**Installation:** happens in Phase 4.
 
-**Próximo paso:** Decidir páginas demo del MVP.
+**Next step:** decide the MVP demo pages.
 ```
 
-**Si elige "Componentes desde cero":**
+For "Components from scratch":
 
 ```markdown
-## ✅ Estrategia Seleccionada: Componentes desde cero
+## Strategy selected: components from scratch
 
-**Beneficios para tu proyecto:**
+**Benefits for your project:**
 
-- ✅ Control total sobre cada línea de código
-- ✅ Aprendizaje profundo de arquitectura de componentes
-- ✅ Sin dependencias externas
-- ✅ 100% customizado a tu necesidad específica
+- Full control over every line of code
+- A deep understanding of component architecture
+- No external dependencies
+- 100% customized to your specific need
 
-**Componentes a crear:**
-[Usar lista del Paso 1.5.3: Componentes UI a Crear]
+**Components to create:**
+[the list from Step 1.5.3, "UI components to create"]
 
-**Consideraciones:**
+**Things to weigh:**
 
-- ⚠️ Mayor tiempo de desarrollo (3-5x más lento)
-- ⚠️ La IA deberá implementar accesibilidad manualmente
-- ⚠️ Cada componente = 50-150 líneas de código
+- Longer development time (3-5x slower)
+- The AI has to implement accessibility by hand
+- Each component is 50-150 lines of code
 
-**Implementación:** Se realizará en Fase 4.
+**Implementation:** happens in Phase 4.
 
-**Próximo paso:** Decidir páginas demo del MVP.
+**Next step:** decide the MVP demo pages.
 ```
 
-**Si elige "Headless UI":**
+For "Headless UI":
 
 ```markdown
-## ✅ Estrategia Seleccionada: Headless UI + estilos custom
+## Strategy selected: Headless UI + custom styles
 
-**Beneficios para tu proyecto:**
+**Benefits for your project:**
 
-- ✅ Lógica de componentes robusta (Tailwind Labs)
-- ✅ Accesibilidad garantizada
-- ✅ Estilos 100% personalizados
-- ✅ Más rápido que desde cero
-- ✅ Official support de Tailwind team
+- Robust component logic from Tailwind Labs
+- Guaranteed accessibility
+- 100% custom styles
+- Faster than from scratch
+- Official support from the Tailwind team
 
-**Componentes disponibles:**
+**Components available:**
 
 - Listbox (Select), Combobox (Autocomplete)
 - Menu (Dropdown), Popover, Dialog (Modal)
 - Disclosure (Accordion), Tabs, Switch
 - Radio Group, Transition utilities
 
-**Implementación:** Se realizará en Fase 4.
+**Implementation:** happens in Phase 4.
 
-**Próximo paso:** Decidir páginas demo del MVP.
+**Next step:** decide the MVP demo pages.
 ```
 
-**Si elige "Elige por mí":**
+For "Choose for me":
 
 ```markdown
-## 🤖 Analizando proyecto para recomendar estrategia...
+## Analyzing the project to recommend a strategy...
 
-**Análisis:**
+**Analysis:**
 
-- Tipo de proyecto: [Inferir del PRD]
-- Complejidad UI: [Analizar épicas del PBI]
-- Tiempo disponible: [Inferir de urgencia en PRD]
-- Requisitos especiales: [Buscar en SRS]
+- Project type: [infer from the PRD]
+- UI complexity: [analyze the PBI epics]
+- Time available: [infer from urgency in the PRD]
+- Special requirements: [look in the SRS]
 
-**Recomendación: shadcn/ui** ⭐
+**Recommendation: shadcn/ui**
 
-**Razón:**
-Tu proyecto [tipo de proyecto] requiere [X] componentes UI. shadcn/ui ofrece:
+**Reason:**
+Your [project type] project needs [X] UI components. shadcn/ui offers:
 
-- [Beneficio específico 1 basado en épicas]
-- [Beneficio específico 2 basado en user journeys]
-- Reducción de tiempo de desarrollo en ~85%
+- [Specific benefit 1 based on the epics]
+- [Specific benefit 2 based on the user journeys]
+- Roughly 85% less development time
 
-Si tuvieras requisitos muy específicos de [área], recomendaría componentes desde cero.
-Pero para tu caso, shadcn/ui es la opción óptima.
+If you had very specific requirements in [area], I would recommend components from scratch.
+For your case, shadcn/ui is the best option.
 
-**Próximo paso:** Decidir páginas demo del MVP.
+**Next step:** decide the MVP demo pages.
 ```
 
 ---
 
-## 🏗️ FASE 2: DECISIÓN DE PÁGINAS DEMO
+## Phase 2: demo page decision
 
-**Objetivo:** Decidir qué 2-3 páginas demo crear SOLO para validar el design system.
+Decide which two or three demo pages to build, only to validate the design system. Pick pages that exercise its components, typically auth plus one or two core pages of the domain, and never all the MVP pages.
 
-**Criterio de selección:**
-
-- **NO** todas las páginas del MVP
-- **SOLO** páginas que demuestren componentes del design system
-- Típicamente: Auth + 1-2 páginas core del dominio
-
-**Ejemplos según tipo de app:**
+Examples by app type:
 
 ```pseudocode
-SI app_tipo == "dashboard/herramienta":
-  Páginas: Login + Vista principal (grid de entidades)
+IF app_type == "dashboard/tool":
+  Pages: Login + main view (entity grid)
 
-SI app_tipo == "plataforma transaccional":
-  Páginas: Login + Grid de items principales
+IF app_type == "transactional platform":
+  Pages: Login + grid of the main items
 
-SI app_tipo == "comunidad/social":
-  Páginas: Login + Feed/listado principal
+IF app_type == "community/social":
+  Pages: Login + main feed/listing
 
-SI app_tipo == "gestión de recursos":
-  Páginas: Login + Listado de recursos principales
+IF app_type == "resource management":
+  Pages: Login + listing of the main resources
 ```
 
-**Output de este paso:**
+Output of this step:
 
 ```markdown
-## 📄 Páginas Demo Seleccionadas (2-3)
+## Demo pages selected (2-3)
 
-1. **[Nombre de página 1]** (`/[ruta]`)
-   - **Propósito:** Validar [componentes que muestra]
-   - **Componentes UI que usa:** [Button, Card, Form, etc.]
+1. **[Page name 1]** (`/[route]`)
+   - **Purpose:** validate [components it shows]
+   - **UI components it uses:** [Button, Card, Form, etc.]
 
-2. **[Nombre de página 2]** (`/[ruta]`)
-   - **Propósito:** Validar [componentes que muestra]
-   - **Componentes UI que usa:** [List, etc.]
+2. **[Page name 2]** (`/[route]`)
+   - **Purpose:** validate [components it shows]
+   - **UI components it uses:** [List, etc.]
 
-**Nota:** Las demás páginas del MVP se implementarán en Fase 7 (Implementation) según los planes de cada story.
-```
-
----
-
-## 🏗️ FASE 3: SETUP DEL PROYECTO
-
-**Objetivo:** Configurar el proyecto con el package manager seleccionado.
-
-### Paso 3.1: Verificar Entorno Actual
-
-```markdown
-**Package manager seleccionado:** [pnpm/bun]
-**Comandos a usar:** `[pm] install`, `[pm] run dev`, etc.
+**Note:** the remaining MVP pages are built during story implementation, from each story's plan.
 ```
 
 ---
 
-### Paso 3.2: Instalar Dependencias Fundamentales
+## Phase 3: project setup
 
-**IMPORTANTE:** Usar el package manager seleccionado en Fase 0.
+Configure the project with the selected package manager. The commands below use `[pnpm/bun]`; substitute the one chosen in Phase 0 (`[pm]` means the same).
 
-**Proceso:**
-
-1. **Verificar versiones con Context7 PRIMERO:**
+### Step 3.1: check the current environment
 
 ```markdown
-Antes de instalar, consultar Context7 MCP para versiones actualizadas:
+**Package manager selected:** [pnpm/bun]
+**Commands to use:** `[pm] install`, `[pm] run dev`, etc.
+```
+
+### Step 3.2: install the fundamental dependencies
+
+1. Check current versions with Context7 first:
+
+```markdown
+Before installing, ask Context7 MCP for current versions:
 
 - "Next.js latest stable version installation"
-- "Tailwind CSS v4 installation packages"
+- "Tailwind CSS v3 installation packages"
 - "Supabase SSR Next.js latest version"
 ```
 
-2. **Core Framework (Next.js):**
+2. Core framework (Next.js):
 
 ```bash
-# Next.js 15.x (estable)
+# Next.js 15.x (stable)
 [pnpm/bun] add next@latest react@latest react-dom@latest
 
-# Verificar versión instalada
+# Check the installed version
 [pnpm/bun] list next
-# Esperado: next@15.x.x o superior
+# Expected: next@15.x.x or higher
 ```
 
-3. **UI Library (Tailwind CSS v3):**
+3. UI library (Tailwind CSS v3):
 
 ```bash
-# IMPORTANTE: Especificar versión 3 explícitamente
+# IMPORTANT: specify version 3 explicitly
 [pnpm/bun] add -D tailwindcss@3 postcss@latest autoprefixer@latest
 
-# Verificar versión instalada
+# Check the installed version
 [pnpm/bun] list tailwindcss
-# Esperado: tailwindcss@3.4.x
+# Expected: tailwindcss@3.4.x
 ```
 
-**⚠️ CRÍTICO:** Usar `tailwindcss@3` (NO `@latest`) ya que npm ahora instala v4 por defecto.
+Use `tailwindcss@3`, not `@latest`: npm installs v4 by default.
 
-4. **Auth Provider (Supabase):**
+4. Auth provider (Supabase):
 
 ```bash
-# Supabase clients (versiones estables)
+# Supabase clients (stable versions)
 [pnpm/bun] add @supabase/supabase-js@latest @supabase/ssr@latest
 
-# Verificar versiones instaladas
+# Check the installed versions
 [pnpm/bun] list | grep supabase
-# Esperado:
+# Expected:
 # @supabase/supabase-js@2.x.x
 # @supabase/ssr@0.x.x
 ```
 
-5. **TypeScript + Dev Tools:**
+5. TypeScript and dev tools:
 
 ```bash
 [pnpm/bun] add -D typescript @types/react @types/node eslint prettier
 
-# Si se usa shadcn/ui (opcional):
+# If shadcn/ui is used (optional):
 [pnpm/bun] add -D @types/react-dom
 ```
 
-6. **Validar todas las versiones:**
+6. Validate all the versions:
 
 ```bash
-# Ver versiones de dependencias críticas
+# See the versions of the critical dependencies
 [pnpm/bun] list | grep -E "(next|react|tailwindcss|supabase)"
 ```
 
-**Output esperado:**
+Expected output:
 
 ```markdown
-✅ Dependencias instaladas:
+Dependencies installed:
 
-- next: ^15.x.x ✓
-- react: ^19.x.x ✓
-- tailwindcss: ^3.4.x ✓ (IMPORTANTE: debe ser v3, NO v4)
-- @supabase/ssr: ^0.x.x ✓
-- @supabase/supabase-js: ^2.x.x ✓
+- next: ^15.x.x
+- react: ^19.x.x
+- tailwindcss: ^3.4.x (must be v3, not v4)
+- @supabase/ssr: ^0.x.x
+- @supabase/supabase-js: ^2.x.x
 
-⚠️ Si tailwindcss es 4.x.x:
+If tailwindcss is 4.x.x:
 
-- PROBLEMA: Se instaló v4 por error
-- Solución: [pm] remove tailwindcss && [pm] add -D tailwindcss@3
+- Problem: v4 was installed by mistake
+- Fix: [pm] remove tailwindcss && [pm] add -D tailwindcss@3
 ```
 
----
+### Step 3.3: create the folder structure
 
-### Paso 3.3: Crear Estructura de Carpetas
-
-**Estructura debe incluir:**
+The structure includes:
 
 ```
 [framework-dir]/
@@ -1003,130 +747,112 @@ Antes de instalar, consultar Context7 MCP para versiones actualizadas:
 │   ├── layout/       ← Layout components (Navbar, Sidebar, etc.)
 │   └── [domain]/     ← Domain-specific components
 ├── lib/
-│   ├── types.ts           ← Type helpers sobre src/types/supabase.ts (crear en Fase 0.5)
+│   ├── types.ts           ← Type helpers over src/types/supabase.ts (created in Phase 0.5)
 │   └── utils.ts           ← Utilities (cn function, etc.)
 ```
 
----
+### Step 3.4: configure Tailwind v3 with the custom palette
 
-### Paso 3.4: Configurar Tailwind v3 con Paleta Personalizada
+The traditional configuration lives in `tailwind.config.ts`. For a reference, ask Context7 MCP (optional): "Tailwind CSS v3 Next.js 15 setup configuration".
 
-**Configuración tradicional con tailwind.config.ts**
-
-**🎯 Verificar con Context7 (opcional):**
-
-Si necesitas referencia, consultar Context7 MCP:
-
-- Query: "Tailwind CSS v3 Next.js 15 setup configuration"
-
-**Acción:** Crear archivos de configuración de Tailwind v3.
+Create the Tailwind v3 configuration files:
 
 ```markdown
-### 🎨 Configurando Tailwind v3 (Configuración Tradicional)
+### Configuring Tailwind v3 (traditional configuration)
 
-**Configuración de Tailwind v3:**
+- Uses `tailwind.config.ts` (or `.js`)
+- `content` paths so Tailwind detects the classes
+- `theme` extended with the custom colors
+- Fully compatible with shadcn/ui
 
-- ✅ Usa `tailwind.config.ts` (o `.js`)
-- ✅ Configuración de `content` paths para detección de clases
-- ✅ Extensión de `theme` para colores personalizados
-- ✅ Compatible 100% con shadcn/ui
-
-**Propósito:** Aplicar la paleta de colores de `DESIGN.md` (mapeada en Fase 1.4) a todo el proyecto.
+**Purpose:** apply the `DESIGN.md` palette (mapped in Phase 1.4) to the whole project.
 ```
 
-**Paso 3.4.1: Inicializar configuración de Tailwind**
+Step 3.4.1: initialize the Tailwind configuration
 
 ````markdown
-**Creando archivos de configuración:**
+**Creating the configuration files:**
 
 ```bash
 npx tailwindcss init -p
 ```
 ````
 
-**Archivos creados:**
+Files created:
 
-- `tailwind.config.js` (o renombrar a `.ts`)
+- `tailwind.config.js` (or rename it to `.ts`)
 - `postcss.config.js`
 
-**Paso 3.4.2: Configurar tailwind.config.ts con paleta personalizada**
+Step 3.4.2: configure `tailwind.config.ts` with the custom palette
 
-**Archivo:** `tailwind.config.ts`
+File: `tailwind.config.ts`
 
-**Directiva:**
+Instruction: set the `content` paths so Tailwind finds the files that use it, and extend `theme.extend.colors` with the CSS variables defined in `globals.css`. Use the HSL format for compatibility with shadcn/ui.
 
-Configurar `content` paths para detectar archivos que usan Tailwind, y extender `theme.extend.colors` con CSS variables que se definirán en globals.css. Usar formato HSL para compatibilidad con shadcn/ui.
-
-**Paso 3.4.3: Explicación al usuario**
-
-**Explicación al usuario:**
+Step 3.4.3: explain it to the user
 
 ```markdown
-**✅ Tailwind v3 configurado**
+**Tailwind v3 configured**
 
-**Ventajas de v3 para este proyecto:**
+**Why v3 for this project:**
 
-- ✅ Totalmente compatible con shadcn/ui (sin errores)
-- ✅ Configuración clara y documentada
-- ✅ Stable y probado con Next.js 15
+- Fully compatible with shadcn/ui, with no errors
+- Clear, well-documented configuration
+- Stable and proven with Next.js 15
 
-**Uso en componentes:**
+**Use in components:**
 
-- `bg-primary` → Color principal
-- `text-primary` → Texto en color principal
-- `border-primary` → Borde en color principal
-- `bg-primary/90` → Primary con 90% opacidad
+- `bg-primary`: main color
+- `text-primary`: text in the main color
+- `border-primary`: border in the main color
+- `bg-primary/90`: primary at 90% opacity
 
-**Próximo paso:** Configurar estilos globales con la paleta.
+**Next step:** configure the global styles with the palette.
 ```
 
----
-
-### Paso 3.5: Configurar Archivo de Estilos Globales con Tailwind v3
-
-**Sintaxis tradicional de Tailwind v3:**
+### Step 3.5: configure the global styles file (Tailwind v3)
 
 ```markdown
-### 🎨 Creando Estilos Globales (Tailwind v3)
+### Creating the global styles (Tailwind v3)
 
-**Archivo:** `app/globals.css` (o ubicación según framework)
+**File:** `app/globals.css` (or the location the framework uses)
 
-**Propósito:**
+**Purpose:**
 
-1. Importar directivas de Tailwind v3
-2. Definir CSS variables para paleta de colores
-3. Aplicar estilos base personalizados
+1. Import the Tailwind v3 directives
+2. Define the CSS variables for the color palette
+3. Apply custom base styles
 
-**Creando archivo...**
+**Creating the file...**
 ```
 
-**Directiva:**
+Instruction:
 
-1. Usar directivas tradicionales de v3:
+1. Use the traditional v3 directives:
    - `@tailwind base;`
    - `@tailwind components;`
    - `@tailwind utilities;`
 
-2. Definir CSS variables en `:root` y `.dark`:
-   - Colores en formato HSL: `--background`, `--foreground`, `--primary`, `--secondary`, etc.
+2. Define the CSS variables in `:root` and `.dark`:
+   - Colors in HSL format: `--background`, `--foreground`, `--primary`, `--secondary`, etc.
    - Border radius: `--radius`
-   - Usar formato compatible con shadcn/ui
+   - Use the format shadcn/ui expects
 
-3. En `@layer base`, aplicar estilos base al body
+3. In `@layer base`, apply the base styles to the body
 
-**Nota sobre HSL:**
+Why HSL:
 
 ````markdown
-**¿Por qué HSL?**
+**Why HSL?**
 
-Tailwind v3 + shadcn/ui usan HSL porque:
+Tailwind v3 and shadcn/ui use HSL because it:
 
-- ✅ Compatible con CSS variables
-- ✅ Fácil manipulación de opacidad (ej: `hsl(var(--primary) / 0.9)`)
-- ✅ Totalmente compatible con shadcn/ui
-- ✅ Formato estándar y conocido
+- works with CSS variables
+- makes opacity easy to manipulate (for example `hsl(var(--primary) / 0.9)`)
+- is fully compatible with shadcn/ui
+- is a standard, well-known format
 
-**Ejemplo de CSS variables:**
+**Example CSS variables:**
 
 ```css
 :root {
@@ -1140,92 +866,82 @@ Tailwind v3 + shadcn/ui usan HSL porque:
 
 ---
 
-## 🎨 FASE 4: IMPLEMENTAR DESIGN SYSTEM (COMPONENTES UI)
+## Phase 4: design system components
 
-**Objetivo:** Implementar componentes UI según la estrategia elegida en Fase 1.6.
-
-**ESTA ES LA FASE MÁS IMPORTANTE PARA EL DISEÑO VISUAL**
-
-**Estrategias disponibles:**
-
-- **Opción A:** shadcn/ui (Rápido - instalación CLI)
-- **Opción B:** Componentes desde cero (Manual - implementación completa)
-- **Opción C:** Headless UI + estilos (Híbrido)
-
-**Seguir la sección correspondiente a la estrategia elegida.**
+Implement the UI components for the strategy chosen in Phase 1.6. This phase sets the visual quality of everything built afterwards, so give it the time. Follow only the option section that matches the strategy: A (shadcn/ui), B (from scratch) or C (Headless UI). The common steps after them apply to all three.
 
 ---
 
-## 📦 OPCIÓN A: IMPLEMENTAR CON SHADCN/UI
+## Option A: shadcn/ui
 
-**Usar SOLO si el usuario eligió "shadcn/ui" en Fase 1.6**
+Use this section only when the user chose "shadcn/ui" in Phase 1.6.
 
-### Paso 4A.1: Verificar Herramientas MCP y Compatibilidad
+### Step 4A.1: check tools and compatibility
 
-**⚠️ RECOMENDACIÓN AL USUARIO:**
+Tell the user the shadcn/ui MCP speeds this up, and continue with or without it. Do not wait for an answer.
 
 ```markdown
-## 💡 Recomendación: MCP shadcn/ui
+## Recommendation: shadcn/ui MCP
 
-**Para desarrollo más rápido y eficiente, activa el MCP de shadcn/ui.**
+The shadcn/ui MCP is optional but makes this phase faster.
 
-Con el MCP:
+With the MCP:
 
-- ✅ Busca componentes por lenguaje natural
-- ✅ Ve opciones disponibles instantáneamente
-- ✅ Acelera implementación 3-5x
+- Components are searched in natural language and the options show up instantly
+- Implementation is roughly 3-5x faster
 
-Sin el MCP:
+Without the MCP:
 
-- ⚠️ Debes buscar componentes manualmente
-- ⚠️ Proceso más lento (pero funciona igual)
+- Components are looked up by hand, which is slower but works the same
 
-**¿Continúo?** (La IA continuará con o sin MCP)
+I will continue with or without it.
 ```
 
-**Verificar compatibilidad (Context7 o shadcn/ui MCP):**
+Check compatibility with Context7 or the shadcn/ui MCP:
 
 ```markdown
-**Query (opcional):** "shadcn/ui Tailwind v3 Next.js 15 compatibility"
+**Query (optional):** "shadcn/ui Tailwind v3 Next.js 15 compatibility"
 
-**Validación esperada:**
+**Expected:**
 
-- ✅ shadcn/ui totalmente compatible con Tailwind v3
-- ✅ Compatible con Next.js 15 + React 19
-- ✅ Sin problemas de validación de CLI
+- shadcn/ui is fully compatible with Tailwind v3
+- Compatible with Next.js 15 + React 19
+- No CLI validation problems
 ```
 
 ---
 
-### Paso 4A.2: Inicializar shadcn/ui
+### Step 4A.2: initialize shadcn/ui
+
+Tell the user:
 
 ````markdown
-## 🎬 Inicializando shadcn/ui CLI
+## Initializing the shadcn/ui CLI
 
-**Comando:**
+**Command:**
 
 ```bash
 [pnpm/bun] dlx shadcn@latest init
 ```
 ````
 
-**Proceso interactivo (responder):**
+Answer the interactive prompts like this:
 
 1. **Would you like to use TypeScript?** → Yes
-2. **Which style would you like to use?** → Default (o New York si prefieres más minimalista)
-3. **Which color would you like to use as base color?** → [Elegir según la paleta de `DESIGN.md`]
-   - Si paleta es azul → Slate o Blue
-   - Si paleta es verde → Green o Emerald
-   - Si paleta es morado → Violet
-   - Si paleta es naranja → Orange
-4. **Where is your global CSS file?** → `app/globals.css` (o según ubicación)
+2. **Which style would you like to use?** → Default (or New York for a more minimal look)
+3. **Which color would you like to use as base color?** → pick from the `DESIGN.md` palette
+   - blue palette: Slate or Blue
+   - green palette: Green or Emerald
+   - purple palette: Violet
+   - orange palette: Orange
+4. **Where is your global CSS file?** → `app/globals.css` (or wherever it is)
 5. **Would you like to use CSS variables for colors?** → Yes
 6. **Are you using a custom tailwind prefix?** → No
-7. **Where is your tailwind.config located?** → `tailwind.config.ts` (o `.js` según tu archivo)
+7. **Where is your tailwind.config located?** → `tailwind.config.ts` (or `.js`, whichever the project has)
 8. **Configure the import alias for components** → `@/components`
 9. **Configure the import alias for utils** → `@/lib/utils`
 
-**Output esperado:**
+Expected output:
 
 ```
 ✔ Writing components.json
@@ -1233,1478 +949,864 @@ Sin el MCP:
 ✔ Created lib/utils.ts
 ```
 
-**Explicar al usuario:**
+Then explain to the user:
 
 ```markdown
-✅ shadcn/ui inicializado
+shadcn/ui initialized.
 
-**Archivos creados:**
+**Files created:**
 
-- `components.json` - Configuración de shadcn/ui
-- `lib/utils.ts` - Utilidad cn() (merge de clases Tailwind)
+- `components.json`: shadcn/ui configuration
+- `lib/utils.ts`: the `cn()` utility (merges Tailwind classes)
 
-**Próximo paso:** Instalar componentes esenciales.
+**Next:** install the essential components.
 ```
 
 ---
 
-### Paso 4A.3: Configurar Colores con la Paleta de DESIGN.md
+### Step 4A.3: apply the `DESIGN.md` palette
 
-**Acción:** Las CSS variables de shadcn/ui ya están configuradas en globals.css.
+`shadcn@latest init` already writes the CSS variables in `:root` and `.dark` of `globals.css`, in an HSL format that works with the Tailwind setup from Phase 3. Adjust only the HSL values to the `DESIGN.md` palette.
 
-**Directiva:**
+Variables to customize:
 
-shadcn/ui CLI crea automáticamente las CSS variables en `:root` y `.dark` cuando ejecutas `shadcn@latest init`. Estas variables ya están en formato HSL compatible. Solo necesitas ajustar los valores HSL según la paleta de `DESIGN.md`.
+- `--primary`: the main color of the palette
+- `--secondary`: the secondary color
+- `--accent`: the accent color
+- `--background`, `--foreground`: background and text colors
 
-**Variables principales a personalizar:**
-
-- `--primary`: Color principal de la paleta elegida
-- `--secondary`: Color secundario
-- `--accent`: Color de acento
-- `--background`, `--foreground`: Colores de fondo y texto
-
-**Resultado:** Componentes shadcn/ui usan automáticamente tu paleta personalizada.
+The shadcn/ui components then use the project palette with no further work.
 
 ---
 
-### Paso 4A.4: Instalar Componentes según Selección del Paso 1.5.2
+### Step 4A.4: install the components the user picked in Step 1.5.2
 
-**Estrategia de instalación:**
-
-**Si usuario tiene MCP shadcn/ui:** Buscar componentes por lenguaje natural según necesidad.
-
-**Si NO tiene MCP:** Instalar con CLI:
+With the shadcn/ui MCP, search components in natural language by need. Without it, install with the CLI:
 
 ```pseudocode
-Comando base: [pm] dlx shadcn@latest add [componente]
+Base command: [pm] dlx shadcn@latest add [component]
 
-Componentes SIEMPRE:
+Always:
   - button, card, label
 
-SI usuario seleccionó "Forms & Inputs" en el Paso 1.5.2:
+IF the user selected "Forms & Inputs" in Step 1.5.2:
   - input, textarea, select, checkbox, radio-group, switch
 
-SI usuario seleccionó "Modals & Dialogs":
+IF the user selected "Modals & Dialogs":
   - dialog, popover, tooltip, sheet
 
-Adicionales recomendados:
+Recommended extras:
   - badge, avatar, separator, skeleton
 ```
 
-**Resultado:** Componentes en `components/ui/`, fully typed, con accesibilidad WAI-ARIA.
+The components land in `components/ui/`, fully typed and with WAI-ARIA accessibility.
 
 ---
 
-### Paso 4A.5: Validar Instalación
+### Step 4A.5: validate the installation
 
-```markdown
-## ✅ Validando instalación de shadcn/ui
-```
-
-**Comando:**
+Tell the user: "Validating the shadcn/ui installation".
 
 ```bash
 ls -la components/ui/
 ```
 
-**Verificar que existen:**
+Check that these exist: `button.tsx`, `card.tsx`, `input.tsx` (if installed) and the other installed components.
 
-- `button.tsx` ✓
-- `card.tsx` ✓
-- `input.tsx` ✓ (si instalado)
-- [otros componentes instalados]
-
-**Comando de build para verificar tipos:**
+Then check types:
 
 ```bash
 [pnpm/bun] run build
 ```
 
-**Esperado:**
-
-- ✅ Sin errores de TypeScript
-- ✅ Componentes compilan correctamente
-- ✅ CSS de Tailwind v3 funciona
-- ✅ shadcn/ui componentes sin errores de CLI
+Expected: no TypeScript errors, the components compile, the Tailwind v3 CSS works and the CLI reported no errors.
 
 ---
 
-## 🔧 OPCIÓN B: IMPLEMENTAR COMPONENTES DESDE CERO
+## Option B: components from scratch
 
-**Usar SOLO si el usuario eligió "Componentes desde cero" en Fase 1.6**
+Use this section only when the user chose "Components from scratch" in Phase 1.6.
 
-### Paso 4B.1: Crear Componente Button (Esencial)
+For each component below, tell the user which file you are creating and what it is for, then write it from the spec and the directive. The directives are prompts for you: the aim is the behaviour and the design rules, so do not paste a canned implementation.
 
-```markdown
-### 🔘 Creando Componente Button
+### Step 4B.1: Button (essential)
 
-**Archivo:** `components/ui/button.tsx`
+**File:** `components/ui/button.tsx`. A reusable button with variants.
 
-**Propósito:** Botón reutilizable con variantes (primary, secondary, outline, ghost, danger).
+- Variants: `primary` (main actions), `secondary` (secondary actions), `outline` (border only, tertiary actions), `ghost` (no background, subtle actions), `danger` (red, destructive actions)
+- Sizes: `sm`, `md` (default), `lg`
+- Palette: the colors from `tailwind.config`
+- Borders: from the `rounded` token of `DESIGN.md`
+- Hover and active states with smooth transitions; a reduced-opacity disabled state
 
-**Variantes a implementar:**
-
-- **primary:** Color principal, para acciones principales
-- **secondary:** Color secundario, para acciones secundarias
-- **outline:** Solo borde, para acciones terciarias
-- **ghost:** Sin fondo, para acciones sutiles
-- **danger:** Rojo, para acciones destructivas
-
-**Tamaños:**
-
-- sm (pequeño)
-- md (mediano - default)
-- lg (grande)
-
-**Diseño aplicado:**
-
-- Paleta: [Usar colores de tailwind.config]
-- Bordes: [Según `rounded` de `DESIGN.md`]
-- Hover/Active states: [Transiciones suaves]
-- Disabled state: [Opacidad reducida]
-
-**Creando componente...**
-```
-
-**Directiva para la IA (NO hardcodear código completo):**
-
-"Crea un componente Button usando TypeScript + TailwindCSS que implemente las variantes mencionadas. Usa `class-variance-authority` (cva) para gestionar variantes de forma limpia. Aplica la paleta de colores de `tailwind.config.ts` y el estilo de bordes/sombras según `DESIGN.md`. Incluye estados de hover, active, focus y disabled."
+Directive: "Create a Button component with TypeScript and TailwindCSS that implements the variants above. Use `class-variance-authority` (cva) to manage the variants cleanly. Apply the palette from `tailwind.config.ts` and the border and shadow style from `DESIGN.md`. Include hover, active, focus and disabled states."
 
 ---
 
-### Paso 4.2: Crear Componente Card (Esencial)
+### Step 4B.2: Card (essential)
 
-```markdown
-### 🃏 Creando Componente Card
+**File:** `components/ui/card.tsx`. A reusable container for grouped information.
 
-**Archivo:** `components/ui/card.tsx`
+- Variants: `default` (border or shadow), `hover` (lifts slightly), `clickable` (pointer cursor plus the hover effect)
+- Parts: `CardHeader`, `CardContent`, `CardFooter`
+- Shadow, borders and padding follow the visual style of `DESIGN.md`; the background is `bg-card` from the theme
 
-**Propósito:** Contenedor reutilizable para mostrar información agrupada.
-
-**Variantes a implementar:**
-
-- **default:** Card básica con borde/sombra
-- **hover:** Con efecto hover (sube ligeramente)
-- **clickable:** Con cursor pointer y hover effect
-
-**Partes del componente:**
-
-- CardHeader
-- CardContent
-- CardFooter
-
-**Diseño aplicado:**
-
-- Sombra: [Según estilo visual]
-- Bordes: [Según estilo visual]
-- Padding: [Generoso/Compacto según estilo]
-- Background: bg-card (definido en theme)
-
-**Creando componente...**
-```
-
-**Directiva para la IA:**
-
-"Crea un componente Card con sub-componentes (Header, Content, Footer) usando TailwindCSS. Aplica sombras y bordes según `DESIGN.md` (tokens y prosa de estilo); si no define sombras, usa sombras sutiles."
+Directive: "Create a Card component with sub-components (Header, Content, Footer) using TailwindCSS. Apply shadows and borders as `DESIGN.md` says (tokens and style prose); if it defines no shadows, use subtle ones."
 
 ---
 
-### Paso 4.3: Crear Componentes de Formulario (Si aplica)
+### Step 4B.3: form components (only if the user selected "Forms & Inputs" in Step 1.5.2)
 
-**Solo si el usuario seleccionó "Forms & Inputs" en el Paso 1.5.2:**
+**Files:** `components/ui/input.tsx`, `components/ui/textarea.tsx`, `components/ui/select.tsx`, `components/ui/label.tsx`. Styled inputs with visible validation states.
 
-```markdown
-### 📝 Creando Componentes de Formulario
+- States: normal, focus (primary border), error (red border plus message), disabled, success (green border, optional)
+- Borders follow the visual style; the focus ring uses the primary color; the placeholder uses `text-muted-foreground`
+- Height of at least 40px so they are comfortable to tap
 
-**Archivos:**
-
-- `components/ui/input.tsx`
-- `components/ui/textarea.tsx`
-- `components/ui/select.tsx`
-- `components/ui/label.tsx`
-
-**Propósito:** Inputs estilizados con estados de validación visual.
-
-**Estados a implementar:**
-
-- Normal
-- Focus (borde primary)
-- Error (borde rojo + mensaje)
-- Disabled
-- Success (borde verde - opcional)
-
-**Diseño aplicado:**
-
-- Bordes: [Según estilo visual]
-- Focus ring: Color primary
-- Placeholder: text-muted-foreground
-- Height: Cómodo para tocar (min 40px)
-
-**Creando componentes...**
-```
-
-**Directiva para la IA:**
-
-"Crea componentes de formulario (Input, Textarea, Select, Label) con estados de validación visual. Usa Tailwind para estilos. Aplica bordes redondeados según estilo visual. Include focus states con ring-primary. Para errores, usa text-red-500 y border-red-500."
+Directive: "Create form components (Input, Textarea, Select, Label) with visible validation states. Use Tailwind for the styles and rounded borders from the visual style. Include focus states with `ring-primary`. For errors use `text-red-500` and `border-red-500`."
 
 ---
 
-### Paso 4.4: Crear Modal/Dialog (Si aplica)
+### Step 4B.4: Modal (only if the user selected "Modals & Dialogs")
 
-**Solo si el usuario seleccionó "Modals & Dialogs":**
+**File:** `components/ui/modal.tsx`. A reusable modal for confirmations, details and forms.
 
-```markdown
-### 🗨️ Creando Componente Modal
+- Parts: overlay (`bg-black/50`), centered content (`bg-card` with a large shadow), header, body, footer with buttons
+- Behaviour: a click outside closes it, so does the ESC key, with a smooth fade in and out
+- Rounded corners from the style, responsive max width
 
-**Archivo:** `components/ui/modal.tsx`
-
-**Propósito:** Modal reutilizable para confirmaciones, detalles, formularios.
-
-**Partes:**
-
-- Modal overlay (backdrop oscuro)
-- Modal content (centered)
-- Modal header
-- Modal body
-- Modal footer (botones)
-
-**Funcionalidad:**
-
-- Click fuera → cierra modal
-- ESC key → cierra modal
-- Animaciones suaves (fade in/out)
-
-**Diseño aplicado:**
-
-- Backdrop: bg-black/50
-- Content: bg-card con sombra grande
-- Bordes redondeados según estilo
-- Max width responsivo
-
-**Creando componente...**
-```
-
-**Directiva para la IA:**
-
-"Crea un componente Modal con overlay y animaciones. Usa Radix UI o Headless UI si está disponible, sino implementa con estado React. Aplica animaciones suaves (transition-all duration-200). Include lógica para cerrar con ESC o click fuera. Usa la paleta de colores del theme."
+Directive: "Create a Modal component with an overlay and animations. Use Radix UI or Headless UI if available, otherwise plain React state. Use smooth transitions (`transition-all duration-200`). Close on ESC and on a click outside. Use the theme palette."
 
 ---
 
-## 🎭 OPCIÓN C: IMPLEMENTAR CON HEADLESS UI
+## Option C: Headless UI
 
-**Usar SOLO si el usuario eligió "Headless UI" en Fase 1.6**
+Use this section only when the user chose "Headless UI" in Phase 1.6.
 
-### Paso 4C.1: Instalar Headless UI
+### Step 4C.1: install Headless UI
 
 ```bash
 [pm] add @headlessui/react
 ```
 
-**Verificar:** `@headlessui/react@2.x.x`
+Verify `@headlessui/react@2.x.x`.
 
 ---
 
-### Paso 4C.2: Crear Componentes Híbridos
+### Step 4C.2: build the hybrid components
 
-**Estrategia:** Headless UI para lógica/accesibilidad + Tailwind para estilos.
+Headless UI supplies logic and accessibility; Tailwind supplies the styles.
 
-**Componentes con Headless UI:**
-
-- Dialog, Listbox (Select), Menu (Dropdown), Popover
-- Tabs, Switch, Disclosure (Accordion), Radio Group
-- Combobox (Autocomplete), Transition (animaciones)
-
-**Componentes manuales simples:**
-
-- Button, Card, Input, Badge, Avatar (sin lógica compleja)
-
-**Directiva para la IA:**
+- Built on Headless UI: Dialog, Listbox (Select), Menu (Dropdown), Popover, Tabs, Switch, Disclosure (Accordion), Radio Group, Combobox (Autocomplete), Transition (animations)
+- Built by hand because they have no complex logic: Button, Card, Input, Badge, Avatar
 
 ```pseudocode
-Para componentes con Headless UI:
-  1. Importar componente de @headlessui/react
-  2. Crear wrapper que aplique estilos Tailwind según la paleta de `DESIGN.md`
-  3. Incluir transiciones suaves con <Transition>
-  4. Exportar API simple
+For Headless UI components:
+  1. Import the component from @headlessui/react
+  2. Write a wrapper that applies Tailwind styles from the `DESIGN.md` palette
+  3. Add smooth transitions with <Transition>
+  4. Export a simple API
 
-Para componentes simples:
-  Crear manualmente con Tailwind (ver Opción B)
+For simple components:
+  Build by hand with Tailwind (see Option B)
 ```
 
-**Resultado:** Balance entre rapidez (lógica pre-hecha) y customización (estilos propios).
+The result balances speed (the logic is ready-made) with customization (the styles are yours).
 
 ---
 
-## 🛠️ COMÚN A TODAS LAS OPCIONES
+## Common to all options
 
-**Los siguientes pasos aplican sin importar la estrategia elegida:**
+### Step 4D.1: the `cn()` utility (essential)
 
----
-
-### Paso 4.5: Crear Utilidad cn() (Esencial)
-
-**Archivo:** `lib/utils.ts`
-
-**Propósito:** Combinar clases Tailwind inteligentemente (merge + conditional).
-
-**Directiva:** Crear función `cn()` usando `clsx` + `tailwind-merge` que permita merge condicional de clases.
-
-**Nota:** shadcn/ui crea esto automáticamente. Si hiciste Opción B o C, créalo manualmente.
+**File:** `lib/utils.ts`. A `cn()` function built with `clsx` + `tailwind-merge` that merges Tailwind classes conditionally. shadcn/ui creates it automatically; with Option B or C, create it by hand.
 
 ---
 
-### Paso 4.6: Resumen de Design System
+### Step 4D.2: design system summary
+
+Tell the user:
 
 ```markdown
-## ✅ Design System Creado
+## Design system created
 
-**Componentes UI implementados:**
+**UI components implemented:**
 
-- ✅ Button (5 variantes + 3 tamaños)
-- ✅ Card (con Header, Content, Footer)
-  [Listar otros componentes creados según selección]
+- Button (5 variants, 3 sizes)
+- Card (with Header, Content, Footer)
+  [list the other components created]
 
-**Paleta aplicada:**
+**Palette applied:**
 
-- Primary: [Color] - Usado en botones primarios, links, focus states
-- Secondary: [Color] - Usado en botones secundarios, elementos secundarios
-- Accent: [Color] - Usado en highlights, badges
+- Primary: [color], used in primary buttons, links and focus states
+- Secondary: [color], used in secondary buttons and elements
+- Accent: [color], used in highlights and badges
 
-**Estilo visual aplicado:**
+**Visual style applied:**
 
-- Bordes: [Descripción]
-- Sombras: [Descripción]
-- Espaciado: [Descripción]
-- Tipografía: [Descripción]
+- Borders: [description]
+- Shadows: [description]
+- Spacing: [description]
+- Typography: [description]
 
-**Archivos creados:**
+**Files created:**
 
 - `components/ui/button.tsx`
 - `components/ui/card.tsx`
-  [Listar otros]
+  [list the others]
 - `lib/utils.ts`
 
-**Próximo paso:** Crear componentes de layout (Navbar, Sidebar si aplica).
+**Next:** the layout components (Navbar, and Sidebar if it applies).
 ```
 
 ---
 
-## 🧱 FASE 4.5: CREAR COMPONENTES DE LAYOUT
+## Phase 4.5: layout components
 
-**Objetivo:** Crear Navbar, Sidebar (si aplica), y Layout principal según decisión de Fase 1.5.
+Create the Navbar, the Sidebar (if it applies) and the main layout, following the layout chosen in Phase 1.5. As in Option B, tell the user which file you create and why.
+
+### Step 4.5.1: Navbar / Header
+
+**File:** `components/layout/navbar.tsx`. The top navigation bar.
+
+- Content: logo or project name (from the PRD), navigation links (from the Phase 2 pages), a user menu (avatar plus dropdown when there is auth), a CTA button if the business needs one
+- Design: comfortable height (60-70px), `bg-card` or transparent depending on the style, a subtle bottom border, sticky positioning, a soft shadow if the style uses one
+- Responsive: links inline on desktop, a hamburger menu on mobile when there are many links
+
+Directive: "Create a responsive Navbar component. On desktop show the links inline; on mobile show a hamburger menu. Use the Button component of the design system. Apply `bg-card/50` with `backdrop-blur` when the style is Modern/Bold. Include the user avatar when there is authentication. Read the PRD/PBI to find the project's main navigation sections and use those domain-specific names."
 
 ---
 
-### Paso 4.5.1: Crear Navbar/Header
+### Step 4.5.2: Sidebar (only if the layout includes one)
+
+**File:** `components/layout/sidebar.tsx`. Side navigation, fixed or collapsible.
+
+- Content: logo or name at the top, navigation links with icons (`lucide-react` is the recommended icon library), an active state, and a collapse button when it is collapsible
+- Design: 256px expanded and 64px collapsed, `bg-card` or `bg-muted` depending on the style, a subtle right border
+- States: active link `bg-primary/10` + `text-primary`; hover `bg-accent/50`; focus `ring-primary`
+
+Directive: "Create a Sidebar component with collapsed/expanded state if it is collapsible. Use `lucide-react` for icons. Apply hover and active states with the primary palette. When collapsed, show only icons. Read the PRD/PBI to find the project's main sections and entities, and name the navigation items with that domain vocabulary."
+
+---
+
+### Step 4.5.3: main layout
+
+**File:** `components/layout/main-layout.tsx`, or directly `app/(app)/layout.tsx`. It combines the Navbar, the Sidebar (if it applies) and the content area, in the structure chosen in Phase 1.5:
+
+- "Sidebar + Top Navbar": Navbar on top at full width, Sidebar fixed on the left, main content offset by the sidebar width
+- "Top Navbar only": Navbar on top, main content at full width below it
+- "Collapsible Sidebar": like "Sidebar + Top Navbar", but the sidebar collapses and its state is saved in `localStorage`
+
+Main content gets adequate padding, transitions are smooth when the sidebar collapses, and on mobile the sidebar becomes a drawer.
+
+Directive: "Create the Main Layout component that uses the Navbar and the Sidebar (if it applies) and implements the layout chosen in Phase 1.5. For a Collapsible Sidebar, add the toggle with its state in `localStorage`. Below 768px the sidebar becomes a mobile drawer that closes automatically on navigation. Use smooth transitions (`transition-all duration-200`)."
+
+---
+
+## Phase 5: strategic demo pages
+
+Build the pages selected in Phase 2, with real design from the design system. Generic, unstyled pages defeat the purpose of this phase, so each page uses the design system components and the `DESIGN.md` palette.
+
+### Step 5.1: login page (if the project needs auth)
+
+**Route:** `/login` (or the framework equivalent).
+
+Design:
+
+- A centered layout (`min-h-screen flex items-center justify-center`) with the design system Card
+- Logo or project name (from the PRD), a form built with the design system Input components, a primary Button for "Sign in", a "Forgot password?" link if it applies
+- Background: a subtle gradient or a solid color depending on the style
+- Palette: Card `bg-card` with a shadow, inputs `border-border` with `focus:ring-primary`, Button `variant="default"`
+
+The page works for real, it is not a mock: complete UI, visible validation (error states in inputs), a loading state on the button, real Supabase Auth integration (`signInWithPassword`), real error handling (wrong credentials and the like), and an automatic redirect to the dashboard or home after a successful login.
+
+Directive: "Create a FUNCTIONAL login page with Supabase Auth. Use the Card component to hold the form and the design system Input and Button. Include the logo (the project name from the PRD). Use a subtle gradient background (for example `bg-gradient-to-br from-primary/5 to-secondary/5`).
+
+Show the demo credentials in an Alert or Banner visible in the UI:
+
+- Email: infer it from the PRD context (for example `admin@company.com`, `demo@product.com`)
+- Password: suggest a demo password (for example `Demo123!`)
+
+Implementation: use `supabase.auth.signInWithPassword()` from the Supabase client; show error states with the API's real messages; a loading spinner while authenticating; redirect to `/` or `/dashboard` (by context) after a successful login; handle 'Invalid credentials', 'Network error' and similar."
+
+The demo credentials shown in the UI have to match a real user created in Supabase during backend setup. If no such user exists, tell the user to create one (nobody present: say so in the report).
+
+---
+
+### Step 5.1.5: route-protection middleware
+
+Only if Step 5.1 implemented auth. Without this middleware the login page protects nothing.
+
+**File:** `middleware.ts`, at the project root next to `package.json`. It protects private routes and redirects unauthenticated users to the login.
+
+Directive: "Create `middleware.ts` at the project root that:
+
+1. Verifies the active session using `@supabase/ssr` with `createServerClient`.
+2. Protects private routes: read the PRD/PBI to find which routes need authentication (typically `/dashboard`, `/[main-entity]`, `/profile`) and leave public routes open (`/`, `/login`, `/signup`, marketing routes). For a SaaS or dashboard, protect the dashboard and the main functionality; for eCommerce, checkout, profile and orders; for a platform, the user or workspace area.
+3. Redirects: an unauthenticated user reaching a protected route goes to `/login`; an authenticated user reaching `/login` goes to `/dashboard` or `/` (by context).
+4. Refreshes the session when needed (Supabase `updateSession`).
+
+Configure `config.matcher` so the middleware only runs on routes that need it and skips static assets (`_next/static`, `_next/image`, `favicon.ico`)."
+
+Then tell the user:
 
 ```markdown
-### 🔝 Creando Navbar/Header
+**Auth middleware implemented**
 
-**Archivo:** `components/layout/navbar.tsx`
+**Protected routes:**
+[list the protected routes for this project]
 
-**Propósito:** Barra de navegación superior.
+**Flow:**
 
-**Elementos a incluir:**
+1. A user tries to open `/dashboard` (protected)
+2. The middleware checks the Supabase session
+3. Not authenticated: redirect to `/login`
+4. Authenticated: access allowed
 
-- Logo/Nombre del proyecto (del PRD)
-- Links de navegación (según páginas de Fase 2)
-- User menu (avatar + dropdown si hay auth)
-- CTA button (si aplica según negocio)
+**Public routes:**
 
-**Diseño aplicado:**
+- `/`: landing page
+- `/login`: login page
+- [other public routes for this project]
 
-- Height: [Cómoda - 60-70px]
-- Background: [bg-card o transparente según estilo]
-- Border bottom: [Sutil]
-- Sticky positioning
-- Sombra suave (si aplica según estilo)
-
-**Responsivo:**
-
-- Desktop: Links visibles
-- Mobile: Hamburger menu (si muchos links)
-
-**Creando componente...**
-```
-
-**Directiva para la IA:**
-
-"Crea un Navbar component responsive. En desktop muestra links inline, en mobile muestra hamburger menu. Usa el Button component del design system. Aplica bg-card/50 con backdrop-blur para efecto moderno si el estilo es 'Moderno/Bold'. Include user avatar si hay autenticación. Analiza el PRD/PBI para identificar las secciones principales de navegación del proyecto y usa esos nombres específicos del dominio de negocio."
-
----
-
-### Paso 4.5.2: Crear Sidebar (Solo si se eligió en Fase 1.5)
-
-**Solo si layout incluye Sidebar:**
-
-```markdown
-### 📂 Creando Sidebar
-
-**Archivo:** `components/layout/sidebar.tsx`
-
-**Propósito:** Navegación lateral (fija o collapsible).
-
-**Elementos a incluir:**
-
-- Logo/Nombre (top)
-- Navigation links (con iconos)
-- Active state (highlight)
-- Collapse button (si es collapsible)
-
-**Diseño aplicado:**
-
-- Width: 256px (expanded), 64px (collapsed)
-- Background: [bg-card o bg-muted según estilo]
-- Border right: [Sutil]
-- Iconos: [Biblioteca de iconos - lucide-react recomendado]
-
-**Estados:**
-
-- Active link: bg-primary/10 + text-primary
-- Hover: bg-accent/50
-- Focus: ring-primary
-
-**Creando componente...**
-```
-
-**Directiva para la IA:**
-
-"Crea un Sidebar component con estado de collapsed/expanded si es collapsible. Usa lucide-react para iconos. Aplica hover y active states usando la paleta primary. Si es collapsible, muestra solo iconos cuando está collapsed. Analiza el PRD/PBI para identificar las secciones y entidades principales del proyecto, y crea los navigation items usando esa nomenclatura específica del dominio de negocio."
-
----
-
-### Paso 4.5.3: Crear Layout Principal
-
-```markdown
-### 🏗️ Creando Layout Principal
-
-**Archivo:** `components/layout/main-layout.tsx` o directamente en `app/(app)/layout.tsx`
-
-**Propósito:** Layout que combina Navbar, Sidebar (si aplica), y área de contenido.
-
-**Estructura según decisión de Fase 1.5:**
-
-[Si es "Sidebar + Top Navbar":]
-
-- Navbar en top (full width)
-- Sidebar en left (fixed)
-- Main content (offset by sidebar width)
-
-[Si es "Solo Top Navbar":]
-
-- Navbar en top
-- Main content (full width debajo)
-
-[Si es "Sidebar Collapsible":]
-
-- Similar a "Sidebar + Top Navbar" pero sidebar puede collapsar
-- Estado guardado en localStorage
-
-**Diseño aplicado:**
-
-- Main content: padding adecuado
-- Smooth transitions cuando sidebar colapsa
-- Responsive: en mobile sidebar se convierte en drawer
-
-**Creando layout...**
-```
-
-**Directiva para la IA:**
-
-"Crea el Main Layout component que use Navbar y Sidebar (si aplica). Implementa el layout elegido en Fase 1.5. Si es Sidebar Collapsible, agrega lógica de toggle con estado en localStorage. En mobile (< 768px), sidebar se convierte en mobile drawer que se cierra automáticamente al navegar. Usa smooth transitions (transition-all duration-200)."
-
----
-
-## 📄 FASE 5: IMPLEMENTAR PÁGINAS ESTRATÉGICAS CON DISEÑO
-
-**Objetivo:** Crear las páginas seleccionadas en Fase 2, pero ahora con DISEÑO REAL usando el design system.
-
-### ⚠️ CAMBIO CRÍTICO vs Versión Anterior:
-
-**❌ Antes:** Páginas genéricas, sin estilo, aburridas
-**✅ Ahora:** Páginas BONITAS usando componentes del design system
-
----
-
-### Paso 5.1: Crear Página de Autenticación (si aplica)
-
-**Si el proyecto requiere auth:**
-
-```markdown
-### 🔐 Creando Página de Login
-
-**Ruta:** `/login` (o según framework)
-**Archivo:** [Ubicación según framework]
-
-**Diseño a implementar:**
-
-- Layout centrado (min-h-screen flex items-center justify-center)
-- Card component del design system
-- Logo/Nombre del proyecto (del PRD)
-- Form con Input components del design system
-- Button primary para "Sign in"
-- Link para "Forgot password?" (si aplica)
-- Background: [Gradiente sutil o color sólido según estilo]
-
-**Funcionalidad REAL (NO moqueada):**
-
-- ✅ UI completa y bonita
-- ✅ Validación visual (error states en inputs)
-- ✅ Loading state en botón
-- ✅ **Integración REAL con Supabase Auth** (signInWithPassword)
-- ✅ **Manejo de errores reales** (credenciales incorrectas, etc.)
-- ✅ **Redirección automática** al dashboard/home tras login exitoso
-- ✅ **Credenciales demo visibles en la UI** para testing
-
-**Paleta aplicada:**
-
-- Card: bg-card con sombra
-- Inputs: border-border, focus:ring-primary
-- Button: variant="default" (primary)
-
-**Creando página...**
-```
-
-**Directiva para la IA:**
-
-"Crea página de login FUNCIONAL con Supabase Auth. Usa Card component para contener el formulario. Usa Input y Button del design system. Include Logo (usa nombre del proyecto del PRD). Background con gradiente sutil (ej: bg-gradient-to-br from-primary/5 to-secondary/5).
-
-**CRÍTICO - Credenciales Demo:**
-Agrega un Alert/Banner visible en la UI que muestre las credenciales de prueba:
-
-- Email: [inferir del contexto del PRD - ej: admin@empresa.com, demo@producto.com]
-- Password: [sugerir password de demo - ej: Demo123!]
-
-**Implementación:**
-
-- Usa `supabase.auth.signInWithPassword()` del cliente Supabase
-- Include estados de error REALES con mensajes del API
-- Loading spinner durante autenticación
-- Redirect a '/' o '/dashboard' (según contexto) tras login exitoso
-- Manejo de errores: 'Invalid credentials', 'Network error', etc."
-
-**Nota importante:**
-Las credenciales demo mostradas en la UI deben coincidir con un usuario real creado en Supabase durante backend-setup, o indicar al usuario que las cree.
-
----
-
-### Paso 5.1.5: Implementar Middleware de Next.js para Proteger Rutas
-
-**CRÍTICO - Solo si se implementó auth en Paso 5.1:**
-
-```markdown
-### 🛡️ Creando Middleware de Protección de Rutas
-
-**Archivo:** `middleware.ts` (en la raíz del proyecto, mismo nivel que `package.json`)
-
-**Propósito:** Proteger rutas privadas y redirigir usuarios no autenticados al login.
-
-**Creando middleware...**
-```
-
-**Directiva para la IA:**
-
-"Crea archivo `middleware.ts` en la raíz del proyecto que:
-
-**Funcionalidad:**
-
-1. **Verificar sesión activa** usando `@supabase/ssr` con `createServerClient`
-2. **Proteger rutas privadas:**
-   - Analizar el PRD/PBI para identificar qué rutas necesitan autenticación
-   - Típicamente: `/dashboard`, `/[entidad-principal]`, `/profile`, etc.
-   - Dejar públicas: `/`, `/login`, `/signup`, rutas de marketing
-3. **Redirecciones automáticas:**
-   - Si usuario NO autenticado intenta acceder ruta protegida → Redirect a `/login`
-   - Si usuario autenticado intenta acceder `/login` → Redirect a `/dashboard` o `/` (según contexto)
-4. **Refrescar sesión** si es necesario (updateSession de Supabase)
-
-**Configuración del matcher:**
-
-- Usar `config.matcher` para optimizar performance
-- Solo ejecutar middleware en rutas que lo necesiten
-- Excluir assets estáticos (\_next/static, \_next/image, favicon.ico)
-
-**Basarse en contexto:**
-
-- Identificar del PRD/PBI cuáles son las páginas privadas del proyecto
-- Si es SaaS/Dashboard → Proteger dashboard y funcionalidades principales
-- Si es eCommerce → Proteger checkout, perfil, órdenes
-- Si es plataforma → Proteger área de usuario/workspace"
-
-**Explicación al usuario:**
-
-```markdown
-**✅ Middleware de Auth implementado**
-
-**Rutas protegidas:**
-[Listar las rutas protegidas según el contexto del proyecto]
-
-**Flujo de autenticación:**
-
-1. Usuario intenta acceder `/dashboard` (protegida)
-2. Middleware verifica sesión de Supabase
-3. Si NO autenticado → Redirect a `/login`
-4. Si autenticado → Permite acceso
-
-**Rutas públicas:**
-
-- `/` - Landing page
-- `/login` - Página de login
-- [Otras rutas públicas según contexto]
-
-**Próximo paso:** Implementar páginas principales del proyecto.
+**Next:** build the project's main pages.
 ```
 
 ---
 
-### Paso 5.2: Crear Landing Page "/" (si aplica al negocio)
+### Step 5.2: landing page `/` (only if the business needs one)
 
-**⚠️ CRÍTICO - Leer esto primero:**
+First decide whether the project needs a landing page, from the PRD, the PBI and the idea.
 
-```markdown
-## 🏠 Decisión: ¿Necesita Landing Page?
+It needs one when:
 
-**Analiza el PRD/PBI/idea para determinar:**
+- it is a B2C product
+- it is a SaaS with public marketing
+- it is a platform that has to attract users
+- it is an eCommerce
+- the PRD mentions "landing page", "marketing" or user acquisition
 
-**SÍ necesita Landing Page** si:
+It does not need one when:
 
-- ✅ Es producto B2C (consumidores)
-- ✅ Es SaaS con marketing público
-- ✅ Es plataforma que requiere captación de usuarios
-- ✅ Es eCommerce
-- ✅ PRD menciona "landing page", "marketing", "captación"
+- it is an internal or corporate dashboard
+- it is a tool only for authenticated users
+- the user says they do not need one
+- the PRD only describes internal functionality
 
-**NO necesita Landing Page** si:
+If it does not apply, skip to Step 5.3.
 
-- ❌ Es dashboard interno/corporativo
-- ❌ Es herramienta solo para usuarios autenticados
-- ❌ Usuario explícitamente dice "no necesito landing"
-- ❌ PRD solo describe funcionalidades internas
+If it does, build it at `app/page.tsx` (or the framework equivalent). The copy is real, never generic filler: draw it from `.context/business/` (the problem and the proposed solution), `.context/PRD/executive-summary.md` (the value proposition), `.context/PRD/user-personas.md` (who it targets) and `.context/PRD/mvp-scope.md` (the main features).
 
-**Si NO aplica:** Salta al Paso 5.3 (páginas core del dominio).
-```
+Structure:
 
----
+1. **Hero** (above the fold): the headline is the main value proposition from the PRD, the subheadline explains the problem it solves in one line, a primary CTA button (for example "Get started free", "See the demo", "Sign up"), a visual (illustration, screenshot or a relevant icon as placeholder), and optional social proof (badges, short testimonials)
+2. **Features**: 3-6 main features taken from the PBI epics, each with an icon, a title and a short description, in a responsive grid of 2 or 3 columns, with the chosen palette
+3. **How it works / Benefits** (optional): 3 simple steps, or the key benefits
+4. **Closing CTA**: repeat the main CTA with a short motivating message and a prominent button (`variant="default"`)
+5. **Footer**: basic links (Contact, Terms, Privacy), copyright, social networks if it applies
 
-**Si SÍ necesita Landing Page, continuar:**
+Directive: "This is the face of the product, so make it professional and good-looking.
 
-```markdown
-### 🚀 Creando Landing Page (/)
+Copy:
 
-**Ruta:** `/` (root del sitio)
-**Archivo:** `app/page.tsx` (o según framework)
+1. Read `.context/PRD/executive-summary.md` and extract the real value proposition.
+2. Read `.context/business/README.md` to understand the problem and the solution.
+3. Read `.context/PRD/mvp-scope.md` and identify the 3-6 main features.
+4. Avoid generic phrases such as 'Welcome to our platform' or 'The best solution'.
+5. Use the project's domain vocabulary (real names, specific terms).
 
-**⭐ MUY IMPORTANTE - Content Writing Real:**
+Design:
 
-**NO uses texto genérico.** Todo el contenido debe basarse en:
+- Hero with a background gradient from the chosen palette (for example `bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10`)
+- Headline `text-4xl md:text-6xl font-bold`
+- Features grid `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8`, each feature card with the design system hover effect
+- CTA buttons `variant='default'` at size `lg`
+- Generous section padding `py-16 md:py-24`
+- The chosen visual personality (Minimalist, Bold, Corporate or Playful)
 
-- `.context/business/` → Problema que resuelve, solución propuesta
-- `.context/PRD/executive-summary.md` → Propuesta de valor
-- `.context/PRD/user-personas.md` → A quién va dirigido
-- `.context/PRD/mvp-scope.md` → Features principales
-
-**Estructura de Landing Page:**
-
-1. **Hero Section** (Above the fold)
-   - **Headline:** Propuesta de valor principal (extraída del PRD)
-   - **Subheadline:** Explicación breve del problema que resuelve
-   - **CTA Primary:** Botón principal (ej: "Comenzar gratis", "Ver demo", "Registrarse")
-   - **Hero Visual:** Ilustración/imagen/screenshot del producto (placeholder o ícono relevante)
-   - **Social Proof (opcional):** Badges, testimonios breves
-
-2. **Features Section**
-   - **3-6 features principales** (extraídas de las épicas del PBI)
-   - Cada feature: Ícono + Título + Descripción breve
-   - Usar Grid responsive (2 o 3 columnas)
-   - Aplicar paleta de colores elegida
-
-3. **How It Works / Benefits** (opcional según negocio)
-   - 3 pasos simples de cómo funciona
-   - O beneficios clave del producto
-
-4. **CTA Section** (Final)
-   - Repetir CTA principal
-   - Mensaje motivacional
-   - Botón destacado (variant="default" del design system)
-
-5. **Footer**
-   - Links básicos (Contacto, Términos, Privacidad)
-   - Copyright
-   - Redes sociales (si aplica)
-
-**Creando landing page...**
-```
-
-**Directiva para la IA:**
-
-"**CRÍTICO:** Esta es la cara del producto. Debe ser HERMOSA y PROFESIONAL.
-
-**Content Writing:**
-
-1. Lee `.context/PRD/executive-summary.md` - Extrae la propuesta de valor REAL
-2. Lee `.context/business/README.md` - Entiende el problema y solución
-3. Lee `.context/PRD/mvp-scope.md` - Identifica las 3-6 features principales
-4. **NO uses frases genéricas** como 'Bienvenido a nuestra plataforma', 'La mejor solución'
-5. **USA el vocabulario del dominio** del proyecto (nombres reales, términos específicos)
-
-**Diseño:**
-
-- Hero con gradiente de fondo usando paleta elegida (ej: `bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10`)
-- Headline: `text-4xl md:text-6xl font-bold` aplicando paleta
-- Features grid: `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8`
-- Cada feature card con hover effect del design system
-- CTA buttons con `variant='default'` (primary) y tamaño `lg`
-- Secciones con padding generoso: `py-16 md:py-24`
-- Aplicar personalidad visual elegida (Minimalista/Bold/Corporativo/Playful)
-
-**Componentes a usar:**
-
-- Button del design system
-- Card para features (opcional)
-- Iconos de lucide-react relevantes al dominio
-
-**Resultado esperado:**
-Una landing page que se vea profesional, moderna, y que comunique claramente el valor del producto usando contenido REAL extraído del contexto del proyecto."
+Components: the design system Button, Card for features (optional) and `lucide-react` icons that fit the domain."
 
 ---
 
-### Paso 5.3: Crear Dashboard/Página Principal (si aplica)
+### Step 5.3: dashboard / main page (only if the project needs a post-login home)
 
-**Solo si el proyecto requiere una página principal post-login:**
+**Route:** `/dashboard`, or `/` when there is no landing page.
 
-````markdown
-### 🏠 Creando Dashboard/Página Principal
-
-**Ruta:** `/dashboard` o `/` (según si hay landing page)
-**Archivo:** [Ubicación según framework]
-
-**Diseño a implementar:**
-
-**Pseudocódigo para decidir layout:**
+Pick the layout from the PBI epics:
 
 ```pseudocode
-Analizar épicas del PBI:
-  Identificar ENTIDAD_PRINCIPAL del dominio
+Analyze the PBI epics:
+  Identify the MAIN_ENTITY of the domain
 
-  SI épica principal muestra listado de [ENTIDAD]:
-    Crear: Grid de [ENTIDAD] cards (responsive, hover effects)
+  IF the main epic shows a list of [ENTITY]:
+    Build: grid of [ENTITY] cards (responsive, hover effects)
 
-  SI épica principal muestra estadísticas:
-    Crear: Dashboard con stats cards (métricas del PRD)
+  IF the main epic shows statistics:
+    Build: dashboard with stats cards (metrics from the PRD)
 
-  SI épica principal muestra flujo/timeline:
-    Crear: Feed/timeline de [ENTIDAD] items
+  IF the main epic shows a flow/timeline:
+    Build: feed/timeline of [ENTITY] items
 ```
-````
 
-**Componentes a usar:**
+Use the design system Card and Button, and stats or metrics cards when they apply. Import the entity type from `@/lib/types` and type the mock data with it, so the data is type-safe against the backend.
 
-- Card component del design system
-- Button components
-- Stats/Metrics cards si aplica
-- [Otros según necesidad]
-
-**Directiva de tipos:**
-
-Importar tipo de entidad desde `@/lib/types` y tipar el mock data con ese tipo para garantizar type-safety.
-
-**Creando página...**
-
-````
-
-**Directiva para la IA:**
-
-"Crea dashboard/página principal post-login del dominio. Analiza las épicas del PBI para identificar ENTIDAD_PRINCIPAL (la entidad core del negocio). **USA los tipos del backend importados de @/lib/types** para crear mock data type-safe. Crea 4-6 items de mock data realistas que cumplan con la estructura del tipo. Usa Card component con hover effect. Include loading skeleton states. Si grid está vacío, muestra empty state bonito con ilustración/ícono + CTA. Usa paleta de colores del theme consistentemente. Title con text-3xl font-bold, description con text-muted-foreground."
+Directive: "Create the post-login dashboard of the domain. Read the PBI epics to identify the MAIN_ENTITY (the core business entity). Use the backend types imported from `@/lib/types` to create type-safe mock data: 4-6 realistic items that match the type's structure. Use the Card component with a hover effect and include loading skeleton states. If the grid is empty, show a good-looking empty state with an illustration or icon plus a CTA. Use the theme palette consistently. Title `text-3xl font-bold`, description `text-muted-foreground`."
 
 ---
 
-### Paso 5.4: Crear Páginas Core del Dominio (1-3 páginas adicionales)
+### Step 5.4: core domain pages (1-3 more)
 
-**Por cada página core seleccionada en Fase 2:**
+For each core page selected in Phase 2, announce the page to the user and build it:
 
 ```markdown
-### [📋/🔍/etc.] Creando Página [Nombre del Dominio]
+### Creating page [domain name]
 
-**Ruta:** `/[ruta]`
-**Archivo:** [Ubicación según framework]
-**Épica relacionada:** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}
+**Route:** `/[route]`
+**File:** [location by framework]
+**Related epic:** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}
 
-**Diseño a implementar:**
+**Design to implement:**
 
-[Analizar la épica para decidir layout:]
+[Read the epic to choose the layout:]
 
-- Si es página de lista → Grid/Table de Cards
-- Si es página de detalle → Layout de 2 columnas (info + actions)
-- Si es página de creación → Form con steps (si es complejo)
+- A list page: grid or table of Cards
+- A detail page: two columns (info + actions)
+- A creation page: a form with steps if it is complex
 
-**Componentes a usar:**
-- [Listar componentes del design system que se usarán]
+**Components used:** [design system components]
 
-**Secciones principales:**
-1. [Sección 1]: [Descripción]
-2. [Sección 2]: [Descripción]
+**Main sections:**
 
-**Directiva de mock data:**
+1. [Section 1]: [description]
+2. [Section 2]: [description]
 
-Importar tipo de entidad desde `@/lib/types` y crear array de mock data tipado que cumpla con la estructura del backend.
+**States:** loading (skeleton), success (with data), empty (no data), error (if it applies)
 
-**Estados a implementar:**
-- Loading (skeleton)
-- Success (con datos)
-- Empty (sin datos)
-- Error (si aplica)
+**Palette applied:** [how the palette is used on this page]
 
-**Paleta aplicada:**
-[Describir cómo se usa la paleta en esta página]
+**Deferred to story implementation:**
 
-**⏭️ Diferido para Fase 7:**
-- ❌ Fetch real de datos
-- ❌ Filtros/búsqueda funcionales
-- ❌ Paginación real
-- ❌ Acciones CRUD completas
+- Real data fetching
+- Working filters and search
+- Real pagination
+- Full CRUD actions
+```
 
-**Creando página...**
-````
-
-**Directiva para la IA:**
-
-"Crea página visualmente atractiva usando componentes del design system. Analiza la épica EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre} para entender qué mostrar. **USA tipos del backend de @/lib/types** para crear mock data type-safe. Crea 6-8 items de mock data realista que cumplan con la estructura del tipo. Include estados de loading (skeleton), empty state, y error state si aplica. Si es lista, usa grid responsive con Cards. Si tiene acciones, usa Buttons del design system con iconos (lucide-react). Aplica paleta de colores de forma coherente. NO implementes lógica real, solo UI bonita con mock data."
+Directive: "Create a visually attractive page using the design system components. Read the epic EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name} to understand what to show. Use the backend types from `@/lib/types` to create type-safe mock data: 6-8 realistic items that match the type's structure. Include loading (skeleton), empty and error states where they apply. For a list, use a responsive grid of Cards; for actions, use design system Buttons with `lucide-react` icons. Apply the palette coherently. Build only the UI with mock data, with no real logic."
 
 ---
 
-### Paso 5.5: Aplicar Consistencia Visual y Personalidad UI/UX
+### Step 5.5: visual consistency and UI/UX personality
 
-```markdown
-## 🎨 Validación de Consistencia Visual
+Do not skip this step. Review every page created:
 
-**⚠️ CRÍTICO - NO omitir este paso:**
+1. **Palette:** the `DESIGN.md` palette is applied consistently: primary on CTAs, links and focus states; secondary on secondary elements; accent on highlights and badges; background, foreground and card colors right. No hardcoded colors outside the palette.
+2. **Personality:** the chosen visual style shows. Minimalist means generous spacing, clean typography and subtle shadows. Bold/Modern means gradients, pronounced shadows and rounded borders. Corporate means straight lines, sober colors and a professional feel. Playful means vibrant colors, illustrations and very rounded borders.
+3. **Design system:** every page uses the same components, spacing (padding and margin), typography hierarchy (`text-*`), shadows and borders, and types the mock data with the backend types.
+4. **Copy:** no generic text ("Welcome", "The best platform"); everything reflects the project context (PRD or idea), uses the domain vocabulary correctly and states a clear, specific value proposition.
 
-**Revisión exhaustiva de TODAS las páginas creadas:**
-
-**1. Paleta de Colores:**
-
-- ✅ **Verifica que la paleta de `DESIGN.md` esté aplicada CONSISTENTEMENTE**
-- ✅ Primary color usado en CTAs, links, focus states
-- ✅ Secondary color en elementos secundarios
-- ✅ Accent color en highlights, badges
-- ✅ Background, foreground, card colors aplicados correctamente
-- ❌ **NO debe haber colores hardcodeados** que no sean de la paleta
-
-**2. Personalidad UI/UX:**
-
-- ✅ **Verifica que el estilo visual elegido (Minimalista/Bold/Corporativo/Playful) esté reflejado**
-- Si Minimalista → Espacios generosos, tipografía limpia, sombras sutiles
-- Si Bold/Moderno → Gradientes, sombras pronunciadas, bordes redondeados
-- Si Corporativo → Líneas rectas, colores sobrios, profesional
-- Si Playful → Colores vibrantes, ilustraciones, bordes muy redondeados
-
-**3. Design System:**
-
-- ✅ Mismos componentes del design system en todas las páginas
-- ✅ Mismo espaciado (padding, margin consistentes)
-- ✅ Misma tipografía (jerarquía de text- consistente)
-- ✅ Mismas sombras y bordes según estilo elegido
-- ✅ **Tipos del backend para mock data** (type-safe)
-
-**4. Content Writing:**
-
-- ✅ **Verifica que NO haya texto genérico** ('Bienvenido', 'La mejor plataforma')
-- ✅ Todo el texto debe reflejar el contexto del proyecto (PRD/idea)
-- ✅ Vocabulario del dominio usado correctamente
-- ✅ Propuesta de valor clara y específica
-
-**Si algo NO cumple:** Corregir inmediatamente antes de continuar.
-
-**Resultado:** Aplicación con identidad visual coherente, profesional, y personalizada al proyecto.
-```
+Fix whatever fails before continuing. The result is an application with a coherent visual identity that fits the project.
 
 ---
 
-## ✅ FASE 6: VALIDACIÓN
+## Phase 6: validation
 
-**Objetivo:** Verificar que el proyecto compila y se ve bien.
+Check that the project compiles and looks right.
 
-### Paso 6.1: Verificar Versiones Instaladas
+### Step 6.1: check the installed versions
 
-**CRÍTICO - Validar antes del build:**
-
-```markdown
-## 🔍 Verificando Versiones de Dependencias
-
-**Propósito:** Asegurar que todas las dependencias son versiones estables compatibles.
-```
-
-**Comando:**
+Before the build, confirm the versions are stable and compatible. This is where a Tailwind v4 that slipped in gets caught.
 
 ```bash
 [pnpm/bun] list | grep -E "(next|react|tailwindcss|supabase)"
 ```
 
-**Output esperado (ejemplo; las versiones reales son las que imprime el comando):**
+Expected output (an example; the real versions are whatever the command prints):
 
 ```
-✅ Versiones Validadas:
+Frontend stack:
+- next: 15.x.x (stable)
+- react: 19.x.x (stable)
+- react-dom: 19.x.x (stable)
+- tailwindcss: 3.4.x (stable; it must be v3)
+- postcss: latest
+- autoprefixer: latest
 
-Stack Frontend:
-- next: 15.x.x ✓ (estable)
-- react: 19.x.x ✓ (estable)
-- react-dom: 19.x.x ✓ (estable)
-- tailwindcss: 3.4.x ✓ (estable - IMPORTANTE: debe ser v3)
-- postcss: latest ✓
-- autoprefixer: latest ✓
-
-Stack Backend/Auth:
-- @supabase/ssr: 0.x.x ✓ (estable)
-- @supabase/supabase-js: 2.x.x ✓ (estable)
-
-⚠️ Si tailwindcss es 4.x.x:
-1. PROBLEMA: Se instaló v4 por error (incompatible con shadcn-cli)
-2. Solución: [pm] remove tailwindcss && [pm] add -D tailwindcss@3
-3. Re-ejecutar esta validación
+Backend/Auth stack:
+- @supabase/ssr: 0.x.x (stable)
+- @supabase/supabase-js: 2.x.x (stable)
 ```
 
-**Compatibilidad cruzada verificada:**
+If `tailwindcss` is 4.x.x, v4 was installed by mistake (it is incompatible with the shadcn CLI). Run `[pm] remove tailwindcss && [pm] add -D tailwindcss@3`, then repeat this check.
 
-- ✅ Next.js 15.x + Tailwind v3 → Compatible oficialmente
-- ✅ Next.js 15.x + Supabase SSR 0.x → Compatible (async cookies)
-- ✅ Tailwind v3 + shadcn/ui → Compatible 100% (sin errores de CLI)
-- ✅ React 19.x + Next.js 15.x → Compatible oficialmente
+Compatibility confirmed:
+
+- Next.js 15.x + Tailwind v3: officially compatible
+- Next.js 15.x + Supabase SSR 0.x: compatible (async cookies)
+- Tailwind v3 + shadcn/ui: compatible, with no CLI errors
+- React 19.x + Next.js 15.x: officially compatible
 
 ---
 
-### Paso 6.2: Validar Compilación
+### Step 6.2: validate the build
 
-**Usar package manager seleccionado:**
-
-````markdown
-## 🔍 Validando Build del Proyecto
-
-**Comando a ejecutar:**
+Tell the user: "Validating the project build".
 
 ```bash
 [pnpm/bun] run build
 ```
-````
 
-**¿Por qué build?**
+The build is the right check because it terminates (it is not interactive), catches TypeScript and import errors, proves the backend types are correct and exercises the Tailwind v3 configuration.
 
-- Es un comando que termina (no interactivo)
-- Detecta errores de TypeScript, imports, etc.
-- **Valida que los tipos del backend están correctos**
-- Verifica configuración de Tailwind v4
-
-**Ejecutando build...**
-
-````
-
-```bash
-[pnpm/bun] run build
-````
-
-**Problemas comunes y soluciones:**
+Common failures:
 
 ```markdown
-❌ Si falla con error de Tailwind:
-→ Verificar que globals.css usa `@tailwind base;` `@tailwind components;` `@tailwind utilities;`
-→ Verificar que existe tailwind.config.ts y postcss.config.js
-→ Verificar que tailwindcss es versión 3.x (NO 4.x)
-→ Consultar Context7: "Tailwind CSS v3 Next.js build error"
+If it fails with a Tailwind error:
+→ Check that globals.css uses `@tailwind base;` `@tailwind components;` `@tailwind utilities;`
+→ Check that tailwind.config.ts and postcss.config.js exist
+→ Check that tailwindcss is 3.x (not 4.x)
+→ Ask Context7: "Tailwind CSS v3 Next.js build error"
 
-❌ Si falla con error de shadcn/ui:
-→ Verificar que tailwindcss es 3.x (shadcn-cli tiene problemas con v4)
-→ Reinstalar: [pm] remove tailwindcss && [pm] add -D tailwindcss@3
-→ Re-ejecutar shadcn@latest init
+If it fails with a shadcn/ui error:
+→ Check that tailwindcss is 3.x (the shadcn CLI has problems with v4)
+→ Reinstall: [pm] remove tailwindcss && [pm] add -D tailwindcss@3
+→ Run shadcn@latest init again
 
-❌ Si falla con error de Supabase tipos:
-→ Verificar que src/types/supabase.ts existe
-→ Regenerar tipos: npx supabase gen types typescript...
-→ Verificar imports en lib/types.ts
+If it fails with a Supabase types error:
+→ Check that src/types/supabase.ts exists
+→ Regenerate the types: npx supabase gen types typescript...
+→ Check the imports in lib/types.ts
 
-❌ Si falla con error de React/Next:
-→ Verificar versiones compatibles (React 19 + Next 15)
-→ Limpiar cache: rm -rf .next && [pm] run build
+If it fails with a React/Next error:
+→ Check compatible versions (React 19 + Next 15)
+→ Clear the cache: rm -rf .next && [pm] run build
 ```
 
 ---
 
-## 📚 FASE 7: DOCUMENTACIÓN Y RECOMENDACIONES
+## Phase 7: documentation and recommendations
 
-**Objetivo:** Documentar TODO (arquitectura + DISEÑO) y dar recomendaciones.
+Document the architecture and the design, and give the user recommendations.
 
----
+### Step 7.1: setup documentation
 
-### Paso 7.1: Crear Documentación de Setup
+Create `SETUP.md` (or `README.md` setup section): requirements, install, how to copy `.env.example` to `.env` and fill it in, the run and build commands with the selected package manager.
 
-[MANTENER SETUP.md - igual que antes]
+### Step 7.2: architecture documentation
 
----
+Create `.context/frontend-architecture.md`: the stack and versions, the folder structure, the technical decisions made in this phase (package manager, layout, UI strategy) and a section on the backend types (`src/types/supabase.ts` and `src/lib/types.ts`).
 
-### Paso 7.2: Crear Documentación de Arquitectura
+### Step 7.3: design system documentation
 
-[MANTENER frontend-architecture.md - igual que antes, agregar sección de tipos backend]
+**File:** `.context/design-system.md`. Later phases cannot do without it: it records the design decisions for the whole team, including the palette, the components, the backend types integration, usage guidelines and code examples. Tell the user you are creating it, then write it with this structure (a repo artifact, so in English):
 
----
+`````markdown
+# Design System - [Project name]
 
-### Paso 7.3: 🆕 Crear Documentación de Design System
-
-**NUEVO - MUY IMPORTANTE:**
-
-**Archivo:** `.context/design-system.md`
-
-```markdown
-### 📄 Creando .context/design-system.md
-
-**Propósito:** Documentar todas las decisiones de diseño para el equipo.
-
-**Contenido incluido:**
-
-- Paleta de colores completa
-- Componentes UI creados
-- **Integración con tipos del backend**
-- Guidelines de uso
-- Ejemplos de código
-
-**Creando archivo...**
-```
-
-**Estructura del archivo:**
-
-````markdown
-# Design System - [Nombre del Proyecto]
-
-**Generado:** Fase 3.3 - Frontend Setup
-**Fecha:** [Fecha]
-**Estilo Visual:** [Derivado de `DESIGN.md`]
+**Generated:** Frontend setup
+**Date:** [date]
+**Visual style:** [derived from `DESIGN.md`]
 
 ---
 
-## 🔗 Integración Backend-Frontend (NUEVO)
+## Backend-Frontend integration
 
-### Tipos TypeScript Compartidos
+### Shared TypeScript types
 
-**Beneficio clave:** Zero type mismatches entre backend y frontend.
+**Benefit:** no type mismatches between backend and frontend.
 
-**Archivo de tipos:** `src/types/supabase.ts` (generado por Supabase CLI)
-**Helper de tipos:** `lib/types.ts` (extrae tipos específicos)
+**Types file:** `src/types/supabase.ts` (generated by the Supabase CLI)
+**Type helper:** `lib/types.ts` (extracts specific types)
 
-**Ejemplo de uso:**
+**Example:**
 
 ```typescript
 import type { User, Profile } from '@/lib/types'
 
-// TypeScript sabe exactamente qué campos tiene User
+// TypeScript knows exactly which fields User has
 const UserCard = ({ user }: { user: User }) => {
   return (
     <div>
-      <h3>{user.name}</h3>      {/* ✅ TypeScript valida que 'name' existe */}
-      <p>{user.email}</p>       {/* ✅ TypeScript valida que 'email' existe */}
-      <p>{user.invalid}</p>     {/* ❌ Error: 'invalid' no existe en User */}
+      <h3>{user.name}</h3>      {/* TypeScript checks that 'name' exists */}
+      <p>{user.email}</p>       {/* TypeScript checks that 'email' exists */}
+      <p>{user.invalid}</p>     {/* Error: 'invalid' does not exist on User */}
     </div>
   )
 }
 ```
-````
 
-**Flujo de sincronización:**
+**Sync flow:**
 
-1. Backend define schemas (Supabase)
-2. Se generan tipos: `npx supabase gen types typescript...`
-3. Frontend importa tipos de `lib/types.ts`
-4. Cualquier cambio en schema requiere re-generar tipos
-5. TypeScript detecta errores automáticamente
-
----
-
-## 🎨 Paleta de Colores
-
-### Colores Principales
-
-| Color         | Hex    | Uso                                                           |
-| ------------- | ------ | ------------------------------------------------------------- |
-| **Primary**   | [#HEX] | Botones primarios, links, focus states, elementos principales |
-| **Secondary** | [#HEX] | Botones secundarios, elementos secundarios                    |
-| **Accent**    | [#HEX] | Highlights, badges, call-to-actions secundarios               |
-
-### Colores de Sistema
-
-| Color          | Hex    | Uso                            |
-| -------------- | ------ | ------------------------------ |
-| **Background** | [#HEX] | Fondo de la aplicación         |
-| **Card**       | [#HEX] | Fondo de cards, modals         |
-| **Border**     | [#HEX] | Bordes de inputs, cards        |
-| **Text**       | [#HEX] | Texto principal                |
-| **Muted**      | [#HEX] | Texto secundario, placeholders |
-
-### Colores Semánticos
-
-| Color       | Hex    | Uso                                       |
-| ----------- | ------ | ----------------------------------------- |
-| **Success** | [#HEX] | Mensajes de éxito, validaciones positivas |
-| **Warning** | [#HEX] | Advertencias                              |
-| **Error**   | [#HEX] | Errores, validaciones fallidas            |
-| **Info**    | [#HEX] | Mensajes informativos                     |
-
-**Uso en componentes:**
-
-- Clases Tailwind: `bg-primary`, `text-primary`, `border-border`, `text-muted-foreground`, etc.
-- Variables CSS directas: `var(--color-primary)`, `var(--color-secondary)`, etc.
+1. The backend defines the schemas (Supabase)
+2. Types are generated: `npx supabase gen types typescript...`
+3. The frontend imports the types from `lib/types.ts`
+4. Any schema change requires regenerating the types
+5. TypeScript catches the errors automatically
 
 ---
 
-## 🧱 Componentes UI
+## Color palette
+
+### Main colors
+
+| Color         | Hex    | Use                                                    |
+| ------------- | ------ | ------------------------------------------------------ |
+| **Primary**   | [#HEX] | Primary buttons, links, focus states, main elements    |
+| **Secondary** | [#HEX] | Secondary buttons and elements                         |
+| **Accent**    | [#HEX] | Highlights, badges, secondary calls to action          |
+
+### System colors
+
+| Color          | Hex    | Use                        |
+| -------------- | ------ | -------------------------- |
+| **Background** | [#HEX] | Application background     |
+| **Card**       | [#HEX] | Card and modal background  |
+| **Border**     | [#HEX] | Input and card borders     |
+| **Text**       | [#HEX] | Main text                  |
+| **Muted**      | [#HEX] | Secondary text, placeholders |
+
+### Semantic colors
+
+| Color       | Hex    | Use                                   |
+| ----------- | ------ | ------------------------------------- |
+| **Success** | [#HEX] | Success messages, positive validation |
+| **Warning** | [#HEX] | Warnings                              |
+| **Error**   | [#HEX] | Errors, failed validation             |
+| **Info**    | [#HEX] | Informational messages                |
+
+**Use in components:**
+
+- Tailwind classes: `bg-primary`, `text-primary`, `border-border`, `text-muted-foreground`, and so on
+- Direct CSS variables: `var(--color-primary)`, `var(--color-secondary)`, and so on
+
+---
+
+## UI components
 
 ### Button
 
-**Ubicación:** `components/ui/button.tsx`
+**Location:** `components/ui/button.tsx`
 
-**Variantes disponibles:**
+| Variant             | Use                  | Look                               |
+| ------------------- | -------------------- | ---------------------------------- |
+| `default` (primary) | Main actions         | Primary background, white text     |
+| `secondary`         | Secondary actions    | Secondary background, white text   |
+| `outline`           | Tertiary actions     | Primary border, transparent fill   |
+| `ghost`             | Subtle actions       | No background, primary text        |
+| `danger`            | Destructive actions  | Red background, white text         |
 
-| Variante            | Uso                   | Ejemplo Visual                    |
-| ------------------- | --------------------- | --------------------------------- |
-| `default` (primary) | Acciones principales  | Fondo primary, texto blanco       |
-| `secondary`         | Acciones secundarias  | Fondo secondary, texto blanco     |
-| `outline`           | Acciones terciarias   | Borde primary, fondo transparente |
-| `ghost`             | Acciones sutiles      | Sin fondo, texto primary          |
-| `danger`            | Acciones destructivas | Fondo rojo, texto blanco          |
+**Sizes:** `sm` (height 32px), `md` (height 40px, default), `lg` (height 48px).
 
-**Tamaños:**
-
-- `sm` - Pequeño (height: 32px)
-- `md` - Mediano (height: 40px) - **Default**
-- `lg` - Grande (height: 48px)
-
-**Uso:**
-
-Importar de `@/components/ui/button` y usar con props `variant` (default/secondary/outline/ghost/danger) y `size` (sm/md/lg).
+**Use:** import from `@/components/ui/button` and pass `variant` (default/secondary/outline/ghost/danger) and `size` (sm/md/lg).
 
 ---
 
 ### Card
 
-**Ubicación:** `components/ui/card.tsx`
+**Location:** `components/ui/card.tsx`
 
-**Sub-componentes:**
+**Sub-components:** `Card` (container), `CardHeader` (title), `CardContent` (main content), `CardFooter` (actions).
 
-- `Card` - Contenedor principal
-- `CardHeader` - Header con título
-- `CardContent` - Contenido principal
-- `CardFooter` - Footer con acciones
+**Variants:** `default` (basic card), `hover` (lifts on hover), `clickable` (pointer cursor plus hover).
 
-**Variantes:**
-
-- `default` - Card básica
-- `hover` - Con efecto hover (sube)
-- `clickable` - Cursor pointer + hover
-
-**Uso:**
-
-Importar sub-componentes (Card, CardHeader, CardContent, CardFooter) de `@/components/ui/card`. Usar tipos del backend de `@/lib/types` para tipar props. Aplicar efectos hover con clases Tailwind.
+**Use:** import the sub-components from `@/components/ui/card`, type the props with the backend types from `@/lib/types` and apply hover effects with Tailwind classes.
 
 ---
 
-[Documentar otros componentes creados...]
+[Document the other components created]
 
 ---
 
-## 📐 Layout
+## Layout
 
-### Estructura Elegida: [Sidebar + Top Navbar / Solo Top Navbar / etc.]
+### Chosen structure: [Sidebar + Top Navbar / Top Navbar only / etc.]
 
-**Razón:** [Explicar por qué se eligió este layout]
+**Reason:** [why this layout was chosen]
 
-**Componentes:**
+**Components:**
 
-- `components/layout/navbar.tsx` - Barra superior
-  [Si aplica:] - `components/layout/sidebar.tsx` - Navegación lateral
+- `components/layout/navbar.tsx`: top bar
+  [If it applies:] `components/layout/sidebar.tsx`: side navigation
 
-**Navegación disponible:**
-[Listar páginas con sus rutas]
-
----
-
-## ✨ Estilo Visual
-
-### Características del Estilo [Elegido]
-
-**Espaciado:**
-
-- [Descripción: Generoso/Compacto]
-
-**Bordes:**
-
-- Border radius: [Value] - [Descripción: Muy redondeados/Redondeados/Rectos]
-- Border width: [Value]
-
-**Sombras:**
-
-- [Descripción: Pronunciadas/Sutiles/Ninguna]
-- Card shadow: [CSS value]
-
-**Tipografía:**
-
-- Font family: [Font name]
-- Headings: [Tamaños]
-- Body text: [Tamaño]
+**Available navigation:**
+[list the pages with their routes]
 
 ---
 
-## 📖 Guidelines de Uso
+## Visual style
 
-### ✅ DO (Hacer)
+### Traits of the [chosen] style
 
-1. **Usa componentes del design system:**
-   - ✅ `<Button>` en lugar de `<button>`
-   - ✅ `<Card>` para agrupar información
-   - ✅ Clases de Tailwind con la paleta (`bg-primary`, `text-primary`)
+**Spacing:** [generous / compact]
 
-2. **Usa tipos del backend:**
-   - ✅ `import type { User } from '@/lib/types'`
-   - ✅ Type-safe props: `{ user }: { user: User }`
-   - ✅ Mock data con tipos: `const mockData: User[] = [...]`
+**Borders:**
 
-3. **Mantén consistencia:**
-   - ✅ Mismo spacing (`gap-6`, `p-6`)
-   - ✅ Mismos border radius
-   - ✅ Mismas sombras
+- Border radius: [value] ([very rounded / rounded / straight])
+- Border width: [value]
 
-4. **Usa variantes semánticas:**
-   - ✅ `variant="default"` para acciones principales
-   - ✅ `variant="danger"` para acciones destructivas
-   - ✅ `text-muted-foreground` para texto secundario
+**Shadows:** [pronounced / subtle / none]; card shadow: [CSS value]
 
-### ❌ DON'T (No hacer)
+**Typography:**
 
-1. **No uses colores hardcodeados:**
-   - ❌ `bg-blue-500` → ✅ `bg-primary`
-   - ❌ `#3B82F6` → ✅ `var(--color-primary)`
-
-2. **No uses tipos `any`:**
-   - ❌ `const user: any = ...` → ✅ `const user: User = ...`
-   - ❌ `props: any` → ✅ `props: { user: User }`
-
-3. **No crees botones custom:**
-   - ❌ `<button className="bg-blue-500...">` → ✅ `<Button>`
-
-4. **No rompas la consistencia:**
-   - ❌ Border radius diferente en cada componente
-   - ❌ Spacing inconsistente
+- Font family: [font name]
+- Headings: [sizes]
+- Body text: [size]
 
 ---
 
-## 🚀 Extender el Design System (Fase 7)
+## Usage guidelines
 
-Cuando implementes nuevas features en Fase 7:
+### Do
 
-### Agregar nuevo componente UI:
+1. Use the design system components: `<Button>` instead of `<button>`, `<Card>` to group information, Tailwind classes from the palette (`bg-primary`, `text-primary`).
+2. Use the backend types: `import type { User } from '@/lib/types'`, typed props (`{ user }: { user: User }`) and typed mock data (`const mockData: User[] = [...]`).
+3. Keep consistency: the same spacing (`gap-6`, `p-6`), border radius and shadows.
+4. Use semantic variants: `variant="default"` for main actions, `variant="danger"` for destructive ones, `text-muted-foreground` for secondary text.
 
-1. Créalo en `components/ui/[nombre].tsx`
-2. Usa la paleta de colores del theme
-3. Aplica el estilo visual consistente (bordes, sombras)
-4. **Usa tipos del backend si el componente recibe datos**
-5. Documenta en este archivo
+### Don't
 
-### Modificar componente existente:
-
-1. Edita el archivo en `components/ui/`
-2. Mantén compatibilidad con uso existente
-3. Actualiza esta documentación
-
-### Agregar nueva página:
-
-1. Usa layout components existentes
-2. Usa componentes del design system
-3. Aplica paleta de colores
-4. **Importa tipos del backend para props y mock data**
-5. Mantén spacing consistente
+1. Hardcode colors: `bg-blue-500` becomes `bg-primary`, `#3B82F6` becomes `var(--color-primary)`.
+2. Use `any`: `const user: any = ...` becomes `const user: User = ...`, `props: any` becomes `props: { user: User }`.
+3. Build custom buttons: `<button className="bg-blue-500...">` becomes `<Button>`.
+4. Break consistency: a different border radius per component, inconsistent spacing.
 
 ---
 
-## 📚 Referencias
+## Extending the design system
 
-- **Tailwind Config:** `tailwind.config.ts` - Paleta completa
-- **Estilos Globales:** `app/globals.css` - Variables CSS
-- **Componentes UI:** `components/ui/` - Todos los componentes
-- **Layout Components:** `components/layout/` - Navbar, Sidebar
-- **Tipos Backend:** `src/types/supabase.ts` - Tipos generados de Supabase
-- **Type Helpers:** `lib/types.ts` - Helpers de tipos
+When you implement new features:
+
+### Add a UI component
+
+1. Create it in `components/ui/[name].tsx`
+2. Use the theme palette
+3. Apply the consistent visual style (borders, shadows)
+4. Use the backend types if the component receives data
+5. Document it in this file
+
+### Modify an existing component
+
+1. Edit the file in `components/ui/`
+2. Stay compatible with existing usage
+3. Update this documentation
+
+### Add a page
+
+1. Use the existing layout components
+2. Use the design system components and palette
+3. Import the backend types for props and mock data
+4. Keep spacing consistent
 
 ---
 
-**Este design system es tu fuente única de verdad para el diseño visual del proyecto. Manténlo consistente durante todo el desarrollo.**
+## References
 
-````
-
----
-
-### Paso 7.4: Resumen Ejecutivo Final
-
-**Output final (mostrar al usuario):**
-
-```markdown
-# 🎉 FASE 3.3: Frontend Setup Completado
+- **Tailwind config:** `tailwind.config.ts`, the full palette
+- **Global styles:** `app/globals.css`, the CSS variables
+- **UI components:** `components/ui/`
+- **Layout components:** `components/layout/`
+- **Backend types:** `src/types/supabase.ts`, generated from Supabase
+- **Type helpers:** `lib/types.ts`
 
 ---
 
-## 📊 Resumen
+This design system is the single source of truth for the project's visual design. Keep it consistent throughout development.
+`````
 
-**Archivos creados:** [número total]
-**Páginas demo:** [2-3] (para validar design system)
-**Componentes UI creados:** [número]
+---
+
+### Step 7.4: final summary
+
+Show the user this summary:
+
+`````markdown
+# Frontend setup complete
+
+---
+
+## Summary
+
+**Files created:** [total number]
+**Demo pages:** [2-3] (to validate the design system)
+**UI components created:** [number]
 **Package manager:** [pnpm/bun]
-**Fase:** 3.3 - Frontend Setup (Sincrónica - ejecutada UNA sola vez después de Backend)
+**Scope:** frontend setup, run once after backend setup
 
 ---
 
-## 🔗 Integración Backend-Frontend (NUEVO)
+## Backend-Frontend integration
 
-### ✅ Tipos TypeScript Sincronizados
+**Backend file:** `src/types/supabase.ts` (generated by `backend-setup.md`)
+**Frontend helper:** `lib/types.ts` (created in this phase)
 
-**Archivo backend:** `src/types/supabase.ts` (generado por `backend-setup.md`)
-**Helper frontend:** `lib/types.ts` (creado en esta fase)
+- Components have autocomplete and no type mismatches
+- Schema changes show up as type errors once the types are regenerated
 
-**Beneficio:**
-- Zero type mismatches
-- Autocomplete en todos los componentes
-- Cambios en schema se reflejan automáticamente
+Example:
 
-**Ejemplo de uso:**
 ```typescript
 import type { User } from '@/lib/types'
 
 const UserCard = ({ user }: { user: User }) => {
-  return <div>{user.name}</div>  // ✅ TypeScript valida todo
+  return <div>{user.name}</div>  // TypeScript checks it all
 }
-````
-
----
-
-## 🎨 Diseño Implementado
-
-### Paleta de Colores: [Nombre]
-
-- **Primary:** [Color] - [Descripción de uso]
-- **Secondary:** [Color] - [Descripción de uso]
-- **Accent:** [Color] - [Descripción de uso]
-
-### Estilo Visual: [Elegido]
-
-- [Características principales]
-
-### Layout: [Elegido]
-
-- [Descripción de la estructura]
-
----
-
-## ✅ Lo que se Implementó
-
-### 1. Integración Backend (NUEVO):
-
-- ✅ Tipos del backend importados (`src/types/supabase.ts`)
-- ✅ Helper de tipos creado (`lib/types.ts`)
-- ✅ Mock data type-safe en páginas demo
-- ✅ Zero type errors entre backend y frontend
-
-### 2. Arquitectura del Framework:
-
-- ✅ [Framework] configurado correctamente
-- ✅ [Package manager] como gestor de paquetes
-- ✅ TypeScript + ESLint configurados
-- ✅ Estructura de carpetas según mejores prácticas
-
-### 3. Design System Completo:
-
-- ✅ Paleta de colores aplicada en Tailwind
-- ✅ [X] componentes UI reutilizables creados
-- ✅ Layout components (Navbar, [Sidebar si aplica])
-- ✅ Estilos globales y variables CSS
-- ✅ Utilidades (cn function)
-
-**Componentes UI creados:**
-
-- ✅ Button (5 variantes, 3 tamaños)
-- ✅ Card (con Header, Content, Footer)
-  [Listar otros componentes creados]
-
-### 4. Páginas Demo (para validar design system):
-
-[Listar 2-3 páginas con breve descripción visual]
-
-1. ✅ [Página 1] (`/[ruta]`)
-   - Diseño: [Breve descripción visual]
-   - Mock data: [X] items (usando tipos del backend ✅)
-   - **Propósito:** Validar [componentes]
-
-2. ✅ [Página 2] (`/[ruta]`)
-   - Diseño: [Breve descripción visual]
-   - Mock data: [X] items (usando tipos del backend ✅)
-   - **Propósito:** Validar [componentes]
-
-**Nota:** Las demás páginas del MVP se implementarán en Fase 7 según los implementation plans de cada story (Fase 6).
-
-### 5. Documentación Generada:
-
-- ✅ `SETUP.md` - Guía de instalación
-- ✅ `.context/frontend-architecture.md` - Arquitectura técnica
-- ✅ `.context/design-system.md` - Design system completo + integración backend
-- ✅ `.env.example` - Template de variables
-
----
-
-## 🚀 Próximos Pasos Inmediatos
-
-### 1️⃣ Configurar Variables de Entorno (AHORA)
-
-```bash
-cp .env.example .env
-# Edita .env con tus credenciales reales
 ```
 
 ---
 
-### 2️⃣ Probar el Proyecto (AHORA)
+## Design implemented
 
-**⚠️ IMPORTANTE:** Abre una **nueva terminal** separada.
+- **Color palette:** [name]; Primary [color] ([use]), Secondary [color] ([use]), Accent [color] ([use])
+- **Visual style:** [chosen]; [main traits]
+- **Layout:** [chosen]; [structure]
+
+---
+
+## What was implemented
+
+1. **Backend integration:** backend types imported (`src/types/supabase.ts`), type helper created (`lib/types.ts`), type-safe mock data in the demo pages
+2. **Framework architecture:** [framework] with [package manager], TypeScript and ESLint, folder structure by best practices
+3. **Design system:** palette applied in Tailwind, [X] reusable UI components (Button with 5 variants and 3 sizes, Card with Header/Content/Footer, [others]), layout components (Navbar, [Sidebar if it applies]), global styles and CSS variables, the `cn` utility
+4. **Demo pages** (to validate the design system):
+   1. [Page 1] (`/[route]`): [short visual description]; [X] mock items typed with the backend types; validates [components]
+   2. [Page 2] (`/[route]`): [short visual description]; [X] mock items typed with the backend types; validates [components]
+
+   The remaining MVP pages are built in story implementation, from each story's plan.
+5. **Documentation:** `SETUP.md` (install guide), `.context/frontend-architecture.md` (technical architecture), `.context/design-system.md` (design system plus backend integration), `.env.example` (variables template)
+
+---
+
+## Next steps
+
+### 1. Set the environment variables
+
+```bash
+cp .env.example .env
+# Edit .env with your real credentials
+```
+
+### 2. Try the project
+
+Open a separate new terminal:
 
 ```bash
 [pnpm/bun] run dev
 ```
 
-**Luego:**
+Then:
 
-1. Abre http://localhost:[puerto] en tu navegador
-2. **DISFRUTA del diseño bonito** ✨
-3. Navega entre páginas
-4. Observa la consistencia visual (colores, componentes)
-5. Prueba estados hover en botones y cards
-6. **Verifica que mock data usa tipos del backend** (abre DevTools)
+1. Open http://localhost:[port] in your browser
+2. Navigate between the pages
+3. Check the visual consistency (colors, components) and the hover states on buttons and cards
+4. Check in DevTools that the mock data uses the backend types
 
-**Lo que deberías ver:**
+You should see a coherent palette, styled components, a professional layout, a design that matches the business personality and no TypeScript errors.
 
-- ✅ Aplicación **visualmente impresionante**
-- ✅ Paleta de colores coherente
-- ✅ Componentes estilizados y modernos
-- ✅ Layout profesional
-- ✅ Diseño alineado con la personalidad del negocio
-- ✅ **Mock data type-safe** (zero TypeScript errors)
+### 3. Review the design system (recommended)
 
----
+Open `.context/design-system.md`: the full palette, the available components and how to use them, the backend-frontend integration guide, the design guidelines and code examples. It is the style guide for story implementation.
 
-### 3️⃣ Revisar Design System (RECOMENDADO)
-
-Abre `.context/design-system.md` para ver:
-
-- Paleta de colores completa
-- Componentes disponibles y cómo usarlos
-- **Guía de integración backend-frontend**
-- Guidelines de diseño
-- Ejemplos de código
-
-**Esto será tu guía de estilo** durante toda la Fase 7 (Implementation).
-
----
-
-### 4️⃣ Considerar Crear Checkpoint Git (RECOMENDADO)
+### 4. Consider a git checkpoint (recommended)
 
 ```bash
 git add .
@@ -2719,145 +1821,79 @@ git commit -m "feat: Setup frontend with design system and backend types integra
 "
 ```
 
----
+### 5. Continue with backlog seeding
 
-### 5️⃣ Continuar con Backlog Seeding (SIGUIENTE)
-
-**Ahora que tienes el Frontend Setup completo:**
-
-- Backend schemas creados ✅
-- Frontend integrado con tipos del backend ✅
-- Design System base listo ✅
-
-**Próximo paso:**
-
-- Procede a sembrar el Product Backlog en Jira (epics + user stories) con la skill `/product-management`
-- Cada story implementará funcionalidad usando:
-  - Componentes del design system
-  - Tipos del backend
-  - Patrones establecidos
+With the backend schemas, the frontend integrated with the backend types and the base design system in place, the next step is seeding the product backlog in Jira (epics and user stories) with `/product-management`. Each story then implements its functionality with the design system components, the backend types and the patterns set here.
 
 ---
 
-## 💎 Valor Generado
+## For the team demo
 
-**¿Qué logramos?**
+1. Start the server (`[pm] run dev`)
+2. Show the pages working
+3. Point out the visual design (palette, components, layout)
+4. Explain the backend-frontend integration (no type errors)
+5. Show `.context/design-system.md`
+6. Present the roadmap
 
-✅ **Arquitectura sólida** - Framework configurado profesionalmente
-✅ **Backend-Frontend integrados** - Tipos compartidos, zero mismatches
-✅ **Design System completo** - Componentes reutilizables y bonitos
-✅ **Paleta coherente** - Colores aplicados consistentemente
-✅ **Páginas impresionantes** - Visualmente atractivas con mock data type-safe
-✅ **Layout profesional** - Navegación intuitiva y moderna
-✅ **Documentación completa** - Arquitectura + Diseño + Integración documentados
-✅ **Lista para demo** - Puedes mostrarlo al equipo AHORA
+**Documentation:**
 
-**Diferencia vs versión anterior:**
-❌ Antes: Páginas grises, sin personalidad, tipos manuales
-✅ Ahora: **Aplicación hermosa, moderna, con identidad visual + tipos sincronizados**
-
----
-
-## 🎯 Para el Equipo
-
-**Próxima reunión:**
-
-1. Levanta el servidor (`[pm] run dev`)
-2. Muestra las páginas funcionando
-3. **Destaca el diseño visual** (paleta, componentes, layout)
-4. **Explica la integración backend-frontend** (zero type errors)
-5. Muestra `.context/design-system.md`
-6. Presenta roadmap de Fases 4-7
-
-**Valor:** El equipo ve una aplicación **preciosa, profesional y type-safe**, no solo estructura.
+- `SETUP.md`: how to start the project
+- `.context/frontend-architecture.md`: technical architecture
+- `.context/design-system.md`: the full design guide plus the backend integration
+`````
 
 ---
 
-**🎉 ¡Frontend Setup + Design System + Backend Integration completado exitosamente!**
+## Final validations
 
-**Documentación:**
+An internal checklist, not shown to the user.
 
-- `SETUP.md` - Cómo levantar el proyecto
-- `.context/frontend-architecture.md` - Arquitectura técnica
-- `.context/design-system.md` - **Guía de diseño completa + integración backend** ⭐
+Backend integration:
 
-**Disfruta de tu aplicación bonita y type-safe!** ✨
+- `src/types/supabase.ts` exists (verified)
+- `lib/types.ts` created with helpers
+- Mock data in the pages uses the backend types
+- The build passes with no TypeScript errors
 
-```
+Design:
 
----
+- The palette is applied in `tailwind.config`
+- The design system with its components is created
+- The pages use the design system components
+- The visual consistency holds across the application
+- `.context/design-system.md` is created, with the backend integration section
 
-## 📋 VALIDACIONES FINALES
+Architecture:
 
-Checklist interno (NO mostrar al usuario):
+- The framework is configured
+- The package manager is the one the user chose
+- The folder structure is right
+- The build passes with no errors
 
-### Integración Backend:
-- ✅ `src/types/supabase.ts` existe (verificado)
-- ✅ `lib/types.ts` creado con helpers
-- ✅ Mock data en páginas usa tipos del backend
-- ✅ Build pasa sin TypeScript errors
+Documentation:
 
-### Diseño:
-- ✅ Paleta de colores aplicada en tailwind.config
-- ✅ Design system con componentes bonitos creado
-- ✅ Páginas usan componentes del design system
-- ✅ Consistencia visual en toda la aplicación
-- ✅ `.context/design-system.md` creado con sección de integración backend
+- `SETUP.md` has the instructions
+- `frontend-architecture.md` has the technical decisions
+- `design-system.md` has the design guide plus the backend integration
 
-### Arquitectura:
-- ✅ Framework configurado
-- ✅ Package manager elegido por usuario
-- ✅ Estructura de carpetas correcta
-- ✅ Build pasa sin errores
+User:
 
-### Documentación:
-- ✅ SETUP.md con instrucciones
-- ✅ frontend-architecture.md con decisiones técnicas
-- ✅ design-system.md con guía de diseño + integración backend ⭐
+- The interactive questions were asked (package manager, design), or taken by default with a DECIDED line when nobody was present
+- Each decision was explained, with a "Choose for me" option offered
+- A commit was recommended, not forced
 
-### Usuario:
-- ✅ Se hicieron preguntas interactivas (package manager, diseño)
-- ✅ Se explicó cada decisión
-- ✅ Se educó sobre opciones
-- ✅ Se dio opción "Elige por mí"
-- ✅ Se recomendó (NO forzó) crear commit
+Output: a frontend project with a solid architecture, backend types integrated, a complete design system and 2-3 good-looking demo pages with type-safe mock data, all documented and ready to show the team.
 
 ---
 
-**Output:** Proyecto frontend con arquitectura sólida + **Backend types integrados** + **Design System completo** + 2-3 páginas demo visualmente impresionantes con mock data type-safe, todo documentado y listo para mostrar al equipo.
+## Design split: base now, story design later
 
-**Fase completada:** 3.3 - Frontend Setup ✅ (Sincrónica)
+Frontend setup is the once-only base. Per-story design happens when each story is implemented.
 
-**Próxima fase:** 4 - Specification (Asincrónica)
+| | Frontend setup (this reference, once) | Story implementation (`/sprint-development`, per story) |
+|---|---|---|
+| Scope | The color palette, the reusable UI components (Button, Card, Form, Modal and so on), the layout system (Navbar, Sidebar), the integration with the backend types, 2-3 demo pages that prove it works. Roughly 80% of the visual design | Wireframes or mockups specific to the story, custom domain components (for example `[Entity]Card`, `[Entity]Table` based on the business), specific UX flows, validations and visual states. Roughly 20% of the visual design |
+| Purpose | A reusable base for the whole project, with synchronized types | Design the implementation of each story with the base design system and the backend types |
 
----
-
-## 🔄 DIVISIÓN DE DISEÑO: FASE 3.3 vs FASE 6
-
-**Entender esta diferencia es CRÍTICO:**
-
-### FASE 3.3 (Frontend Setup - UNA sola vez):
-- ✅ Paleta de colores
-- ✅ Componentes UI reutilizables (Button, Card, Form, Modal, etc.)
-- ✅ Layout system (Navbar, Sidebar)
-- ✅ **Integración con tipos del backend**
-- ✅ 2-3 páginas demo (para validar que funciona)
-- ✅ 80% del diseño visual
-
-**Propósito:** Crear la base reutilizable para TODO el proyecto con tipos sincronizados.
-
-### FASE 6 (Planning + UI Design - Por cada story):
-- ✅ Wireframes/mockups específicos de la story
-- ✅ Componentes custom del dominio (ej: [Entity]Card, [Entity]Table basados en negocio)
-- ✅ Flujos de UX específicos
-- ✅ Validaciones y estados visuales
-- ✅ 20% del diseño específico
-
-**Propósito:** Diseñar la implementación específica de cada story usando el design system base y los tipos del backend.
-
----
-
-**Analogía:**
-- **Fase 3.3** = Construir la caja de herramientas (martillo, destornillador, etc.) + planos precisos (tipos)
-- **Fase 6** = Decidir cómo usar esas herramientas y planos para construir cada mueble específico
-```
+The first is the toolbox (hammer, screwdriver) plus precise plans (the types); the second is deciding how to use them to build each piece of furniture.
