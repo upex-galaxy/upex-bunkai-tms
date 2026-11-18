@@ -39,7 +39,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   const { data: rows, error: rowsError } = await db
     .from('test_plan_tests')
-    .select('id, test_id, added_by, created_at, tests(id, title, tags)')
+    .select('id, test_id, added_by, created_at, tests(id, title, tags, archived_at)')
     .eq('test_plan_id', testPlanId)
     .order('created_at', { ascending: true });
   if (rowsError) {
@@ -68,6 +68,8 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     id: row.test_id,
     title: row.tests?.title ?? '',
     tags: row.tests?.tags ?? [],
+    // BK-596 (PO ruling C): an archived member stays, marked archived.
+    archived_at: row.tests?.archived_at ?? null,
     added_by: row.added_by,
     added_by_email: row.added_by ? (emailById.get(row.added_by) ?? '') : null,
     added_at: row.created_at,

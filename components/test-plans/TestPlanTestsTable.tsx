@@ -26,6 +26,8 @@ export interface TestPlanMemberTest {
   title: string
   tags: string[]
   addedByLabel: string
+  // BK-596 (PO ruling C) — an archived member stays in the plan, marked archived.
+  archivedAt?: string | null
 }
 
 interface TestPlanTestsTableProps {
@@ -119,6 +121,9 @@ export function TestPlanTestsTable({ planId, tests, progressByTest, canEdit, onR
               <tr key={test.id} data-testid={`test-plan-test-row-${test.id}`}>
                 <td className="border-t border-stroke-1 px-3 py-1.5">
                   <span className="text-sm font-medium text-fg-0">{test.title}</span>
+                  {test.archivedAt && (
+                    <span className="status-chip ml-1.5" data-status="skipped" data-testid={`test-plan-test-archived-${test.id}`}>Archived</span>
+                  )}
                 </td>
                 <td className="border-t border-stroke-1 px-3 py-1.5">
                   {test.tags.length > 0

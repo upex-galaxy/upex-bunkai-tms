@@ -191,13 +191,18 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   if (usageError) {
     mapAtcRpcError(usageError);
   }
-  const affectedTestCount = usage ? (usage as unknown as { count: number }).count : 0;
+  // BK-596: archived Tests still chain the ATC, so they count as affected and are
+  // also reported on their own (the usage report's `count` is live Tests only).
+  const report = usage as unknown as { count: number, archived_count?: number } | null;
+  const affectedArchivedTestCount = report?.archived_count ?? 0;
+  const affectedTestCount = report ? report.count + affectedArchivedTestCount : 0;
 
   return jsonResponse(
     {
       atc: data,
       version: (data as unknown as AtcReturn).version,
       affected_test_count: affectedTestCount,
+      affected_archived_test_count: affectedArchivedTestCount,
     },
     { status: 200 },
   );

@@ -160,6 +160,16 @@ const ActivityItemSchema = z
     activityItemVariant('MilestoneRestored', 'milestone.restored', 'milestone', {
       name: z.string().nullable(),
     }),
+    activityItemVariant('TestRenamed', 'test.renamed', 'test', {
+      old_title: z.string().nullable(),
+      new_title: z.string().nullable(),
+    }),
+    activityItemVariant('TestArchived', 'test.archived', 'test', {
+      title: z.string().nullable(),
+    }),
+    activityItemVariant('TestRestored', 'test.restored', 'test', {
+      title: z.string().nullable(),
+    }),
   ])
   .openapi('ActivityItem');
 

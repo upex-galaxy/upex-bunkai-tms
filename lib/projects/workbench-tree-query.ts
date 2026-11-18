@@ -182,6 +182,10 @@ export async function fetchExplorerTests(
       .from('tests')
       .select('id, title, created_at, tags, test_steps(atcs(project_id))')
       .eq('workspace_id', workspaceId)
+      // BK-596: the explorer Tests group and the Project Tests list offer a Test
+      // for use, so an archived one is not listed and drops out of their totals.
+      // It stays reachable at its own address.
+      .is('archived_at', null)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .range(offset, offset + limit - 1);

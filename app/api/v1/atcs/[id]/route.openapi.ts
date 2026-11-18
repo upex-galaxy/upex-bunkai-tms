@@ -64,7 +64,8 @@ registry.registerPath({
           schema: z.object({
             atc: AtcSchema,
             version: z.number().int().describe('The ATC version after the edit (unchanged on a no-op).'),
-            affected_test_count: z.number().int().describe('DISTINCT Tests that chain this ATC and now reflect the edit. 0 for a no-op.'),
+            affected_test_count: z.number().int().describe('DISTINCT Tests that chain this ATC and now reflect the edit, archived ones included. 0 for a no-op.'),
+            affected_archived_test_count: z.number().int().optional().describe('BK-596: how many of those Tests are archived (they run the edit once restored). Absent on a no-op.'),
           }),
         },
       },

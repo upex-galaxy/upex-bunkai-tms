@@ -196,6 +196,11 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
     expect(deriveItemLabel({ action: 'milestone.archived', entity_type: 'milestone', payload: { name: 'Release 1.0' } })).toBe('Release 1.0');
     expect(deriveItemLabel({ action: 'milestone.restored', entity_type: 'milestone', payload: { name: 'Release 1.0' } })).toBe('Release 1.0');
     expect(deriveItemLabel({ action: 'milestone.restored', entity_type: 'milestone', payload: {} })).toBe('a milestone');
+    // BK-596 — a Test's name; a rename names the Test by its new name.
+    expect(deriveItemLabel({ action: 'test.archived', entity_type: 'test', payload: { title: 'Checkout - guest' } })).toBe('Checkout - guest');
+    expect(deriveItemLabel({ action: 'test.restored', entity_type: 'test', payload: { title: 'Checkout - guest' } })).toBe('Checkout - guest');
+    expect(deriveItemLabel({ action: 'test.renamed', entity_type: 'test', payload: { old_title: 'A', new_title: 'B' } })).toBe('B');
+    expect(deriveItemLabel({ action: 'test.renamed', entity_type: 'test', payload: {} })).toBe('a test');
   });
 
   it('BK-1835: a defect correction is labelled with the defect\'s corrected title', () => {

@@ -34,6 +34,12 @@ export function mapRunRpcError(error: { code?: string, message: string }): never
       throw new ApiError('no_executable_steps', 'Add at least one ATC step to this Test before starting a run.', {
         details: { reason: 'no_executable_steps' },
       });
+    case '45127':
+      // BK-596 — an archived Test is frozen until restored; raised after the
+      // write gate, so only someone who could change the Test ever sees it.
+      throw new ApiError('conflict', 'This Test is archived. Restore it before starting a run.', {
+        details: { reason: 'test_archived' },
+      });
     case '45204':
       // BK-36 — the run is already closed (passed/failed/aborted). AC3-exact copy.
       // 409 conflict: the request is well-formed but the run's state forbids it.

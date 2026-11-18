@@ -25,6 +25,21 @@ export function mapTestRpcError(error: { code?: string, message: string }): neve
       // Non-disclosure (INV-3): foreign-workspace and nonexistent ATCs share
       // this byte-identical response — no details, no id echo.
       throw new ApiError('not_found', 'One or more selected ATCs are not available in this workspace.');
+    case '45127':
+      // BK-596 — an archived Test is frozen until restored; raised after the
+      // write gate, so only someone who could change the Test ever sees it.
+      throw new ApiError('conflict', 'This Test is archived. Restore it before changing it.', {
+        details: { reason: 'test_archived' },
+      });
+    case '45125': {
+      const currentVersion = parseConflictVersion(error.message);
+      throw new ApiError('conflict', 'The Test was changed by another request.', {
+        details: {
+          reason: 'version_conflict',
+          ...(currentVersion !== null ? { current_version: currentVersion } : {}),
+        },
+      });
+    }
     default:
       throw new ApiError('internal_error', error.message);
   }
@@ -51,6 +66,12 @@ export function mapTestReorderError(error: { code?: string, message: string }): 
     case '45124':
       throw new ApiError('chain_invalid', 'The chain must be non-empty and free of duplicate references.', {
         details: { reason: 'chain_invalid' },
+      });
+    case '45127':
+      // BK-596 — an archived Test is frozen until restored; raised after the
+      // write gate, so only someone who could change the Test ever sees it.
+      throw new ApiError('conflict', 'This Test is archived. Restore it before changing it.', {
+        details: { reason: 'test_archived' },
       });
     case '45125': {
       const currentVersion = parseConflictVersion(error.message);
@@ -83,6 +104,12 @@ export function mapTestTagsError(error: { code?: string, message: string }): nev
     case '45126':
       throw new ApiError('validation_failed', 'Tags must be 50 characters or fewer, comma-free, and at most 20 per Test.', {
         details: { reason: 'tags_invalid' },
+      });
+    case '45127':
+      // BK-596 — an archived Test is frozen until restored; raised after the
+      // write gate, so only someone who could change the Test ever sees it.
+      throw new ApiError('conflict', 'This Test is archived. Restore it before changing it.', {
+        details: { reason: 'test_archived' },
       });
     case '45125': {
       const currentVersion = parseConflictVersion(error.message);

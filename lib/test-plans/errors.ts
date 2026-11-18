@@ -120,6 +120,12 @@ export function mapTestPlanTestsRpcError(error: { code?: string, message: string
       throw new ApiError('test_outside_plan_project', 'This test does not belong to the plan\'s project.', {
         details: { reason: 'test_outside_plan_project' },
       });
+    case '45127':
+      // BK-596 — an archived Test is frozen until restored; raised after the
+      // write gate, so only someone who could change the Test ever sees it.
+      throw new ApiError('conflict', 'An archived test cannot be added to a plan. Restore it first.', {
+        details: { reason: 'test_archived' },
+      });
     default:
       throw new ApiError('internal_error', error.message);
   }

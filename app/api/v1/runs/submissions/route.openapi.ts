@@ -43,7 +43,7 @@ registry.registerPath({
     401: { description: 'Not authenticated, or the token is revoked or expired.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing `run:execute` scope, a viewer owner, a cookie session (`token_required`) or a token not bound to a workspace (`token_not_workspace_scoped`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'The Test does not exist or belongs to another workspace than the token\'s (`not_found`); reveals nothing about other workspaces.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'The `idempotency_key` was already used with a different payload within 24 hours (`conflict`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'The `idempotency_key` was already used with a different payload within 24 hours (`conflict`), or the Test is archived (`details.reason: test_archived`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (`validation_failed`: reasons `verdict_invalid`, `step_result_invalid`, `steps_incomplete` with `missing_positions`, `steps_duplicate_position`, `verdict_inconsistent`, `duration_invalid`, `evidence_*`, `idempotency_key_invalid`), `environment_invalid` (names the unknown environment) or `no_executable_steps`. Nothing is recorded.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

@@ -120,8 +120,10 @@ export async function fetchAtcLibrary(
     drainPages<{ atc_id: string, test_id: string }>(async (from, to) => {
       const res = await db
         .from('test_steps')
-        .select('atc_id, test_id, tests!inner(workspace_id)')
+        .select('atc_id, test_id, tests!inner(workspace_id, archived_at)')
         .eq('tests.workspace_id', workspaceId)
+        // BK-596: "used in N tests" offers the ATC's Tests; archived ones do not count.
+        .is('tests.archived_at', null)
         .order('id', { ascending: true })
         .range(from, to);
       return { data: res.data as unknown as { atc_id: string, test_id: string }[] | null, error: res.error };

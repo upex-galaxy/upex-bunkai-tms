@@ -148,3 +148,32 @@ describe('mapTestFilterError', () => {
     expect(err.message).not.toContain('constraint');
   });
 });
+
+// BK-596 — the archived refusal and the rename version conflict.
+describe('mapTestRpcError: archive and rename (BK-596)', () => {
+  test('45127 → 409 conflict with reason test_archived', () => {
+    const err = capture({ code: '45127', message: 'test_archived' });
+    expect(err.status).toBe(409);
+    expect(err.details).toEqual({ reason: 'test_archived' });
+    expect(err.message).toContain('Restore it');
+  });
+
+  test('45125 → 409 version_conflict carrying the current version', () => {
+    const err = capture({ code: '45125', message: 'version_conflict:7' });
+    expect(err.status).toBe(409);
+    expect(err.details).toEqual({ reason: 'version_conflict', current_version: 7 });
+  });
+
+  test('the frozen reorder and tag writers name the same reason', async () => {
+    const { mapTestReorderError } = await import('@lib/tests/errors');
+    for (const mapper of [mapTestReorderError, mapTestTagsError]) {
+      try {
+        mapper({ code: '45127', message: 'test_archived' });
+      }
+      catch (err) {
+        expect(err).toBeInstanceOf(ApiError);
+        expect((err as ApiError).details).toEqual({ reason: 'test_archived' });
+      }
+    }
+  });
+});

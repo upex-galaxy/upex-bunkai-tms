@@ -12,7 +12,11 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 // for the three distinct "nothing here yet" placeholders this null drives).
 
 const TraceabilityTestSchema = z
-  .object({ id: z.string().uuid(), title: z.string() })
+  .object({
+    id: z.string().uuid(),
+    title: z.string().describe('The Test\'s title; for a Test that ran, the title its latest Run started under.'),
+    archived_at: z.string().datetime({ offset: true }).nullable().optional().describe('BK-596: set when the Test is archived. It stays evidence, never a gap.'),
+  })
   .openapi('TraceabilityTest');
 
 const TraceabilityLatestRunSchema = z

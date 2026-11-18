@@ -410,6 +410,15 @@
           },
           {
             "$ref": "#/components/schemas/ActivityItemMilestoneRestored"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemTestRenamed"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemTestArchived"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemTestRestored"
           }
         ],
         "discriminator": {
@@ -437,7 +446,10 @@
             "jira_connection.disconnected": "#/components/schemas/ActivityItemJiraConnectionDisconnected",
             "bug.corrected": "#/components/schemas/ActivityItemBugCorrected",
             "milestone.archived": "#/components/schemas/ActivityItemMilestoneArchived",
-            "milestone.restored": "#/components/schemas/ActivityItemMilestoneRestored"
+            "milestone.restored": "#/components/schemas/ActivityItemMilestoneRestored",
+            "test.renamed": "#/components/schemas/ActivityItemTestRenamed",
+            "test.archived": "#/components/schemas/ActivityItemTestArchived",
+            "test.restored": "#/components/schemas/ActivityItemTestRestored"
           }
         }
       },
@@ -1819,6 +1831,171 @@
         },
         "required": ["name"]
       },
+      "ActivityItemTestRenamed": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["test"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["test.renamed"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadTestRenamed"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadTestRenamed": {
+        "type": "object",
+        "properties": {
+          "old_title": {
+            "type": ["string", "null"]
+          },
+          "new_title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["old_title", "new_title"]
+      },
+      "ActivityItemTestArchived": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["test"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["test.archived"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadTestArchived"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadTestArchived": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["title"]
+      },
+      "ActivityItemTestRestored": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["test"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["test.restored"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadTestRestored"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadTestRestored": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["title"]
+      },
       "SendDigestResponse": {
         "type": "object",
         "properties": {
@@ -2270,16 +2447,20 @@
         "properties": {
           "count": {
             "type": "integer",
-            "description": "Number of distinct Tests that chain this ATC."
+            "description": "Number of distinct live Tests that chain this ATC (BK-596: an archived Test is not offered, so it is not counted)."
           },
           "used_in": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AtcUsageEntry"
             }
+          },
+          "archived_count": {
+            "type": "integer",
+            "description": "BK-596: archived Tests that still chain this ATC. Not listed in `used_in`."
           }
         },
-        "required": ["count", "used_in"]
+        "required": ["count", "used_in", "archived_count"]
       },
       "AtcUsageEntry": {
         "type": "object",
@@ -5450,7 +5631,13 @@
             "format": "uuid"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "The Test's title; for a Test that ran, the title its latest Run started under."
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "BK-596: set when the Test is archived. It stays evidence, never a gap."
           }
         },
         "required": ["id", "title"],
@@ -6622,6 +6809,11 @@
               "type": "string"
             }
           },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "BK-596: set when the Test is archived. An archived member stays in the plan; it is never removed by the archive."
+          },
           "added_by": {
             "type": ["string", "null"],
             "format": "uuid"
@@ -6634,7 +6826,7 @@
             "format": "date-time"
           }
         },
-        "required": ["id", "title", "tags", "added_by", "added_by_email", "added_at"]
+        "required": ["id", "title", "tags", "archived_at", "added_by", "added_by_email", "added_at"]
       },
       "TestPlanAddTestsResponse": {
         "type": "object",
@@ -6696,6 +6888,16 @@
           "title": {
             "type": "string"
           },
+          "version": {
+            "type": "integer",
+            "description": "Optimistic-lock token, sent back as `X-If-Match` on a rename, reorder or tag change."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -6703,6 +6905,39 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "BK-596: set while the Test is archived. An archived Test keeps resolving here, read-only; it is hidden from search, tag filtering, the Tests list and the plan picker, and no Run can start from it."
+          },
+          "archived_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "run_count": {
+            "type": "integer",
+            "description": "Runs ever recorded against this Test. Archiving keeps every one of them."
+          },
+          "plans": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "name", "status"]
+            },
+            "description": "The Test Plans that hold this Test. Archiving never edits them."
           },
           "atc_count": {
             "type": "integer",
@@ -6716,7 +6951,21 @@
             "description": "The chain of ATCs, ordered by `test_steps.position`."
           }
         },
-        "required": ["id", "workspace_id", "title", "created_at", "updated_at", "atc_count", "atcs"]
+        "required": [
+          "id",
+          "workspace_id",
+          "title",
+          "version",
+          "tags",
+          "created_at",
+          "updated_at",
+          "archived_at",
+          "archived_by",
+          "run_count",
+          "plans",
+          "atc_count",
+          "atcs"
+        ]
       },
       "ChainedAtc": {
         "type": "object",
@@ -6815,6 +7064,31 @@
           }
         },
         "required": ["id", "position", "content"]
+      },
+      "ArchivedTest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "archived_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "changed": {
+            "type": "boolean",
+            "description": "False when the call changed nothing: the Test was already in that state."
+          }
+        },
+        "required": ["id", "title", "archived_at", "archived_by", "changed"]
       },
       "RunHistoryPage": {
         "type": "object",
@@ -10039,7 +10313,11 @@
                     },
                     "affected_test_count": {
                       "type": "integer",
-                      "description": "DISTINCT Tests that chain this ATC and now reflect the edit. 0 for a no-op."
+                      "description": "DISTINCT Tests that chain this ATC and now reflect the edit, archived ones included. 0 for a no-op."
+                    },
+                    "affected_archived_test_count": {
+                      "type": "integer",
+                      "description": "BK-596: how many of those Tests are archived (they run the edit once restored). Absent on a no-op."
                     }
                   },
                   "required": ["atc", "version", "affected_test_count"]
@@ -16116,7 +16394,7 @@
             }
           },
           "409": {
-            "description": "Idempotency-Key reused with a different payload, or a request with the same key is still in flight (`conflict`).",
+            "description": "Idempotency-Key reused with a different payload, or a request with the same key is still in flight (`conflict`), or the Test is archived (`details.reason: test_archived`; a replayed start token still returns its Run).",
             "content": {
               "application/json": {
                 "schema": {
@@ -17359,7 +17637,7 @@
             }
           },
           "409": {
-            "description": "The `idempotency_key` was already used with a different payload within 24 hours (`conflict`).",
+            "description": "The `idempotency_key` was already used with a different payload within 24 hours (`conflict`), or the Test is archived (`details.reason: test_archived`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -18026,7 +18304,7 @@
             }
           },
           "409": {
-            "description": "A submitted test is already in the plan, or the plan is closed.",
+            "description": "A submitted test is already in the plan, or is archived (`test_archived`), or the plan is closed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -18146,7 +18424,7 @@
             }
           },
           "409": {
-            "description": "Version conflict (`conflict`, `details.reason: version_conflict`, with `current_version` + `current_chain`).",
+            "description": "Version conflict (`conflict`, `details.reason: version_conflict`, with `current_version` + `current_chain`), or the Test is archived (`test_archived`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -18250,6 +18528,279 @@
           },
           "404": {
             "description": "Test not found (missing, not visible, or foreign workspace — non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Tests"],
+        "summary": "Rename a Test",
+        "description": "Bearer `atc:write` (or cookie session). Body `{ title }`, trimmed, 1-200 characters (the create rule). Optional `X-If-Match: <version>` guards against a concurrent change. Emits one `test.renamed` event carrying the old and new name. An identical name after trimming is a 200 with `changed: false`, no version bump and no event; a case-only change is a real rename. Past Runs keep the name they started under.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": ["title"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Renamed, or already that name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "test": {
+                      "$ref": "#/components/schemas/ExpandedTest"
+                    },
+                    "changed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["test", "changed"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id, body or X-If-Match.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or not a writer of the owning workspace (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Test is archived (`details.reason = test_archived`), or `X-If-Match` is stale (`version_conflict`, with `current_version`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Blank title (`title_required`) or longer than 200 characters (`title_too_long`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Tests"],
+        "summary": "Archive a Test",
+        "description": "Bearer `atc:write` (or cookie session). Soft-delete: the Test leaves every surface that offers it for use (search, tag filtering, the Tests list, the plan picker, Run start) and keeps resolving on every surface that reports what already happened (its Runs, Run history, traceability, reports). Nothing is destroyed: no Run, chain step or Test Plan membership is edited. Emits one `test.archived` event. Idempotent: archiving an archived Test is the same 204 and keeps the first actor and timestamp. Restore with POST .../restore.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Archived, or already archived."
+          },
+          "400": {
+            "description": "Malformed id, body or X-If-Match.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or not a writer of the owning workspace (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/{id}/restore": {
+      "post": {
+        "tags": ["Tests"],
+        "summary": "Restore an archived Test",
+        "description": "Bearer `atc:write` (or cookie session). Returns the Test to full use with its chain, tags and Runs untouched, and emits one `test.restored` event. Idempotent: restoring a live Test is a 200 with `changed: false` and no event.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored, or already live.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "test": {
+                      "$ref": "#/components/schemas/ArchivedTest"
+                    }
+                  },
+                  "required": ["test"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id, body or X-If-Match.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or not a writer of the owning workspace (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -18479,7 +19030,7 @@
             }
           },
           "409": {
-            "description": "Version conflict (`conflict`, `details.reason: version_conflict`, with `current_version` + `current_tags`).",
+            "description": "Version conflict (`conflict`, `details.reason: version_conflict`, with `current_version` + `current_tags`), or the Test is archived (`test_archived`).",
             "content": {
               "application/json": {
                 "schema": {

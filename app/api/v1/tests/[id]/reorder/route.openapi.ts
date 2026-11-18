@@ -43,7 +43,7 @@ registry.registerPath({
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a workspace member with write access (`forbidden`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Test not found / not visible — non-disclosing (`not_found`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'Version conflict (`conflict`, `details.reason: version_conflict`, with `current_version` + `current_chain`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'Version conflict (`conflict`, `details.reason: version_conflict`, with `current_version` + `current_chain`), or the Test is archived (`test_archived`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Empty chain or duplicate step ids (`chain_invalid`), or the submitted set is not the Test\'s steps (`chain_mismatch`, with `details.missing` / `details.extra`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

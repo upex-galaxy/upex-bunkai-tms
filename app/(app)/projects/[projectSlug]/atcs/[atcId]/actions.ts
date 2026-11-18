@@ -33,7 +33,7 @@ export interface SaveAtcActionInput {
 }
 
 export type SaveAtcActionResult
-  = | { ok: true, affectedTestCount: number }
+  = | { ok: true, affectedTestCount: number, archivedTestCount: number }
     | { ok: false, error: string };
 
 // Edit an ATC from the web editor. Unified onto the canonical bunkai_update_atc
@@ -99,16 +99,21 @@ export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcA
   // not test_steps, so this read reflects the chaining Tests at save time; count
   // is DISTINCT Tests (a Test chaining the ATC multiple times counts once). A
   // failure here must not fail the save — fall back to 0.
+  // BK-596: an archived Test still chains the ATC and runs the edit once it is
+  // restored, so it is counted and named (AI Product Owner ruling, Q6).
   let affectedTestCount = 0;
+  let archivedTestCount = 0;
   const { data: usage } = await atcUsage(supabase, {
     actorUserId: auth.user.id,
     atcId: input.atcId,
   });
   if (usage) {
-    affectedTestCount = (usage as { count: number }).count;
+    const report = usage as { count: number, archived_count?: number };
+    archivedTestCount = report.archived_count ?? 0;
+    affectedTestCount = report.count + archivedTestCount;
   }
 
-  return { ok: true, affectedTestCount };
+  return { ok: true, affectedTestCount, archivedTestCount };
 }
 
 // Not exported: a 'use server' module may only export async functions.

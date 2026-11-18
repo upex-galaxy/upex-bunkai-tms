@@ -43,6 +43,12 @@ export function mapSubmissionRpcError(error: SubmissionRpcError): never {
       throw new ApiError('no_executable_steps', 'This Test has no executable steps and cannot be submitted.', {
         details: { reason: 'no_executable_steps' },
       });
+    case '45127':
+      // BK-596 — an archived Test is frozen until restored; raised after the
+      // write gate, so only someone who could change the Test ever sees it.
+      throw new ApiError('conflict', 'This Test is archived. Restore it before submitting a run.', {
+        details: { reason: 'test_archived' },
+      });
     case '45231':
       throw new ApiError('conflict', 'This idempotency_key was already used with a different payload.', {
         details: { reason: 'idempotency_key_conflict' },

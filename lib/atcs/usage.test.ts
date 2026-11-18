@@ -1,4 +1,4 @@
-import { atcUsageLabel, buildAtcUsageReport, formatPositions } from '@lib/atcs/usage';
+import { atcSaveConfirmation, atcUsageLabel, buildAtcUsageReport, formatPositions } from '@lib/atcs/usage';
 import { describe, expect, it } from 'bun:test';
 
 // BK-22 — unit coverage for the "used in N tests" presentation helpers. Pure,
@@ -57,5 +57,21 @@ describe('bK-571 — buildAtcUsageReport (Used by on an archived ATC)', () => {
 
   it('reports zero for no chain rows', () => {
     expect(buildAtcUsageReport([])).toEqual({ count: 0, used_in: [] });
+  });
+});
+
+// BK-596 — the save confirmation counts archived Tests and names them.
+describe('atcSaveConfirmation', () => {
+  it('reads "no Tests affected" when nothing chains the ATC', () => {
+    expect(atcSaveConfirmation(0, 0)).toBe('ATC saved — no Tests affected');
+  });
+
+  it('keeps the BK-21 copy when no affected Test is archived', () => {
+    expect(atcSaveConfirmation(1, 0)).toBe('ATC saved — 1 Test updated');
+    expect(atcSaveConfirmation(3, 0)).toBe('ATC saved — 3 Tests updated');
+  });
+
+  it('names the archived share: "3 Tests, 1 archived"', () => {
+    expect(atcSaveConfirmation(3, 1)).toBe('ATC saved — 3 Tests updated, 1 archived');
   });
 });

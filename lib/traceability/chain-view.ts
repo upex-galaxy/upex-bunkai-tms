@@ -17,6 +17,8 @@ export interface TraceabilityStory {
 export interface TraceabilityTest {
   id: string
   title: string
+  // BK-596 — set when the Test is archived; it stays evidence, marked archived.
+  archived_at?: string | null
 }
 
 export type TraceabilityRunState = 'in_flight' | 'aborted' | 'passed' | 'failed' | 'blocked' | 'skipped';
