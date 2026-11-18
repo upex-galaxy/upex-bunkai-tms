@@ -180,6 +180,33 @@ describe('DisplayNameForm', () => {
     expect(toasts).toEqual(['Your display name was saved.']);
   });
 
+  it('sends nothing when Enter is pressed on an unchanged name (D7)', async () => {
+    render('Elena Vargas');
+    await act(async () => {
+      input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+
+    expect(sent).toEqual([]);
+    expect(toasts).toEqual([]);
+  });
+
+  it('keeps the field focusable while saving: read-only, not disabled', async () => {
+    let release: () => void = () => {};
+    respond = async (_m, body) => {
+      await new Promise<void>((resolve) => { release = resolve; });
+      return Response.json({ display_name: (body as { display_name: string }).display_name });
+    };
+    render(null);
+    type('Elena');
+    await click('display-name-save');
+
+    expect(input().readOnly).toBe(true);
+    expect(input().disabled).toBe(false);
+    await act(async () => { release(); });
+    await settle();
+    expect(input().readOnly).toBe(false);
+  });
+
   it('sends nothing when Remove is cancelled (E1)', async () => {
     render('Elena Vargas');
     await click('display-name-remove');
@@ -202,5 +229,18 @@ describe('DisplayNameForm', () => {
     expect(toasts).toEqual(['Your display name was removed.']);
     expect(input().value).toBe('Elena Vargas');
     expect($('display-name-remove')).toBeNull();
+    // The button that opened the dialog is gone, so focus lands on the field.
+    expect(document.activeElement).toBe(input());
+  });
+
+  it('tells a signed-out person to sign in again to remove (E6)', async () => {
+    respond = async () => Response.json({ error: { code: 'unauthorized', message: 'Authentication required.' } }, { status: 401 });
+    render('Elena V.');
+    await click('display-name-remove');
+    await click('display-name-remove-confirm');
+    await settle();
+
+    expect($('display-name-form-error')?.textContent).toBe('Your session has expired. Sign in again to remove your name.');
+    expect(input().value).toBe('Elena V.');
   });
 });

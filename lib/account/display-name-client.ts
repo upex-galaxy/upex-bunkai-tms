@@ -19,7 +19,7 @@ interface ErrorBody {
   error?: { message?: string }
 }
 
-async function call(init: RequestInit, failureMessage: string): Promise<DisplayNameOutcome> {
+async function call(init: RequestInit, failureMessage: string, signedOutMessage: string): Promise<DisplayNameOutcome> {
   let response: Response;
   try {
     response = await fetch(ENDPOINT, init);
@@ -34,7 +34,7 @@ async function call(init: RequestInit, failureMessage: string): Promise<DisplayN
     return { kind: 'saved', displayName: typeof stored === 'string' ? stored : null };
   }
   if (response.status === 401) {
-    return { kind: 'signed-out', message: DISPLAY_NAME_COPY.sessionExpired };
+    return { kind: 'signed-out', message: signedOutMessage };
   }
   if (response.status === 422) {
     return { kind: 'invalid', message: (json as ErrorBody | null)?.error?.message ?? failureMessage };
@@ -47,9 +47,9 @@ export async function saveDisplayName(name: string): Promise<DisplayNameOutcome>
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ display_name: name }),
-  }, DISPLAY_NAME_COPY.saveFailed);
+  }, DISPLAY_NAME_COPY.saveFailed, DISPLAY_NAME_COPY.sessionExpired);
 }
 
 export async function removeDisplayName(): Promise<DisplayNameOutcome> {
-  return call({ method: 'DELETE' }, DISPLAY_NAME_COPY.removeFailed);
+  return call({ method: 'DELETE' }, DISPLAY_NAME_COPY.removeFailed, DISPLAY_NAME_COPY.sessionExpiredRemove);
 }

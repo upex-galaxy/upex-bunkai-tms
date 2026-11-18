@@ -36,6 +36,17 @@ export function DisplayNameForm({ ownName, providerName }: DisplayNameFormProps)
   // React state lands after the click handler returns, so two quick presses
   // could both see `busy === null`. The ref closes that window (AC 5.2).
   const inFlight = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // The "Remove my name" button that opened the dialog is gone once the name
+  // is removed, so the dialog cannot hand focus back to it; the field takes it.
+  const [focusFieldAfterRemove, setFocusFieldAfterRemove] = useState(false);
+
+  useEffect(() => {
+    if (focusFieldAfterRemove) {
+      inputRef.current?.focus();
+      setFocusFieldAfterRemove(false);
+    }
+  }, [focusFieldAfterRemove]);
 
   const idle = busy === null;
   const dirty = value !== (saved ?? '');
@@ -92,6 +103,7 @@ export function DisplayNameForm({ ownName, providerName }: DisplayNameFormProps)
       setSaved(null);
       setValue(providerName ?? '');
       setFieldError(null);
+      setFocusFieldAfterRemove(true);
       toast.success(DISPLAY_NAME_COPY.removed);
       router.refresh();
       return;
@@ -106,8 +118,12 @@ export function DisplayNameForm({ ownName, providerName }: DisplayNameFormProps)
         <Input
           id="display-name-input"
           data-testid="display-name-input"
+          ref={inputRef}
           value={value}
-          disabled={!idle}
+          // Read-only, not disabled, while a request runs: a disabled field
+          // drops keyboard focus to the page body.
+          readOnly={!idle}
+          aria-busy={!idle}
           autoComplete="name"
           className="min-w-0 flex-1 basis-64"
           aria-invalid={fieldError ? true : undefined}
@@ -116,7 +132,10 @@ export function DisplayNameForm({ ownName, providerName }: DisplayNameFormProps)
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault();
-              void handleSave();
+              // Same rule as the Save button: nothing to save when unchanged.
+              if (idle && dirty) {
+                void handleSave();
+              }
             }
           }}
         />

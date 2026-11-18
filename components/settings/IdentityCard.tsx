@@ -48,7 +48,7 @@ export function IdentityCard({ email, ownDisplayName, providerName, role, worksp
                 {accountName}
               </span>
             )}
-            <span data-testid="identity-email" className="font-mono text-sm text-fg-1">
+            <span data-testid="identity-email" className="break-all font-mono text-sm text-fg-1">
               {email ?? '—'}
             </span>
           </div>
