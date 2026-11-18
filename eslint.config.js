@@ -1,9 +1,8 @@
 import antfu from '@antfu/eslint-config';
 import nextPlugin from '@next/eslint-plugin-next';
 
-// Synced half (`bun sync` overwrites eslint.config.base.js): the cli/ import-closure
-// block guards the updater's self-update and must stay wired here (agents:compat:check).
-import { CLI_IMPORT_CLOSURE } from './eslint.config.base.js';
+// Synced half (`bun sync` overwrites eslint.config.base.js): every scoped block it exports must stay wired here (agents:compat:check).
+import { CLI_IMPORT_CLOSURE, GUARD_RULES, GUARD_SHAPE } from './eslint.config.base.js';
 
 export default antfu({
   // TypeScript configuration
@@ -98,7 +97,7 @@ export default antfu({
       },
     ],
   },
-}, CLI_IMPORT_CLOSURE).append({
+}, CLI_IMPORT_CLOSURE, GUARD_RULES, ...GUARD_SHAPE).append({
   name: 'next/core-web-vitals',
   plugins: { '@next/next': nextPlugin },
   rules: nextPlugin.configs['core-web-vitals'].rules,

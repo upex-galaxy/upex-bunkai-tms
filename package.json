@@ -38,7 +38,7 @@
     "release:check": "bun scripts/check-release-readiness.ts",
     "test": "bun test",
     "test:guarded": "bash scripts/guard.sh bun test",
-    "repo:check": "bun scripts/tooling-check.ts repo && bun run vars:check && bun run vars:env:check && bun run vars:schema:check && bun run skills:check && bun run skills:registry:check && bun run docs:check && bun run shared:check && bun run instructions:check && bun run openapi:check && bun run agents:compat:check && bun run agents:schema:check",
+    "repo:check": "bun scripts/tooling-check.ts repo && bun run vars:check && bun run vars:env:check && bun run vars:schema:check && bun run skills:check && bun run skills:registry:check && bun run docs:check && bun run shared:check && bun run instructions:check && bun run openapi:check && bun run agents:compat:check && bun run agents:schema:check && bun run guard:manifest:check",
     "repo:fix": "bun run format:fix && bun run lint:fix && bun run types:check && bun run vars:check && bun run vars:env:check && bun run vars:schema && bun run skills:check && bun run skills:registry:check && bun run docs:check && bun run instructions:check && bun run openapi:check && bun run agents:compat:check",
     "clean": "rm -rf node_modules dist .next",
     "prepare": "husky && bun scripts/harness-env.ts --placeholders",
@@ -125,16 +125,16 @@
     "eslint": "^9.28.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
+    "oxlint": "1.94.0",
     "postcss": "^8.5.15",
     "prettier": "^3.7.4",
     "tailwindcss": "^3.4",
     "typescript": "^5.9.3",
-    "varlock": "1.20.0",
-    "oxlint": "1.94.0"
+    "varlock": "1.20.0"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
-      "eslint --fix"
+      "oxlint -c .oxlintrc.json"
     ],
     "*.{json,yml,yaml,css,scss,html}": [
       "prettier --write --ignore-path .prettierignore"
