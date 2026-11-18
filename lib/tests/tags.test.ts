@@ -38,7 +38,6 @@ const describeOrSkip = hasEnv ? describe : describe.skip;
 const SET_RPC = 'bunkai_set_test_tags';
 const FILTER_RPC = 'bunkai_filter_tests_by_tag';
 const NORMALIZE_RPC = 'bunkai_normalize_test_tags';
-const RANDOM_UUID = '00000000-0000-0000-0000-000000000000';
 
 const WRITER_ROLES = new Set(['member', 'admin', 'owner']);
 
@@ -67,15 +66,6 @@ function pickWritable(fx: Awaited<ReturnType<typeof loadFixtures>>) {
     if (writer) { return { test: t, userId: writer.user_id }; }
   }
   return undefined;
-}
-
-async function tagsEventCount(db: Db, testId: string): Promise<number> {
-  const { count } = await db
-    .from('activity_log')
-    .select('id', { count: 'exact', head: true })
-    .eq('entity_id', testId)
-    .eq('action', 'test.tags_changed');
-  return count ?? 0;
 }
 
 // Put the Test back the way we found it (original tags + version) and purge any
