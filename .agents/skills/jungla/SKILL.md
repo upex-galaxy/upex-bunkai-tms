@@ -69,7 +69,7 @@ You add the waking, the ganks and the conducting. Audit, selection, locks, hando
 
 ## Delegating with Orca
 
-You are a conductor. The exact grammar comes from the binary when you use it: `orca skills get orchestration`. The doctrine is the webapp's `/Users/ely/Desktop/projects/galaxy/upexgalaxy-webapp/.claude/skills/orca-orchestration/SKILL.md`; read it the first time you dispatch in a session. In short:
+You are a conductor. The exact grammar comes from the binary when you use it: `orca skills get orchestration`. The doctrine is the user-level skill `/agent-orchestration` (this repo's own parts: `agentic-dev-core/references/fleet-*.md`); load it the first time you dispatch in a session. In short:
 
 1. Brief folder outside git: `$JUNGLA_STATE_DIR/runs/<AAAA-MM-DD>-<slug>/brief.md` with the 6-component briefing of `AGENTS.md` §3 (goal, context docs, skills to load, exact steps, report format, rules), absolute paths, what the worker may touch, how it verifies, and that it reports to you through `orca orchestration`.
 2. Run, task and worker in a **new worktree born from `origin/staging`** (verify the SHA). Provision it before the launch: copy `.env` from the main checkout, `bun install`, and `bun run agents:compat` (the `.claude/skills` alias is gitignored, so a fresh worktree lacks it and its first pre-push fails). Hand the brief over in the same operation as the launch.

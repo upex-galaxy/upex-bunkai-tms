@@ -587,7 +587,8 @@ create  ->  bun run worktree:provision  ->  work  ->  bun run worktree:audit <wt
 - **Create**: `git worktree add ../dir -b feat/x main` on any host (portable canon). A host's own
   tool (Claude Code `EnterWorktree` / `ExitWorktree`, a Codex-managed worktree) is a harness path
   only: it still needs the two repo steps around it. Supervised fleets go through
-  `/orca-orchestration`, whose committed `orca.yaml` runs both steps as hooks.
+  `/agent-orchestration`, and this repo's committed `orca.yaml` runs both steps as hooks
+  (`agentic-dev-core/references/fleet-provisioning.md`).
 - **Provision** copies the gitignored inputs a fresh worktree lacks (`.env`, `.vercel/`, local
   settings), installs dependencies and creates the `.claude/skills` alias.
 - **`.session/` is never copied**: durable state lives at `<<PRIMARY_ROOT>>` and is cited by
