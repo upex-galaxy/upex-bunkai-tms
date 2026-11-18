@@ -194,8 +194,8 @@ autonomous_delivery:
 
 # Defaults for supervised multi-session worker fleets: one conductor session
 # coordinating N persistent workers through the Orca runtime, or, with no
-# runtime, the same launch lines pasted by hand. Read by the `orca-orchestration`
-# skill. DEFAULTS only: an explicit instruction in the conductor session always
+# runtime, the same launch lines pasted by hand. Read by the user-level
+# `agent-orchestration` skill. DEFAULTS only: an explicit instruction in the conductor session always
 # wins for that run ("run three", "use opencode for this one").
 # A missing block degrades, it does not break: cap 1, the harness defaults, and
 # no orchestrator named. Full semantics: .agents/README.md -> "orchestration".
@@ -218,8 +218,8 @@ orchestration:
   # takes sonnet | opus | haiku | fable.
   subagent_model: sonnet # e.g. sonnet
   # Permission mode per tier, in the repo vocabulary bypass | auto | ask | inherit.
-  # Translated per harness in ONE table:
-  # .agents/skills/orca-orchestration/references/orca-machine-setup.md §3.1.
+  # Translated per harness in ONE table: the agent-orchestration skill's
+  # machine setup §3.
   # A supervised worker's REAL mode comes from the orchestrator app's per-agent
   # default arguments (the native launch takes no argv); this map declares what
   # the conductor verifies at readiness. Why these defaults and the security
@@ -247,15 +247,15 @@ orchestration:
   # BETWEEN sessions and is byte-intact. `terminal_verb` DRIVES a terminal
   # (commands, CLI calls, harness slash-commands, keystrokes): it truncates a
   # long payload silently, keeps only the TAIL, and still reports success.
-  # One structural exception: a supervised worker's first prompt goes through
-  # `terminal_verb`, because the native launch has no argv. Keep it short and
-  # pointing at a file. Canon: orca-orchestration/references/channel-discipline.md.
+  # A supervised worker's first prompt is its task spec, never `terminal_verb`.
+  # Canon: the agent-orchestration skill's channel discipline, which names the
+  # verbs itself; these two keys stay as the profile owner's record.
   message_verb: orca orchestration # session-to-session messages ONLY
   terminal_verb: orca terminal # commands and keystrokes ONLY
-  # Vendor skills the orchestrator installs at USER level, loaded ALONGSIDE the
-  # repo's own `orca-orchestration` skill, never instead of it: the repo skill
+  # Vendor skills the orchestrator installs at USER level, loaded beside the
+  # user-level `agent-orchestration` skill, never instead of it: that skill
   # owns WHEN and WHAT, these own the command grammar. Empty list = none
-  # installed; the repo skill then asks the binary for its grammar.
+  # installed; the skill then asks the binary for its grammar.
   orchestrator_skills: [orca-cli, orchestration]
 
 # Files `bun sync` must keep as THIS project's own. Read by `cli/update-boilerplate.ts`
@@ -308,9 +308,9 @@ external_consumers:
   - onepassword # key of the structured `secrets:` block, read directly by cli/lib/secret-providers.ts (parseSecretsConfig), never resolved through {{VAR}} templating
   - strategy_source # key of the structured `git_strategy.meta:` block, read directly by .agents/skills/git-flow-master (bootstrap trigger + Strategy Setup persist) — never resolved through {{VAR}} templating
   - default_env # consumed implicitly by the AI variable resolver (sets active env for {{WEB_URL}} / {{API_URL}} / ...) AND by scripts/agents-setup.ts via process.env.DEFAULT_ENV in --non-interactive mode
-  - permission_modes # map key of the flat `orchestration:` block, read by path (`orchestration.permission_modes.<tier>`) by .agents/skills/orca-orchestration/SKILL.md (hard rule 5, §Defaults) and references/coordinator-playbook.md §1 readiness — never resolved through {{VAR}} templating
-  - model_overrides # list key of the flat `orchestration:` block, read by path by .agents/skills/orca-orchestration/SKILL.md §Defaults when the conductor picks a tier's model — never resolved through {{VAR}} templating
-  - orchestrator_skills # list key of the flat `orchestration:` block, read directly by .agents/skills/orca-orchestration/SKILL.md (Quick start step 2, Modes) as a list of user-level skills to load — never resolved through {{VAR}} templating
+  - permission_modes # map key of the flat `orchestration:` block, read by path (`orchestration.permission_modes.<tier>`) by the user-level agent-orchestration skill (hard rule 5, §Defaults, conductor cycle §3 readiness) — never resolved through {{VAR}} templating
+  - model_overrides # list key of the flat `orchestration:` block, read by path by the user-level agent-orchestration skill (§Defaults) when the conductor picks a tier's model — never resolved through {{VAR}} templating
+  - orchestrator_skills # list key of the flat `orchestration:` block, read by the user-level agent-orchestration skill (Modes) as a list of vendor guides to load beside it — never resolved through {{VAR}} templating
   - design_md_path # read by `yq '.frontend.design_md_path'` inside bash code fences of .agents/skills/{design-system/references/getdesign-matcher.md, project-bootstrap/references/frontend-setup.md}
 
 # Per-environment config. Add/remove environments freely (production, dev, qa, uat, etc.).

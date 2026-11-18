@@ -182,7 +182,7 @@ This is the foundational decision behind every architectural choice in this repo
 | **Dispatch Pattern**    | One of Single / Sequential / Parallel / Background. Picked per stage in each skill's `## Subagent Dispatch Strategy` section.                                                           |
 | **Active Environment**  | The environment URLs and credentials in use for the session (local / staging / production). Resolved from `testing.default_env` in `.agents/project.yaml` or session override.                |
 | **Topic Key**           | The stable identifier under which an artefact is saved in engram (e.g. `pbi/{ticket}/impl-plan`). Documented in `agentic-dev-core/references/topic-key-conventions.md`.                 |
-| **Supervised worker**   | A persistent agent session, in its own worktree, that a conductor session coordinates through `/orca-orchestration`. Optional: only when the orchestration runtime is reachable (§8). |
+| **Supervised worker**   | A persistent agent session, in its own worktree, that a conductor session coordinates through the user-level skill `/agent-orchestration`. Optional: only when the orchestration runtime is reachable (§8). |
 | **Worktree**            | A second working directory of the repo on its own branch, so parallel sessions never share uncommitted files. Prepared with `bun run worktree:provision`.                              |
 
 ---
@@ -208,7 +208,7 @@ The practice is organised in three conceptual tiers:
 │  workflow skills (own a stage of the lifecycle)                     │
 │  e.g. project-foundation · design-system · project-bootstrap ·      │
 │       product-management · sprint-development · git-flow-master ·   │
-│       autonomous-delivery · orca-orchestration                      │
+│       autonomous-delivery · agent-orchestration (user level)        │
 │                                                                     │
 │  context skills (hold a synthesized business map, HTML)             │
 │  e.g. business-data-context · business-feature-context              │
@@ -526,7 +526,7 @@ The orchestrator follows an explicit cost-aware delegation policy. The decision 
 
 ### Two executors
 
-One-shot subagents are the default executor: they live inside the turn, read or write or verify, report, and their context is gone. A second, optional executor exists for work that is a whole scope by itself (one story through plan, code and review to an open PR): the **supervised worker**, a persistent agent session in its own worktree and branch that a conductor session coordinates through `/orca-orchestration`, talking to it at any moment in both directions. `/sprint-development` fleet mode runs one worker per story.
+One-shot subagents are the default executor: they live inside the turn, read or write or verify, report, and their context is gone. A second, optional executor exists for work that is a whole scope by itself (one story through plan, code and review to an open PR): the **supervised worker**, a persistent agent session in its own worktree and branch that a conductor session coordinates through `/agent-orchestration`, talking to it at any moment in both directions. `/sprint-development` fleet mode runs one worker per story.
 
 It needs the Orca runtime. When the binary or the runtime is missing, the workflow skills stay silent about it and the same work runs on subagents plus the launch lines a human pastes by hand. The conductor keeps every shared-state write (merge, staging deploy, shared-database migration, sprint report) for itself.
 
@@ -722,7 +722,7 @@ These hooks are documented but not implemented. Reopen when there is concrete de
 - **A roster of phase-aware AI skills** — auto-triggered by user intent, orchestrated with human-in-the-loop checkpoints. Each tier of the lifecycle has its own skill. The current roster is enumerated in [onboarding.html §9 Skills catalog](onboarding.html).
 - **Skills with modes** — a multi-mode skill is invoked by name plus mode (`/project-context data`), the same entry point on every harness; no command files to keep in sync.
 - **One source, every harness** — `AGENTS.md` + `.agents/skills/` are read natively by OpenCode, Codex and Pi and through generated shims by Claude Code; the MCP inventory exists once per host format and is parity-checked. Full wiring in `.agents/instructions/agent-harnesses.md` §5.5.
-- **Orchestration and parallel work** — one-shot subagents by default; optional supervised workers in their own worktrees through `/orca-orchestration`; `bun run worktree:provision` and `bun run worktree:audit` for any parallel checkout; `/session-handoff` when a session must continue in a fresh one.
+- **Orchestration and parallel work** — one-shot subagents by default; optional supervised workers in their own worktrees through the user-level `/agent-orchestration`; `bun run worktree:provision` and `bun run worktree:audit` for any parallel checkout; `/session-handoff` when a session must continue in a fresh one.
 - **Live system integrations** — capabilities resolved through MCPs (the local servers `.mcp.json` declares, plus web search at harness level and engram for memory); first-party CLIs for Jira (acli), GitHub (gh), deploys (vercel, supabase), browser automation (`playwright-cli`).
 - **A structured context layer** — project, module, and story-level knowledge, on disk. Project-level docs (product specs, design tokens, discovery docs) are version-controlled; per-ticket memory under `.context/PBI/` is a gitignored cache hydrated from Jira, not a git-tracked artefact.
 - **A portable design system (`DESIGN.md`)** — Apache-2.0 Google Labs spec at the project root. Consumed by `/project-bootstrap` and any AI agent reading the repo.

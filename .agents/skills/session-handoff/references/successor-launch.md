@@ -8,7 +8,7 @@ A handoff transfers ownership of a whole session. There is no Task, no Dispatch,
 
 The right family is the plain terminal-and-worktree one. When the command grammar is needed, ask the runtime's binary for its own CLI guide, because a copy in this repo desynchronizes on the next release.
 
-| | Handoff (this skill) | Orchestration (`/orca-orchestration`) |
+| | Handoff (this skill) | Orchestration (`/agent-orchestration`) |
 |---|---|---|
 | what moves | the whole session | one scoped task |
 | the predecessor | ends | keeps working and supervises |
@@ -34,11 +34,11 @@ A predecessor that was itself a fleet worker opened its prompt with `/<skill> <l
 
 Check three preconditions before launching:
 
-1. The binary is present and the runtime is reachable (the three-state gate in `/orca-orchestration`). Where the prompt hook reports runtime availability on a line of its own, that line is present this turn.
+1. The binary is present and the runtime is reachable (the three-state runtime gate in `/agent-orchestration`). Where the prompt hook reports runtime availability on a line of its own, that line is present this turn.
 2. The handoff file exists at its final path and is complete.
 3. The successor's target is the same worktree the predecessor is in, on the same harness.
 
-Then create one terminal in the active worktree whose command is the launch line: a plain terminal create, not a supervised worker launch. The traps (the screen read, the delivered-is-not-run receipt) are in `/orca-orchestration` `references/gotchas.md` G11 and G13, and the grammar is the binary's own guide.
+Then create one terminal in the active worktree whose command is the launch line: a plain terminal create, not a supervised worker launch. The traps (the screen read, the delivered-is-not-run receipt) are in the `/agent-orchestration` gotchas ledger, G11 and G13, and the grammar is the binary's own guide.
 
 Announce the launch to the owner before firing it, naming the terminal, since a second session is about to appear on their board. With nobody present, "With nobody at the keyboard" in `SKILL.md` applies: a conductor or a brief that names the launch holds the gate, and without either you stop at the printed line.
 

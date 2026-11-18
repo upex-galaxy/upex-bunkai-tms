@@ -30,7 +30,7 @@ When two gates seem to fit, take the earlier one, since it is more specific.
 
 ## Two executors
 
-One-shot subagents are the default executor, and every pattern above describes them. The optional second executor is the supervised worker: a persistent session coordinated through `/orca-orchestration`. It is gated on the orchestration binary and a reachable runtime. When either is missing, the work runs on subagents plus the `launch.txt` lines a human pastes, and a workflow skill stays silent about workers instead of naming them to the user. The comparison between the two, the execution patterns and the gate design are in `.agents/instructions/agent-orchestration-detail.md`.
+One-shot subagents are the default executor, and every pattern above describes them. The optional second executor is the supervised worker: a persistent session coordinated through the user-level skill `/agent-orchestration`. It is gated on the orchestration binary and a reachable runtime. When either is missing, the work runs on subagents plus the `launch.txt` lines a human pastes, and a workflow skill stays silent about workers instead of naming them to the user. The comparison between the two, the execution patterns and the gate design are in `.agents/instructions/agent-orchestration-detail.md`.
 
 ---
 

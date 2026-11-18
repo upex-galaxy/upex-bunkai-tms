@@ -243,6 +243,31 @@ export const RETIRED_SKILL_FILES: DeprecatedFile[] = [
   '.agents/skills/sync-ai-memory/references/sync.md',
 ].map(path => ({ path, component: 'agent-compatibility', reason: RETIRED_SYNC_REASON, deprecatedSince: '8.5' }));
 
+// Backed up first: `cleanupDeprecated` deletes a retired file even when the project edited it.
+const RETIRED_ORCHESTRATION_REASON = 'moved to the user-level skill agent-orchestration (bun setup installs it); this repo keeps its parts in agentic-dev-core/references/fleet-*.md (ADR-0025)';
+export const RETIRED_ORCHESTRATION_FILES: DeprecatedFile[] = [
+  'evals/evals.json',
+  'references/automations.md',
+  'references/brief-template.md',
+  'references/channel-discipline.md',
+  'references/claims-protocol.md',
+  'references/coordinator-playbook.md',
+  'references/gotchas.md',
+  'references/html-surfaces.md',
+  'references/launch-seam.md',
+  'references/orca-machine-setup.md',
+  'references/provisioning.md',
+  'references/session-identity.md',
+  'references/standby-report-contract.md',
+  'references/topologies.md',
+  'references/worker-contract.md',
+  'templates/COMMON.md',
+  'templates/W-brief.md',
+  'templates/launch.txt',
+  'templates/roster.md',
+  'templates/run.md',
+].map(file => ({ path: `.agents/skills/orca-orchestration/${file}`, component: 'agent-compatibility', reason: RETIRED_ORCHESTRATION_REASON, deprecatedSince: '2026-11-18', backup: true }));
+
 // Docs pages removed upstream. `docs` is a synced directory component, so
 // without these `--auto` would defer their `deleted-upstream` entries and hold
 // the whole component back.
@@ -272,6 +297,7 @@ export const DEPRECATED_FILES: DeprecatedFile[] = [
   { path: '.prompts/setup/kata-architecture-adaptation.md', component: 'prompts', reason: 'renamed to test-framework-adaptation.md', deprecatedSince: '2026-04-28' },
   ...RETIRED_COMMAND_WRAPPERS,
   ...RETIRED_SKILL_FILES,
+  ...RETIRED_ORCHESTRATION_FILES,
   ...RETIRED_DOCS_FILES,
   ...RETIRED_SECTION_FILES,
 ];

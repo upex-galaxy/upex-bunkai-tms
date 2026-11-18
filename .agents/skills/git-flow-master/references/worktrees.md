@@ -38,7 +38,7 @@ create  ──→  bun run worktree:provision  ──→  work  ──→  bun r
 - Provision before working. A fresh worktree holds only tracked files. `bun run worktree:provision` (no argument means the cwd) copies the gitignored inputs it cannot rebuild from the primary checkout (`.env`, `.vercel/`, local settings), installs dependencies and creates the `.claude/skills` alias. The list lives in code, as `PROVISION_COPIES` in `cli/lib/worktree.ts`, and not in prose. It installs with bun only. An app on pnpm, npm or yarn (`stack.package_manager`, else its lockfiles) is refused with the reason before anything is copied (`provisionPackageManager`, same file), because `bun install` would write a second lockfile.
 - `.session/` is never copied. Durable gitignored state (plans, progress, locks, run reports) lives at `<<PRIMARY_ROOT>>` (`.agents/README.md` §"Checkout roots") and is cited by absolute path from inside the worktree. A copy diverges silently and dies with the worktree.
 - Audit before removing. `bun run worktree:audit <wt>` is read-only and exits 1 while state lives only in the worktree. `--rescue` copies that state to the primary and never overwrites.
-- Orca runs both steps for you. The committed `orca.yaml` runs `worktree:provision` as the setup hook and `worktree:audit --rescue` as the archive hook. Supervised fleets, where a conductor launches workers into worktrees, belong to `/orca-orchestration` (`references/provisioning.md`) and not to this skill.
+- Orca runs both steps for you. The committed `orca.yaml` runs `worktree:provision` as the setup hook and `worktree:audit --rescue` as the archive hook. Supervised fleets, where a conductor launches workers into worktrees, belong to `/agent-orchestration` (this repo's half: `agentic-dev-core/references/fleet-provisioning.md`) and not to this skill.
 
 ---
 
@@ -159,7 +159,7 @@ Rule of thumb: one session, one worktree, one branch.
 
 ### Provenance: which session owns a worktree
 
-The record is the commit itself, and no side file holds it. Every agent commit ends with the forensic trailers `Worktree: <name|primary>` and `Session: <label>` (SKILL.md §3.2, Critical Rule #3), copied from the `AGENT IDENTITY:` line the prompt hook injects. For an orphaned worktree or branch, `git log <branch> --format=%B | grep -E '^(Worktree|Session):'` names the worktree and the session that wrote it. Under orchestration, the Orca run (`/orca-orchestration`) also records which worker held which worktree. Two rules follow:
+The record is the commit itself, and no side file holds it. Every agent commit ends with the forensic trailers `Worktree: <name|primary>` and `Session: <label>` (SKILL.md §3.2, Critical Rule #3), copied from the `AGENT IDENTITY:` line the prompt hook injects. For an orphaned worktree or branch, `git log <branch> --format=%B | grep -E '^(Worktree|Session):'` names the worktree and the session that wrote it. Under orchestration, the Orca run (`/agent-orchestration`) also records which worker held which worktree. Two rules follow:
 
 - A stale worktree is a diagnostic. Report it and let a person decide, and do not repair it automatically. Another session's worktree is not yours to delete: `ExitWorktree` only touches worktrees its own session created, and the same discipline applies to a manual `git worktree remove`.
 - A worktree with no commits has no trailer to read. That is the case `worktree:audit` exists for, so run it before deciding anything.
@@ -185,7 +185,7 @@ The record is the commit itself, and no side file holds it. Every agent commit e
 | Risky WIP on the current branch, need to build something unrelated | Worktree on a new branch |
 | Two AI sessions in parallel | One worktree and one branch each |
 | Any host, portable script | `git worktree add … -b …` + `bun run worktree:provision` (Approach A) |
-| A conductor launching supervised workers | `/orca-orchestration` (Orca creates the worktree; `orca.yaml` provisions and audits) |
+| A conductor launching supervised workers | `/agent-orchestration` (the conductor creates the worktree; `orca.yaml` provisions and audits) |
 | Claude Code, want the session moved for you | `EnterWorktree` (base `fresh`), then `bun run worktree:provision` (Approach B) |
 | Parallel subagents mutating files | `Agent`/workflow `isolation: "worktree"` |
 
@@ -205,4 +205,4 @@ When an AI session needs isolation from in-progress work on another branch:
 
 ## With nobody at the keyboard
 
-Worktree work has no person gate of its own, so the steps above run unchanged in a worker or a routine. Two points still need care. A conductor that launches workers owns worktree creation (`/orca-orchestration`, `references/provisioning.md`), so a worker does not create or remove worktrees it was not given. Removing a worktree whose audit still exits 1 is irreversible, so without a person or a brief that says otherwise, stop at the audit, run `--rescue`, and report.
+Worktree work has no person gate of its own, so the steps above run unchanged in a worker or a routine. Two points still need care. A conductor that launches workers owns worktree creation (`/agent-orchestration`, `agentic-dev-core/references/fleet-provisioning.md`), so a worker does not create or remove worktrees it was not given. Removing a worktree whose audit still exits 1 is irreversible, so without a person or a brief that says otherwise, stop at the audit, run `--rescue`, and report.
