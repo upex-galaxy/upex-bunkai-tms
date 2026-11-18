@@ -1,6 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
+    "noUncheckedSideEffectImports": false,
     "incremental": true,
     "target": "ES2022",
     "jsx": "preserve",
