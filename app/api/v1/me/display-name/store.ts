@@ -40,8 +40,10 @@ export async function writeOwnDisplayName(
   const { data, error } = await admin.auth.admin.updateUserById(userId, {
     app_metadata: { [DISPLAY_NAME_KEY]: value },
   });
+  // A fixed message: the gateway turns a thrown Error into a 500 carrying
+  // its text, and the auth provider's own wording does not belong in it.
   if (error) {
-    throw new Error(error.message);
+    throw new Error('Could not update the display name.');
   }
   return readOwnDisplayName(data.user?.app_metadata);
 }

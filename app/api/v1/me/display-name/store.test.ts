@@ -49,10 +49,10 @@ describe('writeOwnDisplayName', () => {
     expect(await writeOwnDisplayName(admin, 'user-a', 'Sent value')).toBe('Server value');
   });
 
-  it('throws when the auth API reports an error, so the route answers 500', async () => {
+  it('throws a fixed message when the auth API fails, never the provider text', async () => {
     const { admin } = fakeAdmin(null, { message: 'User not found' });
     const failure = await writeOwnDisplayName(admin, 'user-a', 'Elena').then(() => null, (error: unknown) => error);
     expect(failure).toBeInstanceOf(Error);
-    expect((failure as Error).message).toBe('User not found');
+    expect((failure as Error).message).toBe('Could not update the display name.');
   });
 });
