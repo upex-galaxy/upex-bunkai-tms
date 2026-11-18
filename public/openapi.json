@@ -3906,6 +3906,28 @@
         },
         "required": ["workspace_id"]
       },
+      "DisplayNameResponse": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": ["string", "null"],
+            "description": "The stored own display name after the call, or null when none is saved.",
+            "example": "Elena Vargas"
+          }
+        },
+        "required": ["display_name"]
+      },
+      "DisplayNameBody": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "description": "The name to save. Outer whitespace and zero-width characters are trimmed first; the result must be 1 to 80 code points with no line breaks, tabs or bidi control characters. Other body fields are ignored.",
+            "example": "Elena Vargas"
+          }
+        },
+        "required": ["display_name"]
+      },
       "MeResponse": {
         "type": "object",
         "properties": {
@@ -3919,9 +3941,13 @@
               "email": {
                 "type": ["string", "null"],
                 "format": "email"
+              },
+              "display_name": {
+                "type": ["string", "null"],
+                "description": "The display name the person saved in Settings > Account (BK-1949), or null when none is saved. Never a provider name or an email guess."
               }
             },
-            "required": ["id", "email"]
+            "required": ["id", "email", "display_name"]
           },
           "workspaces": {
             "type": "array",
@@ -12616,6 +12642,122 @@
           },
           "422": {
             "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/display-name": {
+      "put": {
+        "tags": ["Identity"],
+        "summary": "Save my display name",
+        "description": "Saves the signed-in person's own display name. It applies to the account, not to a workspace, and a later Google or GitHub sign-in never replaces it. Idempotent: saving the same value again returns the same body.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisplayNameBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Display name saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayNameResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body is not valid JSON (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in (`unauthorized`, \"Authentication required.\").",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller used a Personal Access Token (`forbidden`, \"Personal access tokens cannot change identity details. Use a browser session.\"). Refused even when a session cookie is sent too.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Name refused (`validation_failed`). Messages: \"The display name cannot be empty.\" (empty or whitespace only), \"The name must be at most 80 characters.\" (more than 80 code points), \"The display name cannot contain line breaks, tabs or hidden formatting characters.\", \"The display name must be text.\" (missing or not a string). The stored name is unchanged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Identity"],
+        "summary": "Remove my display name",
+        "description": "Removes the signed-in person's own display name. Greetings fall back to the sign-in provider's name, then to a name guessed from the email. Removing when nothing is saved returns 200 and changes nothing.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Display name removed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayNameResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in (`unauthorized`, \"Authentication required.\").",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller used a Personal Access Token (`forbidden`, \"Personal access tokens cannot change identity details. Use a browser session.\"). Refused even when a session cookie is sent too.",
             "content": {
               "application/json": {
                 "schema": {

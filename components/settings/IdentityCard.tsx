@@ -1,4 +1,5 @@
 import type { MemberRole } from '@lib/types';
+import { DisplayNameForm } from '@components/settings/DisplayNameForm';
 import { Badge } from '@components/ui/badge';
 import { Card, CardContent, CardHeader } from '@components/ui/card';
 import { formatLastActive, formatMemberSince } from '@lib/account/format';
@@ -7,6 +8,10 @@ import { NO_WORKSPACE_LABEL, roleLabel } from '@lib/account/role-label';
 
 interface IdentityCardProps {
   email: string | null
+  // BK-1949: the own saved name and the sign-in provider's name. The card
+  // shows the own name, else the provider name, above the email (ruling D6).
+  ownDisplayName: string | null
+  providerName: string | null
   role: MemberRole | null
   workspaceName: string | null
   workspaceSlug: string | null
@@ -17,10 +22,12 @@ interface IdentityCardProps {
 // Settings > Account identity card (BK-87, TC-AC1). No sign-out control and no
 // danger zone: sign-out stays exclusively in BK-86's account-menu dropdown,
 // and account deletion has no story yet (TD1 — deliberate mockup divergence).
-// Email is the only identity label — no code path in this repo reads/writes
-// `user_metadata` (TD6), so there is no display-name fallback to render.
-export function IdentityCard({ email, role, workspaceName, workspaceSlug, memberSince, lastActive }: IdentityCardProps) {
+// BK-1949 supersedes TD6: the person can save a display name here. The card
+// shows it (or the provider's name) above the email, never a name guessed from
+// the email, and the email stays the identity.
+export function IdentityCard({ email, ownDisplayName, providerName, role, workspaceName, workspaceSlug, memberSince, lastActive }: IdentityCardProps) {
   const hasWorkspace = role != null && workspaceName != null;
+  const accountName = ownDisplayName ?? providerName;
 
   return (
     <Card data-testid="identity-card">
@@ -35,10 +42,19 @@ export function IdentityCard({ email, role, workspaceName, workspaceSlug, member
           >
             {emailInitials(email)}
           </span>
-          <span data-testid="identity-email" className="font-mono text-sm text-fg-1">
-            {email ?? '—'}
-          </span>
+          <div className="flex min-w-0 flex-col">
+            {accountName && (
+              <span data-testid="identity-display-name" className="break-words text-base font-semibold text-fg-0">
+                {accountName}
+              </span>
+            )}
+            <span data-testid="identity-email" className="break-all font-mono text-sm text-fg-1">
+              {email ?? '—'}
+            </span>
+          </div>
         </div>
+
+        <DisplayNameForm ownName={ownDisplayName} providerName={providerName} />
 
         <div className="grid grid-cols-1 gap-4 border-t border-stroke-1 pt-4 sm:grid-cols-3">
           <div>

@@ -5,6 +5,9 @@ const MeResponseSchema = z
     user: z.object({
       id: z.string().uuid(),
       email: z.string().email().nullable(),
+      display_name: z.string().nullable().openapi({
+        description: 'The display name the person saved in Settings > Account (BK-1949), or null when none is saved. Never a provider name or an email guess.',
+      }),
     }),
     workspaces: z.array(
       z.object({

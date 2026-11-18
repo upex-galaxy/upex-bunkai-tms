@@ -162,6 +162,7 @@ The active frontier (Sprint-2 dev). This is the part Jira cannot express as a ro
      BK-86 Account/sign-out ✅ ──> BK-87 Settings hub (2) ✅ ──┬──> BK-88 Manage PATs (5) 🟢
         (dev-done — QA Approved)   (dev-done — Ready For QA)   └──> BK-89 View workspaces (2) 🟢 ──> BK-90 Leave workspace (5) 🟢
                                     └─ Settings mockup ✅ 2026-07-30 (§4.10, bk-85-account-settings/ 5-screen suite) — gate lifted for the whole cluster
+     BK-1949 Display name in Settings > Account ──> BK-87 ✅ — spec-only departure, master-design-plan §5 D73 (design gate cleared by ratification, not by a mockup)
 ```
 
 ### Flat edge list (the durable contract — validate against Jira §7)

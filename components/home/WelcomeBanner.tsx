@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { welcomeGreeting } from '@lib/home/welcome-summary';
 
 interface WelcomeBannerProps {
   displayName: string | null
@@ -44,7 +45,7 @@ export function WelcomeBanner({ displayName, workspaceName, children }: WelcomeB
         {/* No name resolvable (no OAuth metadata, and an email local-part with
             no letters in it) — greet without one rather than print a raw
             address or a placeholder that reads like a real name. */}
-        {displayName === null ? 'Welcome back.' : `Welcome back, ${displayName}.`}
+        {welcomeGreeting(displayName)}
       </h1>
       {children}
     </header>

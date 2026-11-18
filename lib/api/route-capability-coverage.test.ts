@@ -287,6 +287,26 @@ describe('BK-497 — every API route handler declares a capability posture', () 
     }
   });
 
+  // BK-1949 — the display-name write is identity, so a token never reaches it
+  // (Business Rule 6). Pinned here with its exact message, which QA writes the
+  // PAT negative cases against, and kept out of the BK-499 table above, whose
+  // count is that Story's ratified set.
+  it('holds the display-name write to the session-only posture', () => {
+    const SESSION_ONLY_DISPLAY_NAME
+      = 'Personal access tokens cannot change identity details. Use a browser session.';
+    const byKey = new Map(actual.map(row => [key(row), row]));
+    for (const handler of [
+      'app/api/v1/me/display-name/route.ts::PUT',
+      'app/api/v1/me/display-name/route.ts::DELETE',
+    ]) {
+      const row = byKey.get(handler);
+      expect(`${handler} -> ${row?.posture ?? '<handler not found>'}`)
+        .toBe(`${handler} -> cookie-only`);
+      expect(`${handler} why -> ${row?.why ?? ''}`)
+        .toBe(`${handler} why -> ${SESSION_ONLY_DISPLAY_NAME}`);
+    }
+  });
+
   // The placeholder sweep is finished, and this is what keeps it finished. A
   // `why` that defers the real posture to some later Story is how BK-497 parked
   // 46 handlers on a gate that performs zero capability checks; reintroducing
