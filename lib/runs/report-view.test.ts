@@ -34,6 +34,35 @@ describe('resolveReportViewState — BK-225 mode-aware empty states', () => {
     expect(resolveReportViewState({ ...none, modeFilter: 'manual', scope })).toBe('empty-no-match');
     expect(resolveReportViewState({ ...none, modeFilter: 'custom', scope })).toBe('empty-no-match');
   });
+  // BK-1991 — the 2026-10-25 ruling on BK-225 (AC 4.4): a Project with no run
+  // at all shows the first-use state whatever the Mode, and whatever other
+  // filter is set, because `has_runs` is filter-invariant.
+  test('project with zero runs -> first-use state for every Mode', () => {
+    const scope = { has_runs: false, has_automated: false };
+    expect(resolveReportViewState({ ...none, hasActiveFilters: false, modeFilter: 'all', scope })).toBe('empty-no-runs');
+    expect(resolveReportViewState({ ...none, modeFilter: 'manual', scope })).toBe('empty-no-runs');
+    expect(resolveReportViewState({ ...none, modeFilter: 'automated', scope })).toBe('empty-no-runs');
+    expect(resolveReportViewState({ ...none, modeFilter: 'custom', scope })).toBe('empty-no-runs');
+  });
+  test('project with zero runs -> first-use state also under a date, module or status filter', () => {
+    const scope = { has_runs: false, has_automated: false };
+    expect(resolveReportViewState({ ...none, hasActiveFilters: true, modeFilter: 'all', scope })).toBe('empty-no-runs');
+  });
+  test('runs exist, Mode = Manual or All, filters exclude them -> generic no-match', () => {
+    const scope = { has_runs: true, has_automated: true };
+    expect(resolveReportViewState({ ...none, modeFilter: 'manual', scope })).toBe('empty-no-match');
+    expect(resolveReportViewState({ ...none, modeFilter: 'all', scope })).toBe('empty-no-match');
+  });
+  test('runs exist but zero rows and no filter -> first-use fallback stays as before', () => {
+    // Not reachable with a consistent scope (has_runs true means the
+    // unfiltered page has rows); kept so the BK-38 fallback stays defined.
+    expect(resolveReportViewState({ ...none, hasActiveFilters: false, modeFilter: 'all', scope: { has_runs: true, has_automated: true } })).toBe('empty-no-runs');
+  });
+  test('scope not known yet -> BK-38 behaviour for every Mode', () => {
+    expect(resolveReportViewState({ ...none, modeFilter: 'manual', scope: null })).toBe('empty-no-match');
+    expect(resolveReportViewState({ ...none, modeFilter: 'automated', scope: null })).toBe('empty-no-match');
+    expect(resolveReportViewState({ ...none, hasActiveFilters: false, modeFilter: 'all', scope: null })).toBe('empty-no-runs');
+  });
   test('automated copy is distinct and offers no upload CTA wording', () => {
     const copy = resolveReportEmptyStateCopy('empty-no-automated');
     expect(copy.title).toBe('No automated runs reported yet');

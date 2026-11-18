@@ -39,9 +39,12 @@ interface ResolveReportViewStateParams {
 // Branch selection for the four mutually exclusive blocks. A first-page error
 // wins over everything (a failed first query also resolves to zero rows, and
 // rendering "no runs" on a broken request would be a lie). With rows, the
-// filters are irrelevant. Without rows, ACTIVE FILTERS are what separates
-// ATC-06 ("no runs yet for this Project") from ATC-03 ("no match for the
-// current filter combination").
+// filters are irrelevant. Without rows, the project-level `scope` decides
+// first when it is known: a Project with no run at all is ATC-06 ("no runs
+// yet for this Project") under any Mode or filter (BK-1991). Otherwise ACTIVE
+// FILTERS are what separates ATC-06 from ATC-03 ("no match for the current
+// filter combination"), with the automated empty state between them for
+// Mode = Automated on a Project that has runs but no automated one.
 export function resolveReportViewState({ error, rowCount, hasActiveFilters, modeFilter, scope }: ResolveReportViewStateParams): ReportViewState {
   if (error) {
     return 'error';
@@ -49,16 +52,18 @@ export function resolveReportViewState({ error, rowCount, hasActiveFilters, mode
   if (rowCount > 0) {
     return 'rows';
   }
-  // BK-225: the automated empty state is PROJECT-level — only when Mode =
-  // Automated and the Project has no automated run at all. A Project with no
-  // run at all keeps the first-use state (deterministic precedence, 4.4); when
-  // automated runs exist but other filters exclude them, the generic no-match
-  // state wins (4.3).
-  if (modeFilter === 'automated' && scope) {
+  // BK-225 / BK-1991: the project-level scope decides before the filters do.
+  // A Project with no run at all shows the first-use state whatever the Mode
+  // and whatever other filter is set (4.4, ruled 2026-10-25): `has_runs` is
+  // filter-invariant, so no filter can be what hides a run. The automated
+  // empty state is PROJECT-level too — only when Mode = Automated and runs
+  // exist but none is automated. When automated runs exist but other filters
+  // exclude them, the generic no-match state wins (4.3).
+  if (scope) {
     if (!scope.has_runs) {
       return 'empty-no-runs';
     }
-    if (!scope.has_automated) {
+    if (modeFilter === 'automated' && !scope.has_automated) {
       return 'empty-no-automated';
     }
   }
