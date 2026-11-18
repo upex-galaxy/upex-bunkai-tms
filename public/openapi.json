@@ -15165,7 +15165,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Inclusive lower bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). No projects.timezone column exists to interpret against (Technical Decision D3)."
+            "description": "Inclusive lower bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). No projects.timezone column exists to interpret against (Technical Decision D3). A wrong shape or an impossible calendar date (e.g. 2026-02-30) is rejected (422)."
           },
           {
             "name": "date_to",
@@ -15175,7 +15175,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Inclusive upper bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). Rejected (422) when earlier than date_from."
+            "description": "Inclusive upper bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). Rejected (422) when earlier than date_from, malformed, or an impossible calendar date (e.g. 2026-13-45)."
           },
           {
             "name": "module_id",
@@ -15291,7 +15291,7 @@
             }
           },
           "422": {
-            "description": "Validation failed — `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), or `limit` outside 1..50 (`validation_failed`).",
+            "description": "Validation failed — a `date_from`/`date_to` that is malformed or not a real calendar date, `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), or `limit` outside 1..50 (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {

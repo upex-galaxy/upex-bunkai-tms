@@ -10,7 +10,8 @@ import { z } from 'zod';
 //
 //   date_from  optional YYYY-MM-DD, matched against started_at::date (UTC
 //              calendar day — Technical Decision D3, no projects.timezone
-//              column exists). Inclusive lower bound.
+//              column exists). Inclusive lower bound. Both dates must be
+//              real calendar dates (422 otherwise, BK-1990).
 //   date_to    optional YYYY-MM-DD, inclusive upper bound. Rejected (422)
 //              when earlier than date_from — a range that can never match is a
 //              caller bug, not a valid "zero rows" query.
@@ -48,10 +49,37 @@ export type { ReportExecutor, ReportStatus } from '@lib/runs/report-constants';
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// BK-1990 — the regex checks the shape only; `2026-13-45` or `2026-02-30`
+// passed it and then failed the RPC's `::date` cast, which surfaced as a 500
+// carrying the database message. A value is a calendar date when its month
+// is 1-12, its day exists in that month (Gregorian leap years) and its year
+// is 0001 or later (Postgres has no year 0). Every value this accepts casts
+// cleanly to `date`. A value with the wrong shape returns true here so the
+// regex stays the only issue reported for it.
+export function isCalendarDate(value: string): boolean {
+  if (!DATE_ONLY_RE.test(value)) {
+    return true;
+  }
+  const [year, month, day] = value.split('-').map(Number);
+  if (year < 1 || month < 1 || month > 12 || day < 1) {
+    return false;
+  }
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  return day <= daysInMonth;
+}
+
+function reportDateSchema(field: 'date_from' | 'date_to') {
+  return z
+    .string()
+    .regex(DATE_ONLY_RE, `${field} must be in YYYY-MM-DD format.`)
+    .refine(isCalendarDate, `${field} must be a valid calendar date.`);
+}
+
 export const ReportQuerySchema = z
   .object({
-    date_from: z.string().regex(DATE_ONLY_RE, 'date_from must be in YYYY-MM-DD format.').optional(),
-    date_to: z.string().regex(DATE_ONLY_RE, 'date_to must be in YYYY-MM-DD format.').optional(),
+    date_from: reportDateSchema('date_from').optional(),
+    date_to: reportDateSchema('date_to').optional(),
     module_id: z.string().uuid().optional(),
     status: z.array(z.enum(REPORT_STATUS_VALUES)).optional(),
     executor: z.array(z.enum(REPORT_EXECUTOR_VALUES)).optional(),

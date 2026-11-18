@@ -74,7 +74,7 @@ const DateFromParam = {
   in: 'query' as const,
   required: false,
   schema: { type: 'string' as const, format: 'date' as const },
-  description: 'Inclusive lower bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). No projects.timezone column exists to interpret against (Technical Decision D3).',
+  description: 'Inclusive lower bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). No projects.timezone column exists to interpret against (Technical Decision D3). A wrong shape or an impossible calendar date (e.g. 2026-02-30) is rejected (422).',
 };
 
 const DateToParam = {
@@ -82,7 +82,7 @@ const DateToParam = {
   in: 'query' as const,
   required: false,
   schema: { type: 'string' as const, format: 'date' as const },
-  description: 'Inclusive upper bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). Rejected (422) when earlier than date_from.',
+  description: 'Inclusive upper bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). Rejected (422) when earlier than date_from, malformed, or an impossible calendar date (e.g. 2026-13-45).',
 };
 
 const ModuleIdParam = {
@@ -143,7 +143,7 @@ registry.registerPath({
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Project not found (also returned for a Project outside the caller\'s workspaces — no existence leak).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed — `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), or `limit` outside 1..50 (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed — a `date_from`/`date_to` that is malformed or not a real calendar date, `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), or `limit` outside 1..50 (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

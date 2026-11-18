@@ -81,6 +81,37 @@ describe('reportQuerySchema', () => {
     expect(ReportQuerySchema.safeParse({ date_to: '2026-7-31' }).success).toBe(false);
   });
 
+  // BK-1990 — right shape, impossible date: rejected here (422 at the route)
+  // instead of reaching the RPC's ::date cast as a 500 with database text.
+  for (const field of ['date_from', 'date_to'] as const) {
+    for (const value of ['2026-13-45', '2026-02-30', '2026-00-10', '2026-02-29', '2026-04-31', '2026-06-00', '0000-01-01']) {
+      test(`rejects ${field}=${value} as an impossible calendar date, naming the field`, () => {
+        const result = ReportQuerySchema.safeParse({ [field]: value });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues).toHaveLength(1);
+        expect(result.error?.issues[0].path).toEqual([field]);
+        expect(result.error?.issues[0].message).toBe(`${field} must be a valid calendar date.`);
+      });
+    }
+  }
+
+  test('accepts real leap days and month ends', () => {
+    for (const value of ['2028-02-29', '2000-02-29', '2026-02-28', '2026-01-31', '2026-04-30', '2026-12-31', '0001-01-01']) {
+      expect(ReportQuerySchema.safeParse({ date_from: value, date_to: value }).success).toBe(true);
+    }
+    expect(ReportQuerySchema.safeParse({ date_from: '1900-02-29' }).success).toBe(false);
+  });
+
+  test('a wrong shape reports only the format issue, as before', () => {
+    const result = ReportQuerySchema.safeParse({ date_from: '18-11-2026' });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map(issue => issue.message)).toEqual(['date_from must be in YYYY-MM-DD format.']);
+  });
+
+  test('parseReportParams throws the same ZodError shape for an impossible date in the query string', () => {
+    expect(() => parseReportParams(new URLSearchParams('date_to=2026-13-45'))).toThrow('date_to must be a valid calendar date.');
+  });
+
   test('rejects a non-uuid module_id', () => {
     expect(ReportQuerySchema.safeParse({ module_id: 'not-a-uuid' }).success).toBe(false);
   });
