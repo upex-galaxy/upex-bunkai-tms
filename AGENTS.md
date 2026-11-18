@@ -61,15 +61,9 @@ Each line is the rule's binding text, verbatim (`…` joins excerpts). Full text
 
 ---
 
-## PROJECT RULES (BUNKAI): APPLY MID-TASK
+## PROJECT RULES (BUNKAI)
 
-Bunkai's own rules, applied when the work reaches them, whatever the prompt said. Each line is a verbatim excerpt; full text, names and routing: `.agents/instructions/agent-project.md`, same name.
-
-- **NO-LOCAL-BUILD**: NEVER run `next build`, `bun run build` or any production build locally. … The single exception is an explicit, important justification AND user approval first: stop, state why a build (not dev) is required, ask, wait for yes.
-- **MVP-ONE-DATABASE**: ONE Supabase project serves local, staging and "production" … **Until that release**: applying a reviewed migration (Supabase MCP `apply_migration`, ledger per `supabase/migrations/README.md`) is a normal dev step, not a production deploy. Apply it once its PR review is approved, before merge, so staging code and schema stay in sync. NEVER run DDL through `execute_sql`
-- **ONE-PR-PER-STORY**: A user story, bug or tech story is delivered as exactly ONE pull request, whatever its size. … Merge it with a merge commit (`--no-ff`), never squash, so the per-commit history survives on `staging`. NEVER stack or chain PRs unless the user explicitly asks for it in that run. … a ticket-keyed PR merges only into its final target (`staging`), only when truly ready.
-- **LIVE-UI-FIRST**: The CURRENT LIVE UI is the source of truth for fidelity, not the mockup. … Before building UI, inspect the current live components and reuse them.
-- **DESIGN-FIDELITY**: Before writing or reviewing any UI for a user story: … NEVER invent UI on the fly and NEVER re-pick colors, radii, fonts or spacing: reuse the frozen tokens (§2). … A deliberate departure from the mockup is ratified in §5 plus an ADR first; silent divergence is a defect.
+Bunkai rules NO-LOCAL-BUILD, GUARDED-TESTS, MVP-ONE-DATABASE, ONE-PR-PER-STORY, LIVE-UI-FIRST and DESIGN-FIDELITY bind mid-task. Read `.agents/instructions/agent-project.md` before a build, test, migration, PR or UI work.
 
 ---
 
