@@ -69,3 +69,7 @@ The ones QA ADR-0017 weighed and rejected stand here unchanged: a cap of two, a 
 - `.agents/skills/orca-orchestration/references/launch-seam.md` §2.1b, `references/worker-contract.md` rule 15, `references/brief-template.md`, `references/coordinator-playbook.md`
 - `.context/ADR/ADR-0009-progressive-disclosure-of-instructions.md`, `.context/ADR/ADR-0014-instructions-maintenance-locks.md`, `.context/ADR/ADR-0017-documentation-contracts.md`
 - agentic-qa-boilerplate ADR-0017 and PRs #120, #122
+
+---
+
+> **2026-11-18:** the orchestration doctrine moved to the user-level skill `agent-orchestration` (`upex-galaxy/agentic-user-skills`); `orca-orchestration` is a transition stub. Paths into `.agents/skills/orca-orchestration/references/` above are history: the generic parts are in that skill by the same rule, worker-rule and gotcha numbers, and this repo's parts are in `.agents/skills/agentic-dev-core/references/fleet-*.md` (ADR-0025).

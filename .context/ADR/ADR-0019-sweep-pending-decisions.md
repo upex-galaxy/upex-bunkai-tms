@@ -53,3 +53,7 @@ The router table is untouched: lock fingerprint `387f2c89527c` (ADR-0014) stands
 - QA twin: `agentic-qa-boilerplate` ADR-0018 and commit `96b48283`
 - `.agents/skills/agentic-dev-core/references/decision-elicitation-doctrine.md` §1, §7; `decision-protocol.md` §5
 - `.agents/skills/orca-orchestration/references/coordinator-playbook.md` §6
+
+---
+
+> **2026-11-18:** the orchestration doctrine moved to the user-level skill `agent-orchestration` (`upex-galaxy/agentic-user-skills`); `orca-orchestration` is a transition stub. Paths into `.agents/skills/orca-orchestration/references/` above are history: the generic parts are in that skill by the same rule, worker-rule and gotcha numbers, and this repo's parts are in `.agents/skills/agentic-dev-core/references/fleet-*.md` (ADR-0025).
