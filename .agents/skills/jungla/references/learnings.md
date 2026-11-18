@@ -204,3 +204,12 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - After END_OF_DAY, a mailbox wait that keeps the session and wakes on the worker: `orca orchestration check --run <run> --wait --types worker_done,question,escalation --timeout-ms 3600000` as a `run_in_background` task (it ran about 5 minutes and returned the `worker_done`).
 - `/autonomous-delivery discovery` as a sonnet subagent created two stories in about 8.5 minutes (BK-1949, BK-1950). `acli` ignores `--parent` on create, so the epic link came from the Atlassian MCP edit; its `rm -rf` of stale PBI cache copies was denied, so two harmless copies stayed under `.context/PBI/epics/_orphans/`.
 - Disk fell from 7.4 to 3.8 GiB free over the afternoon with three worktrees created and removed; check it before each worktree and say so in the channel below 3 GiB.
+
+## 2026-11-18 · Wednesday run (three PRs in four hours, a false escalation)
+- A defect pair of one story (BK-1991, BK-1990) went to one claude opus-5-5 worker in sequence, one PR each (#368, #369), and BK-1949 to a second one (PR #370, no migration: the name lives in Auth `app_metadata.display_name`). Both briefs carried the root cause or the settled PO rulings, the precedents and a "reproduce first, measure it, never claim it" rule. Jira moved none of the merged items on its own (BK-1949 was the ninth case): walk the path yourself.
+- An escalation "Worker is waiting on a prompt" (`stopReason=needs-input`) can be a tool call still in flight ("Waiting…", PreToolUse hooks running). Read `worker-read --dispatch <id> --source auto` before answering; here the worker was healthy and merged BK-1991 minutes later.
+- `orca orchestration worker-read` takes no `--run`; `check --run <run>` does.
+- Local `staging` carrying unpushed docs commits cannot `merge --ff-only origin/staging` once origin moves: use `git rebase origin/staging` on a clean tree, as noted on 2026-11-12.
+- The keepalive (`sleep 21600`) completed before 16:00 on a day started at 06:05: relaunch it at the first sign it ended, not at a fixed hour.
+- A worker cannot `rm -rf` its own `.next` (permission denied); `orca worktree rm --force` removes the whole worktree, which is the cleanup that matters.
+- A G3 sign-off can carry a written QA lead waiver for open defects (BK-225 with BK-1990 and BK-1991): the minimum is met, so sign, say in the comment that the fixes are queued under their own keys, and let the QA retest.
