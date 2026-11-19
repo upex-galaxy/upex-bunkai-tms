@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
-import { parseAtcSearchParams } from '@lib/atcs/search-validation';
+import { atcSearchText, parseAtcSearchParams } from '@lib/atcs/search-validation';
 import { createAdminClient } from '@lib/supabase/admin';
 import { searchAtcs } from '@lib/supabase/rpc';
 
@@ -33,7 +33,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const supabase = createAdminClient();
   const { data, error } = await searchAtcs(supabase, {
     actorUserId: principal.userId,
-    query: query.query,
+    query: atcSearchText(query.query),
     projectId: query.project_id,
     moduleId: query.module_id ?? null,
     layer: query.layer ?? null,

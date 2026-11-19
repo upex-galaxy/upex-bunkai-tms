@@ -54,3 +54,9 @@ export function parseAtcSearchParams(params: URLSearchParams): AtcSearchQuery {
   }
   return AtcSearchQuerySchema.parse(raw);
 }
+
+// BK-2055: the RPC's one-word to_tsquery breaks on a quote or on a word with no letter or digit left.
+export function atcSearchText(query: string): string {
+  const text = query.replaceAll('\'', '').trim();
+  return /[\p{L}\p{N}]/u.test(text) ? text : '';
+}
