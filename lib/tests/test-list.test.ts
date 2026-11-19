@@ -231,7 +231,7 @@ describe('BK-227 status filter in the list state and copy', () => {
 
   it('names the status and the tag scope in the no-status-match copy, and says it is not an error', () => {
     expect(testListNoStatusMatchTitle('candidate')).toBe('No Test is Automation candidate');
-    expect(testListNoStatusMatchDescription('candidate', null)).toContain('this project');
+    expect(testListNoStatusMatchDescription('candidate', null)).toBe('No Test in this project has the status Automation candidate. This is a filter result, not an error. Clear the status to see every Test again.');
     expect(testListNoStatusMatchDescription('candidate', 'regression')).toContain('"regression"');
     expect(testListNoStatusMatchDescription('candidate', null)).toContain('not an error');
   });

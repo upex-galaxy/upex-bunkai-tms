@@ -211,8 +211,8 @@ export function testListNoStatusMatchTitle(status: AutomationStatus): string {
   return `No Test is ${AUTOMATION_STATUS_LABEL[status]}`;
 }
 export function testListNoStatusMatchDescription(status: AutomationStatus, appliedTag: string | null): string {
-  const scope = appliedTag === null ? 'this project' : `the Tests that carry "${appliedTag}"`;
-  return `None of ${scope} has the status ${AUTOMATION_STATUS_LABEL[status]}. This is a filter result, not an error. Clear the status to see them again.`;
+  const scope = appliedTag === null ? 'in this project' : `that carries "${appliedTag}"`;
+  return `No Test ${scope} has the status ${AUTOMATION_STATUS_LABEL[status]}. This is a filter result, not an error. Clear the status to see every Test again.`;
 }
 export const TEST_LIST_FAILED_TITLE = 'Could not load the Tests with this tag.';
 export const TEST_LIST_FAILED_DESCRIPTION
