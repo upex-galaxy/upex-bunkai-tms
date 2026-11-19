@@ -12,7 +12,7 @@ export const TEST_TITLE_MAX = 200;
 export const TEST_CHAIN_UI_SOFT_CAP = 100;
 
 export const TestCreateBodySchema = z.object({
-  title: z.string().trim().min(1).max(TEST_TITLE_MAX),
+  title: z.string().trim(),
   // Duplicates are legal — a chain is a sequence, not a set.
   atc_ids: z.array(z.string().uuid()).min(1),
   // Session callers resolve the active workspace from the cookie; PAT callers

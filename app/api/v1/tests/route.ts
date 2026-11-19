@@ -7,7 +7,7 @@ import { createAdminClient } from '@lib/supabase/admin';
 import { createTest, filterTestsByTag } from '@lib/supabase/rpc';
 import { mapTestFilterError, mapTestRpcError } from '@lib/tests/errors';
 import { decodeTestTagFilterCursor, encodeTestTagFilterCursor, parseTestTagFilterParams } from '@lib/tests/tag-filter-validation';
-import { TestCreateBodySchema } from '@lib/tests/validation';
+import { TEST_TITLE_MAX, TestCreateBodySchema, testTitleFault } from '@lib/tests/validation';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 
@@ -74,6 +74,14 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const body = TestCreateBodySchema.parse(payload);
+
+  const fault = testTitleFault(body.title);
+  if (fault === 'title_required') {
+    throw new ApiError('validation_failed', 'A Test needs a name.', { details: { reason: 'title_required' } });
+  }
+  if (fault === 'title_too_long') {
+    throw new ApiError('validation_failed', `Title must be ${TEST_TITLE_MAX} characters or fewer.`, { details: { reason: 'title_too_long' } });
+  }
 
   // Workspace binding at the submit instant (E2): an explicit body value wins;
   // cookie sessions fall back to the active-workspace resolver. PAT callers
