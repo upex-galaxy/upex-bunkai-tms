@@ -84,6 +84,11 @@ export async function performBugCorrection(db: SupabaseClient<Database>, args: B
         details: { reason: 'bug_changed', current: current ?? null },
       });
     }
+    if (error.code === '42501') {
+      throw new ApiError('forbidden', 'Correcting a defect requires the member role or higher.', {
+        details: { reason: 'forbidden_role' },
+      });
+    }
     mapBugRpcError(error, { notFoundEntity: 'bug' });
   }
   return data as unknown as { bug: unknown, changed: boolean };

@@ -129,6 +129,13 @@ describe('performBugCorrection', () => {
     expect(calls.map(c => c.fn)).toEqual(['bunkai_correct_bug', 'bunkai_bug_json']);
   });
 
+  it('a Viewer (42501 after the membership check) gets 403 forbidden_role, not not_a_member (BK-2091)', async () => {
+    const db = fakeSequenceDb([{ data: null, error: { code: '42501', message: 'forbidden' } }], []);
+    const err = await expectApiError(performBugCorrection(db, { bugId: BUG_ID, expectedVersion: 1, severity: 'P1' }));
+    expect(err.details).toEqual({ reason: 'forbidden_role' });
+    expect(err.message).toBe('Correcting a defect requires the member role or higher.');
+  });
+
   it.each([
     ['42501', 403, 'forbidden'],
     ['P0002', 404, 'not_found'],

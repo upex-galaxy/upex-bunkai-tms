@@ -23154,7 +23154,7 @@
       "post": {
         "tags": ["Projects"],
         "summary": "Create a project in a workspace",
-        "description": "Bearer `atc:write` (or cookie session). Member-only (role >= member). Auto-derives a per-workspace-unique slug from the name. Duplicate slug returns 409; non-members return 403.",
+        "description": "Bearer `atc:write` (or cookie session). Member-only (role >= member). Auto-derives a per-workspace-unique slug from the name. Duplicate slug returns 409; non-members return 403 `not_a_member` and a Viewer returns 403 `forbidden_role`.",
         "security": [
           {
             "cookieAuth": []
@@ -23226,7 +23226,7 @@
             }
           },
           "403": {
-            "description": "Missing atc:write scope, or caller is not a member of the workspace.",
+            "description": "Missing atc:write scope, a caller who is not a member of the workspace (`not_a_member`), or a Viewer (`forbidden_role`).",
             "content": {
               "application/json": {
                 "schema": {

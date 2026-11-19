@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
-import { mapMilestoneRpcError } from '@lib/milestones/errors';
+import { mapMilestoneLifecycleRpcError } from '@lib/milestones/errors';
 import { archiveMilestone } from '@lib/supabase/rpc';
 
 // POST /api/v1/milestones/{id}/archive — archive a Milestone (BK-1899).
@@ -21,7 +21,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { db } = getAuth(ctx);
   const { data, error } = await archiveMilestone(db, { milestoneId });
   if (error) {
-    mapMilestoneRpcError(error);
+    mapMilestoneLifecycleRpcError(error);
   }
   return jsonResponse({ milestone: data }, { status: 200 });
 }, { auth: 'required', requires: ['atc:write'] });

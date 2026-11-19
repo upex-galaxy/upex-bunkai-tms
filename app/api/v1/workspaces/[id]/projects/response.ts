@@ -44,8 +44,22 @@ export async function assertCanCreateProject(
     throw new ApiError('internal_error', error.message);
   }
   if (data !== true) {
-    throw notAMember();
+    throw await refusalFor(db, workspaceId);
   }
+}
+
+// BK-2091: a Viewer already knows it is a member, so naming its role discloses nothing.
+async function refusalFor(db: SupabaseClient<Database>, workspaceId: string): Promise<ApiError> {
+  const { data, error } = await db.rpc('bunkai_is_workspace_member', { ws_id: workspaceId });
+  if (error) {
+    return new ApiError('internal_error', error.message);
+  }
+  if (data !== true) {
+    return notAMember();
+  }
+  return new ApiError('forbidden', 'Creating a project requires the member role or higher.', {
+    details: { reason: 'forbidden_role' },
+  });
 }
 
 function plainLimitError(): ApiError {
