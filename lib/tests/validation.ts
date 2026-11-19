@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AUTOMATION_STATUSES } from './automation-status';
 
 // BK-27 — Test create request validation. The Zod layer mirrors the
 // `bunkai_create_test` RPC rulebook (trim-then-validate title, chain >= 1) so
@@ -121,3 +122,10 @@ export const TestRenameBodySchema = z.object({
 });
 
 export type TestRenameBody = z.infer<typeof TestRenameBodySchema>;
+
+// BK-227 — PUT /api/v1/tests/{id}/automation-status.
+export const TestAutomationStatusBodySchema = z.object({
+  status: z.enum(AUTOMATION_STATUSES),
+});
+
+export type TestAutomationStatusBody = z.infer<typeof TestAutomationStatusBodySchema>;

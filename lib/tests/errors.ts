@@ -125,6 +125,17 @@ export function mapTestTagsError(error: { code?: string, message: string }): nev
   }
 }
 
+// BK-227 — bunkai_set_test_automation_status / bunkai_get_test_automation_status.
+// 45128 is the under-lock backstop of the Zod enum on the request body.
+export function mapTestAutomationStatusError(error: { code?: string, message: string }): never {
+  if (error.code === '45128') {
+    throw new ApiError('validation_failed', 'Status must be manual-only, candidate or automated.', {
+      details: { reason: 'automation_status_invalid' },
+    });
+  }
+  return mapTestRpcError(error);
+}
+
 // BK-33 — map a bunkai_filter_tests_by_tag RPC error to the canonical envelope.
 // The filter RPC is read-only and carries no domain SQLSTATEs, so any error is
 // unexpected. Log the raw RPC/SQL detail server-side for diagnosis but return a
