@@ -62,11 +62,12 @@ const fakeClient = {
 };
 
 void mock.module('@lib/supabase/client', () => ({ createClient: () => fakeClient }));
+const toastErrors: string[] = [];
+void mock.module('sonner', () => ({ toast: { success: () => {}, error: (message: string) => { toastErrors.push(message); } } }));
 
 const { act, createElement } = await import('react');
 const { createRoot } = await import('react-dom/client');
 const { ChatPanel } = await import('@components/chat/ChatPanel');
-const { Toaster } = await import('sonner');
 
 const WS = 'ws-1283';
 const realSetTimeout = globalThis.setTimeout;
@@ -623,16 +624,6 @@ describe('ChatPanel — the server closing the edit window (BK-2007)', () => {
     }) as unknown as typeof globalThis.fetch;
   }
 
-  async function mountToaster(): Promise<HTMLElement> {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const root = createRoot(container);
-    act(() => { root.render(createElement(Toaster)); });
-    mounted.push({ container, root });
-    await flush();
-    return container;
-  }
-
   async function click(container: HTMLElement, testId: string): Promise<void> {
     const el = container.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
     if (!el) { throw new Error(`${testId} not rendered`); }
@@ -652,7 +643,7 @@ describe('ChatPanel — the server closing the edit window (BK-2007)', () => {
   }
 
   test('a refused save closes the edit box, swaps Edit for the closed hint and toasts the reason', async () => {
-    const toasts = await mountToaster();
+    toastErrors.length = 0;
     const container = await mount();
     await answer('', page([ownFresh()], false));
     refuseEdits();
@@ -666,6 +657,6 @@ describe('ChatPanel — the server closing the edit window (BK-2007)', () => {
     expect(container.querySelector('[data-testid="chat_action_edit"]')).toBeNull();
     expect(container.querySelector('[data-testid="chat_action_edit_closed"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="chat_edit_window_hint"]')).not.toBeNull();
-    expect(toasts.textContent).toContain('Messages can be edited for 15 minutes after sending.');
+    expect(toastErrors).toEqual(['Messages can be edited for 15 minutes after sending.']);
   });
 });
