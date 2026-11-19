@@ -40,7 +40,7 @@ export function WelcomeBanner({ displayName, workspaceName, children }: WelcomeB
       )}
       <h1
         data-testid="home-welcome-greeting"
-        className="text-2xl font-bold tracking-tight text-fg-0"
+        className="break-words text-2xl font-bold tracking-tight text-fg-0"
       >
         {/* No name resolvable (no OAuth metadata, and an email local-part with
             no letters in it) — greet without one rather than print a raw
