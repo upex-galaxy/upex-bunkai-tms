@@ -1,5 +1,5 @@
 // BK-666 — the Project Tests list's view model: which Tests it shows, in what
-// order, which of its five states it is in, and the words it uses. Pure, so the
+// order, which of its six states it is in, and the words it uses. Pure, so the
 // rules are pinned by unit tests and the view only draws.
 //
 // The list never resolves its own set. It receives the exact array the project
@@ -7,12 +7,16 @@
 // scoping), and narrows it with the toolbar tag filter's id set. That is what
 // keeps AC-07's "one scoping rule" mechanically true.
 
+import type { AutomationStatus } from './automation-status';
+import { AUTOMATION_STATUS_LABEL } from './automation-status';
+
 export interface TestListItem {
   id: string
   title: string
   created_at: string
   step_count: number
   tags: string[]
+  automation_status: AutomationStatus
 }
 
 export type TestListSortColumn = 'name' | 'chain' | 'created';
@@ -34,6 +38,7 @@ export type TestListViewState
     | 'pending' // a tag is typed but its lookup has not answered: never show stale rows
     | 'empty-never' // the Project has no Tests at all
     | 'empty-no-match' // Tests exist, none carries the tag
+    | 'empty-no-status-match' // BK-227: Tests match the tag, none has the chosen automation status
     | 'rows';
 
 export interface TestListViewStateInput {
@@ -44,6 +49,10 @@ export interface TestListViewStateInput {
   // What the toolbar control currently holds, untrimmed.
   typedTag: string
   lookupFailed: boolean
+  // BK-227 — how many of the tag-matched Tests also have the chosen status
+  // (null status = no status filter).
+  automationStatus?: AutomationStatus | null
+  statusVisibleCount?: number
 }
 
 // Order matters: a failure outranks everything (AC-09, the list must never pass
@@ -64,6 +73,9 @@ export function resolveTestListViewState(input: TestListViewStateInput): TestLis
   }
   if (input.visibleCount === 0) {
     return 'empty-no-match';
+  }
+  if (input.automationStatus && input.statusVisibleCount === 0) {
+    return 'empty-no-status-match';
   }
   return 'rows';
 }
@@ -156,11 +168,24 @@ export function formatChainLength(stepCount: number): string {
 
 // The count follows the filter (business rule): the first number is what is on
 // screen; with a tag applied the Project total stays beside it.
-export function formatTestListCount(visibleCount: number, totalCount: number, appliedTag: string | null): string {
-  if (appliedTag === null) {
+export function formatTestListCount(
+  visibleCount: number,
+  totalCount: number,
+  appliedTag: string | null,
+  automationStatus: AutomationStatus | null = null,
+): string {
+  const status = automationStatus === null ? null : AUTOMATION_STATUS_LABEL[automationStatus];
+  const of = `${visibleCount} of ${totalCount} ${plural(totalCount, 'Test', 'Tests')}`;
+  if (appliedTag === null && status === null) {
     return `${visibleCount} ${plural(visibleCount, 'Test', 'Tests')} in this project`;
   }
-  return `${visibleCount} of ${totalCount} ${plural(totalCount, 'Test', 'Tests')} ${plural(visibleCount, 'carries', 'carry')} ${appliedTag}`;
+  if (appliedTag === null) {
+    return `${of} ${plural(visibleCount, 'is', 'are')} ${status}`;
+  }
+  if (status === null) {
+    return `${of} ${plural(visibleCount, 'carries', 'carry')} ${appliedTag}`;
+  }
+  return `${of} ${plural(visibleCount, 'carries', 'carry')} ${appliedTag} and ${plural(visibleCount, 'is', 'are')} ${status}`;
 }
 
 // The creation date as a UTC calendar day: the same text on the server render
@@ -180,6 +205,14 @@ export const TEST_LIST_EMPTY_DESCRIPTION_READ_ONLY = 'No Test has been built for
 export const TEST_LIST_NO_MATCH_TITLE = 'No Test carries this tag';
 export function testListNoMatchDescription(tag: string, totalCount: number): string {
   return `None of this project's ${totalCount} ${plural(totalCount, 'Test', 'Tests')} carries "${tag}". This is a filter result, not an error. Clear the tag to see every Test again.`;
+}
+// BK-227 — the tag-matched set has Tests, none with the chosen status.
+export function testListNoStatusMatchTitle(status: AutomationStatus): string {
+  return `No Test is ${AUTOMATION_STATUS_LABEL[status]}`;
+}
+export function testListNoStatusMatchDescription(status: AutomationStatus, appliedTag: string | null): string {
+  const scope = appliedTag === null ? 'this project' : `the Tests that carry "${appliedTag}"`;
+  return `None of ${scope} has the status ${AUTOMATION_STATUS_LABEL[status]}. This is a filter result, not an error. Clear the status to see them again.`;
 }
 export const TEST_LIST_FAILED_TITLE = 'Could not load the Tests with this tag.';
 export const TEST_LIST_FAILED_DESCRIPTION

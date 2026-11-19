@@ -10,6 +10,7 @@ import {
 } from '@lib/projects/workbench-tree-query';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
+import { toAutomationStatus } from '@lib/tests/automation-status';
 import { buildModuleTree } from '@lib/tree';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { WORKSPACE_DELETED_LANDING } from '@lib/workspaces/deleted-notice';
@@ -140,6 +141,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     created_at: t.created_at,
     step_count: t.test_steps.length,
     tags: t.tags ?? [],
+    automation_status: toAutomationStatus(t.automation_status),
   }));
 
   const environments: ExplorerEnvironmentItem[] = (environmentsData ?? []).map(e => ({

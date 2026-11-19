@@ -50,6 +50,7 @@ export interface ExplorerTestSourceRow {
   created_at: string
   // BK-666 — the Test's tags, for the Project Tests list rows.
   tags: string[]
+  automation_status: string
   // One entry per chained ATC: its Project (null when RLS hides the ATC).
   test_steps: { atcs: { project_id: string } | null }[]
 }
@@ -180,7 +181,7 @@ export async function fetchExplorerTests(
   const rows = dedupeById(await fetchAllPages<ExplorerTestSourceRow>(async (offset, limit) => {
     const { data, error } = await db
       .from('tests')
-      .select('id, title, created_at, tags, test_steps(atcs(project_id))')
+      .select('id, title, created_at, tags, automation_status, test_steps(atcs(project_id))')
       .eq('workspace_id', workspaceId)
       // BK-596: the explorer Tests group and the Project Tests list offer a Test
       // for use, so an archived one is not listed and drops out of their totals.

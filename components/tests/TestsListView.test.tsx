@@ -13,8 +13,8 @@ import { TestsListView } from './TestsListView';
 // live-UI evidence.
 
 const ROWS: TestListItem[] = [
-  { id: 't1', title: 'Checkout happy path', step_count: 7, created_at: '2026-10-05T10:00:00Z', tags: ['smoke', 'Nightly-EU'] },
-  { id: 't2', title: 'Empty chain', step_count: 0, created_at: '2026-10-04T10:00:00Z', tags: [] },
+  { id: 't1', title: 'Checkout happy path', step_count: 7, created_at: '2026-10-05T10:00:00Z', tags: ['smoke', 'Nightly-EU'], automation_status: 'automated' },
+  { id: 't2', title: 'Empty chain', step_count: 0, created_at: '2026-10-04T10:00:00Z', tags: [], automation_status: 'manual-only' },
 ];
 
 function render(viewState: TestListViewState, overrides: Partial<TestsListViewProps> = {}): string {
