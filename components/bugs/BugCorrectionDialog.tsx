@@ -2,7 +2,7 @@
 
 import type { CorrectableBug, CorrectionDraft } from '@lib/bugs/correction-view';
 import { Button } from '@components/ui/button';
-import { BUG_SEVERITY_LABEL, BUG_SEVERITY_VALUES, BUG_TITLE_MAX } from '@lib/bugs/constants';
+import { BUG_SEVERITY_LABEL, BUG_SEVERITY_VALUES } from '@lib/bugs/constants';
 import {
   buildCorrectionBody,
   draftFromBug,
@@ -178,7 +178,6 @@ function BugCorrectionDialog({ bugId, bug, onClose }: BugCorrectionDialogProps) 
           type="text"
           value={draft.title}
           onChange={e => update({ title: e.target.value })}
-          maxLength={BUG_TITLE_MAX}
           autoFocus
           disabled={submitting}
           aria-invalid={fieldError ? true : undefined}
