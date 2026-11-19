@@ -414,6 +414,22 @@ export async function restoreTest(supabase: Client, args: { actorUserId: string,
   });
 }
 
+// BK-227 — execute is granted to service_role only (0135): call it with the admin client.
+export async function setTestAutomationStatus(supabase: Client, args: { actorUserId: string, testId: string, status: string }) {
+  return supabase.rpc('bunkai_set_test_automation_status', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+    p_status: args.status,
+  });
+}
+
+export async function getTestAutomationStatus(supabase: Client, args: { actorUserId: string, testId: string }) {
+  return supabase.rpc('bunkai_get_test_automation_status', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+  });
+}
+
 // BK-33 — workspace-scoped filter of Tests carrying a single tag. The SECURITY
 // DEFINER RPC restricts results to the actor's active memberships (any role) —
 // caller scope is ignored — and matches via a GIN `@>` containment. The lookup

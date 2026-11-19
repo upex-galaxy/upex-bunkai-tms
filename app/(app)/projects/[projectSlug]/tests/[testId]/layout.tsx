@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
+import { AutomationStatusControl } from '@components/tests/AutomationStatusControl';
 import { StartRunButton } from '@components/tests/StartRunButton';
 import { TestArchiveButton, TestArchivedBanner, TestRenameControl } from '@components/tests/TestArchiveControls';
 import { TestDetailTabs } from '@components/tests/TestDetailTabs';
+import { loadTestAutomationStatus } from '@lib/tests/load-automation-status';
 import { loadTestDetail } from '@lib/tests/load-test-detail';
 import { ChevronLeft, GitBranch } from 'lucide-react';
 import Link from 'next/link';
@@ -23,7 +25,8 @@ interface LayoutProps {
 // are unchanged and now guard the whole route group.
 export default async function TestDetailLayout({ children, params }: LayoutProps) {
   const { projectSlug, testId } = await params;
-  const { test, canReorder, environments } = await loadTestDetail(projectSlug, testId);
+  const { test, canReorder, environments, userId } = await loadTestDetail(projectSlug, testId);
+  const { automation_status: automationStatus } = await loadTestAutomationStatus(testId, userId);
   // BK-596 — an archived Test is read-only until restored: no Start run, no
   // rename, no archive; the banner below the header carries Restore.
   const archived = test.archived_at != null;
@@ -70,6 +73,8 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
           {archived && (
             <span className="status-chip shrink-0" data-status="skipped" data-testid="test-archived-badge">Archived</span>
           )}
+          {/* BK-227 — member+ on a live Test changes it here; anyone else reads the badge. */}
+          <AutomationStatusControl testId={test.id} status={automationStatus} canChange={canChange} />
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {canChange && <TestRenameControl test={subject} />}
             {canChange && <TestArchiveButton test={subject} />}

@@ -222,6 +222,7 @@ BK-221 Automation & CI Ingestion:
   BK-228 Commit/branch links ──> BK-226
   BK-225 Mode filter ──> BK-38  ··> BK-222, BK-227
   BK-227 Automation status ──> BK-27
+  BK-227 ✅ dev-done (2026-11-19) — feat/BK-227-automation-status: automation status writer, reader and append-only history (migration 0135), GET/PUT /api/v1/tests/{id}/automation-status, Tests list badge + Status filter with counts, Test header control + Status history tab (master-design-plan §5 D74).
 
 BK-208 Notifications Center:
   BK-209 Inbox ✅ dev-done (2026-08-03) — merged to staging via PR #113 (feat/BK-209-notifications-inbox); notifications table+RLS+RPC, inbox API, bell/panel UI, realtime wiring. Ready For QA.

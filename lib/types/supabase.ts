@@ -1739,6 +1739,57 @@ export interface Database {
         }
         Relationships: []
       }
+      test_automation_status_history: {
+        Row: {
+          actor_name: string
+          actor_user_id: string | null
+          changed_at: string
+          from_status: string
+          id: string
+          seq: number
+          test_id: string
+          to_status: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_name: string
+          actor_user_id?: string | null
+          changed_at?: string
+          from_status: string
+          id?: string
+          seq?: never
+          test_id: string
+          to_status: string
+          workspace_id: string
+        }
+        Update: {
+          actor_name?: string
+          actor_user_id?: string | null
+          changed_at?: string
+          from_status?: string
+          id?: string
+          seq?: never
+          test_id?: string
+          to_status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'test_automation_status_history_test_id_fkey'
+            columns: ['test_id']
+            isOneToOne: false
+            referencedRelation: 'tests'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'test_automation_status_history_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       test_plan_tests: {
         Row: {
           added_by: string | null
@@ -2813,6 +2864,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_run_id: string }
         Returns: Json
       }
+      bunkai_get_test_automation_status: {
+        Args: { p_actor_user_id: string, p_test_id: string }
+        Returns: Json
+      }
       bunkai_get_test_expanded: {
         Args: { p_actor_user_id: string, p_test_id: string }
         Returns: Json
@@ -3155,6 +3210,10 @@ export interface Database {
       }
       bunkai_search_workspace: {
         Args: { p_limit?: number, p_query: string, p_workspace_id: string }
+        Returns: Json
+      }
+      bunkai_set_test_automation_status: {
+        Args: { p_actor_user_id: string, p_status: string, p_test_id: string }
         Returns: Json
       }
       bunkai_set_test_tags: {

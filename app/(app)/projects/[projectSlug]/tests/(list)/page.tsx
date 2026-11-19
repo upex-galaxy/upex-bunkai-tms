@@ -1,7 +1,15 @@
 'use client';
 
+import type { AutomationStatus } from '@lib/tests/automation-status';
 import type { TestListSortColumn } from '@lib/tests/test-list';
 import { TestsListSkeleton, TestsListView } from '@components/tests/TestsListView';
+import {
+  automationStatusFilterSearch,
+  countByAutomationStatus,
+  filterTestsByAutomationStatus,
+  nextAutomationStatusFilter,
+  parseAutomationStatusFilter,
+} from '@lib/tests/automation-status';
 import {
   filterTestsByTag,
   nextTestListSort,
@@ -40,14 +48,20 @@ function TestsListScreen() {
 
   const { column, direction } = parseTestListSort(searchParams);
   const sort = { column, direction };
+  const automationStatus = parseAutomationStatusFilter(searchParams);
   const visible = useMemo(() => filterTestsByTag(tests, filteredTestIds), [tests, filteredTestIds]);
-  const rows = useMemo(() => sortTestList(visible, { column, direction }), [visible, column, direction]);
+  // BK-227 — counts over every filter except status; the status filter applies last (AND).
+  const statusCounts = useMemo(() => countByAutomationStatus(visible), [visible]);
+  const statusVisible = useMemo(() => filterTestsByAutomationStatus(visible, automationStatus), [visible, automationStatus]);
+  const rows = useMemo(() => sortTestList(statusVisible, { column, direction }), [statusVisible, column, direction]);
   const viewState = resolveTestListViewState({
     totalCount: tests.length,
     visibleCount: visible.length,
     appliedTag: testTagFilter,
     typedTag: tagInput,
     lookupFailed: testTagLookupFailed,
+    automationStatus,
+    statusVisibleCount: statusVisible.length,
   });
 
   // The sort rides in the address so Back from a Test restores it (AC-06); the
@@ -57,6 +71,11 @@ function TestsListScreen() {
   // does the same), so a quick second click on a header reverses at once.
   const onSort = (column: TestListSortColumn) => {
     const search = testListSortSearch(searchParams.toString(), nextTestListSort(sort, column));
+    window.history.replaceState(null, '', `${pathname}${search}`);
+  };
+
+  const setAutomationStatus = (next: AutomationStatus | null) => {
+    const search = automationStatusFilterSearch(searchParams.toString(), next);
     window.history.replaceState(null, '', `${pathname}${search}`);
   };
 
@@ -80,6 +99,10 @@ function TestsListScreen() {
       onSort={onSort}
       onClearTag={onClearTag}
       onRetry={retryTestTagLookup}
+      automationStatus={automationStatus}
+      statusCounts={statusCounts}
+      onAutomationStatus={status => setAutomationStatus(nextAutomationStatusFilter(automationStatus, status))}
+      onClearAutomationStatus={() => setAutomationStatus(null)}
     />
   );
 }

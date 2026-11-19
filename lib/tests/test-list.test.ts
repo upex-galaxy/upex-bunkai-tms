@@ -12,6 +12,8 @@ import {
   resolveTestListViewState,
   sortTestList,
   testListNoMatchDescription,
+  testListNoStatusMatchDescription,
+  testListNoStatusMatchTitle,
   testListSortSearch,
 } from './test-list';
 
@@ -20,7 +22,7 @@ import {
 // the sort (AC-05) are pinned here.
 
 function item(id: string, title: string, stepCount: number, createdAt: string, tags: string[] = []): TestListItem {
-  return { id, title, step_count: stepCount, created_at: createdAt, tags };
+  return { id, title, step_count: stepCount, created_at: createdAt, tags, automation_status: 'manual-only' };
 }
 
 // Shell order: newest first.
@@ -202,5 +204,35 @@ describe('copy', () => {
     expect(copy).toContain('"nightly"');
     expect(copy).toContain('5 Tests');
     expect(copy).toContain('not an error');
+  });
+});
+
+describe('BK-227 status filter in the list state and copy', () => {
+  const base = { totalCount: 33, visibleCount: 33, appliedTag: null, typedTag: '', lookupFailed: false };
+
+  it('says "no Test has this status" when the tag-matched set is not empty but the status leaves none (AC 2.5)', () => {
+    expect(resolveTestListViewState({ ...base, automationStatus: 'candidate', statusVisibleCount: 0 })).toBe('empty-no-status-match');
+    expect(resolveTestListViewState({ ...base, automationStatus: 'candidate', statusVisibleCount: 5 })).toBe('rows');
+    expect(resolveTestListViewState({ ...base, automationStatus: null, statusVisibleCount: 0 })).toBe('rows');
+  });
+
+  it('lets an empty Project, a tag with no match and a failed lookup outrank the status result', () => {
+    expect(resolveTestListViewState({ ...base, totalCount: 0, visibleCount: 0, automationStatus: 'automated', statusVisibleCount: 0 })).toBe('empty-never');
+    expect(resolveTestListViewState({ ...base, visibleCount: 0, appliedTag: 'x', typedTag: 'x', automationStatus: 'automated', statusVisibleCount: 0 })).toBe('empty-no-match');
+    expect(resolveTestListViewState({ ...base, visibleCount: 0, appliedTag: 'x', typedTag: 'x', lookupFailed: true, automationStatus: 'automated', statusVisibleCount: 0 })).toBe('failed');
+  });
+
+  it('names the status in the count, with the tag when both apply', () => {
+    expect(formatTestListCount(8, 33, null, 'automated')).toBe('8 of 33 Tests are Automated');
+    expect(formatTestListCount(1, 33, null, 'candidate')).toBe('1 of 33 Tests is Automation candidate');
+    expect(formatTestListCount(3, 33, 'regression', 'automated')).toBe('3 of 33 Tests carry regression and are Automated');
+    expect(formatTestListCount(33, 33, null, null)).toBe('33 Tests in this project');
+  });
+
+  it('names the status and the tag scope in the no-status-match copy, and says it is not an error', () => {
+    expect(testListNoStatusMatchTitle('candidate')).toBe('No Test is Automation candidate');
+    expect(testListNoStatusMatchDescription('candidate', null)).toBe('No Test in this project has the status Automation candidate. This is a filter result, not an error. Clear the status to see every Test again.');
+    expect(testListNoStatusMatchDescription('candidate', 'regression')).toContain('"regression"');
+    expect(testListNoStatusMatchDescription('candidate', null)).toContain('not an error');
   });
 });

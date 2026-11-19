@@ -1,5 +1,6 @@
 'use client';
 
+import type { AutomationStatus } from '@lib/tests/automation-status';
 import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import type { CSSProperties } from 'react';
 import { ArchiveAtcOverlay } from '@components/atcs/ArchiveAtcDialog';
@@ -40,6 +41,7 @@ export interface ExplorerTestItem {
   step_count: number
   // BK-666 — read by the Project Tests list; the explorer row does not show them.
   tags: string[]
+  automation_status: AutomationStatus
 }
 
 // BK-148 — a project environment row for the explorer's Environments group. A

@@ -8,9 +8,9 @@ import { usePathname } from 'next/navigation';
 // active tab and (on Run History) the outcome filter live in the URL, which
 // makes both deep-linkable and directly assertable by QA.
 //
-// Only two tabs ship. The mockup's third ("Overview") is deliberately omitted —
-// the live page has no Overview content to route to, and an empty tab is worse
-// UX than two honest ones (plan §3.3).
+// BK-227 adds Status history as a third route tab (§5 D74). The BK-37 mockup's
+// "Overview" tab is still deliberately omitted: the live page has no Overview
+// content to route to, and an empty tab is worse UX than honest ones (plan §3.3).
 //
 // Anatomy follows the mockup's `.tabs` nav (raised tab boxes, rounded top
 // corners, pulled 1px down over the strip's bottom border) but every value comes
@@ -25,14 +25,19 @@ export function TestDetailTabs({ projectSlug, testId }: TestDetailTabsProps) {
   const pathname = usePathname();
   const stepsHref = `/projects/${projectSlug}/tests/${testId}`;
   const runsHref = `${stepsHref}/runs`;
+  const automationHref = `${stepsHref}/automation`;
 
-  // Anything under `/runs` is the Run History tab; everything else on the Test
-  // (the index route) is Steps, so the strip never renders with no active tab.
-  const onRuns = pathname === runsHref || pathname.startsWith(`${runsHref}/`);
+  // Anything under `/runs` is the Run History tab and under `/automation` the
+  // Status history tab (BK-227); everything else on the Test (the index route)
+  // is Steps, so the strip never renders with no active tab.
+  const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const onRuns = under(runsHref);
+  const onAutomation = under(automationHref);
 
   const tabs = [
-    { label: 'Steps', href: stepsHref, active: !onRuns, testId: 'test-tab-steps' },
+    { label: 'Steps', href: stepsHref, active: !onRuns && !onAutomation, testId: 'test-tab-steps' },
     { label: 'Run History', href: runsHref, active: onRuns, testId: 'test-tab-runs' },
+    { label: 'Status history', href: automationHref, active: onAutomation, testId: 'test-tab-automation' },
   ];
 
   return (
