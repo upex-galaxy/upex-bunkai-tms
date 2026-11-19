@@ -74,6 +74,7 @@ interface AppSidebarProps {
   activeWorkspaceId: string | null
   projects: ShellProject[]
   userEmail: string | null
+  userDisplayName: string | null
   userRole: MemberRole | null
   // BK-209 (Slice 3: UI) — server-fetched so the bell badge paints correct on
   // first load, matching how every other server-driven element here
@@ -138,7 +139,7 @@ async function fetchNotificationsData(workspaceId: string): Promise<Notification
   return { ok: true, items: body.items, unreadCount: body.unread_count };
 }
 
-export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail, userRole, initialUnreadCount, atcCount, runCount, bugCount }: AppSidebarProps) {
+export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail, userDisplayName, userRole, initialUnreadCount, atcCount, runCount, bugCount }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
@@ -785,7 +786,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
                 {userInitial}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-semibold text-fg-0">{email || 'Account'}</span>
+                <span className="block truncate text-xs font-semibold text-fg-0">{userDisplayName || email || 'Account'}</span>
                 <span className="block text-2xs text-fg-3">
                   {hasWorkspaceRole ? roleText : 'Signed in'}
                 </span>

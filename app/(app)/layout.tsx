@@ -7,6 +7,7 @@ import { AppShell } from '@components/layout/AppShell';
 import { AppSidebar } from '@components/layout/AppSidebar';
 import { WorkspaceDeletedNotice } from '@components/layout/WorkspaceDeletedNotice';
 import { AuthProvider } from '@components/providers/auth-context';
+import { resolveAccountName } from '@lib/account/display-name';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { countAtcsInWorkspace } from '@lib/atcs/library';
 import { loadEffectiveProjectPlan, loadOwnership, planLimitView } from '@lib/billing/plan-limit';
@@ -109,7 +110,7 @@ async function getShellData() {
     }
   }
 
-  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userId: user?.id ?? null, userRole, unreadCount, atcCount, runCount, bugCount, planLimit };
+  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userDisplayName: resolveAccountName({ appMetadata: user?.app_metadata, userMetadata: user?.user_metadata }), userId: user?.id ?? null, userRole, unreadCount, atcCount, runCount, bugCount, planLimit };
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -132,6 +133,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               activeWorkspaceId={shell.activeWorkspaceId}
               projects={shell.projects}
               userEmail={shell.userEmail}
+              userDisplayName={shell.userDisplayName}
               userRole={shell.userRole}
               initialUnreadCount={shell.unreadCount}
               atcCount={shell.atcCount}
