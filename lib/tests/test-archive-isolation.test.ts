@@ -378,8 +378,12 @@ describeOrSkip('BK-596: rename, archive and restore a Test', () => {
       expect(must(await service().from('test_plan_tests').select('id').eq('test_id', t.id), 'members')).toHaveLength(1);
     });
 
-    it('the expanded read keeps resolving it, with the Run count and the holding plans', async () => {
+    it('the expanded read keeps resolving it, with the finished-Run count and the holding plans', async () => {
       const t = await newTest();
+      const done = await startRun(t.id);
+      expect(done.error).toBeNull();
+      const finished = await service().rpc('bunkai_finish_run', { p_actor_user_id: need().qaUserId, p_run_id: (done.data as { id: string }).id, p_verdict: 'passed', p_via: 'cookie' });
+      expect(finished.error).toBeNull();
       expect((await startRun(t.id)).error).toBeNull();
       const plan = await newPlan();
       must(await service().from('test_plan_tests').insert({ test_plan_id: plan, test_id: t.id, added_by: need().qaUserId }).select('id').single(), 'member');
@@ -390,6 +394,7 @@ describeOrSkip('BK-596: rename, archive and restore a Test', () => {
       const json = data as TestJson;
       expect(json.archived_at).not.toBeNull();
       expect(json.archived_by).toBe(need().qaUserId);
+      expect(await runCount(t.id)).toBe(2);
       expect(json.run_count).toBe(1);
       expect(json.plans.map(p => p.id)).toEqual([plan]);
       expect(json.atcs).toHaveLength(1);
