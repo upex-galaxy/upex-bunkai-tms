@@ -4,7 +4,7 @@ import type { AtcLibraryItem } from '@components/tests/AtcChainPicker';
 import { AtcChainPicker } from '@components/tests/AtcChainPicker';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
-import { TEST_CHAIN_UI_SOFT_CAP, TEST_TITLE_MAX } from '@lib/tests/validation';
+import { TEST_CHAIN_UI_SOFT_CAP, TEST_TITLE_MAX, testTitleFault } from '@lib/tests/validation';
 import { cn } from '@lib/utils';
 import { ChevronLeft, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -39,8 +39,8 @@ export function NewTestBuilder({ projectSlug, atcs }: NewTestBuilderProps) {
   // an edited payload retried under a failed key would 409 forever.
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
-  const trimmedLength = title.trim().length;
-  const titleValid = trimmedLength >= 1 && trimmedLength <= TEST_TITLE_MAX;
+  const trimmedLength = [...title.trim()].length;
+  const titleValid = testTitleFault(title) === null;
   const canSubmit = titleValid && chain.length > 0 && !submitting;
 
   const appendAtc = (atc: AtcLibraryItem) => {

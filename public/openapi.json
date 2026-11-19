@@ -7379,7 +7379,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Trimmed before validation; 1–200 chars after trim."
+            "description": "Trimmed before validation; 1–200 characters (code points) after trim."
           },
           "atc_ids": {
             "type": "array",
@@ -19571,7 +19571,7 @@
             }
           },
           "422": {
-            "description": "Validation failed (`validation_failed` for title/uuid/workspace_id rules, `chain_empty` when the chain references no ATC).",
+            "description": "Validation failed (`validation_failed` for title/uuid/workspace_id rules, with `details.reason` `title_required` for a blank title or `title_too_long` past 200 characters; `chain_empty` when the chain references no ATC).",
             "content": {
               "application/json": {
                 "schema": {

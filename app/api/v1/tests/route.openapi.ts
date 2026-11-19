@@ -20,7 +20,7 @@ const TestSchema = z
 
 const CreateBodySchema = z
   .object({
-    title: z.string().min(1).max(200).describe('Trimmed before validation; 1–200 chars after trim.'),
+    title: z.string().min(1).max(200).describe('Trimmed before validation; 1–200 characters (code points) after trim.'),
     atc_ids: z
       .array(z.string().uuid())
       .min(1)
@@ -58,7 +58,7 @@ registry.registerPath({
     403: { description: 'Missing atc:write scope or not a workspace member with write access.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'One or more selected ATCs are not available in this workspace (`not_found`). Foreign-workspace and nonexistent ids return byte-identical responses — no existence disclosure.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'Idempotency-Key reused with a different request payload, or a request with the same key is still in flight (`conflict`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed (`validation_failed` for title/uuid/workspace_id rules, `chain_empty` when the chain references no ATC).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed (`validation_failed` for title/uuid/workspace_id rules, with `details.reason` `title_required` for a blank title or `title_too_long` past 200 characters; `chain_empty` when the chain references no ATC).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

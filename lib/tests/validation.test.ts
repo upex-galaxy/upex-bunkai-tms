@@ -17,8 +17,9 @@ describe('TestCreateBodySchema boundaries', () => {
     expect(parsed.title).toBe('Cart');
   });
 
-  test('rejects a whitespace-only title', () => {
-    expect(TestCreateBodySchema.safeParse({ ...base, title: '   ' }).success).toBe(false);
+  test('leaves a whitespace-only title to testTitleFault (title_required)', () => {
+    const parsed = TestCreateBodySchema.parse({ ...base, title: '   ' });
+    expect(testTitleFault(parsed.title)).toBe('title_required');
   });
 
   test('accepts a 1-char title (lower boundary)', () => {
@@ -29,8 +30,14 @@ describe('TestCreateBodySchema boundaries', () => {
     expect(TestCreateBodySchema.safeParse({ ...base, title: 'a'.repeat(200) }).success).toBe(true);
   });
 
-  test('rejects a 201-char title (upper boundary)', () => {
-    expect(TestCreateBodySchema.safeParse({ ...base, title: 'a'.repeat(201) }).success).toBe(false);
+  test('leaves a 201-char title to testTitleFault (title_too_long)', () => {
+    const parsed = TestCreateBodySchema.parse({ ...base, title: 'a'.repeat(201) });
+    expect(testTitleFault(parsed.title)).toBe('title_too_long');
+  });
+
+  test('accepts 200 emoji, counted as code points like rename', () => {
+    const parsed = TestCreateBodySchema.parse({ ...base, title: '🧪'.repeat(200) });
+    expect(testTitleFault(parsed.title)).toBeNull();
   });
 
   test('rejects an empty chain', () => {
