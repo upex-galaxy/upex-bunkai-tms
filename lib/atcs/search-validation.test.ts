@@ -1,4 +1,4 @@
-import { AtcSearchQuerySchema, parseAtcSearchParams } from '@lib/atcs/search-validation';
+import { AtcSearchQuerySchema, atcSearchText, parseAtcSearchParams } from '@lib/atcs/search-validation';
 import { describe, expect, test } from 'bun:test';
 
 // BK-20 — query-string validation for GET /api/v1/atcs/search. Pure schema +
@@ -132,5 +132,24 @@ describe('parseAtcSearchParams', () => {
     const parsed = parseAtcSearchParams(params);
     expect(parsed.query).toBe('x');
     expect((parsed as Record<string, unknown>).workspace_id).toBeUndefined();
+  });
+});
+
+describe('atcSearchText (BK-2055)', () => {
+  test.each(['\'', '(', ')', '&', '|', '!', ':', '<', '>', '*', '\'\'', '-', '.', '"', '\\'])('text with no letter or digit (%p) searches for nothing', (raw) => {
+    expect(atcSearchText(raw)).toBe('');
+  });
+
+  test('drops single quotes, which the one-word prefix query cannot parse', () => {
+    expect(atcSearchText('\'a')).toBe('a');
+    expect(atcSearchText('user\'s')).toBe('users');
+    expect(atcSearchText('it\'s "quoted"')).toBe('its "quoted"');
+  });
+
+  test('leaves ordinary text alone', () => {
+    expect(atcSearchText('login')).toBe('login');
+    expect(atcSearchText('log-in OR 1=1; --')).toBe('log-in OR 1=1; --');
+    expect(atcSearchText('ñandú')).toBe('ñandú');
+    expect(atcSearchText('42')).toBe('42');
   });
 });
