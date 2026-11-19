@@ -64,6 +64,16 @@ export default async function ProjectsIndexPage() {
   const loadFailed = error !== null;
   const showEmptyState = !loadFailed && projects.length === 0;
 
+  // BK-2093: the same member+ gate as the Milestones and Bug Reports create actions.
+  const { data: membership } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', activeWorkspaceId)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  const canCreate = membership != null && membership.role !== 'viewer';
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-start justify-between gap-4 border-b border-stroke-2 px-6 py-4">
@@ -81,7 +91,7 @@ export default async function ProjectsIndexPage() {
             (The sidebar's persistent "+" is a separate, always-available rail
             affordance — this gate is about hierarchy here, not exclusivity.)
             A failed read still shows it, since no empty-state CTA renders. */}
-        {!showEmptyState && (
+        {canCreate && !showEmptyState && (
           <Link
             href="/projects/new"
             data-testid="projects-new-link"
@@ -90,6 +100,11 @@ export default async function ProjectsIndexPage() {
             <Plus size={13} />
             New project
           </Link>
+        )}
+        {!canCreate && (
+          <span data-testid="projects-viewer-note" className="text-xs text-fg-3">
+            Creating projects requires the member role or higher.
+          </span>
         )}
       </div>
 
@@ -124,14 +139,16 @@ export default async function ProjectsIndexPage() {
                         A project groups the modules, user stories, and ATCs your team authors.
                         Create the first one to start covering this workspace.
                       </span>
-                      <Link
-                        href="/projects/new"
-                        data-testid="projects-empty-create"
-                        className={cn(buttonVariants({ variant: 'primary' }), 'mt-2')}
-                      >
-                        <Plus size={14} />
-                        Create your first project
-                      </Link>
+                      {canCreate && (
+                        <Link
+                          href="/projects/new"
+                          data-testid="projects-empty-create"
+                          className={cn(buttonVariants({ variant: 'primary' }), 'mt-2')}
+                        >
+                          <Plus size={14} />
+                          Create your first project
+                        </Link>
+                      )}
                     </div>
                   )
                 : (

@@ -53,6 +53,16 @@ export default async function NewProjectPage() {
   // it is the honest fallback when we could not find out.
   const hasProjects = error !== null || Boolean(existing && existing.length > 0);
 
+  // BK-2093: a Viewer who opens this address directly gets the note, not a form it cannot submit.
+  const { data: membership } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', activeWorkspaceId)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  const canCreate = membership != null && membership.role !== 'viewer';
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-auto">
       <div className="mx-auto flex w-full max-w-[440px] flex-col gap-3 px-6 py-10">
@@ -64,10 +74,18 @@ export default async function NewProjectPage() {
           <ArrowLeft size={12} />
           Back to projects
         </Link>
-        <CreateProjectForm
-          workspaceId={activeWorkspaceId}
-          hasProjects={hasProjects}
-        />
+        {canCreate
+          ? (
+              <CreateProjectForm
+                workspaceId={activeWorkspaceId}
+                hasProjects={hasProjects}
+              />
+            )
+          : (
+              <p data-testid="projects-new-viewer-note" className="m-0 text-sm text-fg-2">
+                Creating projects requires the member role or higher. Ask a workspace admin for the member role.
+              </p>
+            )}
       </div>
     </div>
   );
