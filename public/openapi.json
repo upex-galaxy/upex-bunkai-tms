@@ -7033,7 +7033,7 @@
           },
           "run_count": {
             "type": "integer",
-            "description": "Runs ever recorded against this Test. Archiving keeps every one of them."
+            "description": "Finished Runs (passed, failed, aborted) recorded against this Test, the ones its Run History lists. Runs still in progress are not counted. Archiving keeps every Run."
           },
           "plans": {
             "type": "array",

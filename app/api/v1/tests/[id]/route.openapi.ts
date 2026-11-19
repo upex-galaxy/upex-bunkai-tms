@@ -49,7 +49,7 @@ const ExpandedTestSchema = z
     updated_at: z.string().datetime(),
     archived_at: z.string().datetime({ offset: true }).nullable().describe('BK-596: set while the Test is archived. An archived Test keeps resolving here, read-only; it is hidden from search, tag filtering, the Tests list and the plan picker, and no Run can start from it.'),
     archived_by: z.string().uuid().nullable(),
-    run_count: z.number().int().describe('Runs ever recorded against this Test. Archiving keeps every one of them.'),
+    run_count: z.number().int().describe('Finished Runs (passed, failed, aborted) recorded against this Test, the ones its Run History lists. Runs still in progress are not counted. Archiving keeps every Run.'),
     plans: z.array(z.object({ id: z.string().uuid(), name: z.string(), status: z.string() })).describe('The Test Plans that hold this Test. Archiving never edits them.'),
     atc_count: z.number().int().describe('Number of ATCs in the chain (= count of `test_steps`).'),
     atcs: z.array(ChainedAtcSchema).describe('The chain of ATCs, ordered by `test_steps.position`.'),
