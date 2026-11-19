@@ -36,7 +36,7 @@ registry.registerPath({
   tags: ['Projects'],
   summary: 'Create a project in a workspace',
   description:
-    'Bearer `atc:write` (or cookie session). Member-only (role >= member). Auto-derives a per-workspace-unique slug from the name. Duplicate slug returns 409; non-members return 403.',
+    'Bearer `atc:write` (or cookie session). Member-only (role >= member). Auto-derives a per-workspace-unique slug from the name. Duplicate slug returns 409; non-members return 403 `not_a_member` and a Viewer returns 403 `forbidden_role`.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam, IdempotencyKeyParam],
   request: {
@@ -52,7 +52,7 @@ registry.registerPath({
     },
     400: { description: `Malformed workspace id or invalid JSON body, or: ${IDEMPOTENCY_400}`, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Missing atc:write scope, or caller is not a member of the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:write scope, a caller who is not a member of the workspace (`not_a_member`), or a Viewer (`forbidden_role`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: `A project with this slug already exists in the workspace, or: ${IDEMPOTENCY_409}`, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (including names that map to a reserved slug), or the workspace\'s effective plan has no project room left (`code = project_limit_reached`). The limit refusal carries `details = { reason, resource, plan, limit, used, is_owner, owners[{ user_id, email }] }`, read live on every attempt (so a retry after an upgrade succeeds), and a message that names the owner for a non-owner. Existing projects are never touched.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },

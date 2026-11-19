@@ -1,4 +1,4 @@
-import { archivedNameMessage, mapMilestonePlanRpcError, mapMilestoneRpcError } from '@lib/milestones/errors';
+import { archivedNameMessage, mapMilestoneLifecycleRpcError, mapMilestonePlanRpcError, mapMilestoneRpcError } from '@lib/milestones/errors';
 import { describe, expect, test } from 'bun:test';
 
 // BK-1899 — the SQLSTATE -> HTTP mapping of the two codes 0130 adds: 45507 (a write
@@ -60,5 +60,30 @@ describe('mapMilestonePlanRpcError — BK-1899', () => {
 describe('archivedNameMessage', () => {
   test('treats a blank name as no name', () => {
     expect(archivedNameMessage('   ')).toBe('An archived milestone already uses this name. Restore it or choose another name.');
+  });
+});
+
+describe('mapMilestoneLifecycleRpcError — BK-2091', () => {
+  test('42501 from archive or restore is a 403 forbidden_role: the caller is a member below the write role', () => {
+    const error = thrownBy(mapMilestoneLifecycleRpcError, { code: '42501', message: 'forbidden' });
+    expect(error.status).toBe(403);
+    expect(error.details).toEqual({ reason: 'forbidden_role' });
+    expect(error.message).toBe('Archiving or restoring a milestone requires the member role or higher.');
+  });
+
+  test('a non-member keeps the non-disclosing 404', () => {
+    const error = thrownBy(mapMilestoneLifecycleRpcError, { code: 'P0002', message: 'milestone_not_found' });
+    expect(error.status).toBe(404);
+    expect(error.details).toEqual({ reason: 'not_found' });
+  });
+
+  test('every other code keeps the shared mapping', () => {
+    const error = thrownBy(mapMilestoneLifecycleRpcError, { code: '45507', message: 'milestone_archived' });
+    expect(error.details?.reason).toBe('milestone_archived');
+  });
+
+  test('the shared mapper still answers not_a_member for 42501 (create and edit are out of BK-2091)', () => {
+    const error = thrownBy(mapMilestoneRpcError, { code: '42501', message: 'forbidden' });
+    expect(error.details).toEqual({ reason: 'not_a_member' });
   });
 });

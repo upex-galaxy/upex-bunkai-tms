@@ -16,18 +16,22 @@ const MEMBER_WS = '11111111-1111-1111-1111-111111111111';
 const FOREIGN_WS = '99999999-9999-9999-9999-999999999999';
 const MISSING_WS = '00000000-0000-0000-0000-000000000000';
 const DELETED_WS = '22222222-2222-2222-2222-222222222222';
+const VIEWER_WS = '33333333-3333-3333-3333-333333333333';
 
 interface RpcCall { fn: string, args: unknown }
 
 // `bunkai_can_write_workspace` returns false for a workspace the caller is
 // not a writer of, for an id that does not exist, and for a soft-deleted
 // workspace (0084 `deleted_at is null` guard); the fake mirrors that.
-function fakeDb(writable: Set<string>, calls: RpcCall[] = []): SupabaseClient<Database> {
+function fakeDb(writable: Set<string>, calls: RpcCall[] = [], readOnly: Set<string> = new Set()): SupabaseClient<Database> {
   return {
     rpc: async (fn: string, args: { ws_id: string }) => {
       calls.push({ fn, args });
       if (fn === 'bunkai_can_write_workspace') {
         return { data: writable.has(args.ws_id), error: null };
+      }
+      if (fn === 'bunkai_is_workspace_member') {
+        return { data: writable.has(args.ws_id) || readOnly.has(args.ws_id), error: null };
       }
       throw new Error(`unexpected rpc: ${fn}`);
     },
@@ -75,6 +79,18 @@ describe('assertCanCreateProject', () => {
     const calls: RpcCall[] = [];
     await assertCanCreateProject(fakeDb(new Set([MEMBER_WS]), calls), MEMBER_WS);
     expect(calls).toEqual([{ fn: 'bunkai_can_write_workspace', args: { ws_id: MEMBER_WS } }]);
+  });
+
+  it('tells a Viewer its role is too low with 403 forbidden_role, not not_a_member (BK-2091)', async () => {
+    const err = await captureError(async () => assertCanCreateProject(fakeDb(new Set([MEMBER_WS]), [], new Set([VIEWER_WS])), VIEWER_WS));
+    expect(envelope(err)).toEqual({ status: 403, code: 'forbidden', message: 'Creating a project requires the member role or higher.', details: { reason: 'forbidden_role' } });
+  });
+
+  it('keeps not_a_member for a foreign workspace after the membership check (BK-2091)', async () => {
+    const calls: RpcCall[] = [];
+    const err = await captureError(async () => assertCanCreateProject(fakeDb(new Set([MEMBER_WS]), calls, new Set([VIEWER_WS])), FOREIGN_WS));
+    expect(err.details).toEqual({ reason: 'not_a_member' });
+    expect(calls.map(c => c.fn)).toEqual(['bunkai_can_write_workspace', 'bunkai_is_workspace_member']);
   });
 
   it('maps an RPC failure to 500 internal_error instead of a false 403', async () => {

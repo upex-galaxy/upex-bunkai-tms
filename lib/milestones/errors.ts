@@ -65,6 +65,17 @@ export function mapMilestoneRpcError(error: { code?: string, message: string, de
   }
 }
 
+// BK-2091: archive and restore raise 42501 only after their membership check,
+// so it always means a member below the write role, never a non-member.
+export function mapMilestoneLifecycleRpcError(error: { code?: string, message: string, details?: string | null }): never {
+  if (error.code === '42501') {
+    throw new ApiError('forbidden', 'Archiving or restoring a milestone requires the member role or higher.', {
+      details: { reason: 'forbidden_role' },
+    });
+  }
+  return mapMilestoneRpcError(error);
+}
+
 // BK-206 — map a bunkai_attach_plans_to_milestone / bunkai_detach_plan_from_milestone
 // error (0112_milestone_plans.sql) to the API envelope. Same `: never` contract as the
 // mapper above. 45505 deliberately carries no plan id: a plan outside the project, in
