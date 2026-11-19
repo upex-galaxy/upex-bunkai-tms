@@ -40,6 +40,7 @@ import { APP_URLS } from '@lib/urls';
 import { cn } from '@lib/utils';
 import { Hash, Info, Link2, Loader2, Lock, Pencil, SendHorizontal, Trash2, Users, WifiOff, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { EntityCard } from './EntityCard';
 import { EntityPicker } from './EntityPicker';
 import { MentionPill } from './MentionPill';
@@ -91,12 +92,13 @@ function dayLabel(iso: string): string {
   return base;
 }
 
-async function apiJson<T>(input: string, init?: RequestInit): Promise<{ ok: true, data: T } | { ok: false, message: string }> {
+async function apiJson<T>(input: string, init?: RequestInit): Promise<{ ok: true, data: T } | { ok: false, message: string, reason?: string }> {
   try {
     const response = await fetch(input, init);
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      return { ok: false, message: (body as { error?: { message?: string } }).error?.message ?? 'Something went wrong.' };
+      const error = (body as { error?: { message?: string, details?: { reason?: string } } }).error;
+      return { ok: false, message: error?.message ?? 'Something went wrong.', reason: error?.details?.reason };
     }
     return { ok: true, data: body as T };
   }
@@ -149,6 +151,8 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   const [deleteTarget, setDeleteTarget] = useState<ChatItem | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  // BK-2007: the server's edit-window verdict wins over the local clock.
+  const [editClosedIds, setEditClosedIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const listRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<ChatItem[]>([]);
@@ -683,6 +687,12 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
         : { body: check.body, mentions: activeMentionIds(check.body, editPicked) }),
     });
     setEditBusy(false);
+    if (!res.ok && res.reason === 'edit_window_closed') {
+      setEditClosedIds(prev => new Set(prev).add(m.id));
+      cancelEdit();
+      toast.error(res.message);
+      return;
+    }
     if (!res.ok) { setActionError(res.message); return; }
     applyServerMessage(res.data);
     setEditingId(null);
@@ -811,7 +821,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
             const name = nameOf(m);
             const tomb = isTombstone(m);
             const actor = { userId, role };
-            const mayEdit = canEditMessage(m, actor, now);
+            const mayEdit = canEditMessage(m, actor, now) && !editClosedIds.has(m.id);
             const mayDelete = canDeleteMessage(m, actor);
             const windowClosed = !tomb && own && canWriteChat(role) && !mayEdit;
             const editing = editingId === m.id && !tomb;
@@ -887,7 +897,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                                   Save
                                 </button>
                               </div>
-                              {actionError && <p data-testid="chat_edit_error" role="alert" className="m-0 mt-1 text-xs text-fail">{actionError}</p>}
+                              {actionError && <p data-testid="chat_edit_error" role="alert" className="m-0 mt-1 text-xs text-signal-fail">{actionError}</p>}
                             </div>
                           )
                         : (() => {
@@ -1030,7 +1040,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       </footer>
 
       {actionError && !editingId && (
-        <p data-testid="chat_action_error" role="alert" className="m-0 border-t border-stroke-1 bg-surface-1 px-4 py-2 text-xs text-fail">{actionError}</p>
+        <p data-testid="chat_action_error" role="alert" className="m-0 border-t border-stroke-1 bg-surface-1 px-4 py-2 text-xs text-signal-fail">{actionError}</p>
       )}
 
       {deleteTarget && (

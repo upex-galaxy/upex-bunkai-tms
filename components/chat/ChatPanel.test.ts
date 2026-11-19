@@ -66,6 +66,7 @@ void mock.module('@lib/supabase/client', () => ({ createClient: () => fakeClient
 const { act, createElement } = await import('react');
 const { createRoot } = await import('react-dom/client');
 const { ChatPanel } = await import('@components/chat/ChatPanel');
+const { Toaster } = await import('sonner');
 
 const WS = 'ws-1283';
 const realSetTimeout = globalThis.setTimeout;
@@ -602,5 +603,69 @@ describe('ChatPanel — composer limit counts characters, not UTF-16 units (BK-1
     await type(container, ` ${GRIN.repeat(4001)}\n`);
     expect(overLimitText(container)).toBe('4001/4000');
     expect(sendDisabled(container)).toBe(true);
+  });
+});
+
+describe('ChatPanel — the server closing the edit window (BK-2007)', () => {
+  function ownFresh(): ChatMessage {
+    return { ...msg(1), author_user_id: 'u-self', created_at: new Date().toISOString() };
+  }
+
+  function refuseEdits(): void {
+    const base = globalThis.fetch;
+    globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
+      const url = new URL(String(input), 'http://localhost');
+      if (init?.method === 'PATCH' && url.pathname === `/api/v1/workspaces/${WS}/chat/messages/m1`) {
+        const error = { code: 'forbidden', message: 'Messages can be edited for 15 minutes after sending.', details: { reason: 'edit_window_closed' } };
+        return new Response(JSON.stringify({ error }), { status: 403, headers: { 'content-type': 'application/json' } });
+      }
+      return base(input as RequestInfo, init);
+    }) as unknown as typeof globalThis.fetch;
+  }
+
+  async function mountToaster(): Promise<HTMLElement> {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => { root.render(createElement(Toaster)); });
+    mounted.push({ container, root });
+    await flush();
+    return container;
+  }
+
+  async function click(container: HTMLElement, testId: string): Promise<void> {
+    const el = container.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+    if (!el) { throw new Error(`${testId} not rendered`); }
+    await act(async () => { el.click(); });
+    await flush();
+  }
+
+  async function typeEdit(container: HTMLElement, value: string): Promise<void> {
+    const input = container.querySelector<HTMLTextAreaElement>('[data-testid="chat_edit_input"]');
+    if (!input) { throw new Error('edit input not rendered'); }
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+    await act(async () => {
+      descriptor?.set?.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await flush();
+  }
+
+  test('a refused save closes the edit box, swaps Edit for the closed hint and toasts the reason', async () => {
+    const toasts = await mountToaster();
+    const container = await mount();
+    await answer('', page([ownFresh()], false));
+    refuseEdits();
+
+    await click(container, 'chat_action_edit');
+    await typeEdit(container, 'fixed typo');
+    await click(container, 'chat_edit_save');
+    await flush();
+
+    expect(container.querySelector('[data-testid="chat_edit_box"]')).toBeNull();
+    expect(container.querySelector('[data-testid="chat_action_edit"]')).toBeNull();
+    expect(container.querySelector('[data-testid="chat_action_edit_closed"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="chat_edit_window_hint"]')).not.toBeNull();
+    expect(toasts.textContent).toContain('Messages can be edited for 15 minutes after sending.');
   });
 });
