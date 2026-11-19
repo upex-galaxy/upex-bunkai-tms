@@ -41,9 +41,9 @@ describe('bK-22 — formatPositions (multi-position rendering, AC2.2)', () => {
 describe('bK-571 — buildAtcUsageReport (Used by on an archived ATC)', () => {
   it('collapses a Test chaining the ATC twice and orders like the RPC', () => {
     const report = buildAtcUsageReport([
-      { position: 3, tests: { id: 't-b', title: 'Beta' } },
-      { position: 1, tests: { id: 't-b', title: 'Beta' } },
-      { position: 2, tests: { id: 't-a', title: 'Alpha' } },
+      { position: 3, tests: { id: 't-b', title: 'Beta', archived_at: null } },
+      { position: 1, tests: { id: 't-b', title: 'Beta', archived_at: null } },
+      { position: 2, tests: { id: 't-a', title: 'Alpha', archived_at: null } },
       { position: 9, tests: null },
     ]);
     expect(report).toEqual({
@@ -57,6 +57,14 @@ describe('bK-571 — buildAtcUsageReport (Used by on an archived ATC)', () => {
 
   it('reports zero for no chain rows', () => {
     expect(buildAtcUsageReport([])).toEqual({ count: 0, used_in: [] });
+  });
+
+  it('leaves an archived Test out of the list and the count, like bunkai_atc_usage (BK-2240)', () => {
+    const report = buildAtcUsageReport([
+      { position: 1, tests: { id: 't-live', title: 'Live', archived_at: null } },
+      { position: 1, tests: { id: 't-gone', title: 'Gone', archived_at: '2026-11-19T17:00:00Z' } },
+    ]);
+    expect(report).toEqual({ count: 1, used_in: [{ test_id: 't-live', title: 'Live', positions: [1] }] });
   });
 });
 

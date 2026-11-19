@@ -83,7 +83,7 @@ export default async function AtcEditorPage({ params }: PageProps) {
       : { data: [] };
     const { data: chainRows, error: chainError } = await supabase
       .from('test_steps')
-      .select('position, tests(id, title)')
+      .select('position, tests(id, title, archived_at)')
       .eq('atc_id', atc.id);
     const source = archivedAtcSource({
       atcArchivedAt: atc.archived_at,
@@ -111,7 +111,7 @@ export default async function AtcEditorPage({ params }: PageProps) {
         source={source}
         parentName={parentName}
         archivedByLabel={archivedByLabel}
-        usage={chainError ? null : buildAtcUsageReport((chainRows ?? []) as unknown as { position: number, tests: { id: string, title: string } | null }[])}
+        usage={chainError ? null : buildAtcUsageReport((chainRows ?? []) as unknown as { position: number, tests: { id: string, title: string, archived_at: string | null } | null }[])}
       />
     );
   }

@@ -38,13 +38,14 @@ export function formatPositions(positions: number[]): string {
 // BK-571 — the "Used by" report for an archived ATC, from its raw chain rows. The
 // usage RPC is a reuse read and answers not found for an archived ATC, but an
 // archived ATC is fully readable and its Tests keep it in their chains. Same
-// shape and order as the RPC: one entry per Test, by title, positions ascending.
+// shape, order and live-only rule as the RPC (BK-2240): one entry per live Test,
+// by title, positions ascending.
 export function buildAtcUsageReport(
-  steps: { position: number, tests: { id: string, title: string } | null }[],
+  steps: { position: number, tests: { id: string, title: string, archived_at: string | null } | null }[],
 ): AtcUsageReport {
   const byTest = new Map<string, { test_id: string, title: string, positions: number[] }>();
   for (const step of steps) {
-    if (!step.tests) { continue; }
+    if (!step.tests || step.tests.archived_at !== null) { continue; }
     const entry = byTest.get(step.tests.id) ?? { test_id: step.tests.id, title: step.tests.title, positions: [] };
     entry.positions.push(step.position);
     byTest.set(step.tests.id, entry);
