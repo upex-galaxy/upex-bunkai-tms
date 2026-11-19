@@ -1,5 +1,7 @@
+import type { AutomationStatus, AutomationStatusCounts } from '@lib/tests/automation-status';
 import type { TestListItem, TestListSort, TestListSortColumn, TestListViewState } from '@lib/tests/test-list';
 import { Button, buttonVariants } from '@components/ui/button';
+import { AUTOMATION_STATUS_LABEL, AUTOMATION_STATUSES } from '@lib/tests/automation-status';
 import {
   formatChainLength,
   formatTestCreatedDate,
@@ -11,10 +13,13 @@ import {
   TEST_LIST_FAILED_TITLE,
   TEST_LIST_NO_MATCH_TITLE,
   testListNoMatchDescription,
+  testListNoStatusMatchDescription,
+  testListNoStatusMatchTitle,
 } from '@lib/tests/test-list';
 import { cn } from '@lib/utils';
 import { AlertTriangle, ArrowDown, ArrowUp, GitBranch, Inbox, Plus, RefreshCw, X } from 'lucide-react';
 import Link from 'next/link';
+import { AUTOMATION_STATUS_ICON, AutomationStatusBadge } from './AutomationStatusBadge';
 
 // BK-666 — the Project Tests list (master-design-plan §4.23, §5 D57). No mockup
 // draws a Tests list, so the screen is assembled from the LIVE surfaces it sits
@@ -37,6 +42,50 @@ export interface TestsListViewProps {
   onSort: (column: TestListSortColumn) => void
   onClearTag: () => void
   onRetry: () => void
+  // BK-227 — the single-select status filter; counts follow every other filter.
+  automationStatus?: AutomationStatus | null
+  statusCounts?: AutomationStatusCounts
+  onAutomationStatus?: (status: AutomationStatus) => void
+  onClearAutomationStatus?: () => void
+}
+
+function AutomationStatusFilter({
+  active,
+  counts,
+  onChoose,
+}: {
+  active: AutomationStatus | null
+  counts: AutomationStatusCounts
+  onChoose: (status: AutomationStatus) => void
+}) {
+  return (
+    <div role="group" aria-label="Filter by automation status" data-testid="tests-automation-filter" className="flex flex-wrap items-center gap-1">
+      <span className="mr-0.5 font-mono text-2xs font-semibold uppercase tracking-wider text-fg-4">Status</span>
+      {AUTOMATION_STATUSES.map((status) => {
+        const Icon = AUTOMATION_STATUS_ICON[status];
+        const pressed = active === status;
+        return (
+          <button
+            key={status}
+            type="button"
+            aria-pressed={pressed}
+            data-testid={`tests-automation-filter-${status}`}
+            onClick={() => onChoose(status)}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-1 border px-1.5 py-0.5 text-xs transition-colors duration-token ease-token',
+              pressed
+                ? 'border-accent bg-surface-3 text-fg-0'
+                : 'border-stroke-2 bg-surface-2 text-fg-2 hover:border-stroke-3 hover:text-fg-1',
+            )}
+          >
+            <Icon size={11} aria-hidden />
+            {AUTOMATION_STATUS_LABEL[status]}
+            <span className="font-mono text-2xs text-fg-3" data-testid={`tests-automation-count-${status}`}>{counts[status]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 const SORT_LABEL: Record<TestListSortColumn, string> = {
@@ -124,24 +173,33 @@ export function TestsListView({
   onSort,
   onClearTag,
   onRetry,
+  automationStatus = null,
+  statusCounts,
+  onAutomationStatus,
+  onClearAutomationStatus,
 }: TestsListViewProps) {
   // While a lookup is pending or failed there is no truthful count to show.
   const showCount = viewState !== 'pending' && viewState !== 'failed';
+  const showStatusFilter = statusCounts !== undefined && onAutomationStatus !== undefined
+    && (viewState === 'rows' || viewState === 'empty-no-status-match');
 
   return (
     <div data-testid="tests-list" className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex min-h-9 items-center justify-between gap-3 border-b border-stroke-1 bg-surface-1 px-4 py-2">
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-b border-stroke-1 bg-surface-1 px-4 py-2">
         <h1 className="m-0 flex items-center gap-2 text-sm font-medium text-fg-1">
           <GitBranch size={13} className="text-fg-3" aria-hidden />
           Tests
           {showCount && (
             <span className="font-normal text-fg-3" data-testid="tests-list-count">
-              {formatTestListCount(rows.length, totalCount, appliedTag)}
+              {formatTestListCount(rows.length, totalCount, appliedTag, automationStatus)}
             </span>
           )}
         </h1>
+        {showStatusFilter && (
+          <AutomationStatusFilter active={automationStatus} counts={statusCounts} onChoose={onAutomationStatus} />
+        )}
         {viewState === 'rows' && (
-          <p className="m-0 hidden text-xs text-fg-3 sm:block">
+          <p className="m-0 hidden text-xs text-fg-3 xl:block">
             Filter with the tag box above. Click a Test to open its chain.
           </p>
         )}
@@ -208,6 +266,23 @@ export function TestsListView({
           </div>
         )}
 
+        {viewState === 'empty-no-status-match' && automationStatus !== null && (
+          <div
+            data-testid="tests-list-no-status-match"
+            className="mx-auto flex max-w-[46ch] flex-col items-center gap-2 px-4 py-12 text-center"
+          >
+            <Inbox size={18} className="text-fg-3" aria-hidden />
+            <p className="m-0 text-md font-semibold text-fg-1">{testListNoStatusMatchTitle(automationStatus)}</p>
+            <p className="m-0 text-sm leading-relaxed text-fg-3">{testListNoStatusMatchDescription(automationStatus, appliedTag)}</p>
+            {onClearAutomationStatus && (
+              <Button type="button" size="sm" data-testid="tests-list-no-status-match-clear" className="mt-1" onClick={onClearAutomationStatus}>
+                <X size={12} aria-hidden />
+                Clear status
+              </Button>
+            )}
+          </div>
+        )}
+
         {viewState === 'rows' && (
           <table data-testid="tests-list-table" className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-surface-1">
@@ -239,6 +314,7 @@ export function TestsListView({
                     >
                       <GitBranch size={12} className="shrink-0 text-fg-3" aria-hidden />
                       <span className="min-w-0 truncate">{test.title}</span>
+                      <AutomationStatusBadge status={test.automation_status} data-testid={`tests-list-status-${test.id}`} />
                     </Link>
                     {/* Phone width: the Tags and Created columns fold into a
                         second line under the name (D57), so every AC-03 field

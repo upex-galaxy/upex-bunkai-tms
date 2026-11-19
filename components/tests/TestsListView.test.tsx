@@ -36,7 +36,7 @@ function render(viewState: TestListViewState, overrides: Partial<TestsListViewPr
   );
 }
 
-const STATE_BLOCKS = ['tests-list-loading', 'tests-list-error', 'tests-list-empty', 'tests-list-no-match', 'tests-list-table'];
+const STATE_BLOCKS = ['tests-list-loading', 'tests-list-error', 'tests-list-empty', 'tests-list-no-match', 'tests-list-no-status-match', 'tests-list-table'];
 
 function blocksIn(html: string): string[] {
   return STATE_BLOCKS.filter(id => html.includes(`data-testid="${id}"`));
@@ -115,5 +115,52 @@ describe('TestsListView', () => {
 
   it('marks the loading state busy', () => {
     expect(render('pending', { appliedTag: 'smoke' })).toContain('aria-busy="true"');
+  });
+
+  describe('BK-227 automation status', () => {
+    const counts = { 'manual-only': 20, 'candidate': 5, 'automated': 8 } as const;
+    const withFilter = (overrides: Partial<TestsListViewProps> = {}) => ({
+      statusCounts: { ...counts },
+      onAutomationStatus: () => {},
+      onClearAutomationStatus: () => {},
+      ...overrides,
+    });
+
+    it('shows a text badge with the status on every row (never color alone)', () => {
+      const html = render('rows', withFilter());
+      expect(html).toMatch(/data-automation-status="automated"[^>]*data-testid="tests-list-status-t1"[^>]*>.*?Automated<\/span>/);
+      expect(html).toMatch(/data-testid="tests-list-status-t2"[^>]*>.*?Manual-only<\/span>/);
+    });
+
+    it('offers the three statuses with their counts, none pressed without a filter (AC 2.1)', () => {
+      const html = render('rows', withFilter());
+      expect(html).toContain('data-testid="tests-automation-filter"');
+      for (const [status, n] of Object.entries(counts)) {
+        expect(html).toMatch(new RegExp(`data-testid="tests-automation-count-${status}">${n}<`));
+        expect(html).toMatch(new RegExp(`aria-pressed="false"[^>]*data-testid="tests-automation-filter-${status}"`));
+      }
+    });
+
+    it('presses only the active status and names it in the count (AC 2.2)', () => {
+      const html = render('rows', withFilter({ automationStatus: 'automated' }));
+      expect(html).toMatch(/aria-pressed="true"[^>]*data-testid="tests-automation-filter-automated"/);
+      expect(html).toMatch(/aria-pressed="false"[^>]*data-testid="tests-automation-filter-manual-only"/);
+      expect(html).toContain('2 of 5 Tests are Automated');
+    });
+
+    it('draws the no-status-match block with Clear status and keeps the filter on screen (AC 2.5)', () => {
+      const html = render('empty-no-status-match', withFilter({ automationStatus: 'candidate', statusCounts: { ...counts, candidate: 0 } }));
+      expect(blocksIn(html)).toEqual(['tests-list-no-status-match']);
+      expect(html).toContain('No Test is Automation candidate');
+      expect(html).toContain('data-testid="tests-list-no-status-match-clear"');
+      expect(html).toMatch(/data-testid="tests-automation-count-candidate">0</);
+      expect(html).not.toContain('role="alert"');
+    });
+
+    it('hides the status filter while a tag lookup is pending or failed, or the Project is empty', () => {
+      expect(render('pending', withFilter({ appliedTag: 'smoke' }))).not.toContain('tests-automation-filter');
+      expect(render('failed', withFilter({ appliedTag: 'smoke' }))).not.toContain('tests-automation-filter');
+      expect(render('empty-never', withFilter())).not.toContain('tests-automation-filter');
+    });
   });
 });
