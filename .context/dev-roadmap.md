@@ -219,7 +219,7 @@ BK-221 Automation & CI Ingestion:
   BK-226 Upload CI file ──> BK-222, BK-88
   BK-222 ✅ dev-done (2026-11-09) — PR #332 (feat/BK-222-submit-automated-run): POST /api/v1/runs/submissions, migration 0121, ADR-0026. Unblocks BK-223 and BK-226.
   BK-223 ✅ dev-done (2026-11-10) — feat/BK-223-stream-step-results: streaming contract on the live run lifecycle (bearer idempotent step re-report + 409 conflict, executor_name snapshot at start, 60 minute agent/ci inactivity sweep), migration 0122, OpenAPI streaming sequence.
-  BK-228 Commit/branch links ──> BK-1995 (the 2026-11-17 grooming split the original BK-226 dependency into this technical Story; BK-1995 is Shift-Left QA with no code yet, re-verified 2026-11-19)
+  BK-228 Commit/branch links ──> BK-1995 ✅ unblocked (2026-11-20) — BK-1995 merged via PR #384 (adaa68df), migration 0137_run_ci_context, Ready For QA. BK-228's display/filter scope is pickable now; the upload-modal fields (TS6/D8) stay deferred until BK-226 ships, per the 2026-11-17 grooming.
   BK-225 Mode filter ──> BK-38  ··> BK-222, BK-227
   BK-227 Automation status ──> BK-27
   BK-227 ✅ dev-done (2026-11-19) — feat/BK-227-automation-status: automation status writer, reader and append-only history (migration 0135), GET/PUT /api/v1/tests/{id}/automation-status, Tests list badge + Status filter with counts, Test header control + Status history tab (master-design-plan §5 D74).
