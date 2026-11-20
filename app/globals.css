@@ -224,6 +224,8 @@
     padding: 0 6px;
     font-size: 10.5px;
     line-height: 1;
+    color: var(--fg-2);
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--stroke-2);
     border-radius: var(--r-1);
   }
@@ -326,6 +328,8 @@
     padding: 0 6px;
     font-size: 10.5px;
     line-height: 1;
+    color: var(--fg-2);
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--stroke-2);
     border-radius: var(--r-1);
   }
