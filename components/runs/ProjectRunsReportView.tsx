@@ -299,7 +299,8 @@ export function ProjectRunsReportView({ projectId, modules, branchSuggestions = 
   };
 
   const applyBranch = (raw: string) => {
-    const next = raw === '' ? null : raw;
+    const trimmed = raw.trim();
+    const next = trimmed === '' ? null : trimmed;
     setFilters(prev => (prev.branch === next ? prev : { ...prev, branch: next }));
   };
 
