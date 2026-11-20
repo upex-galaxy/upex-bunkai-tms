@@ -1576,6 +1576,10 @@ export interface Database {
       runs: {
         Row: {
           abort_reason: string | null
+          ci_branch: string | null
+          ci_commit: string | null
+          ci_pipeline_name: string | null
+          ci_pipeline_url: string | null
           created_at: string
           environment_id: string
           evidence_urls: string[]
@@ -1598,6 +1602,10 @@ export interface Database {
         }
         Insert: {
           abort_reason?: string | null
+          ci_branch?: string | null
+          ci_commit?: string | null
+          ci_pipeline_name?: string | null
+          ci_pipeline_url?: string | null
           created_at?: string
           environment_id: string
           evidence_urls?: string[]
@@ -1620,6 +1628,10 @@ export interface Database {
         }
         Update: {
           abort_reason?: string | null
+          ci_branch?: string | null
+          ci_commit?: string | null
+          ci_pipeline_name?: string | null
+          ci_pipeline_url?: string | null
           created_at?: string
           environment_id?: string
           evidence_urls?: string[]
@@ -2775,6 +2787,10 @@ export interface Database {
       bunkai_create_run: {
         Args: {
           p_actor_user_id: string
+          p_ci_branch?: string
+          p_ci_commit?: string
+          p_ci_pipeline_name?: string
+          p_ci_pipeline_url?: string
           p_environment_id: string
           p_executor_mode: string
           p_start_token: string
@@ -3232,6 +3248,10 @@ export interface Database {
       bunkai_submit_automated_run: {
         Args: {
           p_actor_user_id: string
+          p_ci_branch?: string
+          p_ci_commit?: string
+          p_ci_pipeline_name?: string
+          p_ci_pipeline_url?: string
           p_duration_seconds: number
           p_environment_name: string
           p_evidence_urls?: string[]
