@@ -1,4 +1,6 @@
+import type { CiContext } from '@lib/runs/ci-context';
 import { ApiError } from '@lib/api/error-envelope';
+import { parseCiContext } from '@lib/runs/ci-context';
 import { isHttpUrl, SUBMISSION_EVIDENCE_URL_MAX } from '@lib/runs/evidence-url';
 
 // BK-222 — request validation for POST /api/v1/runs/submissions. Hand-written
@@ -33,6 +35,7 @@ export interface RunSubmissionBody {
   steps: SubmissionStep[]
   evidence_urls: string[]
   idempotency_key?: string
+  ci: CiContext
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -188,5 +191,6 @@ export function parseRunSubmissionBody(payload: unknown): RunSubmissionBody {
     steps,
     evidence_urls: evidence,
     idempotency_key: idempotencyKey,
+    ci: parseCiContext(payload),
   };
 }

@@ -149,4 +149,31 @@ describe('parseRunSubmissionBody', () => {
     expect(fail('x').details).toMatchObject({ reason: 'body_invalid' });
     expect(fail([]).details).toMatchObject({ reason: 'body_invalid' });
   });
+
+  describe('CI context (BK-1995)', () => {
+    test('a body without CI details carries none', () => {
+      expect(parseRunSubmissionBody(valid()).ci).toEqual({ commit: null, branch: null, pipeline_name: null, pipeline_url: null });
+    });
+
+    test('carries the four details, normalized', () => {
+      const body = parseRunSubmissionBody(valid({
+        commit: 'A1B2C3D',
+        branch: ' feature/checkout-discounts ',
+        pipeline_name: 'nightly-regression',
+        pipeline_url: 'https://ci.acme.dev/p/42',
+      }));
+      expect(body.ci).toEqual({
+        commit: 'a1b2c3d',
+        branch: 'feature/checkout-discounts',
+        pipeline_name: 'nightly-regression',
+        pipeline_url: 'https://ci.acme.dev/p/42',
+      });
+    });
+
+    test('an invalid detail is refused and named', () => {
+      const err = fail(valid({ pipeline_url: 'https://ci:s3cret@ci.acme.dev/p/42' }));
+      expect(err.status).toBe(422);
+      expect(err.details).toEqual({ reason: 'pipeline_url_invalid', field: 'pipeline_url' });
+    });
+  });
 });

@@ -44,6 +44,7 @@ export async function executeRunSubmission(
     steps: body.steps,
     evidenceUrls: body.evidence_urls,
     idempotencyKey: body.idempotency_key,
+    ci: body.ci,
   });
   if (error) {
     mapSubmissionRpcError({ code: error.code, message: error.message, details: error.details });
