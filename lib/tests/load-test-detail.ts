@@ -39,6 +39,7 @@ export interface TestDetailEnvironment {
 export interface TestDetail {
   userId: string
   activeWorkspaceId: string
+  projectId: string
   test: ExpandedTest
   // BK-28 — reorder is gated to member/admin/owner. BK-33 reuses it for the tag
   // editor and BK-34 for the Start-run affordance; viewers get the read-only view.
@@ -114,6 +115,7 @@ export const loadTestDetail = cache(async (projectSlug: string, testId: string):
   return {
     userId: user.id,
     activeWorkspaceId,
+    projectId: project.id,
     test,
     canReorder,
     environments: envRows ?? [],

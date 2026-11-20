@@ -37,6 +37,8 @@ export interface CompareRunHeader {
   abort_reason: string | null
   total_steps: number
   skipped_steps: number
+  commit?: string | null
+  branch?: string | null
 }
 
 export interface CompareRow {

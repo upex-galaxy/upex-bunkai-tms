@@ -1,4 +1,5 @@
 import { RunCompareView } from '@components/runs/RunCompareView';
+import { readRepositoryUrl } from '@lib/repository-settings/repository-settings';
 import { COMPARE_LOAD_ERROR, parseRunComparison } from '@lib/runs/compare-view';
 import { compareRun } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
@@ -46,7 +47,10 @@ export default async function RunComparePage({ params }: PageProps) {
     return <RunCompareView projectSlug={projectSlug} runId={runId} initialComparison={null} initialError={COMPARE_LOAD_ERROR} />;
   }
 
-  return <RunCompareView projectSlug={projectSlug} runId={runId} initialComparison={comparison} />;
+  const { data: runRow } = await supabase.from('runs').select('project_id').eq('id', runId).maybeSingle();
+  const repositoryUrl = runRow ? await readRepositoryUrl(supabase, runRow.project_id) : null;
+
+  return <RunCompareView projectSlug={projectSlug} repositoryUrl={repositoryUrl} runId={runId} initialComparison={comparison} />;
 }
 
 function isUuid(value: string): boolean {

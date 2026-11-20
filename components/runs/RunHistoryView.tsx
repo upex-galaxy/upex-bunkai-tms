@@ -5,6 +5,7 @@ import type { RunHistoryOutcome } from '@lib/runs/history-constants';
 import type { SavedViewState } from '@lib/saved-views/state';
 import type { LucideIcon } from 'lucide-react';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
+import { BranchChip, CommitRef } from '@components/runs/CiContext';
 import { RunModeBadge } from '@components/runs/RunModeBadge';
 import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { Button } from '@components/ui/button';
@@ -50,6 +51,8 @@ export interface RunHistoryItem {
   executor_mode: string
   started_at: string
   finished_at: string | null
+  commit?: string | null
+  branch?: string | null
 }
 
 export interface RunHistoryTotals {
@@ -69,6 +72,7 @@ export interface RunHistoryPage {
 
 interface RunHistoryViewProps {
   testId: string
+  repositoryUrl?: string | null
   initialPage: RunHistoryPage
   initialOutcome: RunHistoryOutcome | null
   // Set when the SERVER-side first-page read failed; the client renders the
@@ -135,7 +139,7 @@ async function fetchRunHistory(
   return { ok: true, page: (await response.json()) as RunHistoryPage };
 }
 
-export function RunHistoryView({ testId, initialPage, initialOutcome, initialError = null }: RunHistoryViewProps) {
+export function RunHistoryView({ testId, repositoryUrl = null, initialPage, initialOutcome, initialError = null }: RunHistoryViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   // The Test detail route renders inside the project shell, which owns the
@@ -517,7 +521,7 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
                   <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        {['Run', 'Environment', 'Executor', 'Mode', 'Outcome', 'Duration', 'Ran'].map(column => (
+                        {['Run', 'Branch', 'Commit', 'Environment', 'Executor', 'Mode', 'Outcome', 'Duration', 'Ran'].map(column => (
                           <th
                             key={column}
                             scope="col"
@@ -539,7 +543,7 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
                       className={`transition-opacity duration-token ease-token ${loading ? 'opacity-40' : ''}`}
                     >
                       {items.map(run => (
-                        <RunRow key={run.id} run={run} />
+                        <RunRow key={run.id} run={run} repositoryUrl={repositoryUrl} />
                       ))}
                     </tbody>
                   </table>
@@ -598,7 +602,7 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
 
 // One history row. NOT clickable — a Run drill-through from history is not in
 // this story's scope.
-function RunRow({ run }: { run: RunHistoryItem }) {
+function RunRow({ run, repositoryUrl }: { run: RunHistoryItem, repositoryUrl: string | null }) {
   const ExecutorIcon = EXECUTOR_ICON[run.executor_mode] ?? User;
   const duration = formatRunDuration(run.started_at, run.finished_at);
 
@@ -614,6 +618,12 @@ function RunRow({ run }: { run: RunHistoryItem }) {
         <span className="font-mono text-xs font-medium text-fg-0" title={run.id}>
           {run.id.slice(0, 8)}
         </span>
+      </td>
+      <td className="max-w-[220px] border-t border-stroke-1 px-3 py-1.5">
+        {run.branch && <BranchChip branch={run.branch} testId={`run-history-branch-${run.id}`} />}
+      </td>
+      <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+        {run.commit && <CommitRef commit={run.commit} repositoryUrl={repositoryUrl} testId={`run-history-commit-${run.id}`} />}
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="font-mono text-xs text-fg-2">{run.environment_name ?? 'unknown env'}</span>
