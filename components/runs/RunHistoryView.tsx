@@ -521,7 +521,7 @@ export function RunHistoryView({ testId, repositoryUrl = null, initialPage, init
                   <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        {['Run', 'Branch', 'Commit', 'Environment', 'Executor', 'Mode', 'Outcome', 'Duration', 'Ran'].map(column => (
+                        {['Run', 'Commit', 'Environment', 'Executor', 'Mode', 'Outcome', 'Duration', 'Ran'].map(column => (
                           <th
                             key={column}
                             scope="col"
@@ -619,11 +619,15 @@ function RunRow({ run, repositoryUrl }: { run: RunHistoryItem, repositoryUrl: st
           {run.id.slice(0, 8)}
         </span>
       </td>
-      <td className="max-w-[220px] border-t border-stroke-1 px-3 py-1.5">
-        {run.branch && <BranchChip branch={run.branch} testId={`run-history-branch-${run.id}`} />}
-      </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-        {run.commit && <CommitRef commit={run.commit} repositoryUrl={repositoryUrl} testId={`run-history-commit-${run.id}`} />}
+        <span className="inline-flex items-center gap-1.5">
+          {run.branch && (
+            <span className="inline-flex max-w-[120px]">
+              <BranchChip branch={run.branch} testId={`run-history-branch-${run.id}`} />
+            </span>
+          )}
+          {run.commit && <CommitRef commit={run.commit} repositoryUrl={repositoryUrl} testId={`run-history-commit-${run.id}`} />}
+        </span>
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="font-mono text-xs text-fg-2">{run.environment_name ?? 'unknown env'}</span>
