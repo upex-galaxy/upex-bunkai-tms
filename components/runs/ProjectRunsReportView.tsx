@@ -3,6 +3,7 @@
 import type { ReportExecutor, ReportStatus } from '@lib/runs/report-constants';
 import type { ReportFilterState, ReportScope } from '@lib/runs/report-view';
 import type { LucideIcon } from 'lucide-react';
+import { BranchChip } from '@components/runs/CiContext';
 import { RunModeBadge } from '@components/runs/RunModeBadge';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
@@ -59,6 +60,10 @@ export interface RunReportItem {
   status: 'running' | 'passed' | 'failed' | 'aborted'
   started_at: string
   finished_at: string | null
+  commit?: string | null
+  branch?: string | null
+  pipeline_name?: string | null
+  pipeline_url?: string | null
 }
 
 // Passed/failed ONLY, never `aborted` — Business Rule #3 ("Pass/fail totals
@@ -98,6 +103,7 @@ export interface ProjectRunsReportModule {
 interface ProjectRunsReportViewProps {
   projectId: string
   modules: ProjectRunsReportModule[]
+  branchSuggestions?: string[]
   initialPage: RunReportPage
   // Set when the SERVER-side first-page read failed; the client renders the
   // error block with a Retry that re-queries through the API route.
@@ -161,6 +167,7 @@ function buildReportParams(filters: ReportFilterState, cursor: string | null): U
   if (filters.moduleId !== null) { params.set('module_id', filters.moduleId); }
   for (const status of filters.status) { params.append('status', status); }
   for (const executor of filters.executor) { params.append('executor', executor); }
+  if (filters.branch !== null) { params.set('branch', filters.branch); }
   if (cursor !== null) { params.set('cursor', cursor); }
   return params;
 }
@@ -181,8 +188,9 @@ async function fetchReport(
   return { ok: true, page: (await response.json()) as RunReportPage };
 }
 
-export function ProjectRunsReportView({ projectId, modules, initialPage, initialError = null }: ProjectRunsReportViewProps) {
+export function ProjectRunsReportView({ projectId, modules, branchSuggestions = [], initialPage, initialError = null }: ProjectRunsReportViewProps) {
   const [filters, setFilters] = useState<ReportFilterState>(EMPTY_REPORT_FILTERS);
+  const [branchDraft, setBranchDraft] = useState('');
   const [items, setItems] = useState<RunReportItem[]>(initialPage.items);
   const [totals, setTotals] = useState<RunReportTotals>(initialPage.totals);
   const [scope, setScope] = useState<ReportScope | null>(initialPage.scope ?? null);
@@ -290,8 +298,21 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
     setFilters(prev => ({ ...prev, executor: executorsForMode(mode) }));
   };
 
+  const applyBranch = (raw: string) => {
+    const next = raw === '' ? null : raw;
+    setFilters(prev => (prev.branch === next ? prev : { ...prev, branch: next }));
+  };
+
+  const onBranchInput = (raw: string) => {
+    setBranchDraft(raw);
+    if (raw === '' || branchSuggestions.includes(raw)) {
+      applyBranch(raw);
+    }
+  };
+
   const clearFilters = () => {
     setCursor(null);
+    setBranchDraft('');
     setFilters(EMPTY_REPORT_FILTERS);
   };
 
@@ -508,6 +529,34 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
               </div>
             </div>
 
+            <div className="flex flex-col gap-1">
+              <label htmlFor="report-filter-branch" className="text-2xs font-medium uppercase tracking-[0.06em] text-fg-3">
+                Branch
+              </label>
+              <Input
+                id="report-filter-branch"
+                data-testid="report-filter-branch"
+                list="report-branch-suggestions"
+                value={branchDraft}
+                placeholder="Any branch"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={255}
+                onChange={e => onBranchInput(e.target.value)}
+                onBlur={() => applyBranch(branchDraft)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyBranch(branchDraft);
+                  }
+                }}
+                className="w-[200px] font-mono text-xs"
+              />
+              <datalist id="report-branch-suggestions" data-testid="report-branch-suggestions">
+                {branchSuggestions.map(branch => <option key={branch} value={branch} />)}
+              </datalist>
+            </div>
+
             {hasActiveFilters && (
               <Button
                 type="button"
@@ -597,7 +646,7 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
             })()}
 
             {!loading && viewState === 'empty-no-match' && (() => {
-              const copy = resolveReportEmptyStateCopy('empty-no-match');
+              const copy = resolveReportEmptyStateCopy('empty-no-match', filters.branch);
               return (
                 <div data-testid="report-empty-no-match" className="flex flex-col items-center gap-2 px-4 py-8 text-center">
                   <SearchX size={18} className="text-fg-3" />
@@ -684,7 +733,10 @@ function ReportRow({ run }: { run: RunReportItem }) {
         <span className="font-mono text-xs font-medium text-fg-0" title={run.id}>{run.id.slice(0, 8)}</span>
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-        <span className="max-w-[320px] truncate text-sm text-fg-1" title={run.test_title}>{run.test_title}</span>
+        <div className="flex max-w-[320px] flex-col items-start gap-0.5">
+          <span className="max-w-full truncate text-sm text-fg-1" title={run.test_title}>{run.test_title}</span>
+          {run.branch && <BranchChip branch={run.branch} testId={`report-row-branch-${run.id}`} />}
+        </div>
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="inline-flex items-center gap-1.5 text-sm text-fg-1">

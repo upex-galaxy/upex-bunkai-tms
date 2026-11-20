@@ -4,7 +4,7 @@ import { ProjectRunsReportSkeleton, ProjectRunsReportView } from '@components/ru
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { encodeRunCursor } from '@lib/runs/history-validation';
 import { REPORT_PAGE_SIZE } from '@lib/runs/report-constants';
-import { reportProjectRuns } from '@lib/supabase/rpc';
+import { listProjectBranches, reportProjectRuns } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -93,6 +93,9 @@ async function ProjectRunsReportSection({ projectSlug }: { projectSlug: string }
     .order('position', { ascending: true });
   const modules = (modulesData ?? []).map(m => ({ id: m.id, name: m.name }));
 
+  const { data: branchData } = await listProjectBranches(supabase, project.id);
+  const branchSuggestions = Array.isArray(branchData) ? branchData : [];
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -114,6 +117,7 @@ async function ProjectRunsReportSection({ projectSlug }: { projectSlug: string }
       <ProjectRunsReportView
         projectId={project.id}
         modules={modules}
+        branchSuggestions={branchSuggestions}
         initialPage={{
           items: payload.items ?? [],
           totals: payload.totals ?? EMPTY_TOTALS,
@@ -132,6 +136,7 @@ async function ProjectRunsReportSection({ projectSlug }: { projectSlug: string }
       <ProjectRunsReportView
         projectId={project.id}
         modules={modules}
+        branchSuggestions={branchSuggestions}
         initialPage={{ items: [], totals: EMPTY_TOTALS, next_cursor: null }}
         initialError="Could not load the Run report."
       />

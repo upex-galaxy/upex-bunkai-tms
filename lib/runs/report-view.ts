@@ -80,6 +80,7 @@ export interface ReportFilterState {
   moduleId: string | null
   status: readonly string[]
   executor: readonly string[]
+  branch: string | null
 }
 
 export const EMPTY_REPORT_FILTERS: ReportFilterState = {
@@ -88,6 +89,7 @@ export const EMPTY_REPORT_FILTERS: ReportFilterState = {
   moduleId: null,
   status: [],
   executor: [],
+  branch: null,
 };
 
 // The four INDEPENDENT axes named in the implementation plan's UI-1 task: the
@@ -102,6 +104,7 @@ export function hasActiveReportFilters(filters: ReportFilterState): boolean {
     || filters.moduleId !== null
     || filters.status.length > 0
     || filters.executor.length > 0
+    || filters.branch !== null
   );
 }
 
@@ -117,6 +120,7 @@ export function activeReportFilterCount(filters: ReportFilterState): number {
     + (filters.moduleId !== null ? 1 : 0)
     + (filters.status.length > 0 ? 1 : 0)
     + (filters.executor.length > 0 ? 1 : 0)
+    + (filters.branch !== null ? 1 : 0)
   );
 }
 
@@ -165,7 +169,14 @@ export interface ReportEmptyStateCopy {
 // silently converging on the same sentence (mirrors BK-37's
 // `runHistoryNoMatchMessage`, minus the outcome interpolation this feature
 // doesn't need).
-export function resolveReportEmptyStateCopy(state: 'empty-no-runs' | 'empty-no-automated' | 'empty-no-match'): ReportEmptyStateCopy {
+export function reportNoMatchBranchDescription(branch: string): string {
+  return `No run on branch "${branch}" matches the filters you applied. The branch must match exactly, including upper and lower case.`;
+}
+
+export function resolveReportEmptyStateCopy(state: 'empty-no-runs' | 'empty-no-automated' | 'empty-no-match', branch: string | null = null): ReportEmptyStateCopy {
+  if (state === 'empty-no-match' && branch !== null) {
+    return { title: REPORT_EMPTY_NO_MATCH_TITLE, description: reportNoMatchBranchDescription(branch) };
+  }
   if (state === 'empty-no-automated') {
     return { title: REPORT_EMPTY_NO_AUTOMATED_TITLE, description: REPORT_EMPTY_NO_AUTOMATED_DESCRIPTION };
   }

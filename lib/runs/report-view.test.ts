@@ -120,6 +120,7 @@ describe('hasActiveReportFilters', () => {
       moduleId: 'mod-1',
       status: ['passed', 'failed'],
       executor: ['human'],
+      branch: 'main',
     })).toBe(true);
   });
 });
@@ -146,6 +147,7 @@ describe('activeReportFilterCount', () => {
       moduleId: 'mod-1',
       status: ['passed'],
       executor: ['ci'],
+      branch: null,
     })).toBe(5);
   });
 });
@@ -211,5 +213,23 @@ describe('reportScopeLabel', () => {
 
   test('a live cursor appends the "more available" hint instead of a fabricated total', () => {
     expect(reportScopeLabel(50, true)).toBe('50 runs loaded in current scope · more available');
+  });
+});
+
+describe('branch filter (BK-228)', () => {
+  test('a branch counts as an active filter and as one chip', () => {
+    expect(EMPTY_REPORT_FILTERS.branch).toBeNull();
+    expect(hasActiveReportFilters({ ...EMPTY_REPORT_FILTERS, branch: 'main' })).toBe(true);
+    expect(activeReportFilterCount({ ...EMPTY_REPORT_FILTERS, branch: 'main' })).toBe(1);
+  });
+
+  test('2.4: the no-match empty state names the branch', () => {
+    const copy = resolveReportEmptyStateCopy('empty-no-match', 'release/9.9');
+    expect(copy.title).toBe(REPORT_EMPTY_NO_MATCH_TITLE);
+    expect(copy.description).toContain('"release/9.9"');
+  });
+
+  test('without a branch the no-match copy is unchanged', () => {
+    expect(resolveReportEmptyStateCopy('empty-no-match')).toEqual({ title: REPORT_EMPTY_NO_MATCH_TITLE, description: REPORT_EMPTY_NO_MATCH_DESCRIPTION });
   });
 });
