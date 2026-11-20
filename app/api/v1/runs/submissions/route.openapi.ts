@@ -1,5 +1,5 @@
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
-import { RunSchema } from '../route.openapi';
+import { CiContextBodyFields, RunSchema } from '../route.openapi';
 
 // BK-222 — submit a finished automated Run with per-step results in one call.
 // The response is the composed Run (shared RunSchema), already finished.
@@ -24,7 +24,8 @@ const SubmissionBodySchema = z
       .min(1)
       .max(64)
       .optional()
-      .describe('Optional domain idempotency key, scoped per workspace with a 24 hour window. The same key and payload returns the original run (200, `replayed: true`); the same key with a different payload is 409; after 24 hours the key is free. A rejected submission does not consume the key. The `Idempotency-Key` header is NOT used on this endpoint (ADR-0026).'),
+      .describe('Optional domain idempotency key, scoped per workspace with a 24 hour window. The same key and payload returns the original run (200, `replayed: true`); the same key with a different payload (the CI details included) is 409; after 24 hours the key is free. A rejected submission does not consume the key. The `Idempotency-Key` header is NOT used on this endpoint (ADR-0026).'),
+    ...CiContextBodyFields,
   })
   .openapi('RunSubmissionBody');
 
@@ -33,7 +34,7 @@ registry.registerPath({
   path: '/api/v1/runs/submissions',
   tags: ['Runs'],
   summary: 'Submit a finished automated Run with step results',
-  description: 'Bearer token only, scope `run:execute`, owner with member role or higher in the token\'s workspace (a cookie session gets 403 `token_required`; a token without a workspace gets 403 `token_not_workspace_scoped`). Creates the Run already finished in one transaction: executor mode `agent` attributed to the token name, the Test\'s chain snapshotted into run_atcs/run_steps with the submitted statuses, and `run.started` + `run.finished` audit rows. Step results are keyed by chain position. Returns 201 on create, 200 when the `idempotency_key` replays an existing run.',
+  description: 'Bearer token only, scope `run:execute`, owner with member role or higher in the token\'s workspace (a cookie session gets 403 `token_required`; a token without a workspace gets 403 `token_not_workspace_scoped`). Creates the Run already finished in one transaction: executor mode `agent` attributed to the token name, the Test\'s chain snapshotted into run_atcs/run_steps with the submitted statuses, and `run.started` + `run.finished` audit rows. Step results are keyed by chain position. CI context (BK-1995): `commit`, `branch`, `pipeline_name` and `pipeline_url` are optional, in any combination; they are stored with the run, written once, and returned on every read of it. Returns 201 on create, 200 when the `idempotency_key` replays an existing run.',
   security: [{ bearerAuth: [] }],
   request: { body: { required: true, content: { 'application/json': { schema: SubmissionBodySchema } } } },
   responses: {
@@ -44,6 +45,6 @@ registry.registerPath({
     403: { description: 'Missing `run:execute` scope, a viewer owner, a cookie session (`token_required`) or a token not bound to a workspace (`token_not_workspace_scoped`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'The Test does not exist or belongs to another workspace than the token\'s (`not_found`); reveals nothing about other workspaces.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'The `idempotency_key` was already used with a different payload within 24 hours (`conflict`), or the Test is archived (`details.reason: test_archived`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed (`validation_failed`: reasons `verdict_invalid`, `step_result_invalid`, `steps_incomplete` with `missing_positions`, `steps_duplicate_position`, `verdict_inconsistent`, `duration_invalid`, `evidence_*`, `idempotency_key_invalid`), `environment_invalid` (names the unknown environment) or `no_executable_steps`. Nothing is recorded.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed (`validation_failed`: reasons `verdict_invalid`, `step_result_invalid`, `steps_incomplete` with `missing_positions`, `steps_duplicate_position`, `verdict_inconsistent`, `duration_invalid`, `evidence_*`, `idempotency_key_invalid`, and for a CI detail `commit_invalid`, `branch_invalid`, `pipeline_name_invalid` or `pipeline_url_invalid` with `details.field` naming it), `environment_invalid` (names the unknown environment) or `no_executable_steps`. Nothing is recorded.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

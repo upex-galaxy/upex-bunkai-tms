@@ -5935,6 +5935,22 @@
             },
             "description": "BK-222 — http(s) evidence links reported with a submitted run (at most 20); empty for other runs."
           },
+          "commit": {
+            "type": ["string", "null"],
+            "description": "BK-1995 — the commit reported with the run (lower-case hexadecimal); null when none was reported and for runs created before the CI context existed. Written once, never changed."
+          },
+          "branch": {
+            "type": ["string", "null"],
+            "description": "BK-1995 — the branch (or tag name) reported with the run; null when none was reported."
+          },
+          "pipeline_name": {
+            "type": ["string", "null"],
+            "description": "BK-1995 — the pipeline name reported with the run; null when none was reported."
+          },
+          "pipeline_url": {
+            "type": ["string", "null"],
+            "description": "BK-1995 — the http(s) link to the pipeline run reported with the run; null when none was reported."
+          },
           "test_title": {
             "type": "string",
             "description": "Snapshot of the Test title at start."
@@ -5989,6 +6005,10 @@
           "executor_user_id",
           "executor_name",
           "evidence_urls",
+          "commit",
+          "branch",
+          "pipeline_name",
+          "pipeline_url",
           "test_title",
           "version",
           "started_at",
@@ -6108,7 +6128,31 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Domain idempotency token (distinct from the Idempotency-Key header). A same (test_id, start_token) within 24h returns the existing Run (HTTP 200). Omit it to mint a fresh one server-side (always a new Run). Gotcha: the same start_token inside 24h returns the existing Run even when it was closed (finished, aborted, or stale-aborted by the inactivity timeout), so restarting after a stale abort needs a NEW start_token."
+            "description": "Domain idempotency token (distinct from the Idempotency-Key header). A same (test_id, start_token) within 24h returns the existing Run (HTTP 200). Omit it to mint a fresh one server-side (always a new Run). Gotcha: the same start_token inside 24h returns the existing Run even when it was closed (finished, aborted, or stale-aborted by the inactivity timeout), so restarting after a stale abort needs a NEW start_token. BK-1995: the same start_token with different CI details (commit, branch, pipeline_name, pipeline_url) is 409 `ci_context_conflict` and opens nothing."
+          },
+          "commit": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]+$/i",
+            "description": "BK-1995 CI context: the commit under test, hexadecimal, 7 to 64 characters, any case (stored lower-cased). Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
+          },
+          "branch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "BK-1995 CI context: the branch under test, 1 to 255 characters, surrounding whitespace trimmed, line breaks and control characters refused. An empty branch is refused: a pipeline running on a tag sends the tag name here (for example `v1.4.0`). Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
+          },
+          "pipeline_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "BK-1995 CI context: the pipeline name, 1 to 100 characters, surrounding whitespace trimmed, line breaks and control characters refused. Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
+          },
+          "pipeline_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "BK-1995 CI context: a link to the pipeline run, http or https only, at most 2048 characters, no whitespace and no credentials (`https://user:secret@host` is refused). Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
           }
         },
         "required": ["test_id", "environment_id"]
@@ -6637,7 +6681,31 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 64,
-            "description": "Optional domain idempotency key, scoped per workspace with a 24 hour window. The same key and payload returns the original run (200, `replayed: true`); the same key with a different payload is 409; after 24 hours the key is free. A rejected submission does not consume the key. The `Idempotency-Key` header is NOT used on this endpoint (ADR-0026)."
+            "description": "Optional domain idempotency key, scoped per workspace with a 24 hour window. The same key and payload returns the original run (200, `replayed: true`); the same key with a different payload (the CI details included) is 409; after 24 hours the key is free. A rejected submission does not consume the key. The `Idempotency-Key` header is NOT used on this endpoint (ADR-0026)."
+          },
+          "commit": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]+$/i",
+            "description": "BK-1995 CI context: the commit under test, hexadecimal, 7 to 64 characters, any case (stored lower-cased). Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
+          },
+          "branch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "BK-1995 CI context: the branch under test, 1 to 255 characters, surrounding whitespace trimmed, line breaks and control characters refused. An empty branch is refused: a pipeline running on a tag sends the tag name here (for example `v1.4.0`). Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
+          },
+          "pipeline_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "BK-1995 CI context: the pipeline name, 1 to 100 characters, surrounding whitespace trimmed, line breaks and control characters refused. Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
+          },
+          "pipeline_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "BK-1995 CI context: a link to the pipeline run, http or https only, at most 2048 characters, no whitespace and no credentials (`https://user:secret@host` is refused). Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
           }
         },
         "required": ["test_id", "environment", "verdict", "duration_seconds", "steps"]
@@ -16531,7 +16599,7 @@
       "post": {
         "tags": ["Runs"],
         "summary": "Start a manual Run of a Test in a chosen environment",
-        "description": "Bearer `run:execute` (or cookie session). Transactional create via one SECURITY DEFINER RPC: snapshots the Test's ATC chain into run_atcs/run_steps (each `pending`), validates the environment belongs to the Test's Project and that the Test has ≥1 executable step, and enforces a 24h same-token idempotency window. Cookie sessions run as `human`; PAT callers may declare `agent` / `ci`. Returns 201 on create, 200 when the 24h same-token window returned an existing Run.\n\nStreaming a run (BK-223): (1) POST /api/v1/runs with `executor_mode` `agent` or `ci` and read each step `id` from the response; (2) POST /api/v1/runs/{id}/steps/{stepId}/mark once per step as it executes (any order, any subset; statuses `passed`, `failed`, `blocked`); (3) POST /api/v1/runs/{id}/finish with verdict `passed` or `failed` (steps never reported are recorded as `skipped`, the duration is derived from the run timestamps), or POST /api/v1/runs/{id}/abort with a reason if the runner dies. Humans watching the run detail see each step flip within seconds. An `agent` or `ci` run with no step report for 60 minutes is aborted automatically with a reason starting \"Inactivity timeout\" and its reported steps are kept; human runs keep the 4 hour limit. A closed run accepts nothing (409): start a new run with a new `start_token`.",
+        "description": "Bearer `run:execute` (or cookie session). Transactional create via one SECURITY DEFINER RPC: snapshots the Test's ATC chain into run_atcs/run_steps (each `pending`), validates the environment belongs to the Test's Project and that the Test has ≥1 executable step, and enforces a 24h same-token idempotency window. Cookie sessions run as `human`; PAT callers may declare `agent` / `ci`. Returns 201 on create, 200 when the 24h same-token window returned an existing Run.\n\nStreaming a run (BK-223): (1) POST /api/v1/runs with `executor_mode` `agent` or `ci` and read each step `id` from the response; (2) POST /api/v1/runs/{id}/steps/{stepId}/mark once per step as it executes (any order, any subset; statuses `passed`, `failed`, `blocked`); (3) POST /api/v1/runs/{id}/finish with verdict `passed` or `failed` (steps never reported are recorded as `skipped`, the duration is derived from the run timestamps), or POST /api/v1/runs/{id}/abort with a reason if the runner dies. Humans watching the run detail see each step flip within seconds. CI context (BK-1995): an access-token open may report `commit`, `branch`, `pipeline_name` and `pipeline_url`, all optional and in any combination, whatever the executor mode; they are stored once and returned on every read of the run, and later step reports, finish and abort ignore any details they carry. A run started in the app (cookie session) carries none: sending one is 422 `ci_context_not_allowed`. An `agent` or `ci` run with no step report for 60 minutes is aborted automatically with a reason starting \"Inactivity timeout\" and its reported steps are kept; human runs keep the 4 hour limit. A closed run accepts nothing (409): start a new run with a new `start_token`.",
         "security": [
           {
             "cookieAuth": []
@@ -16626,7 +16694,7 @@
             }
           },
           "409": {
-            "description": "Idempotency-Key reused with a different payload, or a request with the same key is still in flight (`conflict`), or the Test is archived (`details.reason: test_archived`; a replayed start token still returns its Run).",
+            "description": "Idempotency-Key reused with a different payload (the CI details are part of it), or a request with the same key is still in flight (`conflict`), or the same start_token within 24h carries different CI details (`details.reason: ci_context_conflict`), or the Test is archived (`details.reason: test_archived`; a replayed start token still returns its Run).",
             "content": {
               "application/json": {
                 "schema": {
@@ -16636,7 +16704,7 @@
             }
           },
           "422": {
-            "description": "Validation failed (`validation_failed` for body shape, `no_executable_steps` when the Test has no executable steps, `environment_invalid` when the environment is not configured for the Test's Project).",
+            "description": "Validation failed (`validation_failed` for body shape; for a CI detail `details.reason` is `commit_invalid`, `branch_invalid`, `pipeline_name_invalid` or `pipeline_url_invalid` with `details.field`, and `ci_context_not_allowed` when a cookie session sends one; `no_executable_steps` when the Test has no executable steps, `environment_invalid` when the environment is not configured for the Test's Project).",
             "content": {
               "application/json": {
                 "schema": {
@@ -17779,7 +17847,7 @@
       "post": {
         "tags": ["Runs"],
         "summary": "Submit a finished automated Run with step results",
-        "description": "Bearer token only, scope `run:execute`, owner with member role or higher in the token's workspace (a cookie session gets 403 `token_required`; a token without a workspace gets 403 `token_not_workspace_scoped`). Creates the Run already finished in one transaction: executor mode `agent` attributed to the token name, the Test's chain snapshotted into run_atcs/run_steps with the submitted statuses, and `run.started` + `run.finished` audit rows. Step results are keyed by chain position. Returns 201 on create, 200 when the `idempotency_key` replays an existing run.",
+        "description": "Bearer token only, scope `run:execute`, owner with member role or higher in the token's workspace (a cookie session gets 403 `token_required`; a token without a workspace gets 403 `token_not_workspace_scoped`). Creates the Run already finished in one transaction: executor mode `agent` attributed to the token name, the Test's chain snapshotted into run_atcs/run_steps with the submitted statuses, and `run.started` + `run.finished` audit rows. Step results are keyed by chain position. CI context (BK-1995): `commit`, `branch`, `pipeline_name` and `pipeline_url` are optional, in any combination; they are stored with the run, written once, and returned on every read of it. Returns 201 on create, 200 when the `idempotency_key` replays an existing run.",
         "security": [
           {
             "bearerAuth": []
@@ -17879,7 +17947,7 @@
             }
           },
           "422": {
-            "description": "Validation failed (`validation_failed`: reasons `verdict_invalid`, `step_result_invalid`, `steps_incomplete` with `missing_positions`, `steps_duplicate_position`, `verdict_inconsistent`, `duration_invalid`, `evidence_*`, `idempotency_key_invalid`), `environment_invalid` (names the unknown environment) or `no_executable_steps`. Nothing is recorded.",
+            "description": "Validation failed (`validation_failed`: reasons `verdict_invalid`, `step_result_invalid`, `steps_incomplete` with `missing_positions`, `steps_duplicate_position`, `verdict_inconsistent`, `duration_invalid`, `evidence_*`, `idempotency_key_invalid`, and for a CI detail `commit_invalid`, `branch_invalid`, `pipeline_name_invalid` or `pipeline_url_invalid` with `details.field` naming it), `environment_invalid` (names the unknown environment) or `no_executable_steps`. Nothing is recorded.",
             "content": {
               "application/json": {
                 "schema": {
