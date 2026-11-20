@@ -675,7 +675,7 @@ Dispatch is **Single + Background**: one subagent runs the deploy, a background 
 | "deploy to production"                               | `references/production-deploy.md`       |
 | "rollback production deploy"                         | `references/rollback-plan.md`           |
 | "process sprint N" / "continue sprint"               | `references/sprint-report.md`           |
-| "parallelize the sprint" / "one session per story"   | `references/fleet-mode.md` (the HOW: `/orca-orchestration`) |
+| "parallelize the sprint" / "one session per story"   | `references/fleet-mode.md` (the HOW: `/agent-orchestration`) |
 
 ---
 
@@ -708,7 +708,7 @@ If the prerequisite check at the top of this skill fails (no `.agents/project.ya
 | `[DB_TOOL]`            | capability `db` (Supabase MCP; DBHub if the project adds it); raw SQL only when the user chooses it. Needed only by a story that touches the database; how a change is applied per `{{stack.database.migrations_tool}}`: `agentic-dev-core/references/db-change-doctrine.md` | `AGENTS.md` Tool Resolution |
 | `[API_TOOL]`           | OpenAPI MCP, Postman, or `curl`                   | `AGENTS.md` Tool Resolution |
 | `[AUTOMATION_TOOL]`    | Playwright CLI (`/playwright-cli`), the only browser path | `AGENTS.md` Tool Resolution |
-| `[ORCHESTRATION_TOOL]` | the multi-session orchestration layer, used ONLY in fleet mode (batch-sprint, N>1 executors); gate fails → the `launch.txt` fallback, never named | `orca-orchestration/SKILL.md` (the tool owner; this skill names verbs, never commands) |
+| `[ORCHESTRATION_TOOL]` | the multi-session orchestration layer, used ONLY in fleet mode (batch-sprint, N>1 executors); gate fails → the `launch.txt` fallback, never named | `/agent-orchestration` (user level, the tool owner; this skill names verbs, never commands) |
 
 Concrete tools (`bun`, `git`, `gh`) are used literally. Project variables resolve from `.agents/project.yaml` (env-scoped vars resolve to the active environment).
 

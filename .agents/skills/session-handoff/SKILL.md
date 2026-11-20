@@ -1,6 +1,6 @@
 ---
 name: session-handoff
-description: "Hand a whole session to a fresh successor through a handoff file, so work continues as if the context window had been extended. Use when the context window is filling up; when work must outlive this session (a PR mid-review, a deploy mid-verification); when the owner asks for a handoff or to continue in a fresh session. Not for delegating a task to a worker (orca-orchestration) or resuming one story's pipeline (sprint-development)."
+description: "Hand a whole session to a fresh successor through a handoff file, so work continues as if the context window had been extended. Use when the context window is filling up; when work must outlive this session (a PR mid-review, a deploy mid-verification); when the owner asks for a handoff or to continue in a fresh session. Not for delegating a task to a worker (agent-orchestration) or resuming one story's pipeline (sprint-development)."
 license: MIT
 compatibility: [claude-code, codex, opencode, pi]
 metadata:
@@ -28,7 +28,7 @@ The whole contract lives in `.agents/skills/session-handoff/references/capture-c
 
 | Looks similar | Actually is | Use |
 |---|---|---|
-| hand a scoped task to another session and supervise it | orchestration: Task, Dispatch, mailbox, the work comes back | `/orca-orchestration` |
+| hand a scoped task to another session and supervise it | orchestration: Task, Dispatch, mailbox, the work comes back | `/agent-orchestration` |
 | hand work away and stop caring | ownership transfer of a task, one direction, no return | the binary's own `orca-cli` guide |
 | dispatch a subagent for one bounded piece of work | a briefed executor inside this session | AGENTS.md §3, `agentic-dev-core/references/briefing-template.md` |
 | resume one story's pipeline after a break | per-skill session state, keyed by ticket | `/sprint-development` Phase 0, `agentic-dev-core/references/session-management.md` |

@@ -20,16 +20,16 @@ One rule covers every instrument in this file: the harness's question tool, the 
 
 A launched session escalates to its launcher. It sends what `./decision-protocol.md` §5 escalates (with §5.1
 applied: under `decision_authority.product: decide` a scored decision subagent decides a product question, so
-it is not escalated), plus every error or blocker it cannot clear inside its brief. The channel is a blocking
-`ask`, an `escalation`, or, when it was launched without a dispatch, a `status` message whose subject starts
-with `BLOCKED: ` (`orca-orchestration/references/worker-contract.md` rules 2, 3, 8 and 16). A pending that does
+it is not escalated), plus every error or blocker it cannot clear inside its brief. The channel is an `ask`
+(the session then ends its turn and is woken with the answer), an `escalation`, or, when it was launched without a dispatch, a `status` message whose subject starts
+with `BLOCKED: ` (`/agent-orchestration` worker contract rules 2, 3, 8 and 16). A pending that does
 not block goes in a plain message or the report, and the session keeps working on whatever does not depend on
 the answer. The launcher relays the item to the human with the instrument §1 picks or, if it was itself
 launched, sends it up one more level. A routine at the top of the chain parks it. A middle conductor never
 sweeps: it escalates its workers' pendings together with its own.
 
 Why: a question prompt in a terminal nobody watches waits forever (gotcha G36 in
-`orca-orchestration/references/gotchas.md`), and inside Orca the `mkd` deck opens a tab and blocks its session
+the `/agent-orchestration` gotchas ledger), and inside Orca the `mkd` deck opens a tab and blocks its session
 until someone presses Send.
 
 A launched session may still ask the human directly when the human typed that request into its own terminal, or

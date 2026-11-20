@@ -65,3 +65,7 @@ We will run agentic work in three tiers configured from one profile inside the e
 - `.agents/skills/agentic-dev-core/references/decision-protocol.md` §5 / §5.1 and `decision-elicitation-doctrine.md` §0: what reaches a person, and who asks.
 - `.agents/hooks/personality-reinject.mjs`: the `ORCA:` line by role and the composed worker name.
 - ADR-0019 (the sweep), ADR-0003 (the forensic measurements ledger). QA twin: agentic-qa-boilerplate ADR-0024.
+
+---
+
+> **2026-11-18:** the orchestration doctrine moved to the user-level skill `agent-orchestration` (`upex-galaxy/agentic-user-skills`); `orca-orchestration` is a transition stub. Paths into `.agents/skills/orca-orchestration/references/` above are history: the generic parts are in that skill by the same rule, worker-rule and gotcha numbers, and this repo's parts are in `.agents/skills/agentic-dev-core/references/fleet-*.md` (ADR-0025).

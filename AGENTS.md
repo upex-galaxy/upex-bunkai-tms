@@ -28,11 +28,11 @@ Rows are request kinds, not features: the table stays fixed (locked, ADR-0014) w
 | writing or reviewing app code | `.agents/instructions/agent-code-quickref.md` | `sprint-development` |
 | git: branch, commit, push, PR, merge, conflict | `.agents/instructions/agent-git.md` | `git-flow-master` |
 | harness files, hooks, MCP config, the updater, an adoption install, `cli/` | `.agents/instructions/agent-harnesses.md` | `bun run agents:compat:check` |
-| fleets, workers, multi-agent dispatch plans, gates | `.agents/instructions/agent-orchestration-detail.md` | `orca-orchestration` |
+| fleets, workers, multi-agent dispatch plans, gates | `.agents/instructions/agent-orchestration-detail.md` | `agent-orchestration` |
 | scripts and commands, "how do I run / build / test / lint": whenever any of these apply, read it fresh | @package.json | Rule 10 |
 | anything specific to this project, its own exceptions | `.agents/instructions/agent-project.md` | the project's context skills |
 <!-- router:end -->
-<!-- router:lock 387f2c89527c ADR-0014 -->
+<!-- router:lock 4d9c70b883ba ADR-0025 -->
 
 ---
 
@@ -63,7 +63,7 @@ Each line is the rule's binding text, verbatim (`…` joins excerpts). Full text
 
 ## PROJECT RULES (BUNKAI)
 
-Bunkai rules NO-LOCAL-BUILD, GUARDED-TESTS, MVP-ONE-DATABASE, ONE-PR-PER-STORY, LIVE-UI-FIRST and DESIGN-FIDELITY bind mid-task. Read `.agents/instructions/agent-project.md` before a build, test, migration, PR or UI work.
+Bunkai rules NO-LOCAL-BUILD, GUARDED-TESTS, MVP-ONE-DATABASE, ONE-PR-PER-STORY, LIVE-UI-FIRST and DESIGN-FIDELITY bind mid-task. Read `agent-project.md` before a build, test, migration, PR or UI work.
 
 ---
 
@@ -108,7 +108,7 @@ Bunkai rules NO-LOCAL-BUILD, GUARDED-TESTS, MVP-ONE-DATABASE, ONE-PR-PER-STORY, 
 
 **SUBAGENTS FOR**: reading or writing multiple files, MCP ops, research across repos, git ops, verification (tests, types, lint), multi-file edits and long-running tasks. **NOT FOR**: quick lookups, memory reads and writes, task tracking, asking the user, planning. **WHEN, NOT BY REFLEX**: delegate only when the work returns a lot of tool output to this context or splits into independent units; one scripted command or a lookup of under ~5 calls stays inline.
 
-**TWO EXECUTORS.** One-shot subagents are the default. The optional second executor is the supervised worker (a persistent session coordinated through `/orca-orchestration`), gated on the orchestration binary and a reachable runtime; when either is missing, a workflow skill stays silent about it. Detail: `.agents/instructions/agent-orchestration-detail.md`, `agentic-dev-core/references/dispatch-patterns.md`.
+**TWO EXECUTORS.** One-shot subagents are the default. The optional second executor is the supervised worker (a persistent session coordinated through the user-level skill `/agent-orchestration`), gated on the orchestration binary and a reachable runtime; when either is missing, a workflow skill stays silent about it. Detail: `.agents/instructions/agent-orchestration-detail.md`, `agentic-dev-core/references/dispatch-patterns.md`.
 
 **7-COMPONENT BRIEFING (mandatory on every dispatch)**: goal, context docs, Project Standards (auto-resolved from `.agents/skills/REGISTRY.md`, `bun run skills:registry`; subagents do not re-read the full SKILL.md unless told to), skills to load, exact step-by-step instructions, report format, and the relevant Critical Rules. Template: `agentic-dev-core/references/briefing-template.md`; protocol: `agentic-dev-core/references/skill-resolver.md`.
 

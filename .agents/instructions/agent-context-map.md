@@ -31,7 +31,7 @@ When the request is a goal and not yet a skill name, pick by intent. The skill's
 | Deliver work on a schedule with nobody at the keyboard | `/autonomous-delivery` |
 | Give QA a testability page and credentials | `/testability-guide` |
 | Refresh the business maps, the master plan or the dev roadmap | `/project-context` |
-| Fan work out to several sessions | `/orca-orchestration` |
+| Fan work out to several sessions | `/agent-orchestration` |
 | Branch, commit, push or open a PR | `/git-flow-master` |
 | Review someone's PR | `/pr-review-lead` |
 | Reconcile Jira Components, or repoint the Jira host | `/jira-administration` |
@@ -51,7 +51,7 @@ When the request is a goal and not yet a skill name, pick by intent. The skill's
 | QA testability page and credentials artifact | "create the QA guide page", "credentials for testing", "update the /qa page" | `/testability-guide` | the `/qa` page snapshot under `stack.app_root` (route per `stack.framework`), `.agents/project.yaml` `stack:`, `.mcp.json` | Read + Write + `[ISSUE_TRACKER_TOOL]` |
 | Backlog or story refinement | "create an epic", "refine the acceptance criteria" | `/product-management` | `.context/PBI/epic-tree.md`, `PRD/`, `business/domain-glossary.md` | `[ISSUE_TRACKER_TOOL]` |
 | Sprint-development ticket | "implement this story", "work on UPEX-XXX" | `/sprint-development` | `.context/PBI/epics/EPIC-*/stories/STORY-*/`, `business/domain-glossary.md`, `DESIGN.md` and `.context/design/master-design-plan.md` (UI stories: Rule 14) | `[ISSUE_TRACKER_TOOL]` + `[AUTOMATION_TOOL]` |
-| Orchestrate several sessions (fleet of workers) | "orchestrate", "fleet", "one session per story", "parallelize the sprint", "resume the run", "talk to the worker" | `/orca-orchestration` | `.agents/project.yaml` `orchestration:` block (defaults); the skill loads its own references | `[ORCHESTRATION_TOOL]` (gate: binary plus reachable runtime; silent when absent) |
+| Orchestrate several sessions (fleet of workers) | "orchestrate", "fleet", "one session per story", "parallelize the sprint", "resume the run", "talk to the worker" | `/agent-orchestration` | `.agents/project.yaml` `orchestration:` block (defaults); `agentic-dev-core/references/fleet-project-profile.md` (this repo's half); the skill loads its own references | `[ORCHESTRATION_TOOL]` (gate: binary plus reachable runtime; silent when absent) |
 | TDD slice or unit tests | "write unit tests", "TDD this function" | `/unit-testing` | the function under test, existing tests | Code edit |
 | Sync AI memory, docs drift | "sync memory", "sync docs", `sync-ai-memory` | `agentic-dev-core` reference `docs-follow-through.md` | `README.md`, `AGENTS.md`, `.context/`, `package.json` | Edit + `bun run docs:check` |
 | Edit the agent instructions (L0, a section, the router, triggers) | "edit AGENTS.md", "add a rule", "where does this rule go", "tune the triggers", "new instruction section", "measure route recall" | `agentic-dev-core` reference `instructions-doctrine.md` | `.agents/instructions/README.md`, the section that owns the topic, `cli/lib/fixtures/instruction-router-eval.json` | Edit + `bun run instructions:check` (`bun run instructions:audit` to measure) |

@@ -351,6 +351,7 @@ interface DoctorReport {
   codex_config_exists: boolean
   agent_compatibility: AgentCompatibilityDiagnostic
   deps_installed: boolean
+  agent_orchestration_installed: boolean
   /** Linked worktree: the primary checkout's root; null in the primary itself. */
   worktree_of: string | null
   /** Servers that run at harness level, classified against the user-level configs (never a value). */
@@ -778,6 +779,11 @@ export function piTrustStatus(root: string, env: Record<string, string | undefin
   return 'ask';
 }
 
+/** `skills add -g` writes ~/.agents/skills, but with `-a claude-code` it copies straight into ~/.claude/skills. */
+export function userSkillInstalled(name: string, home: string = homedir()): boolean {
+  return ['.agents', '.claude'].some(dir => existsSync(join(home, dir, 'skills', name, 'SKILL.md')));
+}
+
 function piTrustRow(status: PiTrustStatus): string {
   if (status === 'trusted') { return tui.statusIcon('ok'); }
   const why = {
@@ -809,6 +815,7 @@ async function runDoctor(): Promise<DoctorReport> {
     codex_config_exists: existsSync(CODEX_CONFIG_PATH),
     agent_compatibility: diagnoseAgentCompatibility(REPO_ROOT),
     deps_installed: existsSync(NODE_MODULES_VARLOCK),
+    agent_orchestration_installed: userSkillInstalled('agent-orchestration'),
     worktree_of: ((): string | null => {
       const roots = checkoutRoots(REPO_ROOT);
       return roots !== null && roots.linked ? roots.primaryRoot : null;
@@ -1181,6 +1188,7 @@ function printHuman(report: DoctorReport): void {
   }
   checks.push(
     ['node_modules', report.deps_installed ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+    ['agent-orchestration (user level: ~/.agents/skills or ~/.claude/skills)', report.agent_orchestration_installed ? tui.statusIcon('ok') : `${tui.statusIcon('info')} not installed; run \`bun setup\` for fleets of worker sessions`],
     ...(report.worktree_of !== null ? [['Linked worktree of', `${tui.statusIcon('info')} ${report.worktree_of}`]] : []),
   );
   // The host is shown by VALUE, not as a set/missing tick. Reading which site

@@ -4,7 +4,7 @@ Read this only when batch-sprint mode runs with more than one executor. `SKILL.m
 
 > **N=1 is untouched.** Every rule here is additive. A batch-sprint run with one executor behaves exactly as it did before this file existed: same ticket loop, same stages, same sprint-report writes. A rule below that would change N=1 behaviour is a wrong rule.
 
-> **Split of duties.** This skill owns the WHAT: the queue, the rounds, the assignment, the per-story isolation, the sprint report and the merge order. The orchestration skill owns the HOW: sessions, terminals, mailbox, supervision, cleanup, claims. Every orchestration action below is written as `[ORCHESTRATION_TOOL] <verb>: …` pseudocode and resolves in `orca-orchestration/SKILL.md`. Do not inline an orchestration command here.
+> **Split of duties.** This skill owns the WHAT: the queue, the rounds, the assignment, the per-story isolation, the sprint report and the merge order. The orchestration skill owns the HOW: sessions, terminals, mailbox, supervision, cleanup, claims. Every orchestration action below is written as `[ORCHESTRATION_TOOL] <verb>: …` pseudocode and resolves in the user-level skill `/agent-orchestration`. Do not inline an orchestration command here.
 
 ---
 
@@ -32,9 +32,9 @@ All three conditions hold:
 2. Either the user asked for it, or `orchestration.max_workers` in `.agents/project.yaml` is greater than 1. An explicit user instruction beats the yaml default. A project with no `orchestration:` block runs N=1.
 3. Every ticket in the round is genuinely unblocked: its direct blockers are merged into the integration branch. Git decides that, not the tracker (Phase 0b and the compact rule on ticket availability apply per ticket, unchanged).
 
-The orchestration gate (binary present and runtime reachable, three states, canon in `orca-orchestration/SKILL.md`) then decides one thing: who opens the sessions. When the gate passes, the orchestration layer launches and supervises them, and the conductor gets a mailbox, native liveness and one-command cleanup. When it fails, the human opens them from `launch.txt`, and the conductor keeps every other duty in this file. Run the gate there; do not reimplement it here.
+The orchestration gate (binary present and runtime reachable, three states, canon in `/agent-orchestration`) then decides one thing: who opens the sessions. When the gate passes, the orchestration layer launches and supervises them, and the conductor gets a mailbox, native liveness and one-command cleanup. When it fails, the human opens them from `launch.txt`, and the conductor keeps every other duty in this file. Run the gate there; do not reimplement it here.
 
-**Silence rule.** When the gate does not pass, the conductor writes `launch.txt` anyway and tells the user "N ready-to-paste lines are in `<path>`, open N terminals at the repo root and paste one per terminal". It does not name the orchestration binary, recommend installing anything or report its absence, in the plan, in a PR body or in the sprint report. The reason: a developer who never heard of an orchestration tool must be able to read every line. Test each line you are about to write against that. A line that fails belongs in `orca-orchestration`.
+**Silence rule.** When the gate does not pass, the conductor writes `launch.txt` anyway and tells the user "N ready-to-paste lines are in `<path>`, open N terminals at the repo root and paste one per terminal". It does not name the orchestration binary, recommend installing anything or report its absence, in the plan, in a PR body or in the sprint report. The reason: a developer who never heard of an orchestration tool must be able to read every line. Test each line you are about to write against that. A line that fails belongs in `/agent-orchestration`.
 
 **What the conductor stops doing at N>1.** It runs Stages 1-3 for no ticket that a worker holds. It plans the rounds, seeds briefs, launches, waits, processes reports, and owns everything in §2.1.
 
@@ -79,10 +79,10 @@ A worker:
 - runs single-ticket mode on the key in its prompt, in the mode (Orchestrated or Solo) its brief names;
 - runs to completion without returning to its prompt. Stage boundaries are not checkpoints, and the run ends when the done-report is sent (§9). A worker that parks at its prompt after Stage 1 looks exactly like a crashed one to the conductor's liveness sweep;
 - runs without human checkpoints, because nobody is watching its terminal. The "EXPLAIN STORY" and "WAIT FOR CONFIRMATION" steps of `AGENTS.md` §8 become report content: the story explanation and every stage summary go into its report. A decision it genuinely needs goes out as an `ask` (§9), never as a user-question prompt nobody will see. The conductor answers an `ask` by `agentic-dev-core/references/decision-protocol.md` and reaches a person only for what that protocol reserves;
-- skips no gate: the design gate on a UI story, the review size forecast gate, the automation-identity gate, the capability probes. A gate that would have stopped for a human becomes a blocking `ask` or a `BLOCKED:` report, and the worker never guesses past it;
+- skips no gate: the design gate on a UI story, the review size forecast gate, the automation-identity gate, the capability probes. A gate that would have stopped for a human becomes an `ask` (then the worker ends its turn and Orca wakes it with the answer) or a `BLOCKED:` report, and the worker never guesses past it;
 - runs Stages 1-3 and stops at an open PR. It pushes its own branch, opens its own PR and transitions its own ticket per `agentic-dev-core/references/artifact-lifecycle.md`. It never merges, deploys or applies a migration to the shared database (§2.1);
 - creates no sprint-altitude state: no sprint report row, no bulk sync. Its session scope is `<<PRIMARY_ROOT>>/.session/sprint-development/<KEY>/`, exactly as in N=1;
-- reports once when done, plus `ask` or `escalation` as needed, and then stops. It sends no heartbeats: periodic "still alive" messages wake the conductor for nothing, and the worker contract (`orca-orchestration/references/worker-contract.md`) rules them out, overriding any generic preamble the launcher injects.
+- reports once when done, plus `ask` or `escalation` as needed, and then stops. It sends no heartbeats: periodic "still alive" messages wake the conductor for nothing, and the `/agent-orchestration` worker contract (hard rule 25) rules them out, overriding any generic preamble the launcher injects.
 
 A session with no `fleet worker` prompt and no brief is not a worker.
 
@@ -146,7 +146,7 @@ Run: <run id — ONLY when this worker was launched without a supervised dispatc
 - tokens: append your measured tokens to your `progress.md` (`tokens: <n> K, source=<harness|human|unknown>`) and report them under `## Tokens`; never estimate, `unknown` is valid
 - if your own measurement contradicts an instruction in this brief or a later message, STOP and `ask` with both readings and your evidence; never comply silently and never deviate silently
 - your name is `<KEY>--<handle>` (session, tab, roster, `Session:` trailer): your first action is renaming your own TAB (`orca terminal rename --terminal "$ORCA_TERMINAL_HANDLE" --title "<KEY>--$ORCA_TERMINAL_HANDLE" --json </dev/null`); your SESSION name is set for you (the identity hook on Claude Code, a conductor-typed `/rename <KEY>--<handle>` elsewhere), so do not try to rename your session
-- errors, blockers and decisions go to the conductor, never to the human: no question tool, no `mkd` deck, no sweep (`orca-orchestration/references/worker-contract.md` rule 16)
+- errors, blockers and decisions go to the conductor, never to the human: no question tool, no `mkd` deck, no sweep (`/agent-orchestration` worker contract rule 16)
 ```
 
 Paths in a brief are always absolute. `.session/` is gitignored and lives in the primary checkout, so a worker in its own worktree that resolves a relative path silently reads nothing.
@@ -158,17 +158,17 @@ Paths in a brief are always absolute. `.session/` is gitignored and lives in the
 Address: `<<PRIMARY_ROOT>>/.session/sprint-development/sprint-<N>/launch.txt`. One self-contained line per ticket in the round.
 
 1. It is always written, gate or no gate. It records what the fleet was asked to do, and the human-paste path consumes it literally.
-2. It stays byte-identical where it is pasted. A human gets this exact line, so never paraphrase it. On the supervised path the transport opens the session itself and cannot take a command line, so what travels there is the prompt payload of this line, delivered as the session's first message (`orca-orchestration/references/launch-seam.md` §2). The prompt is what must stay identical across both paths.
+2. It stays byte-identical where it is pasted. A human gets this exact line, so never paraphrase it. On the supervised path the transport opens the session itself and cannot take a command line, so what travels there is the prompt payload of this line, delivered as the worker's task spec, which is its first prompt (`agentic-dev-core/references/fleet-launch-seam.md` §2). The prompt is what must stay identical across both paths.
 3. It is regenerated whole at every round boundary and never patched line by line: merged tickets drop out and newly unblocked ones get appended. A stale line relaunches a finished ticket.
 4. Each line is self-contained: the bare harness binary (no wrapper, because the harness holds no `.env` value and its MCP servers read it through the loader, ADR-0016), its flags, and the prompt, in one line that works pasted into a fresh terminal at the worker's worktree root.
 5. The whole prompt is single-quoted and contains no `'` and no unescaped `"`. Rephrase instead of switching delimiter.
 6. Every line is validated before launch with a shell syntax check (`sh -n` on a file holding the lines; `zsh -n` where the user's shell is zsh). A line that does not parse is not launched.
-7. The harness invocation itself (binary, model, effort, permission and session-name flags per harness) and which launch path supervises are owned by `orca-orchestration/references/launch-seam.md`. This skill owns only the payload: the `sprint-development` worker prompt.
+7. The harness invocation itself (binary, model, effort, permission and session-name flags per harness) and which launch path supervises are owned by `agentic-dev-core/references/fleet-launch-seam.md` and the `/agent-orchestration` `launch.txt` template. This skill owns only the payload: the `sprint-development` worker prompt.
 
-Shape for Claude Code (other harnesses use their own binary, `opencode` or `codex`). The line carries no name flag: `--name` marks the name as human-set, and the identity hook then never composes `<KEY>--<handle>` from the prompt token (`orca-orchestration/references/session-identity.md` §2b):
+Shape for Claude Code (other harnesses use their own binary, `opencode` or `codex`). Without a name flag the identity hook composes `<KEY>--<handle>` from the prompt token. A name flag marks the name as human-set and the hook leaves it alone, so a line that sets one must already carry the handle, as the `/agent-orchestration` `launch.txt` template does (`agentic-dev-core/references/fleet-project-profile.md` §3):
 
 ```
-claude <harness flags per launch-seam.md> '/sprint-development UPEX-123 fleet worker env: staging. Brief: <abs path to brief.md>. Run every stage without returning to the prompt until worker_done is sent; stage boundaries are not checkpoints. Channel: orca orchestration. No heartbeats.'
+claude <harness flags per fleet-launch-seam.md> '/sprint-development UPEX-123 fleet worker env: staging. Brief: <abs path to brief.md>. Run every stage without returning to the prompt until worker_done is sent; stage boundaries are not checkpoints; the one stop is ending your turn right after an ask. Channel: orca orchestration send. No heartbeats.'
 ```
 
 ---
@@ -176,10 +176,10 @@ claude <harness flags per launch-seam.md> '/sprint-development UPEX-123 fleet wo
 ## 6. Rounds: `max_workers` inside a sprint
 
 1. Take the sprint's unblocked tickets in the order `.context/dev-roadmap.md` gives (Phase 0b).
-2. Fill a round up to `orchestration.max_workers` (an explicit user number wins). Two tickets that own the same module, or that both carry a migration, go in different rounds. A ticket whose blocker is in the same round waits for the next one.
-3. Create one Orca worktree per worker just before launch, provision it, and verify its SHA against `origin/<base>` (`orca-orchestration/references/provisioning.md` §4). A worker starts from the current tip of the integration branch, not the tip the round was planned on, and the brief's `## Rules` tell it how to check.
+2. Fill a round up to `orchestration.max_workers` (an explicit user number wins). Two tickets that own the same module, or that both carry a migration, go in different rounds. A ticket that genuinely spans two modules goes to one worker, which then owns both. A ticket whose blocker is in the same round waits for the next one.
+3. Create one Orca worktree per worker just before launch, provision it, and verify its SHA against `origin/<base>` (`agentic-dev-core/references/fleet-provisioning.md` §5, and the `/agent-orchestration` conductor cycle §2). A worker starts from the current tip of the integration branch, not the tip the round was planned on, and the brief's `## Rules` tell it how to check.
 4. Launch the round, wait, and as each worker reports: review its PR (Stage 3 adjudication is still this skill's), merge in dependency order, deploy to staging and verify, update the sprint report row, and close the worker. Then form the next round. A round is the unit that gets a summary and a user checkpoint, so do not trickle a replacement worker into a half-finished round.
-5. Before the next round, every remaining worktree of the closed round has passed the orphan audit and is removed (`orca-orchestration/references/coordinator-playbook.md` §6). A merged ticket's branch moves the base, so the next round's worktrees are created from the new `origin/<base>`.
+5. Before the next round, every remaining worktree of the closed round has passed the orphan audit and is removed (`/agent-orchestration` conductor cycle §6). A merged ticket's branch moves the base, so the next round's worktrees are created from the new `origin/<base>`.
 
 The cadence is advisory and the cap is not. If the user wants 4, use 4. The cap counts every live worker, including an ad-hoc hotfix (§8).
 
@@ -191,7 +191,7 @@ In a delivery fleet the shared things are the staging database, its seed data an
 
 **At triage (planning aid).** While forming a round, list for each ticket the entities it will touch and the intent (`schema:staging-db read`, `seed:checkout-cart write`, `identity:default@staging write`). When two tickets hold the same `entity:id` with `write` on both sides, they go in different rounds. One identity is one live browser: two workers that both need live-UI validation as the same `testing.automation_identity` slot run in different rounds, or one of them gets a second declared identity (`references/live-ui-validation.md` §3.5).
 
-**At runtime (the protocol).** A worker declares a claim before its first write to a shared entity, and the conductor keeps the ledger and arbitrates. Message shapes, the ledger format, `enumerate` and the non-orchestration fallback are canon in `orca-orchestration/references/claims-protocol.md`. Read them there.
+**At runtime (the protocol).** A worker declares a claim before its first write to a shared entity, and the conductor keeps the ledger and arbitrates. Message shapes, the ledger format, `enumerate` and the non-orchestration fallback are canon in the `/agent-orchestration` claims protocol. Read them there.
 
 The ledger lives with the sprint scope, append-only: `<<PRIMARY_ROOT>>/.session/sprint-development/sprint-<N>/claims.md`.
 
@@ -241,7 +241,7 @@ Run these in order and stop at the first answer:
 
 ### Messages: who may say what
 
-The conductor talks to workers through the orchestration mailbox: `[ORCHESTRATION_TOOL] send: <worker> …` to instruct, `[ORCHESTRATION_TOOL] ask: <worker> …` to question, `[ORCHESTRATION_TOOL] reply: <message id> …` to answer. A worker sends exactly three kinds of message: done-once (with outcome, files touched, its PR and its report path), `ask` (blocking, when a decision is genuinely required to continue) and `escalation` (a blocker). Shapes are in `orca-orchestration/references/worker-contract.md`.
+The conductor talks to workers through the orchestration mailbox: `[ORCHESTRATION_TOOL] send: <worker> …` to instruct, `[ORCHESTRATION_TOOL] ask: <worker> …` to question, `[ORCHESTRATION_TOOL] reply: <message id> …` to answer. A worker sends exactly three kinds of message: done-once (with outcome, files touched, its PR and its report path), `ask` (when a decision is genuinely required to continue; it then ends its turn and Orca wakes it with the answer) and `escalation` (a blocker). Shapes are in the `/agent-orchestration` worker contract.
 
 A worker never writes to the user. Everything reaches the user through the conductor.
 

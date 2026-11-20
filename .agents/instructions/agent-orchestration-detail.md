@@ -16,7 +16,7 @@ The core of orchestration mode (main thread against subagents, the 7-component b
 
 ### Two executors
 
-The one-shot subagent is the default executor, and nothing below changes that. The second executor is optional: the supervised worker, a persistent agent session coordinated through `/orca-orchestration` over a conductor and worker mailbox. It needs the orchestration binary and a reachable runtime. When either is missing the repo says nothing about it, and the work runs on subagents plus the `launch.txt` lines a human pastes. So a workflow skill never names the worker to the user when the gate fails.
+The one-shot subagent is the default executor, and nothing below changes that. The second executor is optional: the supervised worker, a persistent agent session coordinated through the user-level skill `/agent-orchestration` over a conductor and worker mailbox. It needs the orchestration binary and a reachable runtime. When either is missing the repo says nothing about it, and the work runs on subagents plus the `launch.txt` lines a human pastes. So a workflow skill never names the worker to the user when the gate fails.
 
 | | One-shot subagent (default) | Supervised worker (optional) |
 |---|---|---|
@@ -26,7 +26,7 @@ The one-shot subagent is the default executor, and nothing below changes that. T
 | Git | the orchestrator's index | its own worktree and branch, one story per worker |
 | Best for | reading, mapping, verifying; one-shot tasks | a whole story through Stages 1 to 3 to an open PR, work the owner wants to step into |
 
-The conductor keeps its own reads and verifications on subagents, and keeps every shared-state write (merge, staging deploy, shared-DB migration, sprint report) for itself. A supervised worker earns its cost when the unit of work is a whole scope (one story, one module) that writes and integrates by itself. Doctrine: `agentic-dev-core/references/orchestration-doctrine.md`; transport: `/orca-orchestration`; the story fleet: `/sprint-development` fleet mode.
+The conductor keeps its own reads and verifications on subagents, and keeps every shared-state write (merge, staging deploy, shared-DB migration, sprint report) for itself. A supervised worker earns its cost when the unit of work is a whole scope (one story, one module) that writes and integrates by itself. Doctrine: `agentic-dev-core/references/orchestration-doctrine.md`; transport: `/agent-orchestration`, with this repo's half in `agentic-dev-core/references/fleet-launch-seam.md`, `fleet-provisioning.md` and `fleet-project-profile.md`; the story fleet: `/sprint-development` fleet mode.
 
 ### Execution patterns
 

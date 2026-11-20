@@ -329,8 +329,10 @@ export const USER_LEVEL_SKILLS: ReadonlyArray<CommunitySkill> = [
   // writes or edits an instruction, a skill or a reference.
   { package: 'https://github.com/upex-galaxy/agentic-user-skills', skill: 'humanizer' },
   { package: 'https://github.com/upex-galaxy/agentic-user-skills', skill: 'writing-for-agents' },
-  // Orchestration loaders: the decision log of an unattended run and the
-  // learnings harvest at the close of a run (orca-orchestration SKILL.md).
+  // Fleet orchestration doctrine (conductor, workers, mailbox) and its two
+  // loaders: the decision log of an unattended run and the learnings harvest
+  // at the close of a run (agent-orchestration SKILL.md).
+  { package: 'https://github.com/upex-galaxy/agentic-user-skills', skill: 'agent-orchestration' },
   { package: 'https://github.com/upex-galaxy/agentic-user-skills', skill: 'show-me-your-work' },
   { package: 'https://github.com/upex-galaxy/agentic-user-skills', skill: 'retro' },
   // Stage-skill loaders: root-cause diagnosis and merge blast radius

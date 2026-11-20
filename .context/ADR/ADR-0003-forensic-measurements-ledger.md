@@ -64,3 +64,7 @@ Every row is a snapshot at its date. None of them is a claim about the present.
 - Linters: `scripts/lint-skills.ts` (checks 16-17), `scripts/lint-docs.ts` (`bun run docs:check`), shared scanner `scripts/lib/volatile-facts.ts`
 - Release history of the CLI: `CHANGELOG.md`
 - Sibling decision: `agentic-qa-boilerplate` → `.context/ADR/ADR-0006-forensic-measurements-ledger.md`
+
+---
+
+> **2026-11-18:** the orchestration doctrine moved to the user-level skill `agent-orchestration` (`upex-galaxy/agentic-user-skills`); `orca-orchestration` is a transition stub. Paths into `.agents/skills/orca-orchestration/references/` above are history: the generic parts are in that skill by the same rule, worker-rule and gotcha numbers, and this repo's parts are in `.agents/skills/agentic-dev-core/references/fleet-*.md` (ADR-0025).

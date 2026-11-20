@@ -53,3 +53,7 @@ The canon (label rule, parsing, examples) lives in `.agents/skills/git-flow-mast
 - `scripts/check-commit-trailers.ts`, `.husky/commit-msg`
 - ADR-0002 (item 8, superseded by this record)
 - Reference implementation: `agentic-qa-boilerplate` `.agents/hooks/personality-reinject.mjs` and `orca-orchestration/references/session-identity.md`
+
+---
+
+> **2026-11-18:** the orchestration doctrine moved to the user-level skill `agent-orchestration` (`upex-galaxy/agentic-user-skills`); `orca-orchestration` is a transition stub. Paths into `.agents/skills/orca-orchestration/references/` above are history: the generic parts are in that skill by the same rule, worker-rule and gotcha numbers, and this repo's parts are in `.agents/skills/agentic-dev-core/references/fleet-*.md` (ADR-0025).

@@ -176,8 +176,8 @@ Every wait for a person has three paths, and the path depends on who is running:
 
 - A person is present: ask after steps 1 to 4, informed, with the instrument `./decision-elicitation-doctrine.md`
   §1 picks.
-- A supervised worker (launched by a conductor): send the §5 question to the launcher as a blocking `ask`, or
-  an `escalation`, per `./decision-elicitation-doctrine.md` §0, and keep working on what does not depend on
+- A supervised worker (launched by a conductor): send the §5 question to the launcher as an `ask` (then end the turn;
+  Orca wakes the worker with the answer), or an `escalation`, per `./decision-elicitation-doctrine.md` §0, and keep working on what does not depend on
   the answer. The conductor holds the gate.
 - A routine with nobody (`/autonomous-delivery`, an unattended automation, CI): technical calls are decided and
   reported as DECIDED, with the option each one beat. A §5 question is neither asked nor assumed. Write it into
