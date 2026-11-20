@@ -7,6 +7,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { beginIdempotentRequest, discardIdempotencyResult, recordIdempotencyResult } from '@lib/api/idempotency';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { parseRunStartCiContext, presentCiContext } from '@lib/runs/ci-context';
 import { mapRunRpcError } from '@lib/runs/errors';
 import { RunCreateBodySchema } from '@lib/runs/validation';
 import { createAdminClient } from '@lib/supabase/admin';
@@ -59,6 +60,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const body = RunCreateBodySchema.parse(payload);
+  const ci = parseRunStartCiContext(principal.via, payload);
 
   // Executor-mode derivation (PO-pending §4 — executor-mode derivation):
   // cookie sessions are unambiguously `human`; a PAT (bearer) caller may declare
@@ -92,7 +94,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     userId: principal.userId,
     endpoint: 'POST /api/v1/runs',
     workspaceId,
-    requestPayload: { test_id: body.test_id, environment_id: body.environment_id, executor_mode: executorMode, start_token: startToken },
+    requestPayload: { test_id: body.test_id, environment_id: body.environment_id, executor_mode: executorMode, start_token: startToken, ...presentCiContext(ci) },
   });
   if (begin.isReplay) {
     return jsonResponse(begin.snapshot, { status: begin.status });
@@ -112,6 +114,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
       startToken,
       // BK-223 — a bearer start snapshots the token name into executor_name.
       tokenId: principal.via === 'bearer' ? principal.tokenId : null,
+      ci,
     });
     if (error) {
       mapRunRpcError(error);

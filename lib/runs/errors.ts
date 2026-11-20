@@ -117,6 +117,10 @@ export function mapRunRpcError(error: { code?: string, message: string }): never
       throw new ApiError('conflict', 'This step already has a different result. Report the same result again to retry, or abort the run and start a new one.', {
         details: { reason: 'run_step_conflict' },
       });
+    case '45240':
+      throw new ApiError('conflict', 'This start_token already opened a run with different CI details (commit, branch, pipeline_name or pipeline_url). Send the same details to retry, or use a new start_token.', {
+        details: { reason: 'ci_context_conflict' },
+      });
     default:
       throw new ApiError('internal_error', error.message);
   }

@@ -1,3 +1,4 @@
+import type { CiContext } from '@lib/runs/ci-context';
 import type { Database, Json } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -472,6 +473,16 @@ export interface CreateRunArgs {
   // BK-223 — the access token that started the run (bearer callers only). The RPC
   // binds it to the actor and snapshots its name into runs.executor_name.
   tokenId?: string | null
+  ci?: CiContext
+}
+
+function ciContextArgs(ci: CiContext | undefined) {
+  return {
+    p_ci_commit: ci?.commit ?? undefined,
+    p_ci_branch: ci?.branch ?? undefined,
+    p_ci_pipeline_name: ci?.pipeline_name ?? undefined,
+    p_ci_pipeline_url: ci?.pipeline_url ?? undefined,
+  };
 }
 
 export async function createRun(supabase: Client, args: CreateRunArgs) {
@@ -482,6 +493,7 @@ export async function createRun(supabase: Client, args: CreateRunArgs) {
     p_executor_mode: args.executorMode,
     p_start_token: args.startToken,
     p_token_id: args.tokenId ?? undefined,
+    ...ciContextArgs(args.ci),
   });
 }
 
@@ -503,6 +515,7 @@ export interface SubmitAutomatedRunArgs {
   steps: { position: number, result: string }[]
   evidenceUrls: string[]
   idempotencyKey?: string
+  ci?: CiContext
 }
 
 export async function submitAutomatedRun(supabase: Client, args: SubmitAutomatedRunArgs) {
@@ -516,6 +529,7 @@ export async function submitAutomatedRun(supabase: Client, args: SubmitAutomated
     p_steps: args.steps,
     p_evidence_urls: args.evidenceUrls,
     p_idempotency_key: args.idempotencyKey,
+    ...ciContextArgs(args.ci),
   });
 }
 

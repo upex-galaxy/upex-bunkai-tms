@@ -90,4 +90,12 @@ describe('mapRunRpcError', () => {
     expect(err.status).toBe(409);
     expect(err.details).toEqual({ reason: 'run_step_conflict' });
   });
+
+  test('45240 → conflict 409 (BK-1995 start_token replayed with other CI details)', () => {
+    const err = capture({ code: '45240', message: 'run_ci_context_conflict' });
+    expect(err.code).toBe('conflict');
+    expect(err.status).toBe(409);
+    expect(err.details).toEqual({ reason: 'ci_context_conflict' });
+    expect(err.message).toContain('start_token');
+  });
 });

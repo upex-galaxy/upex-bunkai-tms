@@ -137,4 +137,35 @@ describe('executeRunSubmission', () => {
     expect((await rejection(executeRunSubmission(principal, payload({ steps: [{ position: 1, result: 'fail' }] })))).status).toBe(422);
     expect(calls).toHaveLength(0);
   });
+
+  it('BK-1995 AC1: the CI details reach the RPC normalized', async () => {
+    const { principal, calls } = caller({ data: { id: 'r1', replayed: false }, error: null });
+    await executeRunSubmission(principal, payload({
+      commit: 'A1B2C3D',
+      branch: 'feature/checkout-discounts',
+      pipeline_name: 'nightly-regression',
+      pipeline_url: 'https://ci.acme.dev/p/42',
+    }));
+    expect(calls[0]?.args).toMatchObject({
+      p_ci_commit: 'a1b2c3d',
+      p_ci_branch: 'feature/checkout-discounts',
+      p_ci_pipeline_name: 'nightly-regression',
+      p_ci_pipeline_url: 'https://ci.acme.dev/p/42',
+    });
+  });
+
+  it('BK-1995 AC3: a report without CI details sends no CI argument', async () => {
+    const { principal, calls } = caller({ data: { id: 'r1', replayed: false }, error: null });
+    await executeRunSubmission(principal, payload());
+    const args = calls[0]?.args ?? {};
+    expect(Object.keys(args).filter(k => k.startsWith('p_ci_') && args[k] !== undefined)).toEqual([]);
+  });
+
+  it('BK-1995 AC4: an invalid CI detail is refused before the RPC runs', async () => {
+    const { principal, calls } = caller({ data: {}, error: null });
+    const err = await rejection(executeRunSubmission(principal, payload({ commit: 'zz!' })));
+    expect(err.status).toBe(422);
+    expect(err.details).toMatchObject({ field: 'commit' });
+    expect(calls).toHaveLength(0);
+  });
 });
