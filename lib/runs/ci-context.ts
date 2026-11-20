@@ -1,10 +1,11 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { CI_PIPELINE_URL_MAX, isCiPipelineUrl } from '@lib/runs/ci-link';
 
 export const CI_COMMIT_MIN = 7;
 export const CI_COMMIT_MAX = 64;
 export const CI_BRANCH_MAX = 255;
 export const CI_PIPELINE_NAME_MAX = 100;
-export const CI_PIPELINE_URL_MAX = 2048;
+export { CI_PIPELINE_URL_MAX };
 
 export const CI_CONTEXT_FIELDS = ['commit', 'branch', 'pipeline_name', 'pipeline_url'] as const;
 export type CiContextField = (typeof CI_CONTEXT_FIELDS)[number];
@@ -19,7 +20,6 @@ export interface CiContext {
 export const EMPTY_CI_CONTEXT: CiContext = { commit: null, branch: null, pipeline_name: null, pipeline_url: null };
 
 const HEX = /^[0-9a-f]+$/i;
-const URL_SHAPE = /^https?:\/\/[^\s/?#@]+(?:[/?#]\S*)?$/i;
 
 function refuse(field: CiContextField, message: string): never {
   throw new ApiError('validation_failed', message, { details: { reason: `${field}_invalid`, field } });
@@ -81,17 +81,7 @@ function parsePipelineUrl(payload: Record<string, unknown>): string | null {
   if (value === null) {
     return null;
   }
-  if (codePoints(value) > CI_PIPELINE_URL_MAX || !URL_SHAPE.test(value)) {
-    return refuse('pipeline_url', `pipeline_url must be ${rule}.`);
-  }
-  let url: URL;
-  try {
-    url = new URL(value);
-  }
-  catch {
-    return refuse('pipeline_url', `pipeline_url must be ${rule}.`);
-  }
-  if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.username !== '' || url.password !== '' || url.hostname === '') {
+  if (!isCiPipelineUrl(value)) {
     return refuse('pipeline_url', `pipeline_url must be ${rule}.`);
   }
   return value;

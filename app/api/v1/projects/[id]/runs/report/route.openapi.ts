@@ -31,6 +31,10 @@ const RunReportItemSchema = z
     // reject every timestamp this endpoint actually returns.
     started_at: z.string().datetime({ offset: true }),
     finished_at: z.string().datetime({ offset: true }).nullable(),
+    commit: z.string().nullable().describe('BK-1995 CI context: the commit reported with the Run (lower-case hexadecimal), or null.'),
+    branch: z.string().nullable().describe('BK-1995 CI context: the branch reported with the Run, or null. Filter on it with `branch`.'),
+    pipeline_name: z.string().nullable().describe('BK-1995 CI context: the pipeline name reported with the Run, or null.'),
+    pipeline_url: z.string().nullable().describe('BK-1995 CI context: the pipeline URL reported with the Run, or null. Stored verbatim; render it as a link only when it is http or https.'),
   })
   .openapi('RunReportItem');
 
@@ -129,21 +133,29 @@ const CursorParam = {
   description: 'Opaque page token taken verbatim from the previous response\'s `next_cursor`. The token is base64url and therefore URL-safe as issued — it needs no escaping and must not be re-encoded. A malformed token returns 400 — it never silently falls back to the first page.',
 };
 
+const BranchParam = {
+  name: 'branch',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const, minLength: 1, maxLength: 255 },
+  description: 'BK-228: narrow to Runs reported with exactly this branch. The match is exact and case-sensitive (`Main` does not match `main`); URL-encode it, a slash survives as `%2F`. Runs reported without a branch never match. Longer than 255 characters is rejected (422).',
+};
+
 registry.registerPath({
   method: 'get',
   path: '/api/v1/projects/{id}/runs/report',
   tags: ['Runs'],
-  summary: 'Filter a Project\'s Runs by date range, module, status and executor, with matching pass/fail totals',
+  summary: 'Filter a Project\'s Runs by date range, module, status, executor and branch, with matching pass/fail totals',
   description: 'Bearer `atc:read` (or cookie session). The PAT scope catalog has no run-read scope, so run reporting reuses the read scope rather than minting a fifth one (BK-499, superseding this story Key Contract Decision that deferred the question). One SECURITY DEFINER RPC (`bunkai_report_project_runs`) resolves the Project\'s workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. Every filter is AND-composed and every filter composes with pagination server-side. Unlike `GET /api/v1/tests/{id}/runs`, rows are NOT restricted to terminal statuses — a currently-`running` Run is a legitimate row — and `totals` is recomputed from the SAME filtered set as the rows (not all-time), so the numbers change as filters narrow (Business Rule #3 / Technical Decision D2). Pagination is KEYSET on `(started_at desc, id desc)`, reusing the same opaque cursor contract as the run-history endpoint. A Project with no matching Runs returns an empty `items` with zeroed `totals` (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-  parameters: [IdParam, DateFromParam, DateToParam, ModuleIdParam, StatusParam, ExecutorParam, LimitParam, CursorParam],
+  parameters: [IdParam, DateFromParam, DateToParam, ModuleIdParam, StatusParam, ExecutorParam, BranchParam, LimitParam, CursorParam],
   responses: {
     200: { description: 'One page of the Run report (possibly empty).', content: { 'application/json': { schema: RunReportPageSchema } } },
     400: { description: 'Malformed Project id (not a UUID) or an undecodable `cursor` (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Project not found (also returned for a Project outside the caller\'s workspaces — no existence leak).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed — a `date_from`/`date_to` that is malformed or not a real calendar date, `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), or `limit` outside 1..50 (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed — a `date_from`/`date_to` that is malformed or not a real calendar date, `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), `branch` longer than 255 characters, or `limit` outside 1..50 (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

@@ -2,6 +2,7 @@
 
 import type { CompareAbortNotice, CompareGroupBlock, CompareRow, CompareRunHeader, RunComparison } from '@lib/runs/compare-view';
 import type { LucideIcon } from 'lucide-react';
+import { CiRefs } from '@components/runs/CiContext';
 import { Button, buttonVariants } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import {
@@ -54,12 +55,13 @@ const EXECUTOR_ICON: Record<string, LucideIcon> = { human: User, agent: Bot, ci:
 
 interface RunCompareViewProps {
   projectSlug: string
+  repositoryUrl?: string | null
   runId: string
   initialComparison: RunComparison | null
   initialError?: string | null
 }
 
-export function RunCompareView({ projectSlug, runId, initialComparison, initialError = null }: RunCompareViewProps) {
+export function RunCompareView({ projectSlug, repositoryUrl = null, runId, initialComparison, initialError = null }: RunCompareViewProps) {
   const [comparison, setComparison] = useState<RunComparison | null>(initialComparison);
   const [error, setError] = useState<string | null>(initialError);
   const [loading, setLoading] = useState(false);
@@ -128,8 +130,8 @@ export function RunCompareView({ projectSlug, runId, initialComparison, initialE
         <div className="mx-auto flex max-w-[820px] flex-col gap-3">
           {comparison !== null && (
             <div className="grid gap-3 sm:grid-cols-2">
-              <RunCard testId="previous" label="Previous run" header={comparison.previous} projectSlug={projectSlug} />
-              <RunCard testId="this" label="This run" header={comparison.run} projectSlug={projectSlug} />
+              <RunCard testId="previous" label="Previous run" header={comparison.previous} projectSlug={projectSlug} repositoryUrl={repositoryUrl} />
+              <RunCard testId="this" label="This run" header={comparison.run} projectSlug={projectSlug} repositoryUrl={repositoryUrl} />
             </div>
           )}
 
@@ -164,7 +166,7 @@ export function RunCompareView({ projectSlug, runId, initialComparison, initialE
   );
 }
 
-function RunCard({ testId, label, header, projectSlug }: { testId: 'previous' | 'this', label: string, header: CompareRunHeader | null, projectSlug: string }) {
+function RunCard({ testId, label, header, projectSlug, repositoryUrl }: { testId: 'previous' | 'this', label: string, header: CompareRunHeader | null, projectSlug: string, repositoryUrl: string | null }) {
   if (header === null) {
     return (
       <Card data-testid={`run-compare-card-${testId}`} className="flex flex-col gap-1 p-3">
@@ -188,6 +190,7 @@ function RunCard({ testId, label, header, projectSlug }: { testId: 'previous' | 
         </Link>
       </div>
       <span data-testid={`run-compare-card-${testId}-started`} className="font-mono text-xs text-fg-2">{startedLine(header)}</span>
+      <CiRefs run={header} repositoryUrl={repositoryUrl} testIdPrefix={`run-compare-card-${testId}`} />
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-2">
         <span data-testid={`run-compare-card-${testId}-duration`} className="font-mono text-xs">{durationText(header)}</span>
         <span className="inline-flex items-center rounded-1 border border-stroke-2 bg-surface-2 px-1.5 py-0.5 font-mono text-2xs text-fg-3">

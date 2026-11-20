@@ -1,5 +1,7 @@
+import { RepositorySettingsForm } from '@components/repository-settings/RepositorySettingsForm';
 import { TrackerSettingsForm } from '@components/tracker-settings/TrackerSettingsForm';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readRepositoryUrl } from '@lib/repository-settings/repository-settings';
 import { createClient } from '@lib/supabase/server';
 import { readTrackerSettings } from '@lib/tracker-settings/access';
 import { DEFAULT_ISSUE_TYPE } from '@lib/tracker-settings/rules';
@@ -59,6 +61,7 @@ export default async function ProjectSettingsPage({ params }: PageProps) {
   }
 
   const stored = await readTrackerSettings(supabase, project.id);
+  const repositoryUrl = await readRepositoryUrl(supabase, project.id);
 
   return (
     <div data-testid="project-settings-view" className="flex flex-1 flex-col overflow-hidden">
@@ -73,6 +76,7 @@ export default async function ProjectSettingsPage({ params }: PageProps) {
               .
             </p>
           </div>
+          <RepositorySettingsForm projectId={project.id} initialUrl={repositoryUrl} canEdit={canEdit} />
           <TrackerSettingsForm
             projectId={project.id}
             canEdit={canEdit}

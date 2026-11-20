@@ -31,6 +31,9 @@ const { mintUserJwt } = await import('@lib/api/user-jwt');
 const PREFIX = `bk1995-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const WRITER_ROLES = new Set(['member', 'admin', 'owner']);
 const MIGRATION = join(import.meta.dir, '../../supabase/migrations/0137_run_ci_context.sql');
+const LATEST_SOURCE: Record<string, string> = {
+  bunkai_report_project_runs: join(import.meta.dir, '../../supabase/migrations/0138_project_repository_url.sql'),
+};
 const TOUCHED = [
   'bunkai_run_json',
   'bunkai_list_test_runs',
@@ -277,7 +280,6 @@ describeOrSkip('BK-1995 — CI context reported with a run (real database, real 
 
   it('T3/T5: the live body of every touched function is byte-identical to the migration file, one overload each', async () => {
     if (skipReason || !pgUrl) { return; }
-    const file = readFileSync(MIGRATION, 'utf8');
     const sql = new SQL(pgUrl);
     try {
       const rows: { proname: string, md5: string }[] = await sql`
@@ -291,7 +293,7 @@ describeOrSkip('BK-1995 — CI context reported with a run (real database, real 
       for (const row of rows) {
         expect({ fn: row.proname, md5: row.md5 }).toEqual({
           fn: row.proname,
-          md5: createHash('md5').update(functionBody(file, row.proname)).digest('hex'),
+          md5: createHash('md5').update(functionBody(readFileSync(LATEST_SOURCE[row.proname] ?? MIGRATION, 'utf8'), row.proname)).digest('hex'),
         });
       }
     }

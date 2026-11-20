@@ -2,6 +2,7 @@ import type { RunHistoryItem, RunHistoryTotals } from '@components/runs/RunHisto
 import type { FlakinessCounts } from '@lib/runs/flakiness';
 import type { RunHistoryOutcome } from '@lib/runs/history-validation';
 import { RunHistorySkeleton, RunHistoryView } from '@components/runs/RunHistoryView';
+import { readRepositoryUrl } from '@lib/repository-settings/repository-settings';
 import { EMPTY_FLAKINESS } from '@lib/runs/flakiness';
 import { encodeRunCursor, RUN_HISTORY_OUTCOMES, RUN_HISTORY_PAGE_SIZE } from '@lib/runs/history-validation';
 import { listTestRuns } from '@lib/supabase/rpc';
@@ -30,7 +31,7 @@ interface PageProps {
 export default async function TestRunHistoryPage({ params, searchParams }: PageProps) {
   const { projectSlug, testId } = await params;
   const { outcome: rawOutcome } = await searchParams;
-  await loadTestDetail(projectSlug, testId);
+  const { projectId } = await loadTestDetail(projectSlug, testId);
 
   // A junk or repeated `?outcome=` is treated as "no filter" rather than an
   // error: this is a URL a human can type, and the honest answer to an
@@ -41,7 +42,7 @@ export default async function TestRunHistoryPage({ params, searchParams }: PageP
 
   return (
     <Suspense fallback={<RunHistorySkeleton />}>
-      <RunHistorySection testId={testId} outcome={outcome} />
+      <RunHistorySection testId={testId} projectId={projectId} outcome={outcome} />
     </Suspense>
   );
 }
@@ -59,7 +60,7 @@ const EMPTY_TOTALS: RunHistoryTotals = { passed: 0, failed: 0, aborted: 0 };
 // the `<Suspense>` boundary above (the `WorkspacesSection` precedent). A failure
 // is caught here and handed to the view as its error state — it must never
 // throw up to the route's error boundary and take the whole Test detail with it.
-async function RunHistorySection({ testId, outcome }: { testId: string, outcome: RunHistoryOutcome | null }) {
+async function RunHistorySection({ testId, projectId, outcome }: { testId: string, projectId: string, outcome: RunHistoryOutcome | null }) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -78,10 +79,12 @@ async function RunHistorySection({ testId, outcome }: { testId: string, outcome:
     }
 
     const payload = data as unknown as RunHistoryPayload;
+    const repositoryUrl = await readRepositoryUrl(supabase, projectId);
 
     return (
       <RunHistoryView
         testId={testId}
+        repositoryUrl={repositoryUrl}
         initialOutcome={outcome}
         initialPage={{
           items: payload.items ?? [],

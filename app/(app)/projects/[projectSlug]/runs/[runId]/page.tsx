@@ -2,6 +2,7 @@ import type { LinkedBugSummary, RunDetail } from '@components/runs/RunnerView';
 import { RunnerView } from '@components/runs/RunnerView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { formatBugListRow } from '@lib/bugs/list-view';
+import { readRepositoryUrl } from '@lib/repository-settings/repository-settings';
 import { toAttachmentView } from '@lib/runs/attachment-access';
 import { getRunExpanded } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
@@ -94,6 +95,8 @@ export default async function RunDetailPage({ params, searchParams }: PageProps)
     .eq('status', 'active')
     .maybeSingle();
   const canManageRun = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
+  const canConfigureRepository = ['admin', 'owner'].includes(memberRow?.role ?? '');
+  const repositoryUrl = await readRepositoryUrl(supabase, run.project_id);
 
   // BK-593 — the Run's committed evidence images, through the caller's own RLS-scoped read
   // (members of any role see committed rows; a pending upload is invisible to everybody). A
@@ -140,6 +143,8 @@ export default async function RunDetailPage({ params, searchParams }: PageProps)
     <RunnerView
       run={run}
       projectSlug={projectSlug}
+      repositoryUrl={repositoryUrl}
+      canConfigureRepository={canConfigureRepository}
       canAbort={canManageRun}
       canFinish={canManageRun}
       canMark={canManageRun}

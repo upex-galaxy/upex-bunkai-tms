@@ -721,6 +721,7 @@ export interface ReportProjectRunsArgs {
   limit?: number
   cursorStartedAt?: string | null
   cursorId?: string | null
+  branch?: string | null
 }
 
 export async function reportProjectRuns(supabase: Client, args: ReportProjectRunsArgs) {
@@ -735,7 +736,12 @@ export async function reportProjectRuns(supabase: Client, args: ReportProjectRun
     p_limit: args.limit ?? undefined,
     p_cursor_started_at: args.cursorStartedAt ?? undefined,
     p_cursor_id: args.cursorId ?? undefined,
+    p_branch: args.branch ?? undefined,
   });
+}
+
+export async function listProjectBranches(supabase: Client, projectId: string) {
+  return supabase.rpc('bunkai_list_project_branches', { p_project_id: projectId });
 }
 
 // BK-513 — one page of a workspace's Runs, newest first, with each Run's
@@ -914,6 +920,20 @@ export async function deleteEnvironment(
   return supabase.rpc('bunkai_delete_environment', {
     p_actor_user_id: args.actorUserId,
     p_environment_id: args.environmentId,
+  });
+}
+
+export interface SetProjectRepositoryUrlArgs {
+  actorUserId: string
+  projectId: string
+  repositoryUrl: string | null
+}
+
+export async function setProjectRepositoryUrl(supabase: Client, args: SetProjectRepositoryUrlArgs) {
+  return supabase.rpc('bunkai_set_project_repository_url', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_repository_url: args.repositoryUrl as string,
   });
 }
 
