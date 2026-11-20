@@ -24,7 +24,7 @@ Aliases: `@platform/*`, `@adapters/*`, `@features/*` and the root `@/*`. Use the
 | R1 one direction | A lower layer never imports a higher one | lint `guard/layer-imports` |
 | R2 one door | Code outside `features/<x>/` imports feature `x` only as `@features/x`, never a deep path | lint `guard/feature-door` |
 | R3 thin app | `src/app/**` never imports `@adapters/*`; data access goes through a feature | lint `guard/layer-imports` |
-| R4 registry | `guard-manifest.json` lists every feature and the names its `index.ts` exports. Read it before creating a feature or an action | `bun run guard:manifest:check`, kept fresh by pre-commit (`scripts/guard-manifest.ts`) |
+| R4 registry | `guard-manifest.json` lists every feature (each folder of the features root, `stack.conventions.features_root` in `.agents/project.yaml`) and the names its `index.ts` exports. Read it before creating a feature or an action | `bun run guard:manifest:check`, kept fresh by pre-commit (`scripts/guard-manifest.ts`) |
 | R5 shape | At most 2 positional params in features and adapters; feature files stay under the `max-lines` limit | core `max-params` and `max-lines` |
 | R6 no comments by default | Toolchain directives and one-line WHY only | Critical Rule 18 |
 
@@ -32,7 +32,7 @@ Each lint message names the rule and the root-cause fix. A fix moves the code to
 
 ## 3. Configurable layer map
 
-An adopted app keeps its folders. The plugin reads the layer map from ESLint `settings.guard.layers`, one glob list per layer, with the defaults of §1 when the setting is absent. An app that keeps `db/`, `api/` and `lib/` maps them to layers there and moves no file. The wiring lives in `eslint.config.js`; `project-adoption` owns the mapping step.
+An adopted app keeps its folders. The plugin reads the layer map from ESLint `settings.guard.layers`, one glob list per layer, with the defaults of §1 when the setting is absent. An app that keeps `db/`, `api/` and `lib/` maps them to layers there and moves no file. A glob that names one file (`lib/supabase.ts`) puts that file in the layer and matches its imports with or without the extension; a folder glob (`lib/github/**`) covers everything below it. Aliases resolve through `compilerOptions.paths` of the `tsconfig.json` in the directory lint runs from (`@/` is `src/` when it declares none); an app whose paths live elsewhere (an `extends` base, a monorepo app folder) declares them in `settings.guard.aliases`, prefix to folder (`{ '@/': './' }`). ESLint's `--cache` does not see a `paths` change, so clear the cache after editing them. The wiring lives in `eslint.config.js` and, for Oxlint, `.oxlintrc.json`; `project-adoption` owns the mapping step.
 
 ## 4. Severity
 

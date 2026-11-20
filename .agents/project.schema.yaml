@@ -69,6 +69,7 @@ stack:
   conventions:
     import_alias: '@/' # path alias the app's tsconfig declares for its source root; null = none
     testid_style: null # the app's existing test-id attribute and case (e.g. data-testid kebab-case); null = not established. Skills never rename an existing test id
+    features_root: src/features # GUARD features folder (rule R4: scripts/guard-manifest.ts lists one feature per folder in it), relative to app_root; null = src/features
 
 issue_tracker:
   issue_tracker: null # TODO: fill per project — Issue tracking tool (e.g. Jira)
@@ -268,6 +269,81 @@ orchestration:
 # nothing under .git. An invalid entry is reported and ignored. Empty by default.
 updater:
   protected_paths: [] # e.g. [scripts/lint-vars.ts, .agents/skills/acli/SKILL.md]
+
+# How this project scopes its gates. Absent or empty = every gate behaves exactly as
+# shipped. A malformed value fails the gate that owns the key, naming the key (hooks.scope
+# warns and runs every gate). Read directly by cli/lib/check-scope.ts and, for hooks, by
+# .husky/framework-gates.sh (not a {{VAR}} token) -> skipped by vars:check.
+# The boilerplate itself keeps the defaults.
+checks:
+  # agents:compat:check MCP parity (cli/lib/agent-compatibility-contracts.ts).
+  mcp_parity:
+    # strict: every host's MCP file is committed and compared as shipped.
+    # local-only: the canonical file (.mcp.json while Claude is in use) is per-machine
+    # and holds literal values. It must be ignored by the committed .gitignore (tracked,
+    # or ignored only by .git/info/exclude or a global rule, fails); its own runner
+    # (npx or bunx) is not compared against the pinned shape; a committed host may hold
+    # no literal credential (a secret-named env, header or other key, a token-shaped
+    # value, url userinfo, a secret or token-shaped url parameter or path segment, also
+    # behind a host written as a variable, a secret flag or a --header in args);
+    # findings name the server and the key, never the value; a
+    # header named only by AUTH, SESSION or PASS with a plain lowercase setting such as
+    # none passes. When the file is absent (CI, a fresh clone) the set and the env
+    # contract are skipped with a warning and the committed hosts are still checked on
+    # their own.
+    mode: strict # strict | local-only
+    # Hosts that reach MCP through a project launcher instead of their own copy of
+    # each server. Supported host: pi. The value is the exact argv prefix; an entry
+    # whose command plus args are that prefix plus its own server id, with no other
+    # key than type: stdio, enabled (true or false; false is warned by name) and Pi's
+    # display keys, is a relay entry: the launcher (the prefix's last element, repo-relative
+    # and tracked by git) starts the canonical entry with that entry's own values, so
+    # the pinned shape, the loader rule and the env contract are not compared for it.
+    # The canonical entry must be an enabled stdio server whose values are literal.
+    # The relay carries stdio only: a canonical HTTP server is still required in the
+    # relay host, connected at user level (ADR-0005), or recorded in unrelayed.
+    relay: {} # e.g. { pi: [bun, scripts/mcp-launch.ts] }
+    # Relay host -> canonical server ids that host cannot carry: an http server, one
+    # disabled in the canonical file, or one that takes a value from the host (${VAR}),
+    # which the launcher does not expand. Each listed id is left out of the set comparison
+    # and warned by name on every run, never silent. An id the canonical file does not
+    # declare, one the relay host declares, an enabled stdio server (relay it), or a
+    # host without a relay fails, naming the key. With the canonical file absent each
+    # id is still warned, as unverified (an unknown id fails only where .mcp.json exists).
+    # An empty list is the same as leaving the host out.
+    unrelayed: {} # e.g. { pi: [instance-n8n-mcp] }
+  # The git-hook gates (.husky/framework-gates.sh).
+  hooks:
+    # full: every commit runs types:check, vars:check and skills:check, and every push
+    # runs the whole pre-push chain, as before this key existed.
+    # staged: each of those gates runs only when the staged files (commit) or the files of
+    # the push range (from the refs git hands pre-push) touch its inputs; the tooling,
+    # .agents/, package.json, the lockfile and .gitignore count for every gate, so a
+    # content-only change (docs or app content) skips them and the hook names what it
+    # skipped. A push with no readable refs, or a git error, runs everything. The gates
+    # that already run on matching paths only are unchanged. An unknown value warns and
+    # runs everything. Read by the hook itself (block form, or one-line flow form).
+    scope: full # full | staged
+  # vars:check (scripts/lint-vars.ts).
+  vars_check:
+    # Repo-relative globs of project-owned folders that use their own {{...}} syntax
+    # (a vendored skill whose placeholders are not project variables). Inside them an
+    # UNDECLARED bare {{NAME}} is ignored and counted in one INFO line; a declared name
+    # still counts as a use, and every other reference is checked as usual. A glob
+    # that covers AGENTS.md, an instruction section, REGISTRY.md or every skill at
+    # once, or that matches no scanned file, fails the gate.
+    skip_paths: [] # e.g. [.agents/skills/<slug>/**]
+  # docs:check (scripts/lint-docs.ts).
+  docs_check:
+    # Repo-relative globs over the doc pages it scans (docs/, the root and nested
+    # READMEs, the Pages HTML): with include set, only matching pages are checked;
+    # exclude then drops pages. The agent-facing markdown (.agents/, .context/,
+    # .claude/), the skill roster, the doc contracts and the `bun run` check of
+    # AGENTS.md and the instruction sections are never scoped, and an out-of-scope
+    # page is still a valid link target. A glob that matches no page fails the gate;
+    # the result line says how many pages were out of scope.
+    include: [] # e.g. [README.md, docs/adr/**]
+    exclude: [] # e.g. [docs/todo/**, docs/marketing/**]
 
 # Where SECRET values come from. `local` (the default) = .env / .env.local.
 # A secret manager is the ADVANCED option (ADR-0011): `bun setup` writes the

@@ -76,8 +76,9 @@
 
 import type { VolatileKind } from './lib/volatile-facts';
 import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { isBoilerplateOnlyPath } from '../cli/lib/boilerplate-only.ts';
+import { matchesAny, readChecks, unmatchedGlobs } from '../cli/lib/check-scope.ts';
 import { contractsEnforced, scanContracts } from './lib/doc-contracts';
 import { L0_FILE, parseProjectSkills, parseRouter, PROJECT_FILE, SECTIONS_DIR, skillTableSource } from './lib/instructions';
 import { isVolatileExemptPath, scanVolatile, volatileRemedy } from './lib/volatile-facts';
@@ -163,6 +164,7 @@ export function lintDocMeta(rel: string, html: string): DocFinding[] {
  */
 export const OPTIONAL_PATHS = new Set<string>([
   '.agents/compatibility/command-aliases.project.json',
+  '.agents/personality-override.md',
 ]);
 
 /**
@@ -270,14 +272,21 @@ const PBI_CACHE = join('.context', 'PBI');
 /**
  * The agent-facing markdown files, absolute paths, sorted. Directory symlinks
  * are not followed (`.claude/skills` is an alias of `.agents/skills`), the PBI
- * cache is skipped, and `lintDocs` drops the git-ignored ones.
+ * cache and the third-party skills (community installs and the generated
+ * `REGISTRY.md` that copies their text) are skipped, and `lintDocs` drops the
+ * git-ignored ones.
  */
 export function collectAgentLinkFiles(root: string): string[] {
   const files: string[] = [];
+  const community = communitySlugs(root);
+  const thirdParty = (rel: string): boolean => {
+    const [agents, skills, slug] = rel.split(sep);
+    return agents === '.agents' && skills === 'skills' && (community.has(slug) || slug === 'REGISTRY.md' || existsSync(join(root, '.agents', 'skills', slug, '.jitso-skill.json')));
+  };
   for (const base of AGENT_LINK_ROOTS) {
     const found: string[] = [];
     walk(join(root, base), ['.md'], found);
-    files.push(...found.filter(file => !relative(root, file).startsWith(`${PBI_CACHE}/`)));
+    files.push(...found.filter(file => !relative(root, file).startsWith(`${PBI_CACHE}/`) && !thirdParty(relative(root, file))));
   }
   return files.sort();
 }
@@ -426,7 +435,12 @@ function communitySlugs(root: string): Set<string> {
   const installTs = join(root, 'cli', 'install.ts');
   if (!existsSync(installTs)) { return new Set(); }
   const src = readFileSync(installTs, 'utf8');
-  return new Set([...src.matchAll(/\bskill:\s*['"]([a-z][a-z0-9-]+)['"]/g)].map(m => m[1]));
+  const slugs = new Set([...src.matchAll(/\bskill:\s*['"]([a-z][a-z0-9-]+)['"]/g)].map(m => m[1]));
+  for (const m of src.matchAll(/\bpackage:\s*['"]([^'"]*)['"]\s*\}/g)) {
+    const last = m[1].split('/').pop()?.replace(/\.git$/, '');
+    if (last) { slugs.add(last); }
+  }
+  return slugs;
 }
 
 /** Repo skills: committed, non-symlinked skill folders that are not community installs. */
@@ -435,7 +449,7 @@ function repoSkills(root: string): string[] {
   if (!existsSync(dir)) { return []; }
   const community = communitySlugs(root);
   const candidates = readdirSync(dir)
-    .filter(name => !community.has(name) && !lstatSync(join(dir, name)).isSymbolicLink())
+    .filter(name => !community.has(name) && !existsSync(join(dir, name, '.jitso-skill.json')) && !lstatSync(join(dir, name)).isSymbolicLink())
     .filter(name => statSync(join(dir, name)).isDirectory() && existsSync(join(dir, name, 'SKILL.md')));
   const ignored = gitIgnored(root, candidates.map(slug => `.agents/skills/${slug}/SKILL.md`));
   return candidates.filter(slug => !ignored.has(`.agents/skills/${slug}/SKILL.md`)).sort();
@@ -525,8 +539,35 @@ function gitIgnored(root: string, paths: string[]): Set<string> {
   return new Set(result.stdout.toString().split('\n').map(line => line.trim()).filter(Boolean));
 }
 
-export function lintDocs(root: string): { files: number, findings: DocFinding[] } {
-  const files = collectDocFiles(root);
+export interface DocScope {
+  files: string[]
+  outOfScope: number
+  errors: string[]
+}
+
+/**
+ * `checks.docs_check` applied to the doc pages (`collectDocFiles`) only: the
+ * agent-facing markdown, the roster, the contracts and the `bun run` check of
+ * `AGENTS.md` and the instruction sections are never scoped, and an
+ * out-of-scope page still counts as a link target.
+ */
+export function scopeDocFiles(root: string, all: string[]): DocScope {
+  const checks = readChecks(root);
+  const { docsInclude: include, docsExclude: exclude } = checks.config;
+  if (include.length === 0 && exclude.length === 0) { return { files: all, outOfScope: 0, errors: checks.errors.docsCheck }; }
+  const rels = all.map(file => relativePosix(root, file));
+  const errors = [
+    ...checks.errors.docsCheck,
+    ...unmatchedGlobs(include, rels).map(glob => `checks.docs_check.include: ${glob} matches no scanned page (a folder needs /**)`),
+    ...unmatchedGlobs(exclude, rels).map(glob => `checks.docs_check.exclude: ${glob} matches no scanned page (a folder needs /**)`),
+  ];
+  const files = all.filter((_file, index) => (include.length === 0 || matchesAny(include, rels[index])) && !matchesAny(exclude, rels[index]));
+  return { files, outOfScope: all.length - files.length, errors };
+}
+
+export function lintDocs(root: string): { files: number, findings: DocFinding[], outOfScope: number, scopeErrors: string[] } {
+  const scope = scopeDocFiles(root, collectDocFiles(root));
+  const files = scope.files;
   const agentCandidates = collectAgentLinkFiles(root).filter(file => !files.includes(file));
   const ignoredAgent = gitIgnored(root, agentCandidates.map(file => relativePosix(root, file)));
   const agentFiles = agentCandidates.filter(file => !ignoredAgent.has(relativePosix(root, file)));
@@ -550,7 +591,7 @@ export function lintDocs(root: string): { files: number, findings: DocFinding[] 
   const instructions = [...(existsSync(agentsFile) ? [agentsFile] : []), ...instructionFiles(root)];
   findings.push(...lintScripts(root, [...instructions, ...files]));
   findings.push(...lintContracts(root));
-  return { files: files.length + agentFiles.length, findings };
+  return { files: files.length + agentFiles.length, findings, outOfScope: scope.outOfScope, scopeErrors: scope.errors };
 }
 
 /** Documentation-contract markers (ADR-0017): balanced, unique labels, every target on disk. */
@@ -573,7 +614,8 @@ const LABEL: Record<DocFindingKind, string> = {
 if (import.meta.main) {
   const root = process.cwd();
   if (!statSync(root).isDirectory()) { process.exit(2); }
-  const { files, findings } = lintDocs(root);
+  const { files, findings, outOfScope, scopeErrors } = lintDocs(root);
+  const scoped = outOfScope > 0 ? `, ${outOfScope} out of scope (checks.docs_check)` : '';
   const note = (f: DocFinding): string => f.kind === 'file-line'
     ? `(${volatileRemedy('FILE-LINE')})`
     : f.kind === 'current-state' ? `(${volatileRemedy('CURRENT-STATE')})` : '';
@@ -582,12 +624,15 @@ if (import.meta.main) {
   for (const f of warnings) {
     console.warn(`  ! ${f.file}:${f.line}  ${LABEL[f.kind]}  ${f.target} ${note(f)}`);
   }
-  if (errors.length === 0) {
+  if (errors.length === 0 && scopeErrors.length === 0) {
     const tail = warnings.length > 0 ? `, ${warnings.length} warning(s)` : '';
-    console.log(`✓ docs:check passed (${files} files, no blocking findings${tail})`);
+    console.log(`✓ docs:check passed (${files} files, no blocking findings${tail}${scoped})`);
     process.exit(0);
   }
-  console.error(`✗ docs:check found ${errors.length} problem(s) in ${files} files:\n`);
+  console.error(`✗ docs:check found ${errors.length + scopeErrors.length} problem(s) in ${files} files${scoped}:\n`);
+  for (const message of scopeErrors) {
+    console.error(`  .agents/project.yaml  checks config  ${message}`);
+  }
   for (const f of errors) {
     console.error(`  ${f.file}:${f.line}  ${LABEL[f.kind]}  ${f.target}`);
   }

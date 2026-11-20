@@ -82,7 +82,7 @@ Files:
 
 | Area | Files |
 |---|---|
-| Project config | `package.json`, `tsconfig.json`, `tailwind.config.js` (with the project palette), `next.config.js` (or equivalent), `postcss.config.js` |
+| Project config | `package.json`, `tsconfig.json`, `tailwind.config.js` (with the project palette), `next.config.js` (or equivalent), `postcss.config.js`. In a Next app, `next.config` sets `agentRules: false` (a Next version that supports it rewrites the root `AGENTS.md` on every `next dev`; check the option name in the installed `next` types) |
 | Types | `src/lib/types.ts`: type helpers extracted from the database, importing `src/types/supabase.ts` (created in backend setup) |
 | Design system | `src/components/ui/[componentName].tsx` and more components as the project needs them |
 | Layout | `src/components/layout/[componentName].tsx` (Navbar, Sidebar, Footer, ...) and `src/app/layout.tsx`, the root layout with providers |

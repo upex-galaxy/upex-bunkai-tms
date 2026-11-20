@@ -180,6 +180,8 @@ export function readmeSectionRows(text: string): Array<{ name: string, line: num
 }
 
 export const PROJECT_SKILLS_START = '<!-- project-skills:start -->';
+/** Header of the optional project-skills column that names the rows a skill yields to. */
+export const UNLESS_COLUMN = 'Unless';
 export const PROJECT_SKILLS_END = '<!-- project-skills:end -->';
 /** A skill slug as `.agents/skills/<slug>/` names it. */
 export const SKILL_SLUG = /^[a-z0-9][a-z0-9-]*$/;
@@ -192,6 +194,11 @@ export interface ProjectSkillRow {
   loadWhen: string
   /** Backticked regexes of the Triggers cell, `\|` unescaped to `|`. */
   triggers: string[]
+  /** Backticked ids of the optional `Unless` column (found by its header name): rows this one yields to. */
+  unless: string[]
+  /** Cells in this row and in the header: a row longer than its header hides a cell from every reader. */
+  cells: number
+  headerCells: number
 }
 
 /** Table cells split on unescaped pipes (GFM: `\|` is a literal pipe, inside code spans too). */
@@ -212,16 +219,24 @@ export function parseProjectSkills(text: string): ProjectSkillRow[] | null {
   const end = lines.findIndex(l => l.trim() === PROJECT_SKILLS_END);
   if (start === -1 || end === -1 || end < start) { return null; }
   const rows: ProjectSkillRow[] = [];
+  let header: string[] = [];
   for (let i = start + 1; i < end; i += 1) {
     const line = lines[i].trim();
     if (!line.startsWith('|') || /^\|[\s:|-]+\|$/.test(line)) { continue; }
     const cells = tableCells(line);
-    if (cells[0] === 'Skill') { continue; }
+    if (cells[0] === 'Skill') {
+      header = cells;
+      continue;
+    }
+    const unlessAt = header.findIndex(cell => cell.toLowerCase() === UNLESS_COLUMN.toLowerCase());
     rows.push({
       line: i + 1,
       slug: /`\/?([^`]+)`/.exec(cells[0] ?? '')?.[1] ?? (cells[0] ?? ''),
       loadWhen: cells[1] ?? '',
       triggers: [...(cells[2] ?? '').matchAll(/`([^`]+)`/g)].map(m => m[1]),
+      unless: unlessAt === -1 ? [] : [...(cells[unlessAt] ?? '').matchAll(/`([^`]+)`/g)].map(m => m[1]),
+      cells: cells.length,
+      headerCells: header.length,
     });
   }
   return rows;

@@ -18,9 +18,9 @@ None recorded yet. `git-flow-master` reads the strategy and its policy from the 
 
 ## Project context skills
 
-The `<aspect>-context` skills this project created (`/project-context context-skill`), one row each. The prompt hook routes a prompt that matches a row's Triggers to that skill's `SKILL.md`, and `bun run docs:check` counts a skill listed here as rostered. This file survives `bun sync`, so a row here keeps routing after every update; the shared skills section does not. Triggers are backticked, case-insensitive regexes separated by commas; write a `|` inside one as `\|`.
+The `<aspect>-context` skills this project created (`/project-context context-skill`), one row each. The prompt hook routes a prompt that matches a row's Triggers to that skill's `SKILL.md`, and `bun run docs:check` counts a skill listed here as rostered. This file survives `bun sync`, so a row here keeps routing after every update; the shared skills section does not. Triggers are backticked, case-insensitive regexes separated by commas; write a `|` inside one as `\|`. The optional `Unless` column lists backticked section ids or project-skill slugs: when one of those rows fires on the same prompt, this row does not route, unless the prompt names this skill or a `ROUTE-SCOPE:` line names its id. Use it for a broad row, such as a persona skill, that must stay off coding prompts. Add the column to the header too, or no reader sees it.
 
 <!-- project-skills:start -->
-| Skill | Load when | Triggers | Loaded by |
-| --- | --- | --- | --- |
+| Skill | Load when | Triggers | Loaded by | Unless |
+| --- | --- | --- | --- | --- |
 <!-- project-skills:end -->

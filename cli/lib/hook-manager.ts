@@ -214,3 +214,36 @@ export function withoutHuskyStep(command: string): string | null {
   const steps = command.split('&&').map(s => s.trim()).filter(s => s !== '' && !/^(?:bunx\s+|npx\s+)?husky(?:\s+install)?$/.test(s));
   return steps.length === 0 ? null : steps.join(' && ');
 }
+
+/** Scripts whose collision gets a composition proposal: both halves must run for setup to work. */
+export const COMPOSABLE_SCRIPTS: ReadonlySet<string> = new Set(['prepare', 'setup']);
+
+// Quotes, a subshell, a pipe or a background `&` make a naive split unsafe.
+const OPAQUE_SCRIPT = /["'`()]|\$\(|(?<!\|)\|(?!\|)|(?<!&)&(?!&)/;
+
+/**
+ * The steps of a script split on `&&` and `;`, each without a trailing
+ * `|| true` or `|| :` (a tolerant step still runs). Null for a command the
+ * split cannot read safely. `|| exit 0` is not stripped: it ends the script.
+ */
+export function scriptSteps(command: string): string[] | null {
+  if (OPAQUE_SCRIPT.test(command)) { return null; }
+  return command.split(/&&|;/)
+    .map(step => step.trim().replace(/(?:\s*\|\|\s*(?:true|:))+$/, '').trim())
+    .filter(Boolean);
+}
+
+/**
+ * True when a `prepare` or `setup` the app kept already runs every upstream
+ * step, tolerant forms included (`husky || true; bun x || true`). With
+ * `foreignHooks` upstream's `husky` step is not required.
+ */
+export function scriptCoversUpstream(key: string, local: string, upstream: string, foreignHooks = false): boolean {
+  if (!COMPOSABLE_SCRIPTS.has(key)) { return false; }
+  const wanted = foreignHooks ? withoutHuskyStep(upstream) : upstream;
+  if (wanted === null) { return true; }
+  const have = scriptSteps(local);
+  const need = scriptSteps(wanted);
+  if (have === null || need === null) { return false; }
+  return need.every(step => have.includes(step));
+}

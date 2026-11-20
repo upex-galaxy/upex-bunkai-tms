@@ -9,7 +9,9 @@
  * every turn keeps it in front for ~30 tokens.
  *
  * The emitter carries, in this order:
- *   1. `PERSONALITY_CONTRACT`: the AGENTS.md §2 output contract.
+ *   1. `PERSONALITY_CONTRACT`: the AGENTS.md §2 output contract, or the one
+ *      line of `.agents/personality-override.md` when the project has it
+ *      (`personalityContract`).
  *   2. The `AGENT IDENTITY:` line: worktree, session label, harness. It is
  *      forensic metadata: `git-flow-master` copies it into the `Worktree:` /
  *      `Session:` commit trailers (AGENTS.md Critical Rule #3), which name a
@@ -69,7 +71,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -81,6 +83,9 @@ export const PERSONALITY_CONTRACT = [
   'Butler bullets as `topic: fragment`.',
   'No em dash. Vary sentence length. No closing recap.',
 ].join(' ');
+
+export const PERSONALITY_OVERRIDE_FILE = '.agents/personality-override.md';
+export const PERSONALITY_OVERRIDE_MAX_BYTES = 2048;
 
 /** Prefix of the forensic identity line. Consumed by `git-flow-master`. */
 export const IDENTITY_PREFIX = 'AGENT IDENTITY:';
@@ -592,6 +597,7 @@ export const SECTIONS_DIR = '.agents/instructions';
 export const PROJECT_FILE = `${SECTIONS_DIR}/agent-project.md`;
 export const PROJECT_SKILLS_START = '<!-- project-skills:start -->';
 export const PROJECT_SKILLS_END = '<!-- project-skills:end -->';
+export const UNLESS_COLUMN = 'Unless';
 
 /**
  * Triggers for a router row whose only target is an import with no
@@ -759,15 +765,20 @@ export function parseProjectSkillRows(text) {
   const end = lines.findIndex(line => line.trim() === PROJECT_SKILLS_END);
   if (start === -1 || end === -1 || end < start) { return []; }
   const rows = [];
+  let unlessAt = -1;
   for (const raw of lines.slice(start + 1, end)) {
     const line = raw.trim();
     if (!line.startsWith('|') || /^\|[\s:|-]+\|$/.test(line)) { continue; }
     const cells = line.replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map(cell => cell.trim().replace(/\\\|/g, '|'));
-    if (cells[0] === 'Skill') { continue; }
+    if (cells[0] === 'Skill') {
+      unlessAt = cells.findIndex(cell => cell.toLowerCase() === UNLESS_COLUMN.toLowerCase());
+      continue;
+    }
     const slug = /`\/?([^`]+)`/.exec(cells[0] ?? '')?.[1] ?? '';
     if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) { continue; }
     const triggers = [...(cells[2] ?? '').matchAll(/`([^`]+)`/g)].map(found => found[1]);
-    rows.push({ slug, kind: cells[1] ?? '', triggers });
+    const unless = unlessAt === -1 ? [] : [...(cells[unlessAt] ?? '').matchAll(/`([^`]+)`/g)].map(found => found[1]);
+    rows.push({ slug, kind: cells[1] ?? '', triggers, unless });
   }
   return rows;
 }
@@ -814,7 +825,7 @@ export function loadInstructionRouter(root, read = readFileSync) {
       id: typeof prior.id === 'string' ? prior.id : skill.slug,
       triggers: [...(Array.isArray(prior.triggers) ? prior.triggers : []), ...skill.triggers],
     });
-    rows.push({ kind: skill.kind, targets: [path] });
+    rows.push({ kind: skill.kind, targets: [path], unless: skill.unless ?? [] });
   }
   const allPrefixes = [...metas.values()].flatMap(meta => pathPrefixes(meta.paths));
   const targets = new Map();
@@ -937,15 +948,32 @@ export function classifyPrompt(router, prompt) {
     const found = targetStrength(target, text, ids);
     if (found) { strength.set(target.path, found); }
   }
-  const fired = router.rows
+  const candidates = router.rows
     .map((row, order) => ({ row, order, anchor: strength.get(row.targets[0]) }))
-    .filter(entry => entry.anchor)
+    .filter(entry => entry.anchor);
+  const firedIds = new Set(candidates.map(({ row }) => router.targets.get(row.targets[0])?.id).filter(Boolean));
+  const fired = candidates
+    .filter(({ row }) => !yields(router, row, firedIds, text, ids))
     .sort((a, b) => b.anchor.score - a.anchor.score || a.anchor.first - b.anchor.first || a.order - b.order);
   const routed = [];
   for (const path of [...fired.map(({ row }) => row.targets[0]), ...fired.flatMap(({ row }) => row.targets.slice(1))]) {
     if (!routed.includes(path)) { routed.push(path); }
   }
   return routed;
+}
+
+/**
+ * A project-skill row with an `Unless` cell is dropped when a row it names
+ * fired on the same prompt (ids taken before any row is dropped, so there is
+ * no chain), unless the prompt asks for the skill itself: its id in the
+ * scope, or its slug written in the prompt.
+ */
+function yields(router, row, firedIds, text, ids) {
+  const unless = Array.isArray(row.unless) ? row.unless : [];
+  if (unless.length === 0 || !unless.some(id => firedIds.has(id))) { return false; }
+  const id = router.targets.get(row.targets[0])?.id ?? '';
+  if (!id || ids.has(id)) { return false; }
+  return !new RegExp(`(?<![\\w-])${escapeRegExp(id)}(?![\\w-])`, 'i').test(text);
 }
 
 function isSection(path) {
@@ -1182,7 +1210,9 @@ export function agentContextLines(options = {}) {
     : options.routeState === undefined
       ? fileRouteState(routerRoot(options), options.sessionId ?? identity.sessionId ?? '')
       : options.routeState;
-  const lines = [PERSONALITY_CONTRACT, identityLine(identity)];
+  const lines = [personalityContract(options), identityLine(identity)];
+  const ignored = personalityOverrideWarning(options);
+  if (ignored) { lines.push(ignored); }
   if (orca) {
     const launched = options.launched ?? sessionLaunched({ prompt, routeState });
     lines.push(launched ? ORCA_LAUNCHED_LINE : ORCA_CONTEXT_LINE);
@@ -1193,6 +1223,59 @@ export function agentContextLines(options = {}) {
     lines.push(...routeLines({ ...options, sessionId: options.sessionId ?? identity.sessionId, routeState }));
   }
   return lines;
+}
+
+export const PERSONALITY_OVERRIDE_IGNORED_PREFIX = 'PERSONALITY OVERRIDE IGNORED:';
+export const RESERVED_LINE_PREFIXES = [IDENTITY_PREFIX, ROUTE_PREFIX, ROUTE_OPTIONAL_PREFIX, ROUTE_PENDING_PREFIX, ROUTE_SCOPE_PREFIX, 'ORCA:', 'CREDENTIALS:', 'WORKTREE:', PERSONALITY_OVERRIDE_IGNORED_PREFIX];
+
+/**
+ * Why the project's override file is not used, or null when it is (or is absent).
+ * Shared by the emitter (falls back to the default) and `agents:compat:check` (reports it).
+ */
+export function personalityOverrideProblem(root) {
+  const file = join(root, PERSONALITY_OVERRIDE_FILE);
+  let stats;
+  try { stats = lstatSync(file); }
+  catch { return null; }
+  if (!stats.isFile()) { return `${PERSONALITY_OVERRIDE_FILE} must be a regular file (not a symlink or a folder)`; }
+  if (stats.size > PERSONALITY_OVERRIDE_MAX_BYTES) { return `${PERSONALITY_OVERRIDE_FILE} is ${stats.size} bytes; the limit is ${PERSONALITY_OVERRIDE_MAX_BYTES} (it is re-injected on every prompt)`; }
+  const text = singleLine(readFileSync(file, 'utf8'));
+  if (text === '') { return `${PERSONALITY_OVERRIDE_FILE} is empty`; }
+  const reserved = RESERVED_LINE_PREFIXES.find(prefix => text.startsWith(prefix));
+  if (reserved) { return `${PERSONALITY_OVERRIDE_FILE} starts with \`${reserved}\`, a prefix the hook's own lines use`; }
+  return null;
+}
+
+/** The output contract: the project's override as one line, else `PERSONALITY_CONTRACT`. */
+export function personalityContract(options = {}) {
+  if (typeof options.contract === 'string') { return options.contract; }
+  try {
+    const root = routerRoot(options);
+    if (!root || personalityOverrideProblem(root) !== null || !existsSync(join(root, PERSONALITY_OVERRIDE_FILE))) { return PERSONALITY_CONTRACT; }
+    return singleLine(readFileSync(join(root, PERSONALITY_OVERRIDE_FILE), 'utf8'));
+  }
+  catch {
+    return PERSONALITY_CONTRACT;
+  }
+}
+
+/**
+ * The line that says the project's override exists but the default contract
+ * is in force, or '' when the override is used or absent. It names the
+ * reason, never the file's content.
+ */
+export function personalityOverrideWarning(options = {}) {
+  if (typeof options.contract === 'string') { return ''; }
+  let root;
+  try { root = routerRoot(options); }
+  catch { return ''; }
+  if (!root) { return ''; }
+  try { lstatSync(join(root, PERSONALITY_OVERRIDE_FILE)); }
+  catch { return ''; }
+  let problem;
+  try { problem = personalityOverrideProblem(root); }
+  catch { problem = `${PERSONALITY_OVERRIDE_FILE} could not be read`; }
+  return problem ? `${PERSONALITY_OVERRIDE_IGNORED_PREFIX} ${problem}; the default contract above applies until the file is fixed (bun run agents:compat:check names the fix).` : '';
 }
 
 /** A title is a single line: control characters collapse into spaces. */

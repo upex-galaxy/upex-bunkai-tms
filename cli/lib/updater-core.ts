@@ -60,7 +60,8 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { CONTEXT_MAP_SKILLS } from './context-maps';
-import { detectHookManager } from './hook-manager';
+import { detectHookManager, scriptCoversUpstream } from './hook-manager';
+import { harvestSecretValues, holdsEnvValues, redactAll } from './ui/redaction.ts';
 import { applyIgnoreAppend, computeBlobSha, detectIgnoreDelta } from './updater-ignore';
 import { adoptPackageJsonDelta, applyPackageJsonAppend, applyPackageJsonOverride, detectPackageJsonDelta, parsePackageJson } from './updater-package';
 import { ComponentOverlapError, CorruptStateError } from './updater-types';
@@ -1687,6 +1688,21 @@ export async function applyResolution(
 // DIFF RENDERERS
 // ============================================================================
 
+function colorDiff(diff: string): string {
+  return diff.split('\n').map((line) => {
+    if (line.startsWith('+') && !line.startsWith('+++')) { return `\x1B[32m${line}\x1B[0m`; }
+    if (line.startsWith('-') && !line.startsWith('---')) { return `\x1B[31m${line}\x1B[0m`; }
+    if (line.startsWith('@@')) { return `\x1B[36m${line}\x1B[0m`; }
+    return line;
+  }).join('\n');
+}
+
+function safeDiff(diff: string, entryPath: string, sides: string[]): string {
+  const envFile = holdsEnvValues(entryPath);
+  const values = envFile ? sides.flatMap(text => harvestSecretValues(text, entryPath)).sort((a, b) => b.length - a.length) : [];
+  return colorDiff(redactAll(diff, values, { envKeys: envFile }));
+}
+
 /**
  * Render a colorized unified diff of template changes: template-old → template-new.
  * For status=A (no old blob), uses the empty-tree SHA as the old side.
@@ -1698,10 +1714,11 @@ export function renderTemplateDiff(entry: DeltaEntry, repoDir: string): string {
   // directly — which is what the user actually wants for new files.
   if (!entry.templateOldSha && entry.templateNewSha) {
     try {
-      return execSync(
+      const content = execSync(
         `git -C "${repoDir}" show ${entry.templateNewSha}`,
         { stdio: ['pipe', 'pipe', 'pipe'] },
       ).toString();
+      return safeDiff(content, entry.path, [content]);
     }
     catch {
       return `(could not read upstream content for ${entry.path})\n`;
@@ -1713,10 +1730,10 @@ export function renderTemplateDiff(entry: DeltaEntry, repoDir: string): string {
   const newRef = entry.templateNewSha || EMPTY_TREE;
 
   try {
-    return execSync(
-      `git -C "${repoDir}" diff --color=always ${oldRef} ${newRef}`,
+    return safeDiff(execSync(
+      `git -C "${repoDir}" diff --no-color ${oldRef} ${newRef}`,
       { stdio: ['pipe', 'pipe', 'pipe'] },
-    ).toString();
+    ).toString(), entry.path, []);
   }
   catch {
     return `(could not render template diff for ${entry.path})\n`;
@@ -1747,18 +1764,19 @@ export function renderLocalDiff(entry: DeltaEntry, repoDir: string, localRepoRoo
       { stdio: ['pipe', 'pipe', 'pipe'] },
     );
     fs.writeFileSync(tmpPath, blobBytes);
+    const sides = [blobBytes.toString(), fs.readFileSync(localPath, 'utf8')];
 
     try {
-      return execSync(
-        `git diff --no-index --color=always "${tmpPath}" "${localPath}"`,
+      return safeDiff(execSync(
+        `git diff --no-index --no-color "${tmpPath}" "${localPath}"`,
         { stdio: ['pipe', 'pipe', 'pipe'] },
-      ).toString();
+      ).toString(), entry.path, sides);
     }
     catch (diffErr) {
       // git diff --no-index exits non-zero when files differ — expected
       const err = diffErr as { stdout?: Buffer | string };
       if (err.stdout) {
-        return err.stdout.toString();
+        return safeDiff(err.stdout.toString(), entry.path, sides);
       }
       return `(could not render local diff for ${entry.path})\n`;
     }
@@ -3741,6 +3759,12 @@ export async function runUpdate(
           else if (opts.force === true) {
             resolution = 'theirs';
             sink.step(`[force] ${delta.file} ${section}.${key}: usando versión upstream`);
+          }
+          else if (section === 'scripts' && scriptCoversUpstream(key, drift.localValue, drift.upstreamValue)) {
+            // The project's prepare/setup already runs every upstream step (a
+            // tolerant `|| true` form): kept and recorded, back only when upstream changes.
+            resolution = 'mine';
+            sink.step(`${delta.file} ${section}.${key}: tu script ya corre cada paso upstream; se mantiene`);
           }
           else if (opts.auto || !sink.resolvePackageJsonKey) {
             // CI-safe default (and fallback when the sink has no resolver):

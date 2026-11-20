@@ -2236,7 +2236,7 @@ async function main(): Promise<void> {
     if (reinclude.hidden.length > 0) {
       runFacts.reinclude = reinclude;
       const rules = [...new Set(reinclude.hidden.map(h => `${h.pattern} (${h.source})`))].join(', ');
-      sink.step(`${parsed.dryRun ? '[dry-run] ' : ''}.gitignore de la app oculta ${SKILLS_CANONICAL_DIR.split('/')[0]}/ (${rules}): ${parsed.dryRun ? 'se añadiría' : 'añadido'} ${reinclude.added.join(' ')} en un bloque propio; las líneas de la app no cambian.`);
+      sink.step(`${parsed.dryRun ? '[dry-run] ' : ''}.gitignore de la app oculta ${reinclude.hidden.map(h => h.path).join(', ')} (${rules}): ${reinclude.added.length === 0 ? 'el bloque propio ya existe y no alcanza' : `${parsed.dryRun ? 'se añadiría' : 'añadido'} ${reinclude.added.join(' ')} en un bloque propio`}; las líneas de la app no cambian.`);
     }
   }
   const migration = runHarnessMigration(sink, parsed.dryRun, parsed.adopt) ?? readHarnessMigrationResultFromEnv();

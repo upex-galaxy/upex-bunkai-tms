@@ -40,13 +40,13 @@ import * as path from 'node:path';
 
 import { parse as parseYaml } from 'yaml';
 import { appContextSlug, appIdentity, buildAppContextSkill, composeAdoptedL0, withAppContextPointer } from './adopt-app-context.ts';
-import { hiddenPaths } from './adopt-gitignore.ts';
+import { hiddenUntracked, reincludeCovers } from './adopt-gitignore.ts';
 import { ADOPT_ISOLATION_PROMPT, analyzeIsolation, isolationFindings, isolationPrompt } from './adopt-isolation.ts';
 import { CLAUDE_INSTRUCTIONS_SHIM } from './agent-compatibility.ts';
 import { SCHEMA_FILE, SCHEMA_SOURCE, seedFromSchema } from './agents-schema.ts';
 import { BOILERPLATE_TEST_PATHS, BOILERPLATE_TEST_PATTERNS } from './boilerplate-only.ts';
 import { resetGitStrategyProvenance } from './git-strategy-provenance.ts';
-import { detectHookManager, withoutHuskyStep } from './hook-manager.ts';
+import { COMPOSABLE_SCRIPTS, detectHookManager, scriptCoversUpstream, scriptSteps, withoutHuskyStep } from './hook-manager.ts';
 import { ADOPT_UPSTREAM_SKILLS_DIR, collectUpstreamOwned, writeUpstreamOwned } from './tooling-scope.ts';
 import { createBackupDir, normalizeWhitespace } from './updater-core';
 import { deliverProjectInstructionsStub, PROJECT_INSTRUCTIONS_FILE } from './updater-instructions.ts';
@@ -150,9 +150,6 @@ function describeFrameworkSkill(root: string, upstreamDir: string, name: string,
     shortstat: (stat.stdout ?? '').trim(),
   };
 }
-
-/** Scripts whose collision gets a composition proposal: both halves must run for setup to work. */
-const COMPOSABLE_SCRIPTS = new Set(['prepare', 'setup']);
 
 const AGENTS_FILE = 'AGENTS.md';
 const CLAUDE_FILE = 'CLAUDE.md';
@@ -402,20 +399,21 @@ export function isAdopted(root: string): boolean {
 // ============================================================================
 
 /**
- * `"prepare": "<app> && <upstream>"` for a `prepare` / `setup` collision, else
- * null. A step both sides already run (`husky`) appears once, the app's first.
- * With `foreignHooks` (the app's hooks run on another manager) upstream's
- * `husky` step is left out: it would switch the app's hooks off.
+ * `"prepare": "<app> && <missing upstream steps>"` for a `prepare` / `setup`
+ * collision, else null. The app's command is kept verbatim (a `;` in it is
+ * never rewritten into `&&`); a step it already runs, tolerant forms included
+ * (`husky || true`), is not added again, and a script that already runs every
+ * upstream step gets no proposal at all (`scriptCoversUpstream`). With
+ * `foreignHooks` (the app's hooks run on another manager) upstream's `husky`
+ * step is left out: it would switch the app's hooks off.
  */
 export function scriptCompositionProposal(key: string, local: string, upstream: string, foreignHooks = false): string | null {
-  if (!COMPOSABLE_SCRIPTS.has(key)) { return null; }
-  const steps = (cmd: string): string[] => cmd.split('&&').map(part => part.trim()).filter(Boolean);
-  const composed = [...steps(local)];
-  const upstreamSteps = foreignHooks ? steps(withoutHuskyStep(upstream) ?? '') : steps(upstream);
-  for (const step of upstreamSteps) {
-    if (!composed.includes(step)) { composed.push(step); }
-  }
-  return `${JSON.stringify(key)}: ${JSON.stringify(composed.join(' && '))}`;
+  if (!COMPOSABLE_SCRIPTS.has(key) || scriptCoversUpstream(key, local, upstream, foreignHooks)) { return null; }
+  const split = (cmd: string): string[] => cmd.split('&&').map(part => part.trim()).filter(Boolean);
+  const have = scriptSteps(local) ?? split(local);
+  const upstreamSteps = foreignHooks ? split(withoutHuskyStep(upstream) ?? '') : split(upstream);
+  const missing = upstreamSteps.filter((step, index) => !have.includes(step) && upstreamSteps.indexOf(step) === index);
+  return `${JSON.stringify(key)}: ${JSON.stringify([local.trim(), ...missing].filter(Boolean).join(' && '))}`;
 }
 
 /** At most `max` names, then `+N more`. */
@@ -572,7 +570,7 @@ export function adoptFindings(input: AdoptRowsInput): Omit<ParityFinding, 'id'>[
       ? {
           surface: 'components',
           path: '.gitignore',
-          evidence: `the app's ${rules} hid the agentic store; re-included with ${re.added.map(a => `\`${a}\``).join(', ')} in an appended block, the app's own lines untouched`,
+          evidence: `the app's ${rules} hid ${re.hidden.map(h => h.path).join(', ')}; re-included with ${re.added.map(a => `\`${a}\``).join(', ')} in an appended block, the app's own lines untouched`,
           suggested: 'keep project',
           blocking: false,
           note: 'Without it the adoption commit versions nothing under .agents/ and the moved .claude/skills disappear from git. Drop the block only if the team decides to keep the agentic layer local.',
@@ -583,7 +581,7 @@ export function adoptFindings(input: AdoptRowsInput): Omit<ParityFinding, 'id'>[
           evidence: `the app's ${rules} still hide${re.stillHidden.length === 1 ? 's' : ''} ${re.stillHidden.map(h => h.path).join(', ')}: the agentic store would not be versioned`,
           suggested: 'decide',
           blocking: true,
-          note: 'Re-include .agents/ by hand (a `!/.agents/` line, plus `!/.agents/**` when a rule hides its children), then confirm with `git check-ignore -v .agents/project.yaml` (no output).',
+          note: `Re-include each path by hand with a \`!/<path>\` line (\`!/<folder>/\` for a folder) after the rule that hides it, then confirm with \`git check-ignore -v --no-index ${re.stillHidden.map(h => h.path).join(' ')}\` (no output).`,
         });
   }
 
@@ -598,14 +596,22 @@ export function adoptFindings(input: AdoptRowsInput): Omit<ParityFinding, 'id'>[
     });
   }
 
+  const byRule = new Map<string, HiddenPath[]>();
   for (const h of input.hiddenDelivered ?? []) {
+    const rule = `${h.source}\t${h.pattern}`;
+    byRule.set(rule, [...(byRule.get(rule) ?? []), h]);
+  }
+  for (const group of byRule.values()) {
+    const { source, pattern } = group[0];
+    const paths = group.map(h => h.path);
     rows.push({
-      surface: surfaceFor(h.path),
-      path: h.path,
-      evidence: `delivered, but the app's \`${h.pattern}\` (${h.source}) keeps it out of git: a teammate who clones never receives it`,
-      suggested: 'keep project',
-      blocking: false,
-      note: `The app's ignore rule is its own decision and is never edited. Track the file with \`git add -f ${h.path}\` or a \`!/${h.path}\` line only if the team wants it shared.`,
+      surface: surfaceFor(paths[0]),
+      path: paths[0],
+      evidence: `delivered, but the app's \`${pattern}\` (${source}) keeps ${paths.length === 1 ? 'it' : `${paths.length} delivered paths`} out of git: a teammate who clones never receives ${paths.length === 1 ? 'it' : 'them'}`,
+      suggested: 'decide',
+      blocking: true,
+      note: `The app's ignore rule is never edited. Share ${paths.length === 1 ? 'the path' : 'them'} with a \`!/<path>\` line after ${source} (or \`git add -f\`), or record that the team keeps ${paths.length === 1 ? 'it' : 'them'} local.`,
+      ...(paths.length > 1 ? { detail: paths.join('\n') } : {}),
     });
   }
 
@@ -623,6 +629,17 @@ export function adoptFindings(input: AdoptRowsInput): Omit<ParityFinding, 'id'>[
   }
 
   for (const kept of input.scriptsKept) {
+    if (scriptCoversUpstream(kept.key, kept.localValue, kept.upstreamValue, input.foreignHooks === true)) {
+      rows.push({
+        surface: 'package',
+        path: kept.file,
+        evidence: `scripts.${kept.key}: the app's script kept; it already runs every upstream step (a tolerant \`|| true\` or \`;\` form counts), so nothing is proposed`,
+        suggested: 'keep project',
+        blocking: false,
+        detail: `app (kept):\n  ${kept.localValue}\nupstream:\n  ${kept.upstreamValue}`,
+      });
+      continue;
+    }
     const proposal = scriptCompositionProposal(kept.key, kept.localValue, kept.upstreamValue, input.foreignHooks === true);
     rows.push({
       surface: 'package',
@@ -890,7 +907,8 @@ export async function runAdopt(input: AdoptHookInput): Promise<AdoptOutcome> {
     foreignHooks: hooks.foreign,
     reinclude: input.reinclude ?? null,
     ignoreLinesWithheld: input.ignoreLinesWithheld ?? [],
-    hiddenDelivered: dryRun ? [] : hiddenPaths(root, [...input.appliedPaths, ...delivered]),
+    hiddenDelivered: hiddenUntracked(root, [...input.appliedPaths, ...delivered])
+      .filter(h => !dryRun || !(input.reinclude?.added ?? []).some(line => reincludeCovers(line, h.path))),
   });
   findings.push(...isolationFindings(isolation, isolationSaved));
   return { findings, protectedPaths, yamlSeeded, envAdded, instructions, delivered, installerLockWritten: !dryRun, isolationPrompt: isolationSaved, frameworkSkills };

@@ -105,6 +105,7 @@ import {
   SECTION_FILE,
   SECTIONS_DIR,
   SKILL_SLUG,
+  UNLESS_COLUMN,
   withoutCode,
   withRouterLock,
 } from './lib/instructions';
@@ -231,12 +232,29 @@ export function lintRouter(root: string, l0: string, sections: string[]): Instru
   return findings;
 }
 
+/** The `id` of every section file in `.agents/instructions/` (frontmatter, else the file stem). */
+function sectionIds(root: string): string[] {
+  const dir = join(root, SECTIONS_DIR);
+  if (!existsSync(dir)) { return []; }
+  return readdirSync(dir).filter(name => name.endsWith('.md')).map((name) => {
+    const meta = parseFrontmatter(readFileSync(join(dir, name), 'utf8'));
+    return typeof meta?.id === 'string' ? meta.id : (SECTION_FILE.exec(name)?.[1] ?? name);
+  });
+}
+
 /** `router` findings for the project's own skill rows in `agent-project.md`. */
 export function lintProjectSkills(root: string, projectText: string): InstructionFinding[] {
   const rel = `${SECTIONS_DIR}/${PROJECT_FILE}`;
   const findings: InstructionFinding[] = [];
-  for (const row of parseProjectSkills(projectText) ?? []) {
+  const rows = parseProjectSkills(projectText) ?? [];
+  const known = new Set([...sectionIds(root), ...rows.map(row => row.slug)]);
+  for (const row of rows) {
     const bad = (message: string): void => { findings.push(finding('router', rel, row.line, message)); };
+    if (row.cells > row.headerCells) { bad(`project skill row \`${row.slug}\` has ${row.cells} cells but the header has ${row.headerCells}: a cell past the header is hidden from every reader (add the column to the header, e.g. \`${UNLESS_COLUMN}\`)`); }
+    for (const id of row.unless) {
+      if (id === row.slug) { bad(`project skill row \`${row.slug}\`: ${UNLESS_COLUMN} names the row itself`); }
+      else if (!known.has(id)) { bad(`project skill row \`${row.slug}\`: ${UNLESS_COLUMN} names \`${id}\`, which is no section id and no project skill row`); }
+    }
     if (!SKILL_SLUG.test(row.slug)) {
       bad(`project skill row: \`${row.slug}\` is not a skill slug (write it backticked, e.g. \`billing-context\`)`);
       continue;

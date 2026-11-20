@@ -60,6 +60,7 @@ stack:
   conventions:
     import_alias: '@/' # tsconfig paths: @/*, @app/*, @components/*, @lib/*
     testid_style: data-testid kebab-case # e.g. data-testid="create-project-form". Skills never rename an existing test id
+    features_root: null # GUARD features folder (rule R4, scripts/guard-manifest.ts); null = src/features, absent here, so the manifest check has nothing to list
 
 # Harnesses this project runs on (ADR-0013). Bunkai runs all three (CLAUDE.md shim,
 # opencode.jsonc, .codex/config.toml).
@@ -108,6 +109,21 @@ updater:
     - cli/lib/atlassian-instance.ts # BK-1619: comments follow the manifest change above
     - cli/lib/variables-flow.ts # BK-1619: comment follows the manifest change above
     - .agents/instructions/agent-project-variables.md # BK-1619: states ATLASSIAN_URL is no longer Vercel runtime config
+
+# Scope of the repo's own checks (documented in .agents/project.schema.yaml). Upstream
+# defaults (boilerplate sync 2026-11-20): every gate and every MCP host runs in full.
+checks:
+  mcp_parity:
+    mode: strict # strict | local-only
+    relay: {}
+    unrelayed: {}
+  hooks:
+    scope: full # full | staged (.husky/framework-gates.sh)
+  vars_check:
+    skip_paths: []
+  docs_check:
+    include: []
+    exclude: []
 
 # Variables declared above that are consumed OUTSIDE the {{TEMPLATE}} system
 # (env vars in scripts/, shell `yq` reads embedded in skill docs, etc.).

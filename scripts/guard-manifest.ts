@@ -11,6 +11,8 @@
  *   bun run guard:manifest:check            # exit 1 when the file is stale
  *   bun scripts/guard-manifest.ts --root <dir> --out <file> [--check]
  *
+ * The features root is `--root`, else `stack.conventions.features_root` of
+ * `.agents/project.yaml` (relative to `stack.app_root`), else `src/features`.
  * With no features folder there is nothing to list: one line, exit 0.
  */
 
@@ -22,6 +24,7 @@ export const GUARD_ENFORCEMENT_LEVEL: 'warn' | 'error' = 'error';
 
 export const DEFAULT_ROOT = 'src/features';
 export const DEFAULT_OUT = 'guard-manifest.json';
+export const PROJECT_YAML = '.agents/project.yaml';
 const DOORS = ['index.ts', 'index.tsx'];
 
 export interface FeatureEntry {
@@ -123,6 +126,20 @@ export function formatWarning(message: string): string {
   return `guard-manifest: ${GUARD_ENFORCEMENT_LEVEL}: ${message}`;
 }
 
+interface StackBlock {
+  app_root?: unknown
+  conventions?: { features_root?: unknown }
+}
+
+export function featuresRoot(base: string = process.cwd()): string {
+  let stack: StackBlock | undefined;
+  try { stack = (Bun.YAML.parse(readFileSync(join(base, PROJECT_YAML), 'utf8')) as { stack?: StackBlock } | null)?.stack; }
+  catch { stack = undefined; }
+  const configured = stack?.conventions?.features_root;
+  const app = typeof stack?.app_root === 'string' && stack.app_root !== '' ? stack.app_root : '.';
+  return toPosix(join(app, typeof configured === 'string' && configured !== '' ? configured : DEFAULT_ROOT));
+}
+
 function option(args: string[], flag: string): string | undefined {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : undefined;
@@ -130,7 +147,7 @@ function option(args: string[], flag: string): string | undefined {
 
 export function main(args: string[]): number {
   const check = args.includes('--check');
-  const root = resolve(option(args, '--root') ?? DEFAULT_ROOT);
+  const root = resolve(option(args, '--root') ?? featuresRoot());
   const out = resolve(option(args, '--out') ?? DEFAULT_OUT);
 
   if (!existsSync(root)) {

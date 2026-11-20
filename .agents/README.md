@@ -131,6 +131,31 @@ The `hooks` block grows on every `bun sync` too, before the compatibility check 
 - **A repeated key is folded, not lost.** A git auto-merge can leave `"PostToolUse"` twice in one object; `JSON.parse` keeps only the last. The merge folds both lists into one and reports it.
 - **Read directly by the updater** (`readDeclinedHooks` in `cli/lib/updater-settings.ts`); add `declined_hooks` to `external_consumers` when you set it.
 
+## `checks` (block inside `project.yaml`)
+
+How a project scopes three gates whose shipped rules do not fit an adopted app. Each key is documented in `project.schema.yaml`; the reader is `cli/lib/check-scope.ts`. Absent or empty, every gate behaves exactly as shipped, and the boilerplate itself keeps the defaults.
+
+```yaml
+checks:
+  mcp_parity:
+    mode: local-only # strict (default) | local-only
+    relay:
+      pi: [bun, scripts/mcp-launch.ts] # exact argv prefix; the server id follows it
+    unrelayed:
+      pi: [instance-n8n-mcp] # http servers the relay cannot carry, warned by name
+  vars_check:
+    skip_paths: [.agents/skills/<slug>/**]
+  docs_check:
+    include: []
+    exclude: [docs/todo/**]
+```
+
+- **`mcp_parity`** (`agents:compat:check`): `local-only` treats the canonical `.mcp.json` as a per-machine file a committed `.gitignore` must ignore; `relay` accepts Pi entries that start each stdio server through one tracked launcher instead of copying it; `unrelayed` records the servers that launcher cannot carry (http, disabled, or taking a value from the host), each one warned by name. Under `local-only` a committed host may hold no literal credential in env, headers, the url or args.
+- **`vars_check.skip_paths`**: inside a project-owned folder with its own `{{...}}` syntax, an undeclared bare `{{NAME}}` is ignored; everything else is checked as usual.
+- **`docs_check.include` / `exclude`**: scope the doc pages only. The agent-facing markdown, the roster, the contracts and the `bun run` check of `AGENTS.md` are never scoped.
+- **Fail closed**: a malformed value, a glob that matches nothing, or a skip path over the framework surface fails the gate that owns the key, naming it.
+- **Not a `{{VAR}}` source**: `vars:check` skips the block.
+
 ## `secrets` (block inside `project.yaml`)
 
 Where SECRET values come from. `local` (the default) means `.env` / `.env.local`; a secret manager is the advanced opt-in (`.context/ADR/ADR-0011-secret-manager-advanced-option.md`).

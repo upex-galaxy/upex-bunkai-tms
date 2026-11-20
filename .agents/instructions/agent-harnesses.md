@@ -149,7 +149,7 @@ The owner is `cli/lib/updater-adopt.ts` plus the `adopt` option of `runUpdate` (
 
 ### Hook: one emitter, one adapter per harness
 
-`.agents/hooks/personality-reinject.mjs` holds the prompt-time context once: the `AGENTS.md` §2 output contract, the `AGENT IDENTITY: worktree=… session=… harness=…` line the commit trailers copy (Critical Rule #3), an `ORCA:` line only when the `orca` binary is reachable, at most one setup warning (no `.env` in the checkout, else a linked worktree that never ran `bun run worktree:provision`), and the `ROUTE:` lines (how they are chosen, capped and re-armed is "How a section is reached" in `.agents/instructions/README.md`).
+`.agents/hooks/personality-reinject.mjs` holds the prompt-time context once: the `AGENTS.md` §2 output contract (or the project's own, one paragraph in `.agents/personality-override.md`, which `agents:compat:check` validates; an unusable one keeps the default and adds a `PERSONALITY OVERRIDE IGNORED:` line after the identity line), the `AGENT IDENTITY: worktree=… session=… harness=…` line the commit trailers copy (Critical Rule #3), an `ORCA:` line only when the `orca` binary is reachable, at most one setup warning (no `.env` in the checkout, else a linked worktree that never ran `bun run worktree:provision`), and the `ROUTE:` lines (how they are chosen, capped and re-armed is "How a section is reached" in `.agents/instructions/README.md`).
 
 Each harness runs the emitter through its own adapter:
 
@@ -167,7 +167,7 @@ A second, separate hook, `.agents/hooks/doc-contracts.mjs`, runs as a `PostToolU
 
 The canonical server set is whatever `.mcp.json` declares (the first declared harness's file when Claude is not in use). Every server there must exist in the other configs in use (`opencode.jsonc`, `.codex/config.toml`, `.pi/mcp.json`) with the same `.env` dependencies and the same literal env settings. A server present in one host only fails, naming the server and the host.
 
-Parity normalizes each native format (JSON, JSONC, TOML) into a common shape (transport, command, args, url, env vars, enabled) and compares that. The servers this boilerplate ships (`KNOWN_MCP_IDS` in `cli/lib/agent-compatibility-contracts.ts`) also get a strict per-host shape check whenever the project declares them. Any other server gets the generic check only, so a downstream project may drop or add servers freely.
+Parity normalizes each native format (JSON, JSONC, TOML) into a common shape (transport, command, args, url, env vars, enabled) and compares that. The servers this boilerplate ships (`KNOWN_MCP_IDS` in `cli/lib/agent-compatibility-contracts.ts`) also get a strict per-host shape check whenever the project declares them. Any other server gets the generic check only, so a downstream project may drop or add servers freely. Parity compares the real values but never prints one: a message shows each literal value as `<redacted>` (or the `${VAR}` it references) and names the keys whose values differ, and a parser error loses its quoted fragments (`cli/lib/ui/redaction.ts`).
 
 **The `.env` loader.** Env values never travel through a host's own syntax. Every stdio server that needs `.env` values starts, on every host, through the loader `bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter <its vars> -- <server>` (`MCP_ENV_LOADER_*` and `mcpEnvLoaderArgs` in `cli/lib/agent-compatibility-contracts.ts`, ADR-0012). At spawn time the loader reads the varlock schema plus `.env` and `.env.local` (or the secret manager the schema names, ADR-0011) from the project root, however the harness was launched (desktop app, natively launched worker). It hands the server only the names in its filter, so the filter is the server's `.env` dependency set that parity compares.
 
@@ -176,6 +176,7 @@ Parity normalizes each native format (JSON, JSONC, TOML) into a common shape (tr
 - Codex keeps `startup_timeout_sec = 30` on each stdio server (its 10-second default is too short for a cold `bunx` fetch plus the loader hop), and `bearer_token_env_var` only on a remote one.
 - A missing loader, a host-side reference beside it or a missing Codex budget fails `agents:compat:check` in the boilerplate. Downstream it is a warning naming the file and the exact launch, because the MCP configs are bootstrap-only or protected and a sync never delivers the fix.
 - Pi reads Claude's `mcpServers` shape plus its own keys (`exposure`, `description`), which parity ignores. A `!command` value there runs a shell and is refused.
+- A project scopes parity in `checks.mcp_parity` of `.agents/project.yaml` (documented in `.agents/project.schema.yaml`): `mode: local-only` for a per-machine `.mcp.json` that a committed `.gitignore` ignores, `relay` for a Pi that reaches every stdio server through one tracked project launcher, and `unrelayed` for the servers that launcher cannot carry, http, disabled or taking a value from the host (warned by name, never silent). Absent, parity runs strict as described here.
 - Critical Rule #9 applies to every host.
 
 ### Harness-specific gotchas

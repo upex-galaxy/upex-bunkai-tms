@@ -6,7 +6,8 @@
  * `eslint.config.base.js` re-exports it as `guardPlugin`.
  */
 
-import { relative } from 'node:path';
+import { readFileSync, statSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 
 /**
  * Default layer map: globs per layer, lowest first (platform < adapters <
@@ -28,6 +29,9 @@ export const GUARD_LAYERS = {
 const GUARD_ORDER = ['platform', 'adapters', 'features', 'app'];
 const GUARD_ALIASES = { '@platform/': 'platform', '@adapters/': 'adapters', '@features/': 'features' };
 const GUARD_DOC = 'agentic-dev-core/references/guard-architecture.md';
+const GUARD_SOURCE_EXT = /\.[cm]?[jt]sx?$/;
+const GUARD_DEFAULT_ALIASES = [['@/', 'src']];
+const guardAliasCache = new Map();
 
 /** Repo-relative POSIX path of a file or of an import resolved against it. */
 function guardPosix(path) {
@@ -45,7 +49,12 @@ function guardClassify(path, layers) {
   for (const layer of GUARD_ORDER) {
     for (const glob of [layers[layer] ?? []].flat()) {
       const folder = guardGlobFolder(glob);
-      if (folder === '' || path === folder || path.startsWith(`${folder}/`)) {
+      if (GUARD_SOURCE_EXT.test(folder)) {
+        if (path.replace(GUARD_SOURCE_EXT, '') === folder.replace(GUARD_SOURCE_EXT, '')) {
+          return { layer, folder: folder.split('/').slice(0, -1).join('/') };
+        }
+      }
+      else if (folder === '' || path === folder || path.startsWith(`${folder}/`)) {
         return { layer, folder };
       }
     }
@@ -53,13 +62,45 @@ function guardClassify(path, layers) {
   return undefined;
 }
 
+export function guardTsconfigAliases(text, tsconfigDir, cwd) {
+  const json = text
+    .replace(/"(?:\\.|[^"\\])*"|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, match => (match.startsWith('"') ? match : ''))
+    .replace(/"(?:\\.|[^"\\])*"|,(\s*[}\]])/g, (match, closer) => closer ?? match);
+  const options = JSON.parse(json).compilerOptions ?? {};
+  const base = resolve(tsconfigDir, options.baseUrl ?? '.');
+  const aliases = Object.entries(options.paths ?? {})
+    .filter(([key, targets]) => key.endsWith('/*') && typeof targets?.[0] === 'string' && /(?:^|\/)\*$/.test(targets[0]))
+    .map(([key, targets]) => [key.slice(0, -1), guardPosix(relative(cwd, resolve(base, targets[0].slice(0, -1))))])
+    .sort(([a], [b]) => b.length - a.length);
+  return aliases.some(([prefix]) => prefix === '@/') ? aliases : [...aliases, ...GUARD_DEFAULT_ALIASES];
+}
+
+function guardAliases(cwd, settings) {
+  if (settings?.aliases) {
+    return Object.entries(settings.aliases)
+      .map(([prefix, root]) => [prefix, guardPosix(root).replace(/^\.(?:\/|$)|\/+$/g, '')])
+      .sort(([a], [b]) => b.length - a.length);
+  }
+  const file = join(cwd, 'tsconfig.json');
+  let mtime;
+  try { mtime = statSync(file).mtimeMs; }
+  catch { return GUARD_DEFAULT_ALIASES; }
+  const key = `${file}:${mtime}`;
+  if (!guardAliasCache.has(key)) {
+    try { guardAliasCache.set(key, guardTsconfigAliases(readFileSync(file, 'utf8'), cwd, cwd)); }
+    catch (error) { throw new Error(`GUARD: cannot read compilerOptions.paths from ${file} (${error.message}); declare settings.guard.aliases instead`); }
+  }
+  return guardAliasCache.get(key);
+}
+
 /**
  * Where an import points: its layer plus the feature segment and the path
  * inside the feature, when it targets one. Relative paths resolve against the
  * importing file; `@platform/`, `@adapters/` and `@features/` name the layer
- * directly; `@/` is `src/`. Anything else (packages) is ignored.
+ * directly; every other alias resolves through the app's tsconfig.json `paths`
+ * (`@/` is `src/` when it declares none). Anything else (packages) is ignored.
  */
-function guardTarget(source, filePath, layers) {
+function guardTarget(source, filePath, layers, aliases) {
   const alias = Object.keys(GUARD_ALIASES).find(prefix => source.startsWith(prefix));
   if (alias) {
     const layer = GUARD_ALIASES[alias];
@@ -67,20 +108,22 @@ function guardTarget(source, filePath, layers) {
     return { layer, feature: layer === 'features' ? feature : undefined, inside: rest.join('/') };
   }
   let resolved;
-  if (source.startsWith('@/')) { resolved = `src/${source.slice(2)}`; }
+  const mapped = aliases.find(([prefix]) => source.startsWith(prefix));
+  if (mapped) { resolved = [mapped[1], source.slice(mapped[0].length)].filter(Boolean).join('/'); }
   else if (source.startsWith('.')) { resolved = guardPosix(relative('.', `${filePath.split('/').slice(0, -1).join('/') || '.'}/${source}`)); }
   else { return undefined; }
   const hit = guardClassify(resolved, layers);
   if (!hit) { return undefined; }
   const [feature, ...rest] = resolved.slice(hit.folder.length).replace(/^\//, '').split('/');
-  return { layer: hit.layer, feature: hit.layer === 'features' ? feature.replace(/\.[cm]?[jt]sx?$/, '') : undefined, inside: rest.join('/') };
+  return { layer: hit.layer, feature: hit.layer === 'features' ? feature.replace(GUARD_SOURCE_EXT, '') : undefined, inside: rest.join('/') };
 }
 
 /** Repo-relative POSIX path of the file ESLint is linting, plus the layer map in force. */
 function guardContext(context) {
-  const filePath = guardPosix(relative(context.cwd ?? process.cwd(), context.filename));
+  const cwd = context.cwd ?? process.cwd();
+  const filePath = guardPosix(relative(cwd, context.filename));
   const layers = context.settings?.guard?.layers ?? GUARD_LAYERS;
-  return { filePath, layers, own: guardClassify(filePath, layers) };
+  return { filePath, layers, own: guardClassify(filePath, layers), aliases: guardAliases(cwd, context.settings?.guard) };
 }
 
 /**
@@ -97,16 +140,16 @@ const guardPlugin = {
         schema: [],
         messages: {
           higher: `GUARD one direction (${GUARD_DOC}, R1): a {{from}} file never imports the {{to}} layer. Dependencies flow downward only (platform < adapters < features < app); move the call into a feature action or inject the dependency.`,
-          appAdapters: `GUARD thin app (${GUARD_DOC}, R3): src/app never imports adapters. Move the call into a feature action and import the feature through its index.ts.`,
+          appAdapters: `GUARD thin app (${GUARD_DOC}, R3): an app-layer file never imports adapters. Move the call into a feature action and import the feature through its index.ts.`,
         },
       },
       create(context) {
-        const { filePath, layers, own } = guardContext(context);
+        const { filePath, layers, own, aliases } = guardContext(context);
         if (!own) { return {}; }
         const check = (node) => {
           const source = node.source?.value;
           if (typeof source !== 'string') { return; }
-          const target = guardTarget(source, filePath, layers);
+          const target = guardTarget(source, filePath, layers, aliases);
           if (!target) { return; }
           if (own.layer === 'app' && target.layer === 'adapters') {
             context.report({ node, messageId: 'appAdapters' });
@@ -124,16 +167,16 @@ const guardPlugin = {
         type: 'problem',
         schema: [],
         messages: {
-          deepImport: `GUARD one door (${GUARD_DOC}, R2): import feature {{feature}} only through its index.ts ('@features/{{feature}}'), never '{{source}}'. Export what you need from features/{{feature}}/index.ts.`,
+          deepImport: `GUARD one door (${GUARD_DOC}, R2): import feature {{feature}} only through its index.ts, never '{{source}}'. Export what you need from the index.ts of feature {{feature}}.`,
         },
       },
       create(context) {
-        const { filePath, layers, own } = guardContext(context);
-        const ownFeature = own?.layer === 'features' ? filePath.slice(own.folder.length + 1).split('/')[0].replace(/\.[cm]?[jt]sx?$/, '') : undefined;
+        const { filePath, layers, own, aliases } = guardContext(context);
+        const ownFeature = own?.layer === 'features' ? filePath.slice(own.folder.length).replace(/^\//, '').split('/')[0].replace(GUARD_SOURCE_EXT, '') : undefined;
         const check = (node) => {
           const source = node.source?.value;
           if (typeof source !== 'string') { return; }
-          const target = guardTarget(source, filePath, layers);
+          const target = guardTarget(source, filePath, layers, aliases);
           if (target?.layer !== 'features' || !target.feature || target.feature === ownFeature) { return; }
           if (target.inside === '' || /^index(?:\.[cm]?[jt]sx?)?$/.test(target.inside)) { return; }
           context.report({ node, messageId: 'deepImport', data: { feature: target.feature, source } });

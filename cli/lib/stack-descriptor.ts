@@ -75,6 +75,7 @@ export const STACK_FIELDS: readonly StackField[] = [
   { path: 'test_runner', values: ['vitest', 'jest', 'bun', 'playwright', 'other', 'none'], nullable: true, label: 'Test runner' },
   { path: 'conventions.import_alias', values: null, nullable: true, label: 'Source import alias' },
   { path: 'conventions.testid_style', values: null, nullable: true, label: 'Test-id attribute and case' },
+  { path: 'conventions.features_root', values: null, nullable: true, label: 'GUARD features folder, relative to app_root' },
 ];
 
 /** What the v1 skills support (owner decisions OD2 / OD3); anything else stops at analysis. */
