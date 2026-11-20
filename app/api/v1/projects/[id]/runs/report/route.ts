@@ -86,6 +86,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     limit: query.limit,
     cursorStartedAt,
     cursorId,
+    branch: query.branch ?? null,
   });
   if (error) {
     if (error.code === 'P0002') {

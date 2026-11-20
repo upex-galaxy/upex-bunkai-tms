@@ -90,6 +90,7 @@ export const ReportQuerySchema = z
       .max(REPORT_PAGE_SIZE)
       .default(REPORT_PAGE_SIZE),
     cursor: z.string().min(1).optional(),
+    branch: z.string().min(1).max(255, 'branch must be at most 255 characters.').optional(),
   })
   // YYYY-MM-DD sorts lexicographically the same as chronologically, so a
   // plain string comparison is a correct chronological comparison here.
@@ -109,7 +110,7 @@ export type ReportQuery = z.infer<typeof ReportQuerySchema>;
 // which is not what an absent filter means).
 export function parseReportParams(params: URLSearchParams): ReportQuery {
   const raw: Record<string, unknown> = {};
-  for (const key of ['date_from', 'date_to', 'module_id', 'limit', 'cursor'] as const) {
+  for (const key of ['date_from', 'date_to', 'module_id', 'limit', 'cursor', 'branch'] as const) {
     const value = params.get(key);
     if (value !== null) {
       raw[key] = value;

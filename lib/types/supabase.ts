@@ -1271,6 +1271,35 @@ export interface Database {
           },
         ]
       }
+      project_repository_settings: {
+        Row: {
+          created_at: string
+          project_id: string
+          repository_url: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          project_id: string
+          repository_url: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          project_id?: string
+          repository_url?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'project_repository_settings_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: true
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       project_tracker_settings: {
         Row: {
           created_at: string
@@ -2960,6 +2989,10 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_list_project_branches: {
+        Args: { p_project_id: string }
+        Returns: string[]
+      }
       bunkai_list_project_bugs: {
         Args: { p_actor_user_id: string, p_project_id: string }
         Returns: Json
@@ -3129,6 +3162,7 @@ export interface Database {
       bunkai_report_project_runs: {
         Args: {
           p_actor_user_id: string
+          p_branch?: string
           p_cursor_id?: string
           p_cursor_started_at?: string
           p_date_from?: string
@@ -3226,6 +3260,14 @@ export interface Database {
       }
       bunkai_search_workspace: {
         Args: { p_limit?: number, p_query: string, p_workspace_id: string }
+        Returns: Json
+      }
+      bunkai_set_project_repository_url: {
+        Args: {
+          p_actor_user_id: string
+          p_project_id: string
+          p_repository_url: string
+        }
         Returns: Json
       }
       bunkai_set_test_automation_status: {

@@ -5243,6 +5243,22 @@
           "finished_at": {
             "type": ["string", "null"],
             "format": "date-time"
+          },
+          "commit": {
+            "type": ["string", "null"],
+            "description": "BK-1995 CI context: the commit reported with the Run (lower-case hexadecimal), or null."
+          },
+          "branch": {
+            "type": ["string", "null"],
+            "description": "BK-1995 CI context: the branch reported with the Run, or null. Filter on it with `branch`."
+          },
+          "pipeline_name": {
+            "type": ["string", "null"],
+            "description": "BK-1995 CI context: the pipeline name reported with the Run, or null."
+          },
+          "pipeline_url": {
+            "type": ["string", "null"],
+            "description": "BK-1995 CI context: the pipeline URL reported with the Run, or null. Stored verbatim; render it as a link only when it is http or https."
           }
         },
         "required": [
@@ -5256,7 +5272,11 @@
           "executor_mode",
           "status",
           "started_at",
-          "finished_at"
+          "finished_at",
+          "commit",
+          "branch",
+          "pipeline_name",
+          "pipeline_url"
         ]
       },
       "RunReportTotals": {
@@ -15436,7 +15456,7 @@
     "/api/v1/projects/{id}/runs/report": {
       "get": {
         "tags": ["Runs"],
-        "summary": "Filter a Project's Runs by date range, module, status and executor, with matching pass/fail totals",
+        "summary": "Filter a Project's Runs by date range, module, status, executor and branch, with matching pass/fail totals",
         "description": "Bearer `atc:read` (or cookie session). The PAT scope catalog has no run-read scope, so run reporting reuses the read scope rather than minting a fifth one (BK-499, superseding this story Key Contract Decision that deferred the question). One SECURITY DEFINER RPC (`bunkai_report_project_runs`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. Every filter is AND-composed and every filter composes with pagination server-side. Unlike `GET /api/v1/tests/{id}/runs`, rows are NOT restricted to terminal statuses — a currently-`running` Run is a legitimate row — and `totals` is recomputed from the SAME filtered set as the rows (not all-time), so the numbers change as filters narrow (Business Rule #3 / Technical Decision D2). Pagination is KEYSET on `(started_at desc, id desc)`, reusing the same opaque cursor contract as the run-history endpoint. A Project with no matching Runs returns an empty `items` with zeroed `totals` (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
         "security": [
           {
@@ -15518,6 +15538,17 @@
             "description": "Narrow to one or more executor modes, repeatable (?executor=human&executor=agent)."
           },
           {
+            "name": "branch",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": "BK-228: narrow to Runs reported with exactly this branch. The match is exact and case-sensitive (`Main` does not match `main`); URL-encode it, a slash survives as `%2F`. Runs reported without a branch never match. Longer than 255 characters is rejected (422)."
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -15591,7 +15622,7 @@
             }
           },
           "422": {
-            "description": "Validation failed — a `date_from`/`date_to` that is malformed or not a real calendar date, `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), or `limit` outside 1..50 (`validation_failed`).",
+            "description": "Validation failed — a `date_from`/`date_to` that is malformed or not a real calendar date, `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), `branch` longer than 255 characters, or `limit` outside 1..50 (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {

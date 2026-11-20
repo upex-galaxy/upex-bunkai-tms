@@ -262,3 +262,28 @@ describe('cursor codec reuse (BK-37, unmodified)', () => {
     expect(decodeRunCursor).toBe(historyValidation.decodeRunCursor);
   });
 });
+
+describe('branch (BK-228)', () => {
+  test('keeps a branch with a slash exactly as sent', () => {
+    const params = new URLSearchParams();
+    params.set('branch', 'feature/checkout-discounts');
+    expect(parseReportParams(new URLSearchParams(params.toString())).branch).toBe('feature/checkout-discounts');
+  });
+
+  test('keeps the case of the branch', () => {
+    expect(parseReportParams(new URLSearchParams('branch=Main')).branch).toBe('Main');
+  });
+
+  test('is absent when not sent', () => {
+    expect(parseReportParams(new URLSearchParams('')).branch).toBeUndefined();
+  });
+
+  test('accepts 255 characters and rejects 256', () => {
+    expect(parseReportParams(new URLSearchParams(`branch=${'a'.repeat(255)}`)).branch).toHaveLength(255);
+    expect(() => parseReportParams(new URLSearchParams(`branch=${'a'.repeat(256)}`))).toThrow();
+  });
+
+  test('rejects an empty branch', () => {
+    expect(() => parseReportParams(new URLSearchParams('branch='))).toThrow();
+  });
+});
