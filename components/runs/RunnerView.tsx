@@ -5,6 +5,7 @@ import type { StepMarkStatus } from '@lib/runs/mark-step-view';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
+import { CiContextRow } from '@components/runs/CiContext';
 import { RunModeBadge } from '@components/runs/RunModeBadge';
 import { RunSubmissionProvenance } from '@components/runs/RunSubmissionProvenance';
 import { StepEvidence } from '@components/runs/StepEvidence';
@@ -95,6 +96,10 @@ export interface RunDetail {
   // fixtures built before it keep type-checking. Null / empty for runs started by hand.
   executor_name?: string | null
   evidence_urls?: string[]
+  commit?: string | null
+  branch?: string | null
+  pipeline_name?: string | null
+  pipeline_url?: string | null
   test_title: string
   version: number
   started_at: string | null
@@ -116,6 +121,8 @@ export interface RunDetail {
 interface RunnerViewProps {
   run: RunDetail
   projectSlug: string
+  repositoryUrl?: string | null
+  canConfigureRepository?: boolean
   // BK-36 — member+ may abort; viewers get the read-only runner (no Abort button).
   canAbort?: boolean
   // BK-39 — same member+ write gate as abort; viewers get no Finish button.
@@ -203,7 +210,7 @@ function leaveDeletedWorkspace(): void {
 // Stable default: a fresh `[]` per render would re-run the effect that resets the attachments.
 const NO_ATTACHMENTS: StepAttachment[] = [];
 
-export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null, canAttach = false, initialAttachments = NO_ATTACHMENTS, currentUserId = '' }: RunnerViewProps) {
+export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigureRepository = false, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null, canAttach = false, initialAttachments = NO_ATTACHMENTS, currentUserId = '' }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
 
@@ -695,6 +702,13 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
           </div>
         </div>
       </div>
+
+      <CiContextRow
+        run={view}
+        repositoryUrl={repositoryUrl}
+        canConfigureRepository={canConfigureRepository}
+        settingsHref={`/projects/${projectSlug}/settings`}
+      />
 
       {/* progress bar: a track + accent fill, with a mono "{pct}% complete" label
           and "{done}/{total} steps" count. At creation this reads 0%. */}
