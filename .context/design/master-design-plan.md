@@ -33,7 +33,7 @@ Every user story that touches UI MUST:
 | Area | Fidelity | State |
 |------|----------|-------|
 | Design tokens (color/type/radii/shadow) | ~95% | ✅ Byte-exact — strong base |
-| Atom CSS classes (`.btn/.input/.seg/.card/.bar`…) | ~50% | ⚠️ 7 of ~14 mapped: `.dot`, `.kbd`, `.status-chip`, `.layer-chip` match `styles.css` (re-verified against computed styles in BK-2252), `.btn` and `.select` mapped in BK-1558, `.input` height ratified (D55). `.textarea` `.seg` `.tag` `.card` `.bar` `.caret` `.divider` `.t-*` still unported (§2.2) |
+| Atom CSS classes (`.btn/.input/.seg/.card/.bar`…) | ~95% | ✅ Every `styles.css` atom is mapped. `.dot`, `.kbd`, `.status-chip`, `.layer-chip` re-verified in BK-2252; `.btn` and `.select` mapped in BK-1558, `.input` height ratified (D55); BK-2255 closed the last eight: `.divider`/`.v-divider`, `.seg`, `.tag`, `.t-*`, `.caret`, `.bar`/`.seg-bar` as global classes in `app/globals.css`, `.textarea` as `components/ui/textarea.tsx`, `.card` already matched by `components/ui/card.tsx`. A parity test (`components/ui/atoms.test.ts`) fails on any drift from `styles.css`. Remaining: older screens still hand-roll some of these atoms instead of using them (§2.2) |
 | App Shell (global sidebar + nav) | ~85% | ⚠️ `AppSidebar` shipped (logo 分-box, workspace switcher, full nav, pinned projects, user block). BK-1557: below `md` the same sidebar is an off-canvas drawer behind a mobile menu bar (D53), and Test Runs / Bug Reports / Metrics are live links into the current project (D52). Persistent-project-explorer polish pending (BK-147) |
 | Login | ~70% marketing / auth divergent | 🔶 |
 | Projects (Tree/Table/Mindmap + detail) | ~70% | 🔶 Tree/Table/Mind map switcher + Tree detail pane + open-ATC tabs done (BK-98); remaining: run surfaces, mindmap coverage/bug modes, inline filter (data-gated/P2) |
@@ -77,9 +77,9 @@ These values are **canonical**. Implementation already matches (verified byte-ex
 | Base | `13px / 1.45`, font-feature-settings `cv11 1, ss01 1` |
 | Shadows | pop `0 12px 28px rgba(0,0,0,.55)…` · card `0 1px 0 rgba(255,255,255,.03) inset…` |
 
-### 2.2 Atom classes — canonical spec (⚠️ refactor target)
+### 2.2 Atom classes — canonical spec (✅ mapped)
 
-Mockup `styles.css` defines ~13 atom classes. `.dot`, `.kbd`, `.layer-chip`, `.status-chip` are ported as global classes in `app/globals.css` and match the mockup: their drift was fixed in commit `0f137854`, and BK-2252 re-verified all four against the mockup's computed styles and added the `.chip` base tone (`--fg-2` on a 4% white fill) that a chip with no status falls back to. Canonical = mockup. Gaps:
+Mockup `styles.css` defines ~13 atom classes. `.dot`, `.kbd`, `.layer-chip`, `.status-chip` are ported as global classes in `app/globals.css` and match the mockup: their drift was fixed in commit `0f137854`, and BK-2252 re-verified all four against the mockup's computed styles and added the `.chip` base tone (`--fg-2` on a 4% white fill) that a chip with no status falls back to. BK-2255 ported the remaining eight. Canonical = mockup:
 
 | Atom | Canonical (mockup) | Current | Action |
 |------|--------------------|---------|--------|
@@ -90,9 +90,18 @@ Mockup `styles.css` defines ~13 atom classes. `.dot`, `.kbd`, `.layer-chip`, `.s
 | `.btn` | default 12px / 26px, `sm` 11.5px / ~22px, `lg` 13px / 33px, variants default / primary / ghost / danger | ✅ mapped onto `components/ui/button.tsx` in px (BK-1558); `sm` is 24px, not ~22px (D55) | ✅ |
 | `.input` | 12.5px, `7px 9px` padding (~33px), bg-2, stroke-2, accent focus | `components/ui/input.tsx`: same tokens at 26px (`h-8` under the 13px root), 12px | ⚠️ height ratified at 26px (D55) |
 | `.select` | as `.input` plus chevron | `components/ui/select.tsx`, a native `<select>` on the same tokens with the `.select-chevron` utility; every app select uses it (BK-1558) | ✅ |
-| `.textarea` `.seg` `.tag` `.card` `.bar` `.caret` `.divider` `.t-*` | defined | not ported as classes | 🔶 port (or map shadcn variants 1:1 to these specs) |
+| `.textarea` | `.input` tokens (12.5px, `7px 9px`, bg-2, stroke-2, r-2, accent focus on bg-3) plus `resize: vertical`, `min-height: 60px` | `components/ui/textarea.tsx` (`Textarea`) on the same tokens, computed styles identical to the mockup; renders `display: block` instead of the mockup's default `inline-block` so it leaves no baseline gap under the field (BK-2255) | ✅ |
+| `.seg` | inline-flex, bg-2, 1px stroke-2, r-2, 2px padding/gap; buttons 11.5px/500, `5px 9px`, 3px radius, `aria-pressed="true"` bg-4 + fg-0 + inset highlight | same, global class in `app/globals.css` (BK-2255) | ✅ |
+| `.tag` | inline-flex, `2px 6px`, 11px mono/500, fg-2, 4% white fill, 1px stroke-2, 3px radius; `.x` fg-3, fail on hover | same, global class (BK-2255). `components/ui/badge.tsx` is not remapped: it renders sans role and status pills in Settings, a different atom, and turning it into `.tag` would set those labels in mono | ✅ |
+| `.card` | bg-2, 1px stroke-2, r-3, `--shadow-card` | `components/ui/card.tsx` already used these tokens; re-verified against computed styles on a live `Card` (BK-2255) | ✅ |
+| `.bar` / `.seg-bar` | 4px track at 5% white, pill radius, `.fill` accent with `data-color` pass/running; `.seg-bar` 6px flex of segments, no track | same, global classes (BK-2255) | ✅ |
+| `.caret` | 7×13px accent block, `steps(2)` 1s blink | same, global class with its own `caret` keyframes (BK-2255) | ✅ |
+| `.divider` / `.v-divider` | 1px on stroke-1, full width / self-stretch | same, global classes (BK-2255) | ✅ |
+| `.t-*` | text color on pass / fail / blocked / skipped / running / accent | same, global classes (BK-2255) | ✅ |
 
 > Decided (BK-1558, §5 D55): atoms are React components in `components/ui/` mapped 1:1 to the mockup specs, not literal `.btn`-style classes. The *visual output* must match the mockup atoms.
+
+> Adoption (BK-2255): the atoms exist, but screens built before them still hand-roll look-alikes with their own values (the hand-styled `<textarea>` fields, the segmented view switchers, the progress tracks in `Meter`, `ActiveRuns` and `ProjectCoverageView`, the caret in `WorkspaceBugsView`). Moving those call sites onto the atoms is a per-screen fidelity pass, not part of the atom port. `components/ui/atoms.test.ts` pins every ported rule to `styles.css`, so a change to one of them fails the test.
 
 ---
 
