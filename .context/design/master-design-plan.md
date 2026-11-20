@@ -33,7 +33,7 @@ Every user story that touches UI MUST:
 | Area | Fidelity | State |
 |------|----------|-------|
 | Design tokens (color/type/radii/shadow) | ~95% | ✅ Byte-exact — strong base |
-| Atom CSS classes (`.btn/.input/.seg/.card/.bar`…) | ~30% | ⚠️ Only 4 of ~13 ported |
+| Atom CSS classes (`.btn/.input/.seg/.card/.bar`…) | ~50% | ⚠️ 7 of ~14 mapped: `.dot`, `.kbd`, `.status-chip`, `.layer-chip` match `styles.css` (re-verified against computed styles in BK-2252), `.btn` and `.select` mapped in BK-1558, `.input` height ratified (D55). `.textarea` `.seg` `.tag` `.card` `.bar` `.caret` `.divider` `.t-*` still unported (§2.2) |
 | App Shell (global sidebar + nav) | ~85% | ⚠️ `AppSidebar` shipped (logo 分-box, workspace switcher, full nav, pinned projects, user block). BK-1557: below `md` the same sidebar is an off-canvas drawer behind a mobile menu bar (D53), and Test Runs / Bug Reports / Metrics are live links into the current project (D52). Persistent-project-explorer polish pending (BK-147) |
 | Login | ~70% marketing / auth divergent | 🔶 |
 | Projects (Tree/Table/Mindmap + detail) | ~70% | 🔶 Tree/Table/Mind map switcher + Tree detail pane + open-ATC tabs done (BK-98); remaining: run surfaces, mindmap coverage/bug modes, inline filter (data-gated/P2) |
@@ -79,14 +79,14 @@ These values are **canonical**. Implementation already matches (verified byte-ex
 
 ### 2.2 Atom classes — canonical spec (⚠️ refactor target)
 
-Mockup `styles.css` defines ~13 atom classes. Only `.dot`, `.kbd`, `.layer-chip`, `.status-chip` are ported, and 3 of those drifted. Canonical = mockup. Gaps:
+Mockup `styles.css` defines ~13 atom classes. `.dot`, `.kbd`, `.layer-chip`, `.status-chip` are ported as global classes in `app/globals.css` and match the mockup: their drift was fixed in commit `0f137854`, and BK-2252 re-verified all four against the mockup's computed styles and added the `.chip` base tone (`--fg-2` on a 4% white fill) that a chip with no status falls back to. Canonical = mockup. Gaps:
 
 | Atom | Canonical (mockup) | Current | Action |
 |------|--------------------|---------|--------|
-| `.dot` running pulse | box-shadow ring 2px→5px @ 0.18 alpha | opacity fade @ 0.10 | 🔶 restore box-shadow pulse |
-| `.kbd` | 16px min-w / 10.5px / translucent white bg | 18px / 11px / solid `--bg-3` | 🔶 restore size+bg |
-| `.status-chip` | 18px h, 1px colored border, 10.5px sans | no border, 11px | 🔶 restore border+size |
-| `.layer-chip` | 18px h, sans, 1px colored border | mono uppercase, no border | 🔶 restore sans+border |
+| `.dot` running pulse | box-shadow ring 2px→5px @ 0.18 alpha | same ring, keyframes byte-identical (named `dot-pulse` so Tailwind's opacity `pulse` cannot shadow it) | ✅ |
+| `.kbd` | 16px min-w / 10.5px / translucent white bg | same | ✅ |
+| `.status-chip` | 18px h, 1px colored border, 10.5px sans | same, plus the `.chip` base tone for a chip with no status (BK-2252) | ✅ |
+| `.layer-chip` | 18px h, sans, 1px colored border | same, plus the `.chip` base tone (BK-2252); `data-layer` stays lowercase to match component output | ✅ |
 | `.btn` | default 12px / 26px, `sm` 11.5px / ~22px, `lg` 13px / 33px, variants default / primary / ghost / danger | ✅ mapped onto `components/ui/button.tsx` in px (BK-1558); `sm` is 24px, not ~22px (D55) | ✅ |
 | `.input` | 12.5px, `7px 9px` padding (~33px), bg-2, stroke-2, accent focus | `components/ui/input.tsx`: same tokens at 26px (`h-8` under the 13px root), 12px | ⚠️ height ratified at 26px (D55) |
 | `.select` | as `.input` plus chevron | `components/ui/select.tsx`, a native `<select>` on the same tokens with the `.select-chevron` utility; every app select uses it (BK-1558) | ✅ |
