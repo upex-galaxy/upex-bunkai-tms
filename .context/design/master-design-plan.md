@@ -37,7 +37,7 @@ Every user story that touches UI MUST:
 | App Shell (global sidebar + nav) | ~85% | ⚠️ `AppSidebar` shipped (logo 分-box, workspace switcher, full nav, pinned projects, user block). BK-1557: below `md` the same sidebar is an off-canvas drawer behind a mobile menu bar (D53), and Test Runs / Bug Reports / Metrics are live links into the current project (D52). BK-2258: the Metrics badge and the pinned-project status dot are closed as correctly omitted (D76). Persistent-project-explorer polish pending (BK-147) |
 | Login | ~70% marketing / auth divergent | 🔶 |
 | Projects (Tree/Table/Mindmap + detail) | ~70% | 🔶 Tree/Table/Mind map switcher + Tree detail pane + open-ATC tabs done (BK-98); remaining: run surfaces, mindmap coverage/bug modes, inline filter (data-gated/P2) |
-| ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
+| ATC Editor (form + live preview) | ~70% | ⚠️ Live Preview right pane and inline anchoring controls shipped in both editors (`ffc09e9e`, 2026-06-08; re-audited and pinned by `components/atcs/AtcEditor.preview.test.ts` in BK-2256). Open: the topbar trio Auto-saved / Preview only / Run draft (split to BK-2259), the ⌘S keybind, the Module field, story-picker and AC-chip styling (§4.4) |
 | ATC Library (global promotion) | index built · fidelity un-audited | ✅ Built — workspace-wide index at `app/(app)/atcs/page.tsx` + `components/atcs/AtcLibraryView.tsx` with a live sidebar entry and count badge (BK-439, D31). Corrected 2026-11-02 after the live design audit found this row still read `build 0%` · ✅ mockup ready 2026-07-30 (§4.9) |
 | Home / Dashboard | ~90% | ✅ Built — epic BK-254 complete (banner + 5 widgets, BK-255..BK-260). Not built by ratified departure, not debt: the KPI deltas (unsourceable), the four-up grid, the sprint eyebrow and the header actions (§4.2, §5 D20/D21/D22/D23/D24) |
 | Test Runner | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/runs/[runId]/page.tsx` + `components/runs/RunnerView.tsx` (BK-34/35/36/39, all QA Approved or later). Mockup-fidelity pass against `run.jsx` not yet run (§4.5) |
@@ -193,24 +193,24 @@ Mockup: `screens/project.jsx` · Impl: `app/(app)/projects/[projectSlug]/` + `pr
 
 **Priority: P1 done** (toggle ✅, filter chips ✅, tabs ✅, Tree detail pane ✅). Remaining P2: mindmap Coverage/Bug-density + run surfaces (banner/Run/Used-by), inline toolbar filter (BK-20).
 
-### 4.4 ATC Editor — 🔶 (~40%, reconceived anchoring-first)
+### 4.4 ATC Editor — ⚠️ (~70%, live preview + inline anchoring shipped; topbar trio open)
 Mockup: `screens/editor.jsx` (Compose LEFT + **Live Preview RIGHT**) · Impl: `components/atcs/AtcEditor.tsx` + `NewAtcEditor.tsx` + `StepEditor.tsx` + `AnchoringPanel.tsx`
 
 | Area | Feature | Verdict | Action |
 |------|---------|---------|--------|
 | Topbar | Back / Cancel / Save ⌘S / id+editing | ✅/✅/⚠️/⚠️ | wire ⌘S keybind (chips decorative) |
-| Topbar | **Auto-saved · Preview-only · Run draft** | ❌ | build all 3 |
+| Topbar | **Auto-saved · Preview-only · Run draft** | ❌ | split to BK-2259 (BK-2256): none of the three ships as presentation-only. Auto-saved needs an autosave the editor does not have (an edit save propagates to Tests, BK-21; a new ATC has no persisted draft). Preview only draws the button but not the state it switches to. Run draft needs a run path for a single ATC outside a Test |
 | Compose | Title required | ✅ | keep |
 | Compose | Layer segmented UI/API/Unit + dots | ✅ | keep — faithful |
 | Compose | Tags chip input | ✅ | keep |
 | Compose | Module field | 🔶 | edit=read-only, new=`<select>`; mockup=dropdown both |
-| Compose | User story autocomplete (inline, ⌘N new) | 🔶 | moved to right AnchoringPanel → restore inline search |
-| Compose | AC multi-select chips "N selected from M" | 🔶 | in right panel → restore inline chips + counter |
+| Compose | User story autocomplete (inline, ⌘N new) | ⚠️ | inline in Compose since `ffc09e9e` (`AnchoringPanel embedded`, BK-2256 re-verified). Residual: a filtered list under the search box rather than the mockup's dropdown, and no `⌘N new story` (creating a story from the editor is new behavior, not placement). On edit the story is locked (ADR-0009) |
+| Compose | AC multi-select chips "N selected from M" | ⚠️ | inline in Compose with its counter since `ffc09e9e` (BK-2256 re-verified). Residual: full-width checkbox rows rather than wrapping chips, counter reads `N of M selected · ≥ 1 required` |
 | Compose | Steps authoring | ✅ | **Monaco markdown code-editor kept (D3 reversed — product decision)** + inline format hint. Mockup's structured rows intentionally not restored. |
 | Compose | Assertions authoring | ✅ | **Monaco YAML code-editor kept (D3 reversed)** + inline format hint. |
-| Preview | **ENTIRE Live Preview pane** (read-only badge, "what runners/agents see", rendered card: id+layer+draft+breadcrumb, title, story, ✓ACs, steps, assertions code block, tags, "schema · atc.v1", "Updated live as you edit") | ❌ | **build** — right column is AnchoringPanel instead |
+| Preview | **ENTIRE Live Preview pane** (read-only badge, "what runners/agents see", rendered card: id+layer+draft+breadcrumb, title, story, ✓ACs, steps, assertions code block, tags, "schema · atc.v1", "Updated live as you edit") | ✅ | shipped in `ffc09e9e` as `components/atcs/AtcPreview.tsx`, the right column of both `AtcEditor` and `NewAtcEditor`, fed by the editor's own Compose state. Every listed element renders; additions: Technique / Priority rows (D41) and Used by (BK-22). Column is a fixed 360px (stacks below `lg`, BK-1557) where the mockup splits 1fr / 1fr. `AtcEditor.preview.test.ts` pins the layout and the live updates (BK-2256) |
 
-**Priority: P1.** Live-preview is the screen's defining feature; its absence is the single biggest editor gap. Note: anchoring-enforcement model is the impl's addition — reconcile in §5 (keep enforcement, but restore preview as the right pane; anchoring controls move/inline).
+**Priority: P1, closed.** The Live Preview pane and the inline anchoring controls shipped on 2026-06-08 (`ffc09e9e`, D2), but this section kept reading ❌ until BK-2256 re-audited it against the live editors on 2026-11-22. Anchoring enforcement stays (the Moat ENFORCED / BLOCKED label and the save gate are unchanged). The biggest remaining editor gap is the topbar trio (BK-2259).
 
 ### 4.5 Test Runner — ✅ built · fidelity un-audited (tracked status corrected 2026-08-24 — the frozen spec below is UNCHANGED)
 Mockup: `screens/run.jsx` · Impl: `components/runs/RunnerView.tsx` (1250 lines) mounted at `app/(app)/projects/[projectSlug]/runs/[runId]/page.tsx` — BK-34/35/36/39 shipped. The prior "0%, build from scratch · Impl: none" text was stale and contradicted §1's own scorecard row ("Test Runner — built · fidelity un-audited"); flagged as `D-UI-2` on BK-35 and corrected here. Status field only — the Required: spec below stays frozen. See §5 D35 for the presentational divergence this screen carries.
@@ -706,7 +706,7 @@ Decision rule per divergence:
 | # | Divergence | Layer | Decision (UI-first) |
 |---|------------|-------|---------------------|
 | D1 | Auth: magic-link only vs mockup OAuth GitHub+Google | **Backend** | **RESOLVED (2026-06-24, BK-3).** OAuth infra sequenced and shipped: GitHub+Google enabled end-to-end (server initiation + custom CSRF state → 403, callback code exchange, faithful enabled buttons), coexisting with the password+magic-link rails. See ADR-0008. (Originally: keep visually faithful but disabled until infra sequenced.) |
-| D2 | ATC Editor: AnchoringPanel right pane vs Live Preview pane | **UI** | Correct → restore Live Preview as the right pane. Keep anchoring **enforcement logic** (backend-backed) but move its controls inline into the compose column. No API change. |
+| D2 | ATC Editor: AnchoringPanel right pane vs Live Preview pane | **UI** | Correct → restore Live Preview as the right pane. Keep anchoring **enforcement logic** (backend-backed) but move its controls inline into the compose column. No API change. **DONE** (2026-06-08, `ffc09e9e`; re-verified and pinned by a test 2026-11-22, BK-2256). |
 | D3 | Steps/Assertions: Monaco code-authoring vs mockup's structured numbered rows / enter-to-add list | **UI (product decision)** | **REVERSED 2026-06-09 — KEEP the Monaco code editors.** Product decision: the user prefers code-authoring (type the markdown/YAML format → live preview renders it). The mockup's structured rows are intentionally NOT restored. Mitigation shipped: an inline format hint (`AuthoringFormatHint`) under each editor shows the exact syntax with a real example, so the box isn't mistaken for a free textarea. |
 | D4 | Explorer tree: real `module→story→AC→atc` vs mockup `module→folder→atc/test` | **Backend if reverted** | **Keep the DB.** Render `folder`/`test`/tab nodes as a **presentation layer** over the existing model (mockup already embraces stories+ACs — US-742 / AC-742-3). Zero schema/API change. |
 | D5 | App shell: per-page chrome vs global persistent Sidebar+nav | **UI** | Correct → build global shell (§3). Nav badges can read live counts from existing APIs; missing-domain badges render `0`/hidden until those domains exist. |
@@ -791,7 +791,7 @@ Decision rule per divergence:
 **P1 — design-language integrity + core screens already in flight**
 1. Port/align atom classes (§2.2) — `.btn/.input/.seg/.card/.bar` + fix `.dot/.kbd/.status-chip/.layer-chip` drift.
 2. Build global App Shell (§3) — sidebar, main nav + badges, pinned projects, user block, Logo 分-box. (D5)
-3. ATC Editor Live Preview pane + structured Steps/Assertions. (D2, D3)
+3. ~~ATC Editor Live Preview pane + structured Steps/Assertions. (D2, D3)~~ — **done**: the preview pane shipped (`ffc09e9e`, D2, re-verified in BK-2256); the structured rows are not restored by product decision (D3 reversed). The topbar trio is BK-2259.
 4. Projects: view toggle, explorer filter chips, open-ATC tabs, inline filter box, live breadcrumb. (D6)
 5. Login: OAuth buttons **visually** faithful (disabled until infra), Logo component, H1 30px, panel always-visible. (D1 UI-only, D7)
 
@@ -867,6 +867,7 @@ Design cannot reach 100% fidelity on those screens until the models exist. Seque
 | | BK-507 Bulk-edit tags, Module and layer on selected ATCs | **ATC Library** (project-scoped ATC list, §4.26: row selection + bulk-edit bar + confirmation + outcome report) | ✅ gate cleared 2026-11-11 (D64, §5), no mockup draws a selection affordance; built against the live `AtcTable`, the live confirm modals and the frozen tokens per Rule #14, ratified as a spec-only departure. Batch contract: ADR-0027 |
 | | BK-571 Archive an ATC and restore it from the archive | **ATC Library** (workspace archived view, `/atcs?view=archived`, §4.24) · **Project ATC list** and **explorer** (archive entry points) · **ATC Editor** (archived, read-only state) · **Test detail** and **Traceability** (archived marker) | ✅ gate cleared 2026-11-04 (D58, §5) — no mockup draws any of it; built against the live delete dialogs, ATC table, ATC Library and `AtcPreview` per Rule #14, ratified as a spec-only departure. Own archive vs cascade: ADR-0023 |
 | | BK-595 Read a single ATC by id | (backend — no screen of its own; the headless by-id read consumed by the **ATC Editor** and by API/CLI clients) | n/a — API-only, no mockup applicable. Follows the BK-18 backend-row precedent above. Contract: `.context/SRS/api-contracts.yaml` `/atcs/{atc_id}` `get` (with `expand`); perf target `.context/SRS/non-functional-specs.md` §1, the only NFR row naming a literal path. Sequence AFTER BK-499 |
+| | BK-2256 Restore the Live Preview pane as the ATC Editor's right column (tech story, mission m1 slice) | **ATC Editor** (§4.4: Preview row, User story and AC rows, Topbar trio row) | ✅ no mockup gate: closed against the existing `editor.jsx` §4.4 spec. The pane and the inline anchoring were already live (`ffc09e9e`, D2), so no screen changes shape; `components/atcs/AtcEditor.preview.test.ts` pins them in both editors. The topbar trio split to BK-2259 |
 | **BK-24 Tests (chains of ATCs)** | BK-27 Assemble test by chaining | **Projects** (Test nodes) · Tests builder | `project.jsx` |
 | | BK-28 Reorder ATCs in a test | Tests builder | `project.jsx` |
 | | BK-32 Open test, see every ATC | **Projects** detail (test view) | `project.jsx` |
