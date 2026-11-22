@@ -90,3 +90,45 @@ describe('AppSidebar account block (BK-2139)', () => {
     expect(menu.textContent).not.toContain('Mariko Tanaka');
   });
 });
+
+describe('AppSidebar shell omissions (BK-2258, master-design-plan §5 D76)', () => {
+  const PROJECTS = [{ id: 'p1', slug: 'alpha', name: 'Alpha' }, { id: 'p2', slug: 'beta-shop', name: 'Beta Shop' }];
+
+  function renderWithProjects(): void {
+    act(() => {
+      root.render(createElement(AppSidebar, {
+        workspaces: [],
+        activeWorkspaceId: null,
+        projects: PROJECTS,
+        userEmail: EMAIL,
+        userDisplayName: null,
+        userRole: 'member',
+        initialUnreadCount: 0,
+        atcCount: 12,
+        runCount: 3,
+        bugCount: 7,
+      }));
+    });
+  }
+
+  function navBadge(id: string): string | null {
+    return container.querySelector(`[data-testid="app-nav-${id}"] span.font-mono`)?.textContent ?? null;
+  }
+
+  it('gives Metrics no count badge while the counted entries keep theirs', () => {
+    renderWithProjects();
+    expect(container.querySelector('[data-testid="app-nav-metrics"]')).not.toBeNull();
+    expect(navBadge('metrics')).toBeNull();
+    expect(navBadge('runs')).toBe('3');
+    expect(navBadge('bugs')).toBe('7');
+  });
+
+  it('renders no status dot on pinned-project rows, since no project status exists', () => {
+    renderWithProjects();
+    for (const p of PROJECTS) {
+      const row = container.querySelector(`a[href="/projects/${p.slug}"]`);
+      expect(row?.textContent).toContain(p.name);
+      expect(row?.querySelector('.dot')).toBeNull();
+    }
+  });
+});
