@@ -5161,6 +5161,48 @@
         },
         "required": ["name"]
       },
+      "ProjectRepositorySettingsResponse": {
+        "type": "object",
+        "properties": {
+          "repository_settings": {
+            "$ref": "#/components/schemas/ProjectRepositorySettings"
+          }
+        },
+        "required": ["repository_settings"]
+      },
+      "ProjectRepositorySettings": {
+        "type": "object",
+        "properties": {
+          "repository_url": {
+            "type": ["string", "null"],
+            "description": "An https URL with no credentials, trimmed. Null when never configured or cleared."
+          },
+          "updated_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": ["repository_url", "updated_at"]
+      },
+      "ProjectRepositorySettingsPutResponse": {
+        "type": "object",
+        "properties": {
+          "repository_settings": {
+            "$ref": "#/components/schemas/ProjectRepositorySettings"
+          }
+        },
+        "required": ["repository_settings"]
+      },
+      "ProjectRepositorySettingsPutBody": {
+        "type": "object",
+        "properties": {
+          "repository_url": {
+            "type": ["string", "null"],
+            "description": "An https URL with no credentials, or null (and an empty or whitespace-only string) to clear it."
+          }
+        },
+        "required": ["repository_url"]
+      },
       "RunReportPage": {
         "type": "object",
         "properties": {
@@ -15442,6 +15484,180 @@
           },
           "422": {
             "description": "Validation failed (name, description, depth, or parent).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/repository-settings": {
+      "get": {
+        "tags": ["Repository settings"],
+        "summary": "Read a Project's repository URL",
+        "description": "Any workspace member or viewer. A Project that was never configured answers no URL. A Project the caller cannot see answers the same 404 as a missing one.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The repository URL (or null).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectRepositorySettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found, or not visible to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Repository settings"],
+        "summary": "Save a Project's repository URL",
+        "description": "Owner or admin only (scope `workspace:admin` plus a live role check). `repository_url` is required: an https URL with no embedded credentials, trimmed; null, or an empty or whitespace-only string, clears it.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectRepositorySettingsPutBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved; the stored URL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectRepositorySettingsPutResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing workspace:admin scope, a token scoped to another workspace, or the caller is not an owner or admin (`details.reason` `admin_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found, or not visible to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. `details.reason` is `repository_url_invalid`, `details.field` `repository_url` (not an https URL, or it carries credentials).",
             "content": {
               "application/json": {
                 "schema": {
