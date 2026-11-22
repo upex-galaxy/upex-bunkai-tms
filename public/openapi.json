@@ -6154,7 +6154,7 @@
             "type": "string",
             "minLength": 7,
             "maxLength": 64,
-            "pattern": "^[0-9a-f]+$/i",
+            "pattern": "^[0-9a-fA-F]+$",
             "description": "BK-1995 CI context: the commit under test, hexadecimal, 7 to 64 characters, any case (stored lower-cased). Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
           },
           "branch": {
@@ -6707,7 +6707,7 @@
             "type": "string",
             "minLength": 7,
             "maxLength": 64,
-            "pattern": "^[0-9a-f]+$/i",
+            "pattern": "^[0-9a-fA-F]+$",
             "description": "BK-1995 CI context: the commit under test, hexadecimal, 7 to 64 characters, any case (stored lower-cased). Optional. An invalid value is refused with 422 `validation_failed`, `details.field` naming the field, and a message that starts with the field name; nothing is recorded."
           },
           "branch": {

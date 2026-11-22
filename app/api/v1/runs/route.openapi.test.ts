@@ -53,6 +53,13 @@ describe('BK-1995 — the public API reference describes the CI context (AC10, A
       }
       expect(body.properties.commit).toMatchObject({ minLength: 7, maxLength: 64 });
       expect(body.properties.commit.description).toContain('hexadecimal');
+      // BK-2326: a JSON Schema pattern carries no regex flags. The source
+      // Zod regex (/^[0-9a-f]+$/i) serialized its /i flag into the string
+      // instead of expanding the character class, so the published pattern
+      // matched nothing. Pin the fixed pattern and prove it matches a real
+      // lower-case commit.
+      expect(body.properties.commit.pattern).toBe('^[0-9a-fA-F]+$');
+      expect(new RegExp(body.properties.commit.pattern!).test('a1b2c3d')).toBe(true);
       expect(body.properties.branch).toMatchObject({ minLength: 1, maxLength: 255 });
       expect(body.properties.pipeline_name).toMatchObject({ minLength: 1, maxLength: 100 });
       expect(body.properties.pipeline_url).toMatchObject({ maxLength: 2048 });

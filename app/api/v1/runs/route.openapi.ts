@@ -38,7 +38,8 @@ const CiContextBodyFields = {
     .string()
     .min(7)
     .max(64)
-    .regex(/^[0-9a-f]+$/i)
+    // eslint-disable-next-line regexp/use-ignore-case -- BK-2326: the OpenAPI generator serializes this regex's flags into the published JSON Schema pattern string, and JSON Schema patterns carry no flags, so an /i-flagged regex here publishes a pattern that matches nothing. Keep the explicit character class.
+    .regex(/^[0-9a-fA-F]+$/)
     .optional()
     .describe(`BK-1995 CI context: the commit under test, hexadecimal, 7 to 64 characters, any case (stored lower-cased). ${CI_CONTEXT_REFUSAL}`),
   branch: z
