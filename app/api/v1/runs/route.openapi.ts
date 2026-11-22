@@ -38,7 +38,7 @@ const CiContextBodyFields = {
     .string()
     .min(7)
     .max(64)
-    .regex(/^[0-9a-f]+$/i)
+    .regex(/^[0-9a-fA-F]+$/)
     .optional()
     .describe(`BK-1995 CI context: the commit under test, hexadecimal, 7 to 64 characters, any case (stored lower-cased). ${CI_CONTEXT_REFUSAL}`),
   branch: z
