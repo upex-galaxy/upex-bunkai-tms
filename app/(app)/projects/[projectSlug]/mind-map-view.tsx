@@ -139,7 +139,7 @@ export function MindMapView({ tree, projectSlug }: { tree: ModuleTreeNode[], pro
     <main className="relative flex flex-1 overflow-hidden bg-surface-0">
       {/* Mode switcher */}
       <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
-        <div className="inline-flex items-center gap-0.5 rounded-2 border border-stroke-1 bg-surface-1 p-0.5">
+        <div data-testid="mind-map-modes" className="seg">
           {MODES.map(m => (
             <button
               key={m.key}
@@ -147,13 +147,7 @@ export function MindMapView({ tree, projectSlug }: { tree: ModuleTreeNode[], pro
               disabled={m.soon}
               aria-pressed={m.key === 'topology'}
               title={m.soon ? 'Needs run / bug data — coming soon' : undefined}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-1 px-2.5 py-1 text-xs font-medium',
-                m.key === 'topology'
-                  ? 'bg-surface-3 text-fg-0'
-                  : 'text-fg-3',
-                m.soon && 'cursor-not-allowed opacity-50',
-              )}
+              className={cn(m.soon && 'opacity-50 disabled:cursor-not-allowed disabled:hover:text-fg-2')}
             >
               {m.label}
               {m.soon && <span className="ml-1 font-mono text-[9px] uppercase text-fg-4">soon</span>}

@@ -1,9 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, mock } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Textarea } from './textarea';
+
+const router = { push: () => {} };
+void mock.module('next/navigation', () => ({ useRouter: () => router }));
+const { MindMapView } = await import('../../app/(app)/projects/[projectSlug]/mind-map-view');
 
 const ROOT = join(import.meta.dir, '..', '..');
 const MOCKUP_CSS = readFileSync(join(ROOT, '.context/designs/bunkai-test-management-tool/project/styles.css'), 'utf8');
@@ -111,5 +115,26 @@ describe('textarea atom', () => {
   it('lets a caller extend the classes', () => {
     const extended = renderToStaticMarkup(createElement(Textarea, { className: 'font-mono' }));
     expect(extended).toContain('font-mono');
+  });
+});
+
+describe('.seg adoption', () => {
+  const html = renderToStaticMarkup(createElement(MindMapView, { tree: [], projectSlug: 'web' }));
+  const group = /<div data-testid="mind-map-modes" class="([^"]*)">([\s\S]*?)<\/div>/.exec(html);
+  const buttons = [...(group?.[2] ?? '').matchAll(/<button([^>]*)>([^<]*)/g)].map(([, attrs, label]) => ({ attrs, label }));
+
+  it('renders the mind map mode switcher through the .seg class alone', () => {
+    expect(group?.[1]).toBe('seg');
+  });
+
+  it('keeps Topology pressed and the two data-gated modes disabled', () => {
+    expect(buttons.map(b => b.label)).toEqual(['Topology', 'Coverage', 'Bug density']);
+    expect(buttons[0].attrs).toContain('aria-pressed="true"');
+    expect(buttons[0].attrs).not.toContain('disabled');
+    for (const button of buttons.slice(1)) {
+      expect(button.attrs).toContain('aria-pressed="false"');
+      expect(button.attrs).toContain('disabled');
+      expect(button.attrs).toContain('disabled:cursor-not-allowed');
+    }
   });
 });
