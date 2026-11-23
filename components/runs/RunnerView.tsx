@@ -3,6 +3,7 @@
 import type { StepAttachment } from '@lib/runs/evidence-view';
 import type { StepMarkStatus } from '@lib/runs/mark-step-view';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
 import { CiContextRow } from '@components/runs/CiContext';
@@ -17,6 +18,7 @@ import {
   resolveAtcVerdictBadge,
   resolveStatusDotToken,
   resolveStepMarkControlState,
+  RUN_STEP_MARKING_CLOSED_MESSAGE,
   validateMarkStepForm,
 } from '@lib/runs/mark-step-view';
 import {
@@ -25,6 +27,19 @@ import {
   shouldReconcileOnStatusChange,
 } from '@lib/runs/realtime-run-channel';
 import { buildReportBugPrefill, shouldShowReportBugButton } from '@lib/runs/report-bug-view';
+import {
+  adjacentStepId,
+  initialCursorStepId,
+  isCommitChord,
+  isEditableTarget,
+  isMacPlatform,
+  isModalOverlayOpen,
+  MARK_NOT_ALLOWED_MESSAGE,
+  REPORT_BUG_NOT_ALLOWED_MESSAGE,
+  REPORT_BUG_NOT_FAILED_MESSAGE,
+  resolveRunnerShortcut,
+  runStepOrder,
+} from '@lib/runs/runner-keyboard';
 import { RUN_STEP_EVIDENCE_URL_MAX, RUN_STEP_NOTE_MAX } from '@lib/runs/validation';
 import { createClient } from '@lib/supabase/client';
 import { subscribeWithUserAuth } from '@lib/supabase/realtime-auth';
@@ -32,7 +47,7 @@ import { isWorkspaceDeletedRefusal, WORKSPACE_DELETED_LANDING } from '@lib/works
 import { Ban, Bug, Check, ChevronLeft, Flag, GitCompareArrows, Play, Square, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 
 // BK-34 — the manual runner view. A projection of the composed Run payload
@@ -210,6 +225,12 @@ function leaveDeletedWorkspace(): void {
 // Stable default: a fresh `[]` per render would re-run the effect that resets the attachments.
 const NO_ATTACHMENTS: StepAttachment[] = [];
 
+const subscribeToNothing = () => () => {};
+const readIsMac = () => isMacPlatform(navigator);
+const readIsMacOnServer = () => false;
+
+const VERDICT_KBD: Record<StepMarkStatus, string> = { passed: 'P', failed: 'F', blocked: 'B' };
+
 export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigureRepository = false, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null, canAttach = false, initialAttachments = NO_ATTACHMENTS, currentUserId = '' }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
@@ -250,6 +271,11 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
   // any) the dialog is open for, mirroring how markStepId names the open
   // mark-form without RunnerView owning its note/evidence text too.
   const [bugDialogStepId, setBugDialogStepId] = useState<string | null>(null);
+
+  // BK-600 BR-1: the cursor is this tester's local view, by step id; another actor's mark never moves it.
+  const [cursorStepId, setCursorStepId] = useState<string | null>(() => initialCursorStepId(runStepOrder(run.atcs)));
+  const isMac = useSyncExternalStore(subscribeToNothing, readIsMac, readIsMacOnServer);
+  const focusNoteForStepRef = useRef<string | null>(null);
 
   // Keep the local view in sync if the server hands down a fresh payload.
   useEffect(() => {
@@ -522,17 +548,30 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
     }
   };
 
-  // BK-35 — mark flow. Opening the form for a DIFFERENT step resets the note
-  // + evidence fields; re-picking a status on the SAME (already open) step
-  // preserves whatever the user already typed (AC6/Q7 — switching the pick
-  // is not a fresh start).
-  const openMarkForm = (stepId: string, status: StepMarkStatus) => {
+  const stepOrder = runStepOrder(view.atcs);
+  const cursorStep = cursorStepId ? stepOrder.find(step => step.id === cursorStepId) ?? null : null;
+  const verdictKeysLive = canMark && view.status === 'running';
+  const modKey = isMac ? '⌘' : 'Ctrl';
+
+  const moveCursorTo = (stepId: string) => {
+    setCursorStepId(stepId);
+    const element = stepRefs.current.get(stepId);
+    element?.focus({ preventScroll: true });
+    element?.scrollIntoView?.({ block: 'nearest' });
+  };
+
+  // BK-35 — mark flow. Opening the form for a DIFFERENT step starts from the
+  // step's recorded note + evidence link (BK-600 BR-14, empty for an unrun
+  // step); re-picking a status on the SAME (already open) step preserves
+  // whatever the user already typed (AC6/Q7 — switching the pick is not a
+  // fresh start).
+  const openMarkForm = (step: RunStep, status: StepMarkStatus) => {
     if (markSubmitting) { return; }
-    if (markStepId !== stepId) {
-      setMarkNote('');
-      setMarkEvidenceUrl('');
+    if (markStepId !== step.id) {
+      setMarkNote(step.note ?? '');
+      setMarkEvidenceUrl(step.evidence_url ?? '');
     }
-    setMarkStepId(stepId);
+    setMarkStepId(step.id);
     setMarkStatus(status);
     setMarkError(null);
   };
@@ -597,17 +636,86 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
       if (body.run) {
         setView(body.run);
       }
+      const committedStepId = markStepId;
       setMarkStepId(null);
       setMarkStatus(null);
       setMarkNote('');
       setMarkEvidenceUrl('');
       setMarkSubmitting(false);
       toast.success('Step marked');
+      moveCursorTo(adjacentStepId(stepOrder, committedStepId, 'next') ?? committedStepId);
     }
     catch (err) {
       setMarkError(err instanceof Error ? err.message : 'Network error.');
       setMarkSubmitting(false);
     }
+  };
+
+  const onRunnerKeyDown = (event: KeyboardEvent) => {
+    if (event.defaultPrevented) { return; }
+    const shortcut = resolveRunnerShortcut(event, isMac);
+    if (!shortcut || !cursorStep) { return; }
+    if (isEditableTarget(event.target) || isModalOverlayOpen(document)) { return; }
+    event.preventDefault();
+
+    switch (shortcut.kind) {
+      case 'move': {
+        const target = adjacentStepId(stepOrder, cursorStep.id, shortcut.direction);
+        if (target) { moveCursorTo(target); }
+        return;
+      }
+      case 'advance': {
+        if (markStepId) {
+          void handleMarkSubmit();
+          return;
+        }
+        const target = adjacentStepId(stepOrder, cursorStep.id, 'next');
+        if (target) { moveCursorTo(target); }
+        return;
+      }
+      case 'verdict': {
+        if (!verdictKeysLive) {
+          toast.info(canMark ? RUN_STEP_MARKING_CLOSED_MESSAGE : MARK_NOT_ALLOWED_MESSAGE);
+          return;
+        }
+        if (markSubmitting) { return; }
+        focusNoteForStepRef.current = cursorStep.id;
+        openMarkForm(cursorStep, shortcut.status);
+        return;
+      }
+      case 'report-bug': {
+        if (!canReportBug) {
+          toast.info(REPORT_BUG_NOT_ALLOWED_MESSAGE);
+          return;
+        }
+        if (!shouldShowReportBugButton({ canReportBug, stepStatus: cursorStep.status })) {
+          toast.info(REPORT_BUG_NOT_FAILED_MESSAGE);
+          return;
+        }
+        setBugDialogStepId(cursorStep.id);
+      }
+    }
+  };
+
+  const runnerKeyDownRef = useRef(onRunnerKeyDown);
+  useEffect(() => { runnerKeyDownRef.current = onRunnerKeyDown; });
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => runnerKeyDownRef.current(event);
+    window.addEventListener('keydown', listener);
+    return () => window.removeEventListener('keydown', listener);
+  }, []);
+
+  useEffect(() => {
+    if (!markStepId || focusNoteForStepRef.current !== markStepId) { return; }
+    focusNoteForStepRef.current = null;
+    document.getElementById(`mark-note-${markStepId}`)?.focus();
+  }, [markStepId, markStatus]);
+
+  const onMarkFormKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!isCommitChord(event.nativeEvent, isMac) || isModalOverlayOpen(document)) { return; }
+    event.preventDefault();
+    event.stopPropagation();
+    void handleMarkSubmit();
   };
 
   return (
@@ -871,6 +979,7 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
                     // any) was filed against; highlighted + the scroll target
                     // of the effect above.
                     const isLinkedBugStep = linkedBug?.runStepId === s.id;
+                    const isCursorStep = cursorStepId === s.id;
 
                     return (
                       <li
@@ -881,9 +990,13 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
                         }}
                         data-testid={`runner-step-${atc.position}-${s.position}`}
                         data-linked-bug={isLinkedBugStep ? 'true' : undefined}
-                        className={`grid grid-cols-[28px_1fr] items-stretch ${i === 0 ? '' : 'border-t border-stroke-1'} ${isLinkedBugStep ? 'ring-2 ring-inset ring-accent' : ''}`}
+                        data-cursor={isCursorStep ? 'true' : undefined}
+                        aria-current={isCursorStep ? 'step' : undefined}
+                        tabIndex={isCursorStep ? 0 : -1}
+                        onClick={() => setCursorStepId(s.id)}
+                        className={`grid grid-cols-[28px_1fr] items-stretch outline-none ${i === 0 ? '' : 'border-t border-stroke-1'} ${isCursorStep ? 'bg-surface-3 shadow-[inset_3px_0_0_var(--accent)]' : ''} ${isLinkedBugStep ? 'ring-2 ring-inset ring-accent' : ''}`}
                       >
-                        <span className="inline-flex items-center justify-center border-r border-stroke-1 font-mono text-xs font-medium text-fg-3">
+                        <span className={`inline-flex items-center justify-center border-r border-stroke-1 font-mono text-xs font-medium ${isCursorStep ? 'text-accent' : 'text-fg-3'}`}>
                           {String(s.position).padStart(2, '0')}
                         </span>
                         <div className="flex flex-col gap-2 px-3 py-2">
@@ -936,6 +1049,9 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
                                 </span>
                               )}
                             </div>
+                            {isCursorStep && (
+                              <span data-testid="runner-step-cursor-hint" className="mt-0.5 shrink-0 whitespace-nowrap font-mono text-2xs text-fg-3">← now</span>
+                            )}
                             <span className="dot mt-1 shrink-0" data-status={resolveStatusDotToken(s.status)} />
                           </div>
 
@@ -953,7 +1069,7 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
                                 type="button"
                                 data-testid={`runner-step-mark-pass-${atc.position}-${s.position}`}
                                 aria-pressed={markState.pressed.passed}
-                                onClick={() => openMarkForm(s.id, 'passed')}
+                                onClick={() => openMarkForm(s, 'passed')}
                                 className={`inline-flex items-center gap-1 rounded-1 border px-2 py-1 text-2xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
                                   markState.pressed.passed
                                     ? 'border-signal-pass bg-signal-pass-bg text-signal-pass'
@@ -962,12 +1078,13 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
                               >
                                 <Check size={11} />
                                 Pass
+                                {isCursorStep && <span className="kbd ml-0.5">{VERDICT_KBD.passed}</span>}
                               </button>
                               <button
                                 type="button"
                                 data-testid={`runner-step-mark-fail-${atc.position}-${s.position}`}
                                 aria-pressed={markState.pressed.failed}
-                                onClick={() => openMarkForm(s.id, 'failed')}
+                                onClick={() => openMarkForm(s, 'failed')}
                                 className={`inline-flex items-center gap-1 rounded-1 border px-2 py-1 text-2xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
                                   markState.pressed.failed
                                     ? 'border-signal-fail bg-signal-fail-bg text-signal-fail'
@@ -976,12 +1093,13 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
                               >
                                 <X size={11} />
                                 Fail
+                                {isCursorStep && <span className="kbd ml-0.5">{VERDICT_KBD.failed}</span>}
                               </button>
                               <button
                                 type="button"
                                 data-testid={`runner-step-mark-block-${atc.position}-${s.position}`}
                                 aria-pressed={markState.pressed.blocked}
-                                onClick={() => openMarkForm(s.id, 'blocked')}
+                                onClick={() => openMarkForm(s, 'blocked')}
                                 className={`inline-flex items-center gap-1 rounded-1 border px-2 py-1 text-2xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
                                   markState.pressed.blocked
                                     ? 'border-signal-blocked bg-signal-blocked-bg text-signal-blocked'
@@ -990,6 +1108,7 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
                               >
                                 <Ban size={11} />
                                 Block
+                                {isCursorStep && <span className="kbd ml-0.5">{VERDICT_KBD.blocked}</span>}
                               </button>
                             </div>
                           )}
@@ -1045,6 +1164,7 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
                           {isMarkFormOpen && (
                             <div
                               data-testid={`runner-step-mark-form-${atc.position}-${s.position}`}
+                              onKeyDown={onMarkFormKeyDown}
                               className="flex flex-col gap-2 rounded-2 border border-stroke-2 bg-surface-1 p-2.5"
                             >
                               <div>
@@ -1135,6 +1255,44 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
           })}
         </div>
       </div>
+
+      {cursorStep && (
+        <div className="flex flex-shrink-0 items-center border-t border-stroke-1 px-4 py-1.5">
+          <p
+            data-testid="runner-shortcut-legend"
+            className="mx-auto m-0 flex w-full max-w-[820px] flex-wrap items-center gap-x-1 gap-y-1 text-2xs text-fg-3"
+          >
+            <span className="kbd">↑</span>
+            <span className="kbd">↓</span>
+            <span>step</span>
+            {verdictKeysLive && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="kbd">P</span>
+                <span>pass</span>
+                <span aria-hidden="true">·</span>
+                <span className="kbd">F</span>
+                <span>fail</span>
+                <span aria-hidden="true">·</span>
+                <span className="kbd">B</span>
+                <span>block</span>
+              </>
+            )}
+            <span aria-hidden="true">·</span>
+            <span className="kbd">{modKey}</span>
+            <span className="kbd">↵</span>
+            <span>next step</span>
+            {canReportBug && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="kbd">{modKey}</span>
+                <span className="kbd">B</span>
+                <span>bug</span>
+              </>
+            )}
+          </p>
+        </div>
+      )}
 
       {/* BK-36 — abort confirmation modal. Plain overlay (no native <dialog> —
           those block the page). Reason textarea (≤500), live counter, AC-exact
@@ -1353,7 +1511,10 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
         <BugFormDialog
           key={bugDialogStep.step.id}
           open
-          onClose={() => setBugDialogStepId(null)}
+          onClose={() => {
+            setBugDialogStepId(null);
+            if (cursorStepId) { stepRefs.current.get(cursorStepId)?.focus({ preventScroll: true }); }
+          }}
           onCreated={() => toast.success('Bug filed')}
           context={{
             mode: 'run-linked',

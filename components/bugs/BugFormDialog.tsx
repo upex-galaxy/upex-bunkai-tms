@@ -19,8 +19,9 @@ import {
   submitBlocker,
 } from '@lib/bugs/evidence-draft';
 import { BUG_TITLE_MESSAGE } from '@lib/bugs/validation';
+import { isEditableTarget, resolveSeverityShortcut } from '@lib/runs/runner-keyboard';
 import { Bug } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // BK-40 — the "Report bug" / "New bug" dialog, matching RunnerView's existing
 // Abort/Finish overlay family (Technical Decision 9): a plain fixed-inset
@@ -106,6 +107,19 @@ export function BugFormDialog({
   const lastAttempt = useRef<{ key: string, payload: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const projectId = context.projectId;
+  const severityKeysLive = open && context.mode === 'run-linked' && !submitting;
+
+  useEffect(() => {
+    if (!severityKeysLive) { return; }
+    const onKey = (event: KeyboardEvent) => {
+      const index = resolveSeverityShortcut(event);
+      if (index === null || isEditableTarget(event.target)) { return; }
+      event.preventDefault();
+      setSeverity(BUG_SEVERITY_VALUES[index]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [severityKeysLive]);
 
   if (!open) {
     return null;
@@ -253,6 +267,7 @@ export function BugFormDialog({
               {value}
               {' · '}
               {BUG_SEVERITY_LABEL[value]}
+              {context.mode === 'run-linked' && <span className="kbd ml-1.5">{BUG_SEVERITY_VALUES.indexOf(value) + 1}</span>}
             </button>
           ))}
         </div>
