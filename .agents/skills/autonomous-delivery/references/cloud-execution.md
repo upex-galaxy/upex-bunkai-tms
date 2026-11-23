@@ -2,7 +2,7 @@
 
 The third way to run a dispatched ticket, next to the default (an agent in its own worktree) and the supervised Orca worker (`agent-orchestration`). The worker is a Claude Code session on claude.ai/code, in a VM of Anthropic's, with the repo cloned in and a cloud environment (network, variables, setup script). The conductor stays local and light. Nothing in this file replaces the lock, the audit, the selection, the caps or the migration gate of `SKILL.md`: they stay the conductor's.
 
-Measured on Bunkai BK-507 (2026-11-11): one story, one PR, 31 files, about 55 minutes of worker time, merged as `45ee424c`. The method also draws on the webapp skill `upexgalaxy-webapp/.agents/skills/cloud-fleet/SKILL.md` (a fleet of video renders, 2026-10-12 to 2026-10-25), which holds the queue and the Loom parts this skill does not copy. A claim taken from the Anthropic docs and not measured here is marked `(doc)`.
+Measured on Bunkai BK-507 (2026-11-11): one story, one PR, 31 files, about 55 minutes of worker time, merged as `45ee424c`. The method also draws on the user-level skill `/Users/ely/.agents/skills/claude-cloud/SKILL.md` (born from a fleet of video renders in the webapp, 2026-10-12 to 2026-10-25), which holds the queue and worktree lifecycle this skill does not copy. The video and Loom specifics live in `upex-video-fleet` of the upex-studio repo and are not needed here. A claim taken from the Anthropic docs and not measured here is marked `(doc)`.
 
 ## 1. When to use it, and when not
 

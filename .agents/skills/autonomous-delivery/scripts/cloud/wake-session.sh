@@ -6,9 +6,9 @@
 # Playwright profile `claude-ai`. Why: a session created with `claude --cloud` from a terminal does not
 # receive the tools of the claude.ai connectors (Supabase, Atlassian, ...), not even when you write to it
 # with `claude -p ... --cloud <id>`. A message typed in the web UI attaches them (known Claude Code cloud
-# bug; measured 2026-10-15 in the webapp `cloud-fleet` skill, and again 2026-11-11 on Bunkai BK-507).
+# bug; measured 2026-10-15 in the `claude-cloud` skill, and again 2026-11-11 on Bunkai BK-507).
 #
-# Adapted from `upexgalaxy-webapp/.agents/skills/cloud-fleet/scripts/despertar.sh` (translated, generic
+# Adapted from `/Users/ely/.agents/skills/claude-cloud/scripts/despertar.sh` (translated, generic
 # default message). The measured sequence: open WITH a window (headless is stopped by Cloudflare "Just a
 # moment...") -> wait until the title stops being the challenge -> if the URL lands on /login the profile
 # lost its session -> fill the composer by role (the ref changes on every load) -> re-read the text and
