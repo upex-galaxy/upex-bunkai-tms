@@ -75,7 +75,7 @@ export function validateStoredEvidence(input: StoredEvidenceInput): { ok: true, 
   if (input.actualSize > EVIDENCE_FILE_MAX_BYTES) {
     return refuse('too_large');
   }
-  const sniffed = sniffImage(input.head);
+  const sniffed = sniffImage(input.head, input.actualSize);
   if (!sniffed) {
     return refuse('invalid_image');
   }

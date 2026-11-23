@@ -3,7 +3,9 @@ import type { EvidenceMimeType } from './evidence-policy';
 // BK-593 - decide an image's type from its first bytes. The file name, the extension and the
 // declared Content-Type are never trusted. No decoding and no native dependency: a signature
 // check plus a bounded chunk walk to spot animation (APNG, animated WebP), which is refused
-// in v1. The caller passes at most the first 64 KiB.
+// in v1. The caller passes at most the first 64 KiB, plus the object's real size when it knows
+// it: when those bytes are the whole object, a PNG must reach IEND and a WebP must hold every
+// byte its RIFF header declares.
 
 export interface SniffedImage {
   type: EvidenceMimeType
@@ -12,14 +14,17 @@ export interface SniffedImage {
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
-export function sniffImage(bytes: Uint8Array): SniffedImage | null {
+export function sniffImage(bytes: Uint8Array, objectSize?: number): SniffedImage | null {
   if (startsWith(bytes, 0, PNG_SIGNATURE)) {
-    return sniffPng(bytes);
+    return objectSize !== undefined && bytes.length >= objectSize ? sniffWholePng(bytes) : sniffPng(bytes);
   }
   if (bytes.length >= 3 && bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
     return { type: 'image/jpeg', animated: false };
   }
   if (bytes.length >= 12 && ascii(bytes, 0, 4) === 'RIFF' && ascii(bytes, 8, 4) === 'WEBP') {
+    if (objectSize !== undefined && readU32le(bytes, 4) + 8 > objectSize) {
+      return null;
+    }
     return sniffWebp(bytes);
   }
   return null;
@@ -54,6 +59,33 @@ function sniffPng(bytes: Uint8Array): SniffedImage | null {
     return null;
   }
   return { type: 'image/png', animated };
+}
+
+function sniffWholePng(bytes: Uint8Array): SniffedImage | null {
+  if (bytes.length < 16 || readU32be(bytes, 8) !== 13 || ascii(bytes, 12, 4) !== 'IHDR') {
+    return null;
+  }
+  let animated = false;
+  let sawImageData = false;
+  let pos = 8;
+  while (pos + 12 <= bytes.length) {
+    const length = readU32be(bytes, pos);
+    const type = ascii(bytes, pos + 4, 4);
+    if (pos + 12 + length > bytes.length) {
+      return null;
+    }
+    if (type === 'IEND') {
+      return sawImageData ? { type: 'image/png', animated } : null;
+    }
+    if (type === 'IDAT') {
+      sawImageData = true;
+    }
+    else if (type === 'acTL' && !sawImageData) {
+      animated = true;
+    }
+    pos += 12 + length;
+  }
+  return null;
 }
 
 // WebP: RIFF container whose first chunk is VP8 / VP8L / VP8X. Animated when the VP8X flags

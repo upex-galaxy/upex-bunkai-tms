@@ -83,6 +83,42 @@ describe('sniffImage', () => {
     expect(sniffImage(webp(webpChunk('JUNK', [1, 2])))).toBeNull();
   });
 
+  it('refuses a PNG cut inside its first IDAT when the bytes are the whole object (BK-2443)', () => {
+    const full = Uint8Array.from([...PNG_SIG, ...IHDR, ...pngChunk('IDAT', Array.from({ length: 200 }, () => 7)), ...pngChunk('IEND', [])]);
+    const cut = full.slice(0, 100);
+    expect(sniffImage(cut, cut.length)).toBeNull();
+  });
+
+  it('refuses a whole PNG that ends without IEND, or reaches IEND without any IDAT', () => {
+    const noIend = Uint8Array.from([...PNG_SIG, ...IHDR, ...pngChunk('IDAT', [1, 2, 3])]);
+    expect(sniffImage(noIend, noIend.length)).toBeNull();
+    const halfIend = png().slice(0, png().length - 2);
+    expect(sniffImage(halfIend, halfIend.length)).toBeNull();
+    const noIdat = Uint8Array.from([...PNG_SIG, ...IHDR, ...pngChunk('IEND', [])]);
+    expect(sniffImage(noIdat, noIdat.length)).toBeNull();
+  });
+
+  it('accepts a complete PNG, APNG detection included, when the bytes are the whole object', () => {
+    expect(sniffImage(png(), png().length)).toEqual({ type: 'image/png', animated: false });
+    const actl = pngChunk('acTL', [0, 0, 0, 2, 0, 0, 0, 0]);
+    expect(sniffImage(png(actl), png(actl).length)).toEqual({ type: 'image/png', animated: true });
+  });
+
+  it('keeps trusting the first IDAT when the object is larger than the window it sees', () => {
+    const full = Uint8Array.from([...PNG_SIG, ...IHDR, ...pngChunk('IDAT', Array.from({ length: 70 * 1024 }, () => 7)), ...pngChunk('IEND', [])]);
+    expect(sniffImage(full.slice(0, 64 * 1024), full.length)).toEqual({ type: 'image/png', animated: false });
+  });
+
+  it('refuses a WebP whose RIFF header declares more bytes than the object holds', () => {
+    const full = webp(webpChunk('VP8 ', Array.from({ length: 200 }, () => 7)));
+    const cut = full.slice(0, 100);
+    expect(sniffImage(cut, cut.length)).toBeNull();
+    expect(sniffImage(full, full.length)?.type).toBe('image/webp');
+    const big = webp(webpChunk('VP8 ', Array.from({ length: 70 * 1024 }, () => 7)));
+    expect(sniffImage(big.slice(0, 64 * 1024), big.length)?.type).toBe('image/webp');
+    expect(sniffImage(big.slice(0, 64 * 1024), big.length - 1)).toBeNull();
+  });
+
   it('rejects other image formats, text, empty and truncated input', () => {
     expect(sniffImage(Uint8Array.from([...ascii('GIF89a'), 1, 0, 1, 0]))).toBeNull();
     expect(sniffImage(Uint8Array.from(ascii('<svg xmlns="http://www.w3.org/2000/svg"></svg>')))).toBeNull();

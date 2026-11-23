@@ -9,7 +9,7 @@ import {
 // BK-593 - the evidence policy. Limits are inclusive: exactly 10 MiB passes, 10 MiB plus one
 // byte is refused; zero bytes is refused; the type is decided by content.
 
-const PNG = Uint8Array.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0x49, 0x44, 0x41, 0x54, 1, 2, 3, 0, 0, 0, 0]);
+const PNG = Uint8Array.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0x49, 0x44, 0x41, 0x54, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
 const JPEG = Uint8Array.from([0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10]);
 const GIF = Uint8Array.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0]);
 
@@ -86,6 +86,16 @@ describe('validateStoredEvidence', () => {
   it('refuses a declared type that differs from the sniffed type', () => {
     expect(validateStoredEvidence({ declaredType: 'image/jpeg', actualSize: 10, head: PNG })).toMatchObject({ ok: false, refusal: 'type_mismatch' });
     expect(validateStoredEvidence({ declaredType: 'image/webp', actualSize: 10, head: JPEG })).toMatchObject({ ok: false, refusal: 'type_mismatch' });
+  });
+
+  it('refuses a truncated PNG whose whole content fits in the head (BK-2443)', () => {
+    const cut = Uint8Array.from([...PNG.slice(0, 33), 0, 0, 0, 200, 0x49, 0x44, 0x41, 0x54, ...Array.from({ length: 59 }, () => 7)]);
+    expect(cut.length).toBe(100);
+    expect(validateStoredEvidence({ declaredType: 'image/png', actualSize: 100, head: cut })).toEqual({
+      ok: false,
+      refusal: 'invalid_image',
+      message: EVIDENCE_MESSAGES.invalid_image,
+    });
   });
 
   it('refuses animated images', () => {
