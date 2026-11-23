@@ -117,6 +117,19 @@ describe('readEvidenceObject', () => {
     if (found.status === 'found') { expect(Array.from(found.head)).toEqual([1, 2, 3, 4]); }
   });
 
+  it('returns an empty head for a zero-byte object without a ranged read, so validation can refuse it as empty (BK-2444)', async () => {
+    const { client, calls } = fakeStorage({ info: async () => ({ data: { size: 0, contentType: 'image/png' }, error: null }) });
+    let fetched = 0;
+    const fetchImpl = (async () => {
+      fetched += 1;
+      return new Response('', { status: 416 });
+    }) as unknown as typeof fetch;
+    const result = await readEvidenceObject(client, { path: 'p', fetchImpl });
+    expect(result).toEqual({ status: 'found', size: 0, head: new Uint8Array(0) });
+    expect(fetched).toBe(0);
+    expect(calls.signedUrl).toHaveLength(0);
+  });
+
   it('reports a missing object (the client never uploaded) without calling it unavailable', async () => {
     const { client } = fakeStorage({ info: async () => ({ data: null, error: { message: 'Object not found', status: 404 } }) });
     const result = await readEvidenceObject(client, { path: 'p', fetchImpl: (async () => new Response('')) as unknown as typeof fetch });
