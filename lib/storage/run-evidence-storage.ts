@@ -82,6 +82,9 @@ export async function readEvidenceObject(
   if (typeof size !== 'number') {
     throw unavailable('info');
   }
+  if (size <= 0) {
+    return { status: 'found', size, head: new Uint8Array(0) };
+  }
 
   const signed = await files.createSignedUrl(args.path, EVIDENCE_READ_URL_SECONDS);
   if (signed.error || !signed.data?.signedUrl) {
