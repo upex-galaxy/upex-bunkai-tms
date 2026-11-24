@@ -1,5 +1,6 @@
 'use client';
 
+import { revalidateAfterRunStart } from '@app/(app)/runs/actions';
 import { Button } from '@components/ui/button';
 import { Select } from '@components/ui/select';
 import { Play } from 'lucide-react';
@@ -96,6 +97,8 @@ export function StartRunButton({ testId, projectSlug, environments }: StartRunBu
         return;
       }
 
+      // The Run already exists: a failed revalidate must not read as a failed start.
+      await revalidateAfterRunStart().catch(() => {});
       toast.success('Run started');
       router.push(`/projects/${projectSlug}/runs/${runId}`);
     }
