@@ -9,6 +9,8 @@
 --     shows: whether the subscription cancels at the end of the paid period, when
 --     that period ends, when the owner asked, and the newest Stripe subscription
 --     event applied (out-of-order guard).
+--   * bunkai_project_ids_over_limit(workspace, limit) — the one oldest-first ranking,
+--     shared by the downgrade preview and the lock so they can never disagree.
 --   * bunkai_read_only_project_ids(workspace) — the projects that are over the
 --     EFFECTIVE plan's project limit (ADR-0021), oldest first
 --     (created_at asc, id asc). Derived on every call, never stored (AI Tech Lead
@@ -21,8 +23,9 @@
 --     affected, DELETE is never guarded (cleanup, project deletion and workspace
 --     deletion can never be wedged by a plan change), and writes made by another
 --     trigger or a cascade (pg_trigger_depth() > 1) pass, so bookkeeping keeps
---     working. Runs and import jobs are guarded on INSERT only: a run or import
---     already started before a downgrade can still finish.
+--     working. The run and import rows are guarded on INSERT only, so their status
+--     can still close; what a run or import writes into the content tables is refused.
+--     A Test resolves to every project its chained ATCs live in.
 --   * bunkai_apply_billing_subscription_event — service_role only, no actor
 --     parameter (ADR-0012). Applies `customer.subscription.updated` (cancel at period
 --     end, or the cancellation reverted) and `customer.subscription.deleted` (the
@@ -43,8 +46,37 @@ alter table public.workspace_billing_state
   add column if not exists subscription_event_at timestamptz null;
 
 -- =============================================================================
--- 2. bunkai_read_only_project_ids — derived, oldest first
+-- 2. bunkai_project_ids_over_limit / bunkai_read_only_project_ids — derived, oldest first
 -- =============================================================================
+
+-- The one ranking, so the downgrade preview (any limit) and the lock (the effective
+-- limit) can never disagree: created_at asc, then id asc, the oldest (count - limit).
+create or replace function public.bunkai_project_ids_over_limit(p_workspace_id uuid, p_limit int)
+returns setof uuid
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  with ranked as (
+    select p.id,
+           row_number() over (order by p.created_at asc, p.id asc) as rnk,
+           count(*) over () as total
+    from public.projects p
+    where p.workspace_id = p_workspace_id
+  )
+  select r.id
+  from ranked r
+  where p_limit is not null
+    and r.rnk <= r.total - p_limit
+  order by r.rnk;
+$$;
+
+revoke execute on function public.bunkai_project_ids_over_limit(uuid, int) from public, anon;
+grant  execute on function public.bunkai_project_ids_over_limit(uuid, int) to authenticated, service_role;
+
+comment on function public.bunkai_project_ids_over_limit(uuid, int) is
+  'BK-233 — the projects of a workspace beyond p_limit, oldest first (created_at asc, id asc): the first (count - p_limit). Empty for a null limit or a workspace at or under it. SECURITY INVOKER: a caller sees only what RLS already lets them read.';
 
 -- Project limits mirror lib/billing/plan-tiers.ts (TS owns the ladder, SQL mirrors
 -- the literal, same convention as 0077's bunkai_enforce_project_limit). An unknown
@@ -56,29 +88,18 @@ stable
 security invoker
 set search_path = ''
 as $$
-  with lim as (
-    select case public.bunkai_effective_plan(w.plan, g.ends_at)
-             when 'community' then 3
-             when 'cloud' then 50
-             else null
-           end as project_limit
-    from public.workspaces w
-    left join public.workspace_grace_periods g on g.workspace_id = w.id
-    where w.id = p_workspace_id
-  ),
-  ranked as (
-    select p.id,
-           row_number() over (order by p.created_at asc, p.id asc) as rnk,
-           count(*) over () as total
-    from public.projects p
-    where p.workspace_id = p_workspace_id
-  )
-  select r.id
-  from ranked r
-  cross join lim
-  where lim.project_limit is not null
-    and r.rnk <= r.total - lim.project_limit
-  order by r.rnk;
+  select o.id
+  from public.workspaces w
+  left join public.workspace_grace_periods g on g.workspace_id = w.id
+  cross join lateral public.bunkai_project_ids_over_limit(
+    w.id,
+    case public.bunkai_effective_plan(w.plan, g.ends_at)
+      when 'community' then 3
+      when 'cloud' then 50
+      else null
+    end
+  ) as o(id)
+  where w.id = p_workspace_id;
 $$;
 
 revoke execute on function public.bunkai_read_only_project_ids(uuid) from public, anon;
@@ -93,7 +114,8 @@ comment on function public.bunkai_read_only_project_ids(uuid) is
 
 -- SECURITY DEFINER so the check counts every project of the workspace whatever the
 -- caller can see (an RLS-narrowed count would undercount and let a write through).
--- It takes no argument and only reads; it is never callable as an RPC.
+-- It takes no argument and only reads; it is never callable as an RPC. A Test has
+-- no project of its own: it belongs to every project its chained ATCs live in.
 create or replace function public.bunkai_guard_project_writable()
 returns trigger
 language plpgsql
@@ -103,6 +125,8 @@ as $$
 declare
   v_row        jsonb;
   v_projects   uuid[] := '{}';
+  v_found      uuid[];
+  v_test       uuid;
   v_project    uuid;
   v_workspace  uuid;
   v_plan       text;
@@ -124,27 +148,41 @@ begin
       exit;
     end if;
 
-    v_project := null;
+    v_found := '{}';
+    v_test := null;
     if tg_table_name = 'projects' then
-      v_project := (v_row->>'id')::uuid;
+      v_found := array[(v_row->>'id')::uuid];
+    elsif tg_table_name = 'tests' then
+      v_test := (v_row->>'id')::uuid;
     elsif v_row ? 'project_id' and v_row->>'project_id' is not null then
-      v_project := (v_row->>'project_id')::uuid;
+      v_found := array[(v_row->>'project_id')::uuid];
     elsif v_row ? 'module_id' and v_row->>'module_id' is not null then
-      select m.project_id into v_project from public.modules m where m.id = (v_row->>'module_id')::uuid;
+      select array_agg(m.project_id) into v_found from public.modules m where m.id = (v_row->>'module_id')::uuid;
     elsif v_row ? 'atc_id' and v_row->>'atc_id' is not null then
-      select a.project_id into v_project from public.atcs a where a.id = (v_row->>'atc_id')::uuid;
+      select array_agg(a.project_id) into v_found from public.atcs a where a.id = (v_row->>'atc_id')::uuid;
     elsif v_row ? 'user_story_id' and v_row->>'user_story_id' is not null then
-      select coalesce(us.project_id, m.project_id) into v_project
+      select array_agg(coalesce(us.project_id, m.project_id)) into v_found
         from public.user_stories us
         left join public.modules m on m.id = us.module_id
         where us.id = (v_row->>'user_story_id')::uuid;
     elsif v_row ? 'test_plan_id' and v_row->>'test_plan_id' is not null then
-      select tp.project_id into v_project from public.test_plans tp where tp.id = (v_row->>'test_plan_id')::uuid;
+      select array_agg(tp.project_id) into v_found from public.test_plans tp where tp.id = (v_row->>'test_plan_id')::uuid;
+    elsif v_row ? 'test_id' and v_row->>'test_id' is not null then
+      v_test := (v_row->>'test_id')::uuid;
     end if;
 
-    if v_project is not null and not (v_project = any (v_projects)) then
-      v_projects := v_projects || v_project;
+    if v_test is not null then
+      select array_agg(distinct a.project_id) into v_found
+        from public.test_steps ts
+        join public.atcs a on a.id = ts.atc_id
+        where ts.test_id = v_test;
     end if;
+
+    foreach v_project in array coalesce(v_found, '{}') loop
+      if v_project is not null and not (v_project = any (v_projects)) then
+        v_projects := v_projects || v_project;
+      end if;
+    end loop;
   end loop;
 
   foreach v_project in array v_projects loop
@@ -173,7 +211,7 @@ begin
       continue;
     end if;
 
-    if exists (select 1 from public.bunkai_read_only_project_ids(v_workspace) r where r = v_project) then
+    if exists (select 1 from public.bunkai_project_ids_over_limit(v_workspace, v_limit) r where r = v_project) then
       raise exception 'project_read_only'
         using errcode = '45701',
               detail = jsonb_build_object(
@@ -191,7 +229,7 @@ $$;
 revoke execute on function public.bunkai_guard_project_writable() from public, anon, authenticated;
 
 comment on function public.bunkai_guard_project_writable() is
-  'BK-233 — BEFORE INSERT/UPDATE trigger: refuses a write to a project that is over its workspace''s EFFECTIVE plan limit (bunkai_read_only_project_ids) with SQLSTATE 45701 project_read_only. Checks the new and the old project of an UPDATE. Never guards DELETE; writes from another trigger or a cascade (pg_trigger_depth() > 1) pass. A workspace at or under its limit never reaches the read-only lookup.';
+  'BK-233 — BEFORE INSERT/UPDATE trigger: refuses a write to a project that is over its workspace''s EFFECTIVE plan limit (bunkai_read_only_project_ids) with SQLSTATE 45701 project_read_only. Checks the new and the old project of an UPDATE; a Test resolves to every project its chained ATCs live in. Never guards DELETE; writes from another trigger or a cascade (pg_trigger_depth() > 1) pass. A workspace at or under its limit never reaches the read-only lookup.';
 
 -- Content tables: INSERT and UPDATE.
 do $$
@@ -201,7 +239,8 @@ begin
   foreach v_table in array array[
     'modules', 'user_stories', 'acceptance_criteria', 'atcs', 'atc_steps',
     'atc_assertions', 'atc_acceptance_criteria', 'bugs', 'bug_evidence_attachments',
-    'milestones', 'test_plans', 'test_plan_tests', 'project_environments',
+    'milestones', 'milestone_plans', 'test_plans', 'test_plan_tests', 'tests', 'test_steps',
+    'test_automation_status_history', 'project_environments',
     'project_tracker_settings', 'project_repository_settings'
   ] loop
     execute format('drop trigger if exists bunkai_guard_project_writable_trigger on public.%I', v_table);
@@ -214,7 +253,9 @@ begin
 end;
 $$;
 
--- Starting a run or an import is a write; finishing one already started is not refused.
+-- The run and import rows themselves: starting one is a write, finishing one already
+-- started is not refused. What a run or an import writes into the content tables
+-- (ATCs, modules, bugs) is refused like any other write.
 drop trigger if exists bunkai_guard_project_writable_trigger on public.runs;
 create trigger bunkai_guard_project_writable_trigger
   before insert on public.runs

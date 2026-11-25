@@ -35,6 +35,8 @@ let qa: Awaited<ReturnType<typeof qaSession>>;
 let cloudWs = '';
 let enterpriseWs = '';
 let projectIds: string[] = [];
+let testId = '';
+let atcId = '';
 let counter = 0;
 const eventId = (label: string) => `${PREFIX}-evt-${label}-${(counter += 1)}`;
 
@@ -96,6 +98,20 @@ describeOrSkip('BK-233 - read-only over-limit projects and the subscription RPC 
     enterpriseWs = (await makeWorkspace(qaUserId, 'ent', 'enterprise', 6)).id;
     const { error } = await service().from('workspace_billing_state').insert({ workspace_id: cloudWs, stripe_customer_id: CUSTOMER, stripe_subscription_id: SUBSCRIPTION });
     if (error) { throw error; }
+
+    const db = service();
+    const { data: mod, error: moduleError } = await db.from('modules').insert({ project_id: projectIds[0], path: `${PREFIX}-m`, name: 'M1' }).select('id').single();
+    if (moduleError) { throw moduleError; }
+    const { data: story, error: storyError } = await db.from('user_stories').insert({ module_id: mod.id, project_id: projectIds[0], title: `${PREFIX} story` }).select('id').single();
+    if (storyError) { throw storyError; }
+    const { data: atc, error: atcError } = await db.from('atcs').insert({ project_id: projectIds[0], module_id: mod.id, user_story_id: story.id, slug: `${PREFIX}-atc`, title: `${PREFIX} atc`, layer: 'UI' }).select('id').single();
+    if (atcError) { throw atcError; }
+    atcId = atc.id;
+    const { data: test, error: testError } = await db.from('tests').insert({ workspace_id: cloudWs, title: `${PREFIX} test`, created_by: qaUserId }).select('id').single();
+    if (testError) { throw testError; }
+    testId = test.id;
+    const { error: stepError } = await db.from('test_steps').insert({ test_id: testId, atc_id: atcId, position: 1 });
+    if (stepError) { throw stepError; }
   });
 
   afterAll(async () => {
@@ -104,6 +120,14 @@ describeOrSkip('BK-233 - read-only over-limit projects and the subscription RPC 
     await db.from('stripe_webhook_events').delete().like('id', `${PREFIX}%`);
     await db.from('activity_log').delete().in('workspace_id', ids);
     await db.from('project_environments').delete().in('project_id', projectIds);
+    if (testId) {
+      await db.from('test_steps').delete().eq('test_id', testId);
+      await db.from('test_automation_status_history').delete().eq('test_id', testId);
+      await db.from('tests').delete().eq('id', testId);
+    }
+    await db.from('atcs').delete().in('project_id', projectIds);
+    await db.from('user_stories').delete().in('project_id', projectIds);
+    await db.from('modules').delete().in('project_id', projectIds);
     await db.from('projects').delete().in('workspace_id', ids);
     await db.from('workspace_members').delete().in('workspace_id', ids);
     await db.from('workspaces').delete().in('id', ids);
@@ -191,6 +215,15 @@ describeOrSkip('BK-233 - read-only over-limit projects and the subscription RPC 
     expect(env.error).toBeNull();
   });
 
+  it('locks a Test chained to a read-only project, and its steps', async () => {
+    const renamed = await service().from('tests').update({ title: `${PREFIX} renamed` }).eq('id', testId);
+    expect(renamed.error?.code).toBe('45701');
+    const step = await service().from('test_steps').insert({ test_id: testId, atc_id: atcId, position: 2 });
+    expect(step.error?.code).toBe('45701');
+    const atc = await service().from('atcs').update({ title: `${PREFIX} atc edited` }).eq('id', atcId);
+    expect(atc.error?.code).toBe('45701');
+  });
+
   it('a second deleted event after the downgrade is ignored, never re-applied', async () => {
     const { data } = await applyEvent('customer.subscription.deleted');
     expect((data as { status: string }).status).toBe('ignored');
@@ -202,5 +235,7 @@ describeOrSkip('BK-233 - read-only over-limit projects and the subscription RPC 
     expect(await readOnlyIds(cloudWs)).toEqual([]);
     const thawed = await qa.from('projects').update({ description: `${PREFIX} thawed` }).eq('id', projectIds[0]);
     expect(thawed.error).toBeNull();
+    const test = await service().from('tests').update({ title: `${PREFIX} thawed` }).eq('id', testId);
+    expect(test.error).toBeNull();
   });
 });

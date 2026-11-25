@@ -3132,6 +3132,10 @@ export interface Database {
       }
       bunkai_plans_progress: { Args: { p_plan_ids: string[] }, Returns: Json }
       bunkai_purge_deleted_workspaces: { Args: never, Returns: Json }
+      bunkai_project_ids_over_limit: {
+        Args: { p_limit: number, p_workspace_id: string }
+        Returns: string[]
+      }
       bunkai_rate_limit_consume: {
         Args: { p_key: string, p_windows: Json }
         Returns: Json
