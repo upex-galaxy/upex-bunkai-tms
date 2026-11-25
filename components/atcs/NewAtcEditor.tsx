@@ -2,6 +2,7 @@
 
 import type { ParsedAssertion } from '@lib/atc-parse';
 import type { AcceptanceCriterion, AtcLayer, AtcPriority, AtcTechnique, UserStory } from '@lib/types';
+import { revalidateAfterAtcCreated } from '@app/(app)/atcs/actions';
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
 import { AtcPreview } from '@components/atcs/AtcPreview';
 import { AuthoringFormatHint } from '@components/atcs/AuthoringFormatHint';
@@ -271,6 +272,7 @@ export function NewAtcEditor({
       }
 
       const body = (await response.json().catch(() => ({}))) as CreatedAtcBody;
+      await revalidateAfterAtcCreated().catch(() => {});
       toast.success('ATC created');
       if (body.atc?.id) {
         router.push(`/projects/${projectSlug}/atcs/${body.atc.id}`);
