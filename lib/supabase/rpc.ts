@@ -387,6 +387,26 @@ export async function setTestTags(supabase: Client, args: SetTestTagsArgs) {
   });
 }
 
+export interface BulkEditTestTagsArgs {
+  actorUserId: string
+  workspaceId: string
+  testIds: string[]
+  mode: 'add' | 'remove'
+  tags: string[]
+  dryRun?: boolean
+}
+
+export async function bulkEditTestTags(supabase: Client, args: BulkEditTestTagsArgs) {
+  return supabase.rpc('bunkai_bulk_edit_test_tags', {
+    p_actor_user_id: args.actorUserId,
+    p_workspace_id: args.workspaceId,
+    p_test_ids: args.testIds,
+    p_mode: args.mode,
+    p_tags: args.tags,
+    p_dry_run: args.dryRun ?? false,
+  });
+}
+
 // BK-596 — rename / archive / restore one Test. Idempotent: an identical name,
 // a repeated archive and a restore of a live Test are successes with
 // `changed: false`, no write and no event. An archived Test refuses a rename

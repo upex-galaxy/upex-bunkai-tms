@@ -7456,6 +7456,106 @@
         },
         "required": ["tags"]
       },
+      "TestBulkEditReport": {
+        "type": "object",
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["add", "remove"]
+          },
+          "requested": {
+            "type": "integer",
+            "description": "Distinct Tests processed (a repeated id counts once)."
+          },
+          "changed": {
+            "type": "integer",
+            "description": "With `dry_run`, how many WOULD change."
+          },
+          "unchanged": {
+            "type": "integer",
+            "description": "Already held (add) or already lacked (remove) every tag: a success, no version bump, no event."
+          },
+          "refused": {
+            "type": "integer"
+          },
+          "outcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TestBulkEditOutcome"
+            }
+          }
+        },
+        "required": ["dry_run", "mode", "requested", "changed", "unchanged", "refused", "outcomes"]
+      },
+      "TestBulkEditOutcome": {
+        "type": "object",
+        "properties": {
+          "test_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": ["changed", "unchanged", "refused"]
+          },
+          "reason": {
+            "type": ["string", "null"],
+            "enum": ["not_found", "archived", "tags_limit_exceeded", "write_failed", null],
+            "description": "Set only when `outcome` is `refused`."
+          },
+          "tags": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "string"
+            },
+            "description": "The Test's tags after the call, or the tags it would have for a dry run. `null` when `not_found`, and when `write_failed` struck before the Test could be read."
+          },
+          "version": {
+            "type": ["integer", "null"],
+            "description": "The Test's version after the call, or the version it would have for a dry run. `null` when `tags` is."
+          }
+        },
+        "required": ["test_id", "outcome", "reason", "tags", "version"]
+      },
+      "TestBulkEditRequest": {
+        "type": "object",
+        "properties": {
+          "test_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 1000
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["add", "remove"]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 20
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": false
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["test_ids", "mode", "tags"],
+        "additionalProperties": false
+      },
       "Test": {
         "type": "object",
         "properties": {
@@ -19772,6 +19872,83 @@
           },
           "422": {
             "description": "A tag exceeds 50 chars, contains a comma, or more than 20 tags supplied (`validation_failed`, `details.reason: tags_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/bulk-edit": {
+      "post": {
+        "tags": ["Tests"],
+        "summary": "Bulk add or remove tags on up to 200 Tests",
+        "description": "Bearer `atc:write` (or cookie session). Adds or removes 1 to 20 tags on up to 200 distinct Tests of one workspace (at most 1000 ids including repeats). There is no whole-set replace in bulk; use `PUT /api/v1/tests/{id}/tags` for one Test. Tags are normalised like the single-Test edit: reserved tags (smoke, sanity, regression) are lowercased and match in any casing, custom tags keep their casing and match exact-case. Length counts characters (code points), at most 50. The workspace is `workspace_id` when sent, otherwise a scoped token's own workspace, otherwise the session's active workspace. Each Test is processed on its own: partial success is the normal shape and the report lists one outcome per distinct Test. A Test whose set would not change is `unchanged` (no version bump, no event), checked before the 20-tag cap; an add that would exceed the cap refuses that Test as a whole. Missing ids and ids of another workspace are both `not_found`. Each changed Test writes its own `test.tags_changed` event (`version`, `old_tags`, `new_tags`, `bulk: true`). `dry_run: true` runs the same evaluation with no lock, no write and no event; it is advisory, because a concurrent edit can still change the outcome of the real call. There is no app-level rate limiter, so the 200-Test ceiling is the only size guard.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestBulkEditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-Test report (possibly with refusals).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestBulkEditReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body is not valid JSON, or a Test id is not a UUID (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, not a writer of the workspace (`details.reason: insufficient_role`), or a scoped token naming another workspace (`token_workspace_mismatch`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed: unknown key, mode other than add or remove, empty or invalid tag list, empty selection, more than 200 distinct Tests, or no workspace context. Nothing was written.",
             "content": {
               "application/json": {
                 "schema": {
