@@ -21,6 +21,7 @@ describe('bunkai (dispatch)', () => {
     const d = deps();
     expect(await run(['--help'], d)).toBe(EXIT_OK);
     expect(d.stdoutText()).toContain('auth login');
+    expect(d.stdoutText()).toContain('run start');
   });
 
   it('refuses an unknown command as a usage error', async () => {

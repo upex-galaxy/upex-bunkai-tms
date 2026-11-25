@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { renderTable } from './table';
+import { printable, renderTable } from './table';
 
 describe('renderTable', () => {
   it('pads columns to the widest cell and keeps the last column unpadded', () => {
@@ -19,6 +19,12 @@ describe('renderTable', () => {
     const out = renderTable(['TITLE'], [[`${esc}]0;owned${bel}Login${esc}[2J ok${csi}`]]);
     expect(out).toBe('TITLE\n]0;ownedLogin[2J ok\n');
     expect(Array.from(out).every(ch => ch === '\n' || ((ch.codePointAt(0) ?? 0) >= 0x20 && ((ch.codePointAt(0) ?? 0) < 0x7F || (ch.codePointAt(0) ?? 0) > 0x9F)))).toBe(true);
+  });
+
+  it('drops bidirectional overrides so a title cannot reverse the rest of its line', () => {
+    const rlo = String.fromCodePoint(0x202E);
+    const isolate = String.fromCodePoint(0x2066);
+    expect(printable(`Pay${rlo}won${isolate} now`)).toBe('Paywon now');
   });
 
   it('keeps accents and non-Latin text', () => {

@@ -8,14 +8,20 @@
 // rename the terminal of whoever runs `atc list`. `--json` needs no such step,
 // JSON.stringify already escapes them.
 
+const BIDI_CONTROLS = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
+
 function isPrintable(char: string): boolean {
   const code = char.codePointAt(0) ?? 0;
-  return code >= 0x20 && (code < 0x7F || code > 0x9F);
+  return code >= 0x20 && (code < 0x7F || code > 0x9F) && !BIDI_CONTROLS.test(char);
+}
+
+export function printable(text: string): string {
+  return Array.from(text.replace(/\s+/g, ' ')).filter(isPrintable).join('').trim();
 }
 
 export function renderTable(headers: string[], rows: string[][], maxWidth = 80): string {
   const clip = (cell: string) => {
-    const flat = Array.from(cell.replace(/\s+/g, ' ')).filter(isPrintable).join('').trim();
+    const flat = printable(cell);
     return flat.length > maxWidth ? `${flat.slice(0, maxWidth - 1)}…` : flat;
   };
   const cells = [headers, ...rows].map(row => row.map(clip));

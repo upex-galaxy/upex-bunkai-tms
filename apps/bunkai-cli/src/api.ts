@@ -40,11 +40,19 @@ export function normalizeApiUrl(raw: string): string {
   return `${parsed.origin}${parsed.pathname.replace(/\/+$/, '')}`;
 }
 
+export type TransportFailure
+  = | { kind: 'timeout', seconds: number }
+    | { kind: 'unreachable' }
+    | { kind: 'server', status: number, requestId: string | null };
+
 export interface RequestOptions {
   method?: 'GET' | 'POST'
   query?: Record<string, string | number | undefined>
   body?: unknown
   token?: string
+  headers?: Record<string, string>
+  // A write whose outcome is unknown must not say "try again": a retry could repeat it.
+  onTransportFailure?: (failure: TransportFailure) => Error
 }
 
 export class ApiClient {
@@ -61,7 +69,8 @@ export class ApiClient {
         url.searchParams.set(key, String(value));
       }
     }
-    const headers: Record<string, string> = { accept: 'application/json' };
+    const headers: Record<string, string> = Object.fromEntries(Object.entries(options.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v]));
+    headers.accept = 'application/json';
     if (options.token) {
       headers.authorization = `Bearer ${options.token}`;
     }
@@ -83,8 +92,12 @@ export class ApiClient {
     }
     catch (err) {
       const timedOut = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+      const seconds = Math.round(this.timeoutMs / 1000);
+      if (options.onTransportFailure) {
+        throw options.onTransportFailure(timedOut ? { kind: 'timeout', seconds } : { kind: 'unreachable' });
+      }
       throw new CliError(timedOut
-        ? `Bunkai at ${this.baseUrl} did not answer within ${Math.round(this.timeoutMs / 1000)} s. Check your connection and try again.`
+        ? `Bunkai at ${this.baseUrl} did not answer within ${seconds} s. Check your connection and try again.`
         : `Could not reach Bunkai at ${this.baseUrl}. Check your connection and try again.`);
     }
 
@@ -104,6 +117,9 @@ export class ApiClient {
     }
     if (response.status >= 500) {
       const requestId = response.headers.get('x-request-id');
+      if (options.onTransportFailure) {
+        throw options.onTransportFailure({ kind: 'server', status: response.status, requestId });
+      }
       throw new CliError(`Bunkai answered with a server error (${response.status}). Try again in a moment${requestId ? `; quote request id ${requestId} if it keeps failing` : ''}.`);
     }
     return { status: response.status, body, headers: response.headers };

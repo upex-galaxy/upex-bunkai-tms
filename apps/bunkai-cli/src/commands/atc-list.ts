@@ -1,10 +1,10 @@
-import type { ApiResponse } from '../api';
 import type { Deps } from '../deps';
 import type { Session } from '../session';
 import { parseArgs } from 'node:util';
 import { errorOf } from '../api';
 import { CliError, EXIT_OK, usageError } from '../errors';
-import { invalidSessionMessage, resolveSession } from '../session';
+import { assertReadable, resolveProject } from '../lookups';
+import { resolveSession } from '../session';
 import { renderTable } from '../table';
 
 // `bunkai atc list` (BK-1900 AC-02, AC-03). Finds ATCs in one Project by text,
@@ -29,8 +29,6 @@ Options:
 
 export const LIMIT_DEFAULT = 20;
 export const LIMIT_MAX = 50;
-
-const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
 export interface AtcRow {
   id: string
@@ -92,44 +90,10 @@ function parseOptions(argv: string[]): Options | 'help' {
   return { project, query: values.query.trim(), module: moduleArg.length > 0 ? moduleArg : null, limit, json: values.json === true };
 }
 
-// One refusal shape for every authenticated read (PO-7): a PAT revoked or
-// expired before OR during the command gets the same answer.
-function assertReadable(response: ApiResponse, session: Session): void {
-  if (response.status === 401) {
-    throw new CliError(invalidSessionMessage(session.source));
-  }
-  if (response.status === 403) {
-    throw new CliError(session.source === 'env'
-      ? 'The PAT in BUNKAI_TOKEN cannot read ATCs: it needs the atc:read scope.'
-      : 'This sign-in cannot read ATCs (its PAT lacks atc:read). Run "bunkai auth login" to sign in again.');
-  }
-  if (response.status === 429) {
-    throw new CliError('Too many requests. Wait a moment and try again.');
-  }
-}
-
-async function resolveProject(session: Session, arg: string): Promise<{ id: string, slug: string, name: string }> {
-  const workspace = session.workspace;
-  if (!workspace) {
-    throw new CliError('You have no Workspace yet: create or join one in the web app, then run "bunkai auth login" again.');
-  }
-  const byId = UUID.test(arg);
-  const response = await session.api.request(`/api/v1/workspaces/${workspace.id}/projects`, {
-    token: session.token,
-    query: byId ? {} : { slug: arg.toLowerCase() },
-  });
-  assertReadable(response, session);
-  const projects = (response.body as { projects?: Array<{ id: string, slug: string, name: string }> } | null)?.projects;
-  if (response.status !== 200 || !Array.isArray(projects)) {
-    throw new CliError(`The Projects of ${workspace.name} could not be read (${response.status}).`);
-  }
-  const found = byId ? projects.find(p => p.id.toLowerCase() === arg.toLowerCase()) : projects.find(p => p.slug === arg.toLowerCase());
-  // PO-9: one answer for a Project of another Workspace and for one that does
-  // not exist; the message depends only on what was typed.
-  if (!found) {
-    throw new CliError(`Project not found: "${arg}". Use the slug from the Project's web address, in your default Workspace ${workspace.name} (${workspace.slug}).`);
-  }
-  return found;
+function readForbidden(session: Session): string {
+  return session.source === 'env'
+    ? 'The PAT in BUNKAI_TOKEN cannot read ATCs: it needs the atc:read scope.'
+    : 'This sign-in cannot read ATCs (its PAT lacks atc:read). Run "bunkai auth login" to sign in again.';
 }
 
 interface ModuleRow { id: string, path: string, name: string }
@@ -153,7 +117,7 @@ export function matchModule(modules: ModuleRow[], arg: string): ModuleRow {
 
 async function resolveModule(session: Session, projectId: string, arg: string): Promise<ModuleRow> {
   const response = await session.api.request(`/api/v1/projects/${projectId}/modules`, { token: session.token });
-  assertReadable(response, session);
+  assertReadable(response, session, readForbidden(session));
   const modules = (response.body as { modules?: ModuleRow[] } | null)?.modules;
   if (response.status !== 200 || !Array.isArray(modules)) {
     throw new CliError(`The Modules of this Project could not be read (${response.status}).`);
@@ -181,14 +145,14 @@ export async function atcList(argv: string[], deps: Deps): Promise<number> {
   }
 
   const session = await resolveSession(deps);
-  const project = await resolveProject(session, options.project);
+  const project = await resolveProject(session, options.project, readForbidden(session));
   const narrowTo = options.module === null ? null : await resolveModule(session, project.id, options.module);
 
   const response = await session.api.request('/api/v1/atcs/search', {
     token: session.token,
     query: { query: options.query, project_id: project.id, module_id: narrowTo?.id, limit: options.limit },
   });
-  assertReadable(response, session);
+  assertReadable(response, session, readForbidden(session));
   const items = (response.body as { items?: Array<Record<string, unknown>> } | null)?.items;
   if (response.status !== 200 || !Array.isArray(items)) {
     throw new CliError(`The search failed: ${errorOf(response).message ?? `unexpected answer (${response.status})`}.`);
