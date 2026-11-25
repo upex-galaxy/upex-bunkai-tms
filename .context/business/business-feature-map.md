@@ -212,7 +212,7 @@ Each feature row maps to:
 - [x] Response shape: **bare-JSON success bodies**; failures use `{ error: { code, message, details?, request_id? } }` with snake_case codes (`lib/api/error-envelope.ts`). There is no `success` field and no `data` wrapper
 - [x] URL-prefixed versioning `/api/v1` → `/api/v2` for breaking changes
 - [ ] Rate limits: 100 req/min/token (writes), 600 req/min (reads), `Retry-After` on 429 — **NOT shipped**. No app-level limiter exists; the only 429s are passthroughs of Supabase's own auth throttling. ADR-0007 point 5 files the dedicated limiter as a documented follow-up (separate story)
-- [ ] CLI commands: `bunkai auth login`, `bunkai atc list`, `bunkai run start` — **NOT shipped**. No CLI package exists in the repo
+- [x] CLI commands: `bunkai auth login` and `bunkai atc list` (BK-1900), `bunkai run start` (BK-1950), in `apps/bunkai-cli` (its README holds the options, exit codes and the PAT scopes the sign-in asks for). It runs from a checkout of the repo: publishing it as a package or a binary is a later story
 - [ ] CLI command `bunkai run import --file <json>` — Phase 2 placeholder (returns "not implemented" link)
 - [ ] WebSocket bidirectional agentic protocol — Phase 2
 

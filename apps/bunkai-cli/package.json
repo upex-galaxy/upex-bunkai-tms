@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.1.0",
   "private": true,
-  "description": "The bunkai command line: sign in and find ATCs from a terminal.",
+  "description": "The bunkai command line: sign in, find ATCs and start Runs from a terminal.",
   "license": "ISC",
   "bin": {
     "bunkai": "./src/index.ts"
