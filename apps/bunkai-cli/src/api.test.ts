@@ -23,9 +23,57 @@ describe('ApiClient — redirects', () => {
     expect(api.requests).toHaveLength(1);
   });
 
+  it('sends extra headers without letting them replace accept or authorization', async () => {
+    const api = fakeApi({ 'POST /api/v1/runs': () => ({ status: 201, body: {} }) });
+    await new ApiClient('https://bunkai.test', api.fetch).request('/api/v1/runs', {
+      method: 'POST',
+      token: 'bk_pat_x',
+      body: {},
+      headers: { 'idempotency-key': 'key-12345678', 'accept': 'text/html', 'authorization': 'Bearer other' },
+    });
+    expect(api.requests[0]?.headers['idempotency-key']).toBe('key-12345678');
+    expect(api.requests[0]?.headers.accept).toBe('application/json');
+    expect(api.requests[0]?.headers.authorization).toBe('Bearer bk_pat_x');
+  });
+
   it('still returns an ordinary 4xx answer to the caller', async () => {
     const api = fakeApi({ 'GET /api/v1/me': () => ({ status: 401, body: { error: { code: 'unauthorized', message: 'no' } } }) });
     const response = await new ApiClient('https://bunkai.test', api.fetch).request('/api/v1/me', { token: 'bk_pat_x' });
     expect(response.status).toBe(401);
+  });
+});
+
+describe('ApiClient — transport failures a write handles itself', () => {
+  const marker = (failure: unknown) => new Error(JSON.stringify(failure));
+
+  it('hands a 5xx to onTransportFailure with its status and request id', async () => {
+    const api = fakeApi({ 'POST /api/v1/runs': () => ({ status: 503, headers: { 'x-request-id': 'req-9' } }) });
+    const failure = await new ApiClient('https://bunkai.test', api.fetch)
+      .request('/api/v1/runs', { method: 'POST', body: {}, onTransportFailure: marker })
+      .catch((err: Error) => err);
+    expect(JSON.parse((failure as Error).message)).toEqual({ kind: 'server', status: 503, requestId: 'req-9' });
+  });
+
+  it('hands a dropped connection and a timeout to onTransportFailure', async () => {
+    const dropped = (async () => { throw new TypeError('socket hang up'); }) as unknown as typeof fetch;
+    const lost = await new ApiClient('https://bunkai.test', dropped)
+      .request('/api/v1/runs', { method: 'POST', body: {}, onTransportFailure: marker })
+      .catch((err: Error) => err);
+    expect(JSON.parse((lost as Error).message)).toEqual({ kind: 'unreachable' });
+
+    const slow = (async (_: unknown, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('timed out'), { name: 'TimeoutError' })));
+    })) as unknown as typeof fetch;
+    const timedOut = await new ApiClient('https://bunkai.test', slow, 20)
+      .request('/api/v1/runs', { method: 'POST', body: {}, onTransportFailure: marker })
+      .catch((err: Error) => err);
+    expect(JSON.parse((timedOut as Error).message)).toEqual({ kind: 'timeout', seconds: 0 });
+  });
+
+  it('keeps the generic messages for every other request', async () => {
+    const api = fakeApi({ 'GET /api/v1/me': () => ({ status: 500 }) });
+    const failure = await new ApiClient('https://bunkai.test', api.fetch).request('/api/v1/me').catch((err: unknown) => err);
+    expect(failure).toBeInstanceOf(CliError);
+    expect((failure as CliError).message).toContain('Try again in a moment');
   });
 });

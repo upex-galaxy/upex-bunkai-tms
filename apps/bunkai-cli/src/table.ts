@@ -13,9 +13,13 @@ function isPrintable(char: string): boolean {
   return code >= 0x20 && (code < 0x7F || code > 0x9F);
 }
 
+export function printable(text: string): string {
+  return Array.from(text.replace(/\s+/g, ' ')).filter(isPrintable).join('').trim();
+}
+
 export function renderTable(headers: string[], rows: string[][], maxWidth = 80): string {
   const clip = (cell: string) => {
-    const flat = Array.from(cell.replace(/\s+/g, ' ')).filter(isPrintable).join('').trim();
+    const flat = printable(cell);
     return flat.length > maxWidth ? `${flat.slice(0, maxWidth - 1)}…` : flat;
   };
   const cells = [headers, ...rows].map(row => row.map(clip));
