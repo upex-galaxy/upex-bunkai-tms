@@ -20,6 +20,8 @@ export function blockedReasonCopy(preview: DowngradePreview): string | null {
       return 'Plan changes pause while a cancellation is pending. Resubscribe first.';
     case 'checkout_open':
       return 'A checkout is in progress for this workspace. Finish or cancel it first.';
+    case 'payment_overdue':
+      return 'This workspace has an unpaid renewal. Update the payment method and retry the charge before changing the plan.';
     default:
       return null;
   }
@@ -100,14 +102,14 @@ export function PlanChangeActions({ workspaceId, currentPeriodEnd, onChanged }: 
         headers: { 'content-type': 'application/json', 'idempotency-key': newIdempotencyKey() },
         body: JSON.stringify({
           target_plan: 'community',
-          expected_read_only_project_ids: preview.projects.read_only.map(p => p.id),
+          preview_token: preview.preview_token,
         }),
       });
       if (!response.ok) {
         const info = await readApiError(response);
         if (info.code === 'downgrade_preview_stale') {
           await loadPreview();
-          setError('The affected projects changed since you opened this preview. Review it again before confirming.');
+          setError('What changes on Community is different since you opened this preview. Review it again before confirming.');
           return;
         }
         setError(info.message ?? DOWNGRADE_ERROR_FALLBACK);

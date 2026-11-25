@@ -8121,8 +8121,18 @@
           },
           "blocked_reason": {
             "type": ["string", "null"],
-            "enum": ["seats_over_limit", "cancellation_pending", "checkout_open", null],
+            "enum": [
+              "seats_over_limit",
+              "cancellation_pending",
+              "checkout_open",
+              "payment_overdue",
+              null
+            ],
             "description": "Why the downgrade cannot be confirmed right now, or `null`."
+          },
+          "preview_token": {
+            "type": "string",
+            "description": "Fingerprint of every consequence shown (read-only projects, seats, retention). The confirm must send it back."
           }
         },
         "required": [
@@ -8132,7 +8142,8 @@
           "projects",
           "seats",
           "retention",
-          "blocked_reason"
+          "blocked_reason",
+          "preview_token"
         ]
       },
       "BillingDowngradeResult": {
@@ -8172,16 +8183,12 @@
             "type": "string",
             "enum": ["community"]
           },
-          "expected_read_only_project_ids": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "The exact `projects.read_only` ids from the preview the owner confirmed. A different live set answers `downgrade_preview_stale`."
+          "preview_token": {
+            "type": "string",
+            "description": "The `preview_token` of the preview the owner confirmed. When the live consequences differ, the answer is `downgrade_preview_stale`."
           }
         },
-        "required": ["target_plan", "expected_read_only_project_ids"]
+        "required": ["target_plan", "preview_token"]
       },
       "BillingInvoiceList": {
         "type": "object",
@@ -21378,7 +21385,7 @@
       "get": {
         "tags": ["Billing"],
         "summary": "Preview a downgrade to Community",
-        "description": "Owner-only. Lists exactly what a downgrade from Cloud to Community changes: the projects that become read-only (oldest first), members above the Community seat cap (which block the downgrade), and the retention window. Nothing is ever deleted. The preview is mandatory: the confirm must carry the read-only set shown here.",
+        "description": "Owner-only. Lists exactly what a downgrade from Cloud to Community changes: the projects that become read-only (oldest first), members above the Community seat cap (which block the downgrade), and the retention window. Nothing is ever deleted. The preview is mandatory: the confirm must carry the `preview_token` returned here.",
         "security": [
           {
             "cookieAuth": []
@@ -21535,7 +21542,7 @@
             }
           },
           "409": {
-            "description": "No paid Cloud subscription (`no_active_subscription`); the downgrade is blocked (`plan_change_not_available`, `details.reason`: `seats_over_limit` | `cancellation_pending` | `checkout_open`); or the affected projects changed since the preview (`downgrade_preview_stale`, `details.preview` holds the fresh preview).",
+            "description": "No paid Cloud subscription (`no_active_subscription`); the downgrade is blocked (`plan_change_not_available`, `details.reason`: `seats_over_limit` | `cancellation_pending` | `checkout_open` | `payment_overdue`); or the consequences changed since the preview (`downgrade_preview_stale`, `details.preview` holds the fresh preview).",
             "content": {
               "application/json": {
                 "schema": {
@@ -22202,7 +22209,7 @@
             }
           },
           "409": {
-            "description": "No paid Cloud subscription (`no_active_subscription`).",
+            "description": "No paid Cloud subscription (`no_active_subscription`), or an unpaid renewal must be resolved first (`plan_change_not_available`, `details.reason: payment_overdue`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -22212,7 +22219,7 @@
             }
           },
           "502": {
-            "description": "The payment processor could not schedule the cancellation (`upstream_error`). Nothing changed.",
+            "description": "The payment processor could not schedule the cancellation or did not confirm it (`upstream_error`). Nothing changed locally.",
             "content": {
               "application/json": {
                 "schema": {

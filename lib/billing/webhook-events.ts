@@ -1,6 +1,6 @@
 import type Stripe from 'stripe';
 import { internalDbError } from '@lib/billing/errors';
-import { periodEndOf } from '@lib/billing/subscription';
+import { cancelsAtPeriodEnd, periodEndOf } from '@lib/billing/subscription';
 import { createAdminClient } from '@lib/supabase/admin';
 
 // BK-231 — maps the Stripe invoice events the Billing screen depends on onto the
@@ -57,7 +57,7 @@ export async function applySubscriptionEvent(event: Stripe.Event, now: Date = ne
     p_event_created: new Date(event.created * 1000).toISOString(),
     p_stripe_customer_id: customerId,
     p_stripe_subscription_id: subscription.id,
-    p_cancel_at_period_end: subscription.cancel_at_period_end === true || subscription.cancel_at !== null,
+    p_cancel_at_period_end: cancelsAtPeriodEnd(subscription),
     p_current_period_end: periodEndOf(subscription) as string,
   });
   if (error) {

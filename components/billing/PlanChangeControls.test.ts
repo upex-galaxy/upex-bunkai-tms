@@ -54,6 +54,7 @@ const PREVIEW = {
   seats: { in_use: 3, limit: 5, over_limit: [] },
   retention: { current_days: 5, target_days: 30 },
   blocked_reason: null,
+  preview_token: 'a'.repeat(64),
 };
 
 let restoreFetch: (() => void) | null = null;
@@ -136,7 +137,7 @@ describe('Billing plan card - downgrade and cancel (BK-233)', () => {
     click('billing-downgrade-confirm');
     await flush();
     const post = calls.find(call => call.method === 'POST' && call.url.endsWith('/billing/downgrade'))!;
-    expect(JSON.parse(post.body as string)).toEqual({ target_plan: 'community', expected_read_only_project_ids: ['p1', 'p2'] });
+    expect(JSON.parse(post.body as string)).toEqual({ target_plan: 'community', preview_token: 'a'.repeat(64) });
     expect(post.headers['idempotency-key']).toBeDefined();
   });
 
@@ -163,6 +164,7 @@ describe('copy helpers', () => {
 
   test('blockedReasonCopy names the seat gap', () => {
     expect(blockedReasonCopy({ ...PREVIEW, seats: { in_use: 8, limit: 5, over_limit: [] }, blocked_reason: 'seats_over_limit' } as never)).toContain('Remove 3 members');
+    expect(blockedReasonCopy({ ...PREVIEW, blocked_reason: 'payment_overdue' } as never)).toContain('unpaid renewal');
     expect(blockedReasonCopy(PREVIEW as never)).toBeNull();
   });
 });

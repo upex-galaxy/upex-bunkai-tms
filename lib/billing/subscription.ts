@@ -2,9 +2,10 @@ import type { BillingStateRow } from '@lib/billing/billing-state';
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
+import { createHash } from 'node:crypto';
 import { ApiError } from '@lib/api/error-envelope';
 import { assertBillingOwner, loadBillingState, noActiveSubscription } from '@lib/billing/billing-state';
-import { internalDbError, isStripeMissingResource, toProcessorError } from '@lib/billing/errors';
+import { internalDbError, toProcessorError } from '@lib/billing/errors';
 import { PLAN_TIERS } from '@lib/billing/plan-tiers';
 import { getStripeClient } from '@lib/billing/stripe';
 import { createAdminClient } from '@lib/supabase/admin';
@@ -23,7 +24,7 @@ export interface SeatConflictMember {
   email: string | null
 }
 
-export type DowngradeBlockReason = 'seats_over_limit' | 'cancellation_pending' | 'checkout_open';
+export type DowngradeBlockReason = 'seats_over_limit' | 'cancellation_pending' | 'checkout_open' | 'payment_overdue';
 
 export interface DowngradePreview {
   workspace_name: string
@@ -33,34 +34,13 @@ export interface DowngradePreview {
   seats: { in_use: number, limit: number, over_limit: SeatConflictMember[] }
   retention: { current_days: number | null, target_days: number | null }
   blocked_reason: DowngradeBlockReason | null
-}
-
-export interface ProjectRow {
-  id: string
-  name: string
-  created_at: string
+  preview_token: string
 }
 
 export interface MemberRow {
   user_id: string
   role: string
   joined_at: string
-}
-
-// Same order as SQL bunkai_read_only_project_ids (created_at, then id), so preview and lock agree.
-export function projectsBecomingReadOnly(projects: ProjectRow[], limit: number | null): ReadOnlyProjectRef[] {
-  if (limit === null) {
-    return [];
-  }
-  const sorted = [...projects].sort((a, b) => {
-    const byDate = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-    if (byDate !== 0) {
-      return byDate;
-    }
-    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-  });
-  const over = Math.max(0, sorted.length - limit);
-  return sorted.slice(0, over).map(p => ({ id: p.id, name: p.name }));
 }
 
 // Seats are people, not data: they are never made read-only, the downgrade waits for the owner (PO ruling 2026-11-19).
@@ -74,12 +54,22 @@ export function membersOverSeatLimit(members: MemberRow[], limit: number | null)
   return nonOwners.slice(0, members.length - limit);
 }
 
-export function sameProjectSet(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  const set = new Set(a);
-  return b.every(id => set.has(id));
+// A fingerprint of every consequence the owner was shown; the confirm must echo it, so it cannot skip the preview.
+export function previewToken(workspaceId: string, preview: Omit<DowngradePreview, 'preview_token' | 'workspace_name' | 'blocked_reason'>): string {
+  const canonical = JSON.stringify([
+    workspaceId,
+    preview.target_plan,
+    preview.projects.read_only.map(p => p.id),
+    preview.projects.in_use,
+    preview.seats.in_use,
+    preview.seats.over_limit.map(m => m.user_id),
+    preview.retention.target_days,
+  ]);
+  return createHash('sha256').update(canonical).digest('hex');
+}
+
+export function isPaymentOverdue(state: Pick<BillingStateRow, 'payment_state'>): boolean {
+  return state.payment_state === 'payment_failed' || state.payment_state === 'retry_pending';
 }
 
 function planChangeNotAvailable(reason: string, message: string, extra: Record<string, unknown> = {}): ApiError {
@@ -116,8 +106,9 @@ async function loadCloudContext(db: Client, workspaceId: string, action: string)
 async function buildPreview(db: Client, workspaceId: string, ctx: Context): Promise<DowngradePreview> {
   const { admin, state } = ctx;
   const target = PLAN_TIERS.community;
-  const [projects, members, roster, openCheckout, oldestRun] = await Promise.all([
-    admin.from('projects').select('id, name, created_at').eq('workspace_id', workspaceId),
+  const [projects, overLimit, members, roster, openCheckout, oldestRun] = await Promise.all([
+    admin.from('projects').select('id, name').eq('workspace_id', workspaceId),
+    admin.rpc('bunkai_project_ids_over_limit', { p_workspace_id: workspaceId, p_limit: target.projectLimit as number }),
     admin.from('workspace_members').select('user_id, role, joined_at').eq('workspace_id', workspaceId).eq('status', 'active'),
     chatRoster(db, { workspaceId }),
     admin.from('billing_checkout_sessions').select('id').eq('workspace_id', workspaceId).eq('status', 'open').maybeSingle(),
@@ -125,6 +116,9 @@ async function buildPreview(db: Client, workspaceId: string, ctx: Context): Prom
   ]);
   if (projects.error) {
     throw internalDbError('projects lookup failed', projects.error);
+  }
+  if (overLimit.error) {
+    throw internalDbError('bunkai_project_ids_over_limit failed', overLimit.error);
   }
   if (members.error) {
     throw internalDbError('workspace_members lookup failed', members.error);
@@ -139,8 +133,14 @@ async function buildPreview(db: Client, workspaceId: string, ctx: Context): Prom
   const oldest = oldestRun.data?.created_at ?? null;
   const currentDays = oldest ? Math.floor((Date.now() - new Date(oldest).getTime()) / 86_400_000) : null;
 
+  const names = new Map((projects.data ?? []).map(p => [p.id, p.name]));
+  const readOnly = ((overLimit.data ?? [])).map(id => ({ id, name: names.get(id) ?? 'Project' }));
+
   let blocked: DowngradeBlockReason | null = null;
-  if (state.cancel_at_period_end) {
+  if (isPaymentOverdue(state)) {
+    blocked = 'payment_overdue';
+  }
+  else if (state.cancel_at_period_end) {
     blocked = 'cancellation_pending';
   }
   else if (openCheckout.data) {
@@ -150,22 +150,22 @@ async function buildPreview(db: Client, workspaceId: string, ctx: Context): Prom
     blocked = 'seats_over_limit';
   }
 
-  return {
-    workspace_name: ctx.workspaceName,
-    current_plan: 'cloud',
-    target_plan: 'community',
-    projects: {
-      in_use: (projects.data ?? []).length,
-      limit: target.projectLimit ?? 0,
-      read_only: projectsBecomingReadOnly(projects.data ?? [], target.projectLimit),
-    },
+  const consequences = {
+    current_plan: 'cloud' as const,
+    target_plan: 'community' as const,
+    projects: { in_use: (projects.data ?? []).length, limit: target.projectLimit ?? 0, read_only: readOnly },
     seats: {
       in_use: activeMembers.length,
       limit: target.seatLimit ?? 0,
       over_limit: over.map(m => ({ user_id: m.user_id, email: emails.get(m.user_id) ?? null })),
     },
     retention: { current_days: currentDays, target_days: target.retentionDays },
+  };
+  return {
+    workspace_name: ctx.workspaceName,
+    ...consequences,
     blocked_reason: blocked,
+    preview_token: previewToken(workspaceId, consequences),
   };
 }
 
@@ -174,7 +174,14 @@ export async function previewDowngrade(db: Client, workspaceId: string): Promise
   return buildPreview(db, workspaceId, ctx);
 }
 
+function paymentOverdueError(): ApiError {
+  return planChangeNotAvailable('payment_overdue', 'This workspace has an unpaid renewal. Update the payment method and retry the charge before changing the plan.');
+}
+
 function refuseBlocked(preview: DowngradePreview): void {
+  if (preview.blocked_reason === 'payment_overdue') {
+    throw paymentOverdueError();
+  }
   if (preview.blocked_reason === 'cancellation_pending') {
     throw planChangeNotAvailable('cancellation_pending', 'Plan changes pause while a cancellation is pending. Resubscribe first.');
   }
@@ -190,13 +197,14 @@ function refuseBlocked(preview: DowngradePreview): void {
   }
 }
 
-function applyRpc(admin: Client, args: {
+async function applyRpc(admin: Client, args: {
   eventType: 'customer.subscription.updated' | 'customer.subscription.deleted'
   state: BillingStateRow
   cancelAtPeriodEnd: boolean
   currentPeriodEnd: string | null
-}) {
-  return admin.rpc('bunkai_apply_billing_subscription_event', {
+  expected: string[]
+}): Promise<void> {
+  const { data, error } = await admin.rpc('bunkai_apply_billing_subscription_event', {
     p_stripe_event_id: null as unknown as string,
     p_event_type: args.eventType,
     p_event_created: new Date().toISOString(),
@@ -205,6 +213,13 @@ function applyRpc(admin: Client, args: {
     p_cancel_at_period_end: args.cancelAtPeriodEnd,
     p_current_period_end: args.currentPeriodEnd as string,
   });
+  if (error) {
+    throw internalDbError(`bunkai_apply_billing_subscription_event (${args.eventType}) failed`, error);
+  }
+  const status = (data as { status?: string } | null)?.status;
+  if (!status || !args.expected.includes(status)) {
+    console.error('subscription change confirmed by the processor but not applied locally; the webhook reconciles it', { workspaceId: args.state.workspace_id, status });
+  }
 }
 
 export interface DowngradeResult {
@@ -213,12 +228,12 @@ export interface DowngradeResult {
   read_only_projects: ReadOnlyProjectRef[]
 }
 
-// The confirm must match the live read-only set, so a project created or deleted since the preview is caught.
-export async function confirmDowngrade(db: Client, workspaceId: string, expectedReadOnlyIds: string[]): Promise<DowngradeResult> {
+// The confirm must echo the live preview's token, so a project or member change since the preview is caught.
+export async function confirmDowngrade(db: Client, workspaceId: string, token: string): Promise<DowngradeResult> {
   const ctx = await loadCloudContext(db, workspaceId, 'change the plan');
   const preview = await buildPreview(db, workspaceId, ctx);
   refuseBlocked(preview);
-  if (!sameProjectSet(preview.projects.read_only.map(p => p.id), expectedReadOnlyIds)) {
+  if (preview.preview_token !== token) {
     throw new ApiError('downgrade_preview_stale', 'The projects affected by this downgrade changed. Review the preview again.', {
       details: { reason: 'preview_changed', preview },
     });
@@ -226,23 +241,22 @@ export async function confirmDowngrade(db: Client, workspaceId: string, expected
 
   const subscriptionId = ctx.state.stripe_subscription_id as string;
   try {
-    await getStripeClient().subscriptions.cancel(subscriptionId, { prorate: false, invoice_now: false });
-  }
-  catch (raw) {
-    if (!isStripeMissingResource(raw)) {
-      throw toProcessorError(raw, 'stripe subscription cancel failed', { workspaceId });
+    const ended = await getStripeClient().subscriptions.cancel(subscriptionId, { prorate: false, invoice_now: false });
+    if (ended.status !== 'canceled') {
+      throw new Error(`subscription status after cancel: ${ended.status}`);
     }
   }
+  catch (raw) {
+    throw toProcessorError(raw, 'stripe subscription cancel failed', { workspaceId });
+  }
 
-  const { error } = await applyRpc(ctx.admin, {
+  await applyRpc(ctx.admin, {
     eventType: 'customer.subscription.deleted',
     state: ctx.state,
     cancelAtPeriodEnd: false,
     currentPeriodEnd: null,
+    expected: ['downgraded'],
   });
-  if (error) {
-    throw internalDbError('bunkai_apply_billing_subscription_event (downgrade) failed', error);
-  }
   return { status: 'downgraded', plan: 'community', read_only_projects: preview.projects.read_only };
 }
 
@@ -255,6 +269,10 @@ export function periodEndOf(subscription: Pick<Stripe.Subscription, 'cancel_at'>
   return seconds === null ? null : new Date(seconds * 1000).toISOString();
 }
 
+export function cancelsAtPeriodEnd(subscription: Pick<Stripe.Subscription, 'cancel_at_period_end' | 'cancel_at'>): boolean {
+  return subscription.cancel_at_period_end === true || subscription.cancel_at !== null;
+}
+
 export interface CancelResult {
   status: 'cancel_scheduled'
   ends_at: string | null
@@ -264,6 +282,9 @@ export async function cancelSubscription(db: Client, workspaceId: string, idempo
   const ctx = await loadCloudContext(db, workspaceId, 'cancel the subscription');
   if (ctx.state.cancel_at_period_end) {
     return { status: 'cancel_scheduled', ends_at: ctx.state.current_period_end };
+  }
+  if (isPaymentOverdue(ctx.state)) {
+    throw paymentOverdueError();
   }
 
   let subscription: Stripe.Subscription;
@@ -277,17 +298,18 @@ export async function cancelSubscription(db: Client, workspaceId: string, idempo
   catch (raw) {
     throw toProcessorError(raw, 'stripe subscription cancel_at_period_end failed', { workspaceId });
   }
+  if (!cancelsAtPeriodEnd(subscription)) {
+    throw toProcessorError(new Error('processor answered without a scheduled cancellation'), 'stripe subscription cancel not confirmed', { workspaceId });
+  }
 
   const endsAt = periodEndOf(subscription) ?? ctx.state.current_period_end;
-  const { error } = await applyRpc(ctx.admin, {
+  await applyRpc(ctx.admin, {
     eventType: 'customer.subscription.updated',
     state: ctx.state,
     cancelAtPeriodEnd: true,
     currentPeriodEnd: endsAt,
+    expected: ['cancel_scheduled', 'updated'],
   });
-  if (error) {
-    throw internalDbError('bunkai_apply_billing_subscription_event (cancel) failed', error);
-  }
   return { status: 'cancel_scheduled', ends_at: endsAt };
 }
 
@@ -320,16 +342,17 @@ export async function resubscribe(db: Client, workspaceId: string, idempotencyKe
   catch (raw) {
     throw toProcessorError(raw, 'stripe subscription resume failed', { workspaceId });
   }
+  if (cancelsAtPeriodEnd(subscription)) {
+    throw toProcessorError(new Error('processor still reports a scheduled cancellation'), 'stripe subscription resume not confirmed', { workspaceId });
+  }
 
   const renewsAt = periodEndOf({ ...subscription, cancel_at: null }) ?? ctx.state.current_period_end;
-  const { error } = await applyRpc(ctx.admin, {
+  await applyRpc(ctx.admin, {
     eventType: 'customer.subscription.updated',
     state: ctx.state,
     cancelAtPeriodEnd: false,
     currentPeriodEnd: renewsAt,
+    expected: ['resumed', 'updated'],
   });
-  if (error) {
-    throw internalDbError('bunkai_apply_billing_subscription_event (resubscribe) failed', error);
-  }
   return { status: 'resumed', renews_at: renewsAt };
 }

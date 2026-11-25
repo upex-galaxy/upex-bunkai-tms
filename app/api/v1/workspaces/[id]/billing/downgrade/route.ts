@@ -16,7 +16,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
 const ConfirmBody = z.object({
   target_plan: z.literal('community'),
-  expected_read_only_project_ids: z.array(z.string().uuid()).max(500),
+  preview_token: z.string().regex(/^[\da-f]{64}$/),
 });
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
@@ -42,7 +42,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 
   let result: Awaited<ReturnType<typeof confirmDowngrade>>;
   try {
-    result = await confirmDowngrade(db, workspaceId, body.expected_read_only_project_ids);
+    result = await confirmDowngrade(db, workspaceId, body.preview_token);
   }
   catch (error) {
     await discardIdempotencyResult(begin.token);

@@ -22,14 +22,15 @@ const DowngradePreviewSchema = z
       current_days: z.number().int().nullable().describe('Age in days of the oldest run, or `null` with no runs.'),
       target_days: z.number().int().nullable().describe('The Community retention window. Older runs stay stored and viewable.'),
     }),
-    blocked_reason: z.enum(['seats_over_limit', 'cancellation_pending', 'checkout_open']).nullable().describe('Why the downgrade cannot be confirmed right now, or `null`.'),
+    blocked_reason: z.enum(['seats_over_limit', 'cancellation_pending', 'checkout_open', 'payment_overdue']).nullable().describe('Why the downgrade cannot be confirmed right now, or `null`.'),
+    preview_token: z.string().describe('Fingerprint of every consequence shown (read-only projects, seats, retention). The confirm must send it back.'),
   })
   .openapi('BillingDowngradePreview');
 
 const DowngradeBodySchema = z
   .object({
     target_plan: z.literal('community'),
-    expected_read_only_project_ids: z.array(z.string().uuid()).describe('The exact `projects.read_only` ids from the preview the owner confirmed. A different live set answers `downgrade_preview_stale`.'),
+    preview_token: z.string().describe('The `preview_token` of the preview the owner confirmed. When the live consequences differ, the answer is `downgrade_preview_stale`.'),
   })
   .openapi('BillingDowngradeRequest');
 
@@ -53,7 +54,7 @@ registry.registerPath({
   path: '/api/v1/workspaces/{id}/billing/downgrade',
   tags: ['Billing'],
   summary: 'Preview a downgrade to Community',
-  description: 'Owner-only. Lists exactly what a downgrade from Cloud to Community changes: the projects that become read-only (oldest first), members above the Community seat cap (which block the downgrade), and the retention window. Nothing is ever deleted. The preview is mandatory: the confirm must carry the read-only set shown here.',
+  description: 'Owner-only. Lists exactly what a downgrade from Cloud to Community changes: the projects that become read-only (oldest first), members above the Community seat cap (which block the downgrade), and the retention window. Nothing is ever deleted. The preview is mandatory: the confirm must carry the `preview_token` returned here.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [WorkspaceIdParam],
   responses: {
@@ -74,7 +75,7 @@ registry.registerPath({
   responses: {
     200: { description: 'The workspace is on Community.', content: { 'application/json': { schema: DowngradeResultSchema } } },
     ...shared,
-    409: errorResponse('No paid Cloud subscription (`no_active_subscription`); the downgrade is blocked (`plan_change_not_available`, `details.reason`: `seats_over_limit` | `cancellation_pending` | `checkout_open`); or the affected projects changed since the preview (`downgrade_preview_stale`, `details.preview` holds the fresh preview).'),
+    409: errorResponse('No paid Cloud subscription (`no_active_subscription`); the downgrade is blocked (`plan_change_not_available`, `details.reason`: `seats_over_limit` | `cancellation_pending` | `checkout_open` | `payment_overdue`); or the consequences changed since the preview (`downgrade_preview_stale`, `details.preview` holds the fresh preview).'),
     422: errorResponse('The body failed validation (`validation_failed`).'),
     502: errorResponse('The payment processor could not end the subscription (`upstream_error`). Nothing changed.'),
     503: errorResponse('The payment processor is not configured (`payment_processor_unavailable`). Nothing changed.'),

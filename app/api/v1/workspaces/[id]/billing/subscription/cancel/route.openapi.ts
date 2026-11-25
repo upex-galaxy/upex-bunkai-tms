@@ -21,8 +21,8 @@ registry.registerPath({
     400: errorResponse('Malformed workspace id or Idempotency-Key.'),
     401: errorResponse('Not signed in.'),
     403: errorResponse('Missing `workspace:admin`, wrong workspace, or not the OWNER (`details.reason: not_workspace_owner`).'),
-    409: errorResponse('No paid Cloud subscription (`no_active_subscription`).'),
-    502: errorResponse('The payment processor could not schedule the cancellation (`upstream_error`). Nothing changed.'),
+    409: errorResponse('No paid Cloud subscription (`no_active_subscription`), or an unpaid renewal must be resolved first (`plan_change_not_available`, `details.reason: payment_overdue`).'),
+    502: errorResponse('The payment processor could not schedule the cancellation or did not confirm it (`upstream_error`). Nothing changed locally.'),
     503: errorResponse('The payment processor is not configured (`payment_processor_unavailable`). Nothing changed.'),
   },
 });

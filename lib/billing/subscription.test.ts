@@ -10,12 +10,12 @@ const adminModule = await import('@lib/supabase/admin');
 const {
   cancelSubscription,
   confirmDowngrade,
+  cancelsAtPeriodEnd,
   membersOverSeatLimit,
   periodEndOf,
   previewDowngrade,
-  projectsBecomingReadOnly,
+  previewToken,
   resubscribe,
-  sameProjectSet,
 } = await import('./subscription');
 
 const SUB_ID = 'sub_test_0001';
@@ -45,6 +45,7 @@ interface SetupOptions {
   memberCount?: number
   openCheckout?: boolean
   rpcError?: boolean
+  rpcStatus?: string
 }
 
 let subscriptionsCancel: Mock<(id: string, params: unknown) => Promise<unknown>>;
@@ -76,7 +77,8 @@ function setup(opts: SetupOptions = {}) {
   }, {
     bunkai_apply_billing_subscription_event: () => (opts.rpcError
       ? { data: null, error: { message: 'boom' } }
-      : { data: { status: 'ok' }, error: null }),
+      : { data: { status: opts.rpcStatus ?? 'downgraded' }, error: null }),
+    bunkai_project_ids_over_limit: args => ({ data: projectRows.slice(0, Math.max(0, projectRows.length - (args.p_limit as number))).map(p => p.id), error: null }),
   });
   spies = [
     spyOn(adminModule, 'createAdminClient').mockReturnValue(admin.client as never),
@@ -95,37 +97,13 @@ beforeEach(() => {
   subscriptionsCancel = mock(async () => ({ id: SUB_ID, status: 'canceled' }));
   subscriptionsUpdate = mock(async (_id, params) => ({
     id: SUB_ID,
+    cancel_at_period_end: params.cancel_at_period_end,
     cancel_at: params.cancel_at_period_end ? Date.parse(PERIOD_END) / 1000 : null,
     items: { data: [{ current_period_end: Date.parse(PERIOD_END) / 1000 }] },
   }));
   spies = [];
 });
 afterEach(() => { spies.forEach(spy => spy.mockRestore()); });
-
-describe('projectsBecomingReadOnly', () => {
-  test('should list the oldest over-limit projects first: 5 projects to Community lists P1 and P2 (Scenario 1.1)', () => {
-    expect(projectsBecomingReadOnly(projects(5), 3).map(p => p.name)).toEqual(['P1', 'P2']);
-  });
-
-  test('should list none with exactly the limit (Scenario 1.2) and one with limit + 1', () => {
-    expect(projectsBecomingReadOnly(projects(3), 3)).toEqual([]);
-    expect(projectsBecomingReadOnly(projects(4), 3).map(p => p.name)).toEqual(['P1']);
-  });
-
-  test('should list count - limit for a large workspace and none on an unlimited plan', () => {
-    expect(projectsBecomingReadOnly(projects(50), 3)).toHaveLength(47);
-    expect(projectsBecomingReadOnly(projects(50), null)).toEqual([]);
-  });
-
-  test('should break a created_at tie by id, the same order as the SQL function', () => {
-    const tied = [
-      { id: 'b', name: 'B', created_at: '2026-01-01T00:00:00.000Z' },
-      { id: 'a', name: 'A', created_at: '2026-01-01T00:00:00.000Z' },
-      { id: 'c', name: 'C', created_at: '2026-01-02T00:00:00.000Z' },
-    ];
-    expect(projectsBecomingReadOnly(tied, 2).map(p => p.id)).toEqual(['a']);
-  });
-});
 
 describe('membersOverSeatLimit', () => {
   test('should name the most recently joined non-owners beyond the Community cap (Scenario 1.3)', () => {
@@ -140,11 +118,28 @@ describe('membersOverSeatLimit', () => {
   });
 });
 
-describe('sameProjectSet and periodEndOf', () => {
-  test('sameProjectSet ignores order and catches a difference', () => {
-    expect(sameProjectSet(['a', 'b'], ['b', 'a'])).toBe(true);
-    expect(sameProjectSet(['a', 'b'], ['a'])).toBe(false);
-    expect(sameProjectSet(['a', 'b'], ['a', 'c'])).toBe(false);
+describe('previewToken, cancelsAtPeriodEnd and periodEndOf', () => {
+  const consequences = {
+    current_plan: 'cloud' as const,
+    target_plan: 'community' as const,
+    projects: { in_use: 5, limit: 3, read_only: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] },
+    seats: { in_use: 3, limit: 5, over_limit: [] },
+    retention: { current_days: 10, target_days: 30 },
+  };
+
+  test('previewToken changes when any consequence changes and is stable otherwise', () => {
+    const base = previewToken(WORKSPACE_ID, consequences);
+    expect(previewToken(WORKSPACE_ID, consequences)).toBe(base);
+    expect(previewToken(WORKSPACE_ID, { ...consequences, projects: { ...consequences.projects, read_only: [{ id: 'a', name: 'A' }] } })).not.toBe(base);
+    expect(previewToken(WORKSPACE_ID, { ...consequences, seats: { ...consequences.seats, in_use: 4 } })).not.toBe(base);
+    expect(previewToken('other', consequences)).not.toBe(base);
+    expect(base).toMatch(/^[\da-f]{64}$/);
+  });
+
+  test('cancelsAtPeriodEnd reads either Stripe field', () => {
+    expect(cancelsAtPeriodEnd({ cancel_at_period_end: true, cancel_at: null })).toBe(true);
+    expect(cancelsAtPeriodEnd({ cancel_at_period_end: false, cancel_at: 1798675200 })).toBe(true);
+    expect(cancelsAtPeriodEnd({ cancel_at_period_end: false, cancel_at: null })).toBe(false);
   });
 
   test('periodEndOf prefers cancel_at, then the earliest item period end', () => {
@@ -155,6 +150,19 @@ describe('sameProjectSet and periodEndOf', () => {
 });
 
 describe('previewDowngrade', () => {
+  test('should list the two oldest projects for 5 projects to Community, with a token (Scenario 1.1)', async () => {
+    const { caller, admin } = setup();
+    const preview = await previewDowngrade(caller.client, WORKSPACE_ID);
+    expect(preview.projects.read_only.map(p => p.name)).toEqual(['P1', 'P2']);
+    expect(admin.rpcCalls.find(call => call.fn === 'bunkai_project_ids_over_limit')?.args).toEqual({ p_workspace_id: WORKSPACE_ID, p_limit: 3 });
+    expect(preview.preview_token).toMatch(/^[\da-f]{64}$/);
+  });
+
+  test('should block while a renewal is unpaid', async () => {
+    const { caller } = setup({ state: { payment_state: 'payment_failed' } });
+    expect((await previewDowngrade(caller.client, WORKSPACE_ID)).blocked_reason).toBe('payment_overdue');
+  });
+
   test('should state nothing is read-only within the limit and carry the seat and retention effects (Scenario 1.2)', async () => {
     const { caller } = setup({ projectCount: 3, memberCount: 5 });
     const preview = await previewDowngrade(caller.client, WORKSPACE_ID);
@@ -188,8 +196,8 @@ describe('previewDowngrade', () => {
 
 describe('confirmDowngrade', () => {
   test('should end the subscription at Stripe, then apply the downgrade locally (Scenario 2.1)', async () => {
-    const { admin, caller, projectRows } = setup();
-    const result = await confirmDowngrade(caller.client, WORKSPACE_ID, [projectRows[0].id, projectRows[1].id]);
+    const { admin, caller } = setup();
+    const result = await confirmDowngrade(caller.client, WORKSPACE_ID, (await previewDowngrade(caller.client, WORKSPACE_ID)).preview_token);
 
     expect(result.status).toBe('downgraded');
     expect(result.read_only_projects.map(p => p.name)).toEqual(['P1', 'P2']);
@@ -204,44 +212,61 @@ describe('confirmDowngrade', () => {
   });
 
   test('should answer downgrade_preview_stale when the read-only set changed, without calling Stripe', async () => {
-    const { admin, caller, projectRows } = setup();
-    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, [projectRows[0].id]));
+    const { admin, caller } = setup();
+    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, 'f'.repeat(64)));
     expect(error.code).toBe('downgrade_preview_stale');
     expect(subscriptionsCancel).not.toHaveBeenCalled();
     expect(rpcCalls(admin)).toHaveLength(0);
   });
 
   test('should refuse while members are above the seat cap', async () => {
-    const { caller, projectRows } = setup({ memberCount: 8 });
-    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, [projectRows[0].id, projectRows[1].id]));
+    const { caller } = setup({ memberCount: 8 });
+    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, 'f'.repeat(64)));
     expect(error.code).toBe('plan_change_not_available');
     expect((error.details as { reason: string }).reason).toBe('seats_over_limit');
     expect(subscriptionsCancel).not.toHaveBeenCalled();
   });
 
   test('should refuse while a checkout session is open (Scenario E3)', async () => {
-    const { caller, projectRows } = setup({ openCheckout: true });
-    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, [projectRows[0].id, projectRows[1].id]));
+    const { caller } = setup({ openCheckout: true });
+    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, 'f'.repeat(64)));
     expect((error.details as { reason: string }).reason).toBe('checkout_open');
   });
 
   test('should refuse while a cancellation is pending', async () => {
-    const { caller, projectRows } = setup({ state: { cancel_at_period_end: true } });
-    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, [projectRows[0].id, projectRows[1].id]));
+    const { caller } = setup({ state: { cancel_at_period_end: true } });
+    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, 'f'.repeat(64)));
     expect((error.details as { reason: string }).reason).toBe('cancellation_pending');
   });
 
   test('should leave local state unchanged when Stripe fails (Scenario E1)', async () => {
     subscriptionsCancel = mock(async () => { throw new Error('stripe down'); });
-    const { admin, caller, projectRows } = setup();
-    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, [projectRows[0].id, projectRows[1].id]));
+    const { admin, caller } = setup();
+    const token = (await previewDowngrade(caller.client, WORKSPACE_ID)).preview_token;
+    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, token));
     expect(error.code).toBe('upstream_error');
     expect(rpcCalls(admin)).toHaveLength(0);
   });
 
+  test('should treat a subscription the processor does not know as a failure, never a local downgrade', async () => {
+    subscriptionsCancel = mock(async () => { throw Object.assign(new Error('No such subscription'), { code: 'resource_missing' }); });
+    const { admin, caller } = setup();
+    const token = (await previewDowngrade(caller.client, WORKSPACE_ID)).preview_token;
+    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, token));
+    expect(error.code).toBe('upstream_error');
+    expect(rpcCalls(admin)).toHaveLength(0);
+  });
+
+  test('should refuse while a renewal is unpaid, before any Stripe call', async () => {
+    const { caller } = setup({ state: { payment_state: 'payment_failed' } });
+    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, 'f'.repeat(64)));
+    expect((error.details as { reason: string }).reason).toBe('payment_overdue');
+    expect(subscriptionsCancel).not.toHaveBeenCalled();
+  });
+
   test('should refuse a non-owner before any Stripe call (Scenario 5.2)', async () => {
     const { caller } = setup({ isOwner: false });
-    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, []));
+    const error = await rejection(confirmDowngrade(caller.client, WORKSPACE_ID, 'f'.repeat(64)));
     expect(error.code).toBe('forbidden');
     expect(subscriptionsCancel).not.toHaveBeenCalled();
   });
@@ -261,6 +286,21 @@ describe('cancelSubscription', () => {
       p_cancel_at_period_end: true,
       p_current_period_end: PERIOD_END,
     });
+  });
+
+  test('should write nothing locally when the processor does not confirm the cancellation', async () => {
+    subscriptionsUpdate = mock(async () => ({ id: SUB_ID, cancel_at_period_end: false, cancel_at: null, items: { data: [] } }));
+    const { admin, caller } = setup();
+    const error = await rejection(cancelSubscription(caller.client, WORKSPACE_ID, 'key-00000008'));
+    expect(error.code).toBe('upstream_error');
+    expect(rpcCalls(admin)).toHaveLength(0);
+  });
+
+  test('should refuse to cancel while a renewal is unpaid', async () => {
+    const { caller } = setup({ state: { payment_state: 'retry_pending' } });
+    const error = await rejection(cancelSubscription(caller.client, WORKSPACE_ID, 'key-00000009'));
+    expect((error.details as { reason: string }).reason).toBe('payment_overdue');
+    expect(subscriptionsUpdate).not.toHaveBeenCalled();
   });
 
   test('should be idempotent on a second cancel: same end date, no Stripe call (Scenario 3.3)', async () => {
@@ -303,6 +343,14 @@ describe('resubscribe', () => {
     expect(error.code).toBe('resubscribe_not_available');
     expect((error.details as { reason: string }).reason).toBe('period_ended');
     expect(subscriptionsUpdate).not.toHaveBeenCalled();
+  });
+
+  test('should write nothing locally when the processor still reports the cancellation', async () => {
+    subscriptionsUpdate = mock(async () => ({ id: SUB_ID, cancel_at_period_end: true, cancel_at: null, items: { data: [] } }));
+    const { admin, caller } = setup({ state: { cancel_at_period_end: true } });
+    const error = await rejection(resubscribe(caller.client, WORKSPACE_ID, 'key-00000010', new Date('2026-12-20T00:00:00.000Z')));
+    expect(error.code).toBe('upstream_error');
+    expect(rpcCalls(admin)).toHaveLength(0);
   });
 
   test('should answer resubscribe_not_available with nothing pending', async () => {

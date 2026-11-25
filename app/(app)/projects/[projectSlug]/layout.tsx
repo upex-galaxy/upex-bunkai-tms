@@ -92,6 +92,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
   const readOnly = await isProjectReadOnly(supabase, project.workspace_id, project.id);
   if (readOnly) {
     canCreate = false;
+    canConfigure = false;
   }
 
   // `archived_at IS NULL` keeps soft-deleted (BK-10) modules and their cascade
