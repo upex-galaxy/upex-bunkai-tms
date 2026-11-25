@@ -387,6 +387,28 @@ export async function setTestTags(supabase: Client, args: SetTestTagsArgs) {
   });
 }
 
+// BK-2099 — add or remove tags on up to 200 Tests of one workspace (migration
+// 0139). service_role only, so it runs through the route's admin client.
+export interface BulkEditTestTagsArgs {
+  actorUserId: string
+  workspaceId: string
+  testIds: string[]
+  mode: 'add' | 'remove'
+  tags: string[]
+  dryRun?: boolean
+}
+
+export async function bulkEditTestTags(supabase: Client, args: BulkEditTestTagsArgs) {
+  return supabase.rpc('bunkai_bulk_edit_test_tags', {
+    p_actor_user_id: args.actorUserId,
+    p_workspace_id: args.workspaceId,
+    p_test_ids: args.testIds,
+    p_mode: args.mode,
+    p_tags: args.tags,
+    p_dry_run: args.dryRun ?? false,
+  });
+}
+
 // BK-596 — rename / archive / restore one Test. Idempotent: an identical name,
 // a repeated archive and a restore of a live Test are successes with
 // `changed: false`, no write and no event. An archived Test refuses a rename

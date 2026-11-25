@@ -125,6 +125,33 @@ export function mapTestTagsError(error: { code?: string, message: string }): nev
   }
 }
 
+// BK-2099 — bunkai_bulk_edit_test_tags. A viewer and a non-member share one
+// body (insufficient_role) so the 403 says nothing about the workspace. Raw
+// database text never reaches the caller.
+export function mapTestBulkEditError(error: { code?: string, message: string }): never {
+  switch (error.code) {
+    case '42501':
+      throw new ApiError('forbidden', 'You need write access to this workspace to edit its Tests.', {
+        details: { reason: 'insufficient_role' },
+      });
+    case 'P0002':
+      throw new ApiError('not_found', 'Workspace not found.', {
+        details: { reason: 'not_found' },
+      });
+    case '45129':
+      throw new ApiError('validation_failed', 'The selection must hold between 1 and 200 distinct Tests.', {
+        details: { reason: 'bulk_selection_invalid' },
+      });
+    case '45130':
+      throw new ApiError('validation_failed', 'The requested tag change is not valid.', {
+        details: { reason: 'bulk_change_invalid' },
+      });
+    default:
+      console.error('bunkai_bulk_edit_test_tags RPC failed', error);
+      throw new ApiError('internal_error', 'Failed to bulk-edit Test tags.');
+  }
+}
+
 // BK-227 — bunkai_set_test_automation_status / bunkai_get_test_automation_status.
 // 45128 is the under-lock backstop of the Zod enum on the request body.
 export function mapTestAutomationStatusError(error: { code?: string, message: string }): never {
