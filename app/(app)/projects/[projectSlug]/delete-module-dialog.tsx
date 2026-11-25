@@ -1,5 +1,6 @@
 'use client';
 
+import { revalidateAfterArchiveChange } from '@app/(app)/atcs/actions';
 import { Button } from '@components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -70,6 +71,8 @@ export function DeleteModuleDialog({
         setSubmitting(false);
         return;
       }
+      // BK-2449 — an unawaited refresh is dropped by the next navigation, and the shared layout holds the sidebar's Bug Reports count.
+      await revalidateAfterArchiveChange().catch(() => {});
       toast.success(`Archived “${moduleName}”`);
       router.refresh();
       onDeleted?.();
