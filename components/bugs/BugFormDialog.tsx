@@ -2,6 +2,7 @@
 
 import type { BugSeverity } from '@lib/bugs/constants';
 import type { DraftEvidence } from '@lib/bugs/evidence-draft';
+import { revalidateAfterBugFiled } from '@app/(app)/bugs/actions';
 import { BugEvidenceField, discardDraftUpload } from '@components/bugs/BugEvidenceField';
 import { Button } from '@components/ui/button';
 import { Select } from '@components/ui/select';
@@ -198,6 +199,7 @@ export function BugFormDialog({
         return;
       }
       const body = (await response.json().catch(() => ({}))) as { bug?: BugRecord };
+      await revalidateAfterBugFiled().catch(() => {});
       setSubmitting(false);
       if (body.bug) {
         onCreated(body.bug);
