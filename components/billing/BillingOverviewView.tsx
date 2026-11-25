@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReadOnlyProjectRef } from '@lib/billing/subscription';
 import type { BillingBlock } from '@lib/billing/summary';
 import type { WorkspacePlan } from '@lib/types';
 import type { BillingProfile } from './BillingDetailsCard';
@@ -14,6 +15,7 @@ import { BillingDetailsCard } from './BillingDetailsCard';
 import { FailedRenewalBanner } from './FailedRenewalBanner';
 import { InvoiceHistoryCard } from './InvoiceHistoryCard';
 import { PaymentMethodCard } from './PaymentMethodCard';
+import { PendingCancellationBanner, PlanChangeActions, ReadOnlyProjectsList } from './PlanChangeControls';
 
 interface BillingOverview {
   // BK-231 - `plan` is the EFFECTIVE plan (a Cloud workspace past its grace end
@@ -27,6 +29,7 @@ interface BillingOverview {
   active_seats: number
   project_count: number
   oldest_run_age_days: number | null
+  read_only_projects?: ReadOnlyProjectRef[]
 }
 
 type ViewState = 'loading' | 'success' | 'error' | 'forbidden';
@@ -290,6 +293,14 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
   const unpaidRenewal = billing !== null
     && (billing.payment_state === 'payment_failed' || billing.payment_state === 'retry_pending')
     && billing.grace !== null;
+  const pendingCancellation = billing !== null && billing.has_subscription && billing.cancel_at_period_end;
+  const canChangePlan = billing !== null && billing.can_edit && billing.has_subscription && !pendingCancellation
+    && overview.stored_plan !== 'enterprise' && (overview.stored_plan ?? overview.plan) === 'cloud';
+  const readOnlyProjects = overview.read_only_projects ?? [];
+  const reloadAfterPlanChange = () => {
+    void load({ silent: true });
+    setInvoiceRefresh(value => value + 1);
+  };
 
   return (
     <div className="flex flex-col gap-6" data-testid="billing-overview">
@@ -356,7 +367,34 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
               Upgrade plan
             </Link>
           )}
+          {canChangePlan && (
+            <PlanChangeActions
+              workspaceId={workspaceId as string}
+              currentPeriodEnd={billing?.current_period_end ?? null}
+              onChanged={reloadAfterPlanChange}
+            />
+          )}
         </CardContent>
+        {billing && pendingCancellation && (
+          <CardContent className="px-6 pb-6 pt-0">
+            <PendingCancellationBanner
+              workspaceId={workspaceId as string}
+              endsAt={billing.current_period_end}
+              canEdit={billing.can_edit}
+              onChanged={reloadAfterPlanChange}
+            />
+          </CardContent>
+        )}
+        {billing && tier.isPaid && !billing.can_edit && (
+          <CardContent className="px-6 pb-6 pt-0">
+            <p className="text-[12.5px] text-fg-2" data-testid="billing-owner-only-note">Only the workspace owner can change or cancel the plan.</p>
+          </CardContent>
+        )}
+        {readOnlyProjects.length > 0 && (
+          <CardContent className="px-6 pb-6 pt-0">
+            <ReadOnlyProjectsList projects={readOnlyProjects} projectCount={overview.project_count} />
+          </CardContent>
+        )}
       </Card>
 
       {/* Seats */}

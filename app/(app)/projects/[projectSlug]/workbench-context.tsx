@@ -56,6 +56,7 @@ export interface WorkbenchData {
   canCreate: boolean
   // BK-1619 — true only for a workspace owner / admin (may open Settings > Jira).
   canConfigure?: boolean
+  readOnly?: boolean
 }
 
 interface WorkbenchContextValue extends WorkbenchData {
@@ -170,6 +171,7 @@ export function WorkbenchProvider({
   environments,
   canCreate,
   canConfigure = false,
+  readOnly = false,
 }: WorkbenchData & { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -354,6 +356,7 @@ export function WorkbenchProvider({
     environments,
     canCreate,
     canConfigure,
+    readOnly,
     view,
     setView,
     openTabs,
@@ -388,6 +391,7 @@ export function WorkbenchProvider({
     environments,
     canCreate,
     canConfigure,
+    readOnly,
     view,
     openTabs,
     activeAtcId,

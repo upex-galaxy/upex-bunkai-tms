@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 
 // Shared Acceptance-Criterion error mapping (BK-15), used by both the scoped
 // create/list route and the flat mutate route.
@@ -10,6 +11,7 @@ export function mapCriterionRpcError(
   error: { code?: string, message: string },
   notFoundMessage = 'Acceptance criterion not found.',
 ): never {
+  throwIfProjectReadOnly(error);
   if (error.code === '42501') {
     throw new ApiError('forbidden', 'You must be a member of this project.', {
       details: { reason: 'not_a_member' },
@@ -24,6 +26,7 @@ export function mapCriterionRpcError(
 // Map a Postgrest error from a direct (RLS-scoped) title/description update —
 // 42501 / an RLS denial means the caller is a viewer, not a member.
 export function mapCriterionWriteError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
     throw new ApiError('forbidden', 'You must be a member of this project.', {
       details: { reason: 'not_a_member' },

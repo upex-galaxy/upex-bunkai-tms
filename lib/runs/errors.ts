@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 
 // BK-34 — map a bunkai_create_run / bunkai_get_run_expanded RPC error (Postgres
 // SQLSTATE) to the canonical API envelope. The RPC raises the runs-domain 452xx
@@ -6,6 +7,7 @@ import { ApiError } from '@lib/api/error-envelope';
 // always throws (`: never`), so the route's `if (error) mapRunRpcError(error)` is
 // exhaustive — control never falls through.
 export function mapRunRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       // Non-disclosure: a non-member must not learn the Test exists. Foreign /

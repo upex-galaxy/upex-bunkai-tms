@@ -7,7 +7,7 @@ import { CUSTOMER_ID, fakeSupabase } from './test-doubles';
 void mock.module('server-only', () => ({}));
 
 const adminModule = await import('@lib/supabase/admin');
-const { applyInvoiceEvent, UNKNOWN_CUSTOMER_RETRY_WINDOW_MS } = await import('./webhook-events');
+const { applyInvoiceEvent, applySubscriptionEvent, UNKNOWN_CUSTOMER_RETRY_WINDOW_MS } = await import('./webhook-events');
 
 const NOW = new Date('2026-11-02T12:00:00.000Z');
 const created = (offsetMs: number) => Math.floor((NOW.getTime() - offsetMs) / 1000);
@@ -78,5 +78,61 @@ describe('applyInvoiceEvent', () => {
     const failure = await applyInvoiceEvent(event('invoice.paid', { id: 'in_1', customer: CUSTOMER_ID }), NOW).catch(error => error);
     expect(failure).toMatchObject({ code: 'internal_error', status: 500 });
     expect(failure.message).not.toContain('relation');
+  });
+});
+
+describe('applySubscriptionEvent (BK-233)', () => {
+  function setupSubscription(rpcResult: { data: unknown, error: { message: string } | null }) {
+    const admin = fakeSupabase(() => undefined, { bunkai_apply_billing_subscription_event: () => rpcResult });
+    spies = [spyOn(adminModule, 'createAdminClient').mockReturnValue(admin.client as never)];
+    return admin;
+  }
+  const subscription = (overrides: Record<string, unknown> = {}) => ({
+    id: 'sub_1',
+    customer: CUSTOMER_ID,
+    cancel_at_period_end: false,
+    cancel_at: null,
+    items: { data: [{ current_period_end: 1798675200 }] },
+    ...overrides,
+  });
+
+  test('passes a scheduled cancellation and the period end to the RPC (Scenario 3.1)', async () => {
+    const admin = setupSubscription({ data: { status: 'cancel_scheduled' }, error: null });
+    const outcome = await applySubscriptionEvent(
+      event('customer.subscription.updated', subscription({ cancel_at_period_end: true, cancel_at: 1798675200 })),
+      NOW,
+    );
+    expect(outcome).toEqual({ status: 'cancel_scheduled', retryable: false });
+    expect(admin.rpcCalls[0].args).toEqual({
+      p_stripe_event_id: 'evt_1',
+      p_event_type: 'customer.subscription.updated',
+      p_event_created: new Date(created(1000) * 1000).toISOString(),
+      p_stripe_customer_id: CUSTOMER_ID,
+      p_stripe_subscription_id: 'sub_1',
+      p_cancel_at_period_end: true,
+      p_current_period_end: '2026-12-31T00:00:00.000Z',
+    });
+  });
+
+  test('passes the end of the subscription so the workspace drops to Community (Scenario 3.2)', async () => {
+    const admin = setupSubscription({ data: { status: 'downgraded' }, error: null });
+    await applySubscriptionEvent(event('customer.subscription.deleted', subscription()), NOW);
+    expect(admin.rpcCalls[0].args).toMatchObject({ p_event_type: 'customer.subscription.deleted', p_cancel_at_period_end: false });
+  });
+
+  test('a duplicated webhook is acknowledged once, never retried (Scenario E2)', async () => {
+    setupSubscription({ data: { status: 'duplicate' }, error: null });
+    expect(await applySubscriptionEvent(event('customer.subscription.deleted', subscription()), NOW)).toEqual({ status: 'duplicate', retryable: false });
+  });
+
+  test('a webhook before the customer is stored asks Stripe to redeliver while recent', async () => {
+    setupSubscription({ data: { status: 'unknown_customer' }, error: null });
+    expect(await applySubscriptionEvent(event('customer.subscription.updated', subscription()), NOW)).toEqual({ status: 'unknown_customer', retryable: true });
+  });
+
+  test('ignores a subscription with no customer without calling the database', async () => {
+    const admin = setupSubscription({ data: null, error: null });
+    expect(await applySubscriptionEvent(event('customer.subscription.updated', subscription({ customer: null })), NOW)).toEqual({ status: 'ignored', retryable: false });
+    expect(admin.rpcCalls).toHaveLength(0);
   });
 });

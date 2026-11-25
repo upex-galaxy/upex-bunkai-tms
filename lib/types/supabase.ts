@@ -2181,7 +2181,10 @@ export interface Database {
       }
       workspace_billing_state: {
         Row: {
+          cancel_at_period_end: boolean
+          cancel_requested_at: string | null
           created_at: string
+          current_period_end: string | null
           failed_invoice_id: string | null
           last_paid_invoice_id: string | null
           last_payment_failed_at: string | null
@@ -2196,11 +2199,15 @@ export interface Database {
           retry_started_at: string | null
           stripe_customer_id: string
           stripe_subscription_id: string | null
+          subscription_event_at: string | null
           updated_at: string
           workspace_id: string
         }
         Insert: {
+          cancel_at_period_end?: boolean
+          cancel_requested_at?: string | null
           created_at?: string
+          current_period_end?: string | null
           failed_invoice_id?: string | null
           last_paid_invoice_id?: string | null
           last_payment_failed_at?: string | null
@@ -2215,11 +2222,15 @@ export interface Database {
           retry_started_at?: string | null
           stripe_customer_id: string
           stripe_subscription_id?: string | null
+          subscription_event_at?: string | null
           updated_at?: string
           workspace_id: string
         }
         Update: {
+          cancel_at_period_end?: boolean
+          cancel_requested_at?: string | null
           created_at?: string
+          current_period_end?: string | null
           failed_invoice_id?: string | null
           last_paid_invoice_id?: string | null
           last_payment_failed_at?: string | null
@@ -2234,6 +2245,7 @@ export interface Database {
           retry_started_at?: string | null
           stripe_customer_id?: string
           stripe_subscription_id?: string | null
+          subscription_event_at?: string | null
           updated_at?: string
           workspace_id?: string
         }
@@ -2601,6 +2613,18 @@ export interface Database {
           p_replaced: boolean
           p_stripe_customer_id: string
           p_stripe_event_id: string
+        }
+        Returns: Json
+      }
+      bunkai_apply_billing_subscription_event: {
+        Args: {
+          p_cancel_at_period_end: boolean
+          p_current_period_end: string
+          p_event_created: string
+          p_event_type: string
+          p_stripe_customer_id: string
+          p_stripe_event_id: string
+          p_stripe_subscription_id: string
         }
         Returns: Json
       }
@@ -3107,10 +3131,18 @@ export interface Database {
         }[]
       }
       bunkai_plans_progress: { Args: { p_plan_ids: string[] }, Returns: Json }
+      bunkai_project_ids_over_limit: {
+        Args: { p_limit: number, p_workspace_id: string }
+        Returns: string[]
+      }
       bunkai_purge_deleted_workspaces: { Args: never, Returns: Json }
       bunkai_rate_limit_consume: {
         Args: { p_key: string, p_windows: Json }
         Returns: Json
+      }
+      bunkai_read_only_project_ids: {
+        Args: { p_workspace_id: string }
+        Returns: string[]
       }
       bunkai_remove_run_step_attachment: {
         Args: { p_attachment_id: string }

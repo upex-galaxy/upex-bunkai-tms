@@ -1,10 +1,12 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 import { ATC_LAYERS, ATC_PRIORITIES, ATC_TECHNIQUES, ATC_TITLE_MIN } from '@lib/atcs/validation';
 
 // BK-18 — map a bunkai_create_atc / bunkai_update_atc / bunkai_get_atc RPC error
 // (Postgres SQLSTATE) to the canonical API envelope. The RPCs raise custom
 // 45xxx codes for the domain rules; 42501/P0002/23505 are standard SQLSTATEs.
 export function mapAtcRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     // BK-622 — 23514 is Postgres' generic check_violation. It reached here
     // (and fell through to the 500 default below) for `atcs_title_min_length`
@@ -121,6 +123,7 @@ export function mapAtcRpcError(error: { code?: string, message: string }): never
 // existence leak). Zero chaining Tests is NOT an error (the RPC returns an
 // empty list, the route surfaces 200), so it never reaches here.
 export function mapAtcUsageRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case 'P0002':
       throw new ApiError('not_found', 'ATC not found.', {

@@ -4,7 +4,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
 import { applySetupSessionCompleted } from '@lib/billing/payment-method';
 import { getStripeClient, getStripeWebhookSecret } from '@lib/billing/stripe';
-import { applyInvoiceEvent, INVOICE_EVENT_TYPES } from '@lib/billing/webhook-events';
+import { applyInvoiceEvent, applySubscriptionEvent, INVOICE_EVENT_TYPES, SUBSCRIPTION_EVENT_TYPES } from '@lib/billing/webhook-events';
 import { createAdminClient } from '@lib/supabase/admin';
 import { applyBillingCheckoutWebhookEvent } from '@lib/supabase/rpc';
 
@@ -81,6 +81,16 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     const outcome = await applyInvoiceEvent(event);
     if (outcome.retryable) {
       console.error('stripe invoice event for a customer not known yet', { eventId: event.id, type: event.type });
+      throw new ApiError('upstream_error', 'No matching billing customer found yet — retry.');
+    }
+    return jsonResponse({ status: 'ok', result: { status: outcome.status } }, { status: 200 });
+  }
+
+  // BK-233 — the subscription lifecycle (cancel at period end, reverted, ended).
+  if (SUBSCRIPTION_EVENT_TYPES.has(event.type)) {
+    const outcome = await applySubscriptionEvent(event);
+    if (outcome.retryable) {
+      console.error('stripe subscription event for a customer not known yet', { eventId: event.id, type: event.type });
       throw new ApiError('upstream_error', 'No matching billing customer found yet — retry.');
     }
     return jsonResponse({ status: 'ok', result: { status: outcome.status } }, { status: 200 });

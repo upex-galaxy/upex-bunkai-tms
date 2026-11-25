@@ -1,5 +1,6 @@
 import type { EvidenceRefusal } from '@lib/storage/evidence-policy';
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 import { EVIDENCE_MESSAGES, EVIDENCE_REFUSAL_HTTP } from '@lib/storage/evidence-policy';
 
 // BK-593 - map a run step attachment RPC error (Postgres SQLSTATE) to the canonical API
@@ -10,6 +11,7 @@ import { EVIDENCE_MESSAGES, EVIDENCE_REFUSAL_HTTP } from '@lib/storage/evidence-
 // (`: never`), so the route's `if (error) mapAttachmentRpcError(error)` is exhaustive.
 
 export function mapAttachmentRpcError(error: { code?: string, message: string, hint?: string | null }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {

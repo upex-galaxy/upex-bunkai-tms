@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 import { TRACKER_SETTINGS_MESSAGES } from './validation';
 
 // BK-371 — map a bunkai_upsert_project_tracker_settings error (Postgres
@@ -37,6 +38,7 @@ function parseQueueCount(message: string): number | null {
 }
 
 export function mapTrackerSettingsRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case 'P0002':
       throw new ApiError('not_found', 'Project not found.', {

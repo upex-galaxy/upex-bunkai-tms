@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { WorkbenchData, WorkbenchView } from './workbench-context';
+import { ReadOnlyProjectNotice } from '@components/billing/ReadOnlyProjectNotice';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { cn } from '@lib/utils';
@@ -49,6 +50,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
     environments,
     canCreate,
     canConfigure,
+    readOnly,
     view,
     setView,
     openTabs,
@@ -214,6 +216,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
               })}
             </div>
           )}
+          {readOnly && <ReadOnlyProjectNotice />}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
         </main>
       </div>

@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 
 // BK-205 — map a bunkai_*_milestone RPC error (Postgres SQLSTATE) to the
 // canonical API envelope. The RPCs raise the milestones-domain 455xx block
@@ -13,6 +14,7 @@ import { ApiError } from '@lib/api/error-envelope';
 // exhaustive — control never falls through.
 
 export function mapMilestoneRpcError(error: { code?: string, message: string, details?: string | null }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       // Non-member, or (on create) a viewer — member+ write access is
@@ -68,6 +70,7 @@ export function mapMilestoneRpcError(error: { code?: string, message: string, de
 // BK-2091: archive and restore raise 42501 only after their membership check,
 // so it always means a member below the write role, never a non-member.
 export function mapMilestoneLifecycleRpcError(error: { code?: string, message: string, details?: string | null }): never {
+  throwIfProjectReadOnly(error);
   if (error.code === '42501') {
     throw new ApiError('forbidden', 'Archiving or restoring a milestone requires the member role or higher.', {
       details: { reason: 'forbidden_role' },
@@ -81,6 +84,7 @@ export function mapMilestoneLifecycleRpcError(error: { code?: string, message: s
 // mapper above. 45505 deliberately carries no plan id: a plan outside the project, in
 // another workspace or unknown is one indistinguishable answer (non-disclosure).
 export function mapMilestonePlanRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'Attaching or detaching test plans requires the member role or higher.', {

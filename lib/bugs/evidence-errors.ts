@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 import { BUG_EVIDENCE_MESSAGES } from '@lib/bugs/constants';
 import { EVIDENCE_MESSAGES } from '@lib/storage/evidence-policy';
 
@@ -12,6 +13,7 @@ import { EVIDENCE_MESSAGES } from '@lib/storage/evidence-policy';
 //   45318  the upload window lapsed                       -> 409
 //   22023  an argument the route should have refused      -> 422
 export function mapBugEvidenceRpcError(error: { code?: string, message: string, hint?: string | null }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {

@@ -24,6 +24,9 @@ export interface BillingBlock {
   subscription_state: SubscriptionState
   grace: { started_at: string, ends_at: string } | null
   retry_available: boolean
+  has_subscription: boolean
+  cancel_at_period_end: boolean
+  current_period_end: string | null
 }
 
 function paymentMethodOf(bundle: BillingStateBundle): PaymentMethodSummary | null {
@@ -66,5 +69,8 @@ export async function loadBillingBlock(db: Client, workspaceId: string, now: Dat
     subscription_state: deriveSubscriptionState(bundle.grace, now),
     grace: bundle.grace,
     retry_available: isRetryAvailable(bundle.state, bundle.grace),
+    has_subscription: bundle.state.stripe_subscription_id !== null,
+    cancel_at_period_end: bundle.state.cancel_at_period_end,
+    current_period_end: bundle.state.current_period_end,
   };
 }
