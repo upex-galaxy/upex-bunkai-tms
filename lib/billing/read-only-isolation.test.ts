@@ -112,7 +112,7 @@ describeOrSkip('BK-233 - read-only over-limit projects and the subscription RPC 
     testId = test.id;
     const { error: stepError } = await db.from('test_steps').insert({ test_id: testId, atc_id: atcId, position: 1 });
     if (stepError) { throw stepError; }
-  });
+  }, 60_000);
 
   afterAll(async () => {
     const db = service();
@@ -140,7 +140,7 @@ describeOrSkip('BK-233 - read-only over-limit projects and the subscription RPC 
     if (counts.some(c => c !== 0)) {
       throw new Error(`[read-only-isolation] fixtures left behind (workspaces, projects, events): ${counts.join(', ')}`);
     }
-  });
+  }, 60_000);
 
   it('locks nothing in a workspace within its plan: Cloud with 5 projects stays editable', async () => {
     expect(await readOnlyIds(cloudWs)).toEqual([]);
