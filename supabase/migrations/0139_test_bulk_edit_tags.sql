@@ -20,7 +20,8 @@
 --     or refused with not_found, archived, tags_limit_exceeded or write_failed.
 --   * Order per Test: not found, archived, no-op, cap of 20, write. A no-op does
 --     not bump the version and writes no event.
---   * Tests are locked FOR UPDATE in id order, so two batches cannot deadlock.
+--   * Tests are locked FOR NO KEY UPDATE in id order: two batches cannot
+--     deadlock, and the FK key-share locks of a Run or plan insert do not wait.
 --   * p_dry_run evaluates without lock, write or event. The reported tags and
 --     version are the values the Test would have.
 --   * One test.tags_changed event per changed Test, with bulk: true.
@@ -28,7 +29,8 @@
 -- AUTHORIZATION (ADR-0012, rpc-authorization.md section 4).
 --   1. SECURITY DEFINER with p_actor_user_id: the route uses the admin client
 --      and PAT callers have no auth.uid().
---   2. Actor bind at step 0, before any table read.
+--   2. Actor bind at step 0, before any table read. A spoofed actor gets the
+--      same 42501 as a non-writer.
 --   3. Write gate on p_workspace_id before any Test read. Every Test read or
 --      written is constrained to that workspace, so a foreign id is not_found
 --      exactly like a missing one.
@@ -40,7 +42,8 @@
 --   45130 bulk_change_invalid     bad mode, or a tag list that is empty, over 20,
 --                                 blank, over 50 characters or holds a comma
 --
--- Failpoint test_bulk_tags.before_event uses the ADR-0022 table (0114).
+-- Failpoint test_bulk_tags.before_event uses the ADR-0022 table (0114). The
+-- name may carry a ":<test id>" suffix to fail one Test only.
 --
 -- Additive and idempotent.
 -- =============================================================================
@@ -78,8 +81,10 @@ declare
   v_refused   int := 0;
 begin
   if auth.uid() is not null and auth.uid() <> p_actor_user_id then
-    raise exception 'workspace_not_found' using errcode = 'P0002';
+    raise exception 'forbidden' using errcode = '42501';
   end if;
+
+  p_dry_run := coalesce(p_dry_run, false);
 
   perform public.bunkai_assert_actor_can_write_workspace(p_actor_user_id, p_workspace_id);
 
@@ -128,7 +133,7 @@ begin
           into v_test
           from public.tests t
           where t.id = v_id and t.workspace_id = p_workspace_id
-          for update;
+          for no key update;
       end if;
 
       if not found then
@@ -176,7 +181,7 @@ begin
 
               if exists (
                 select 1 from public.bunkai_test_failpoints f
-                 where f.name = 'test_bulk_tags.before_event'
+                 where f.name in ('test_bulk_tags.before_event', 'test_bulk_tags.before_event:' || v_test.id::text)
                    and f.workspace_id = p_workspace_id
               ) then
                 raise exception 'test_failpoint' using errcode = 'P0001';

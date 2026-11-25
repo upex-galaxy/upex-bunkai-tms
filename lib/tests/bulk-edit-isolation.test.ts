@@ -2,12 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 
-// BK-2099: bulk add or remove tags on Tests, against the real database
-// (migration 0139). A mocked rpc proves nothing about a DEFINER function
-// (ADR-0012), so this suite runs the real `bunkai_bulk_edit_test_tags`.
-// Fixtures live in throwaway workspaces named with PREFIX and are deleted in
-// afterAll, which fails the suite if any remains. With no database environment
-// the suite is skipped with a loud warning; in every other case it FAILS.
+// A mocked rpc proves nothing about a DEFINER function (ADR-0012), so this runs the real one.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -318,6 +313,8 @@ describeOrSkip('BK-2099: bulk-edit Test tags', () => {
       const changed = [await seedTest(), await seedTest({ tags: ['a'] }), await seedTest({ tags: ['b'] })];
       const unchanged = [await seedTest({ tags: ['smoke'] }), await seedTest({ tags: ['smoke', 'x'] })];
       const refused = await seedTest({ tags: TWENTY });
+      const untouched = [...unchanged, refused];
+      const before = await Promise.all(untouched.map(row));
       await ok([...changed, ...unchanged, refused], 'add', ['smoke']);
       for (const id of changed) {
         const written = await events(id);
@@ -325,10 +322,10 @@ describeOrSkip('BK-2099: bulk-edit Test tags', () => {
         expect(written[0].entity_type).toBe('test');
         expect(written[0].payload).toEqual({ version: 2, old_tags: expect.any(Array), new_tags: expect.arrayContaining(['smoke']), bulk: true });
       }
-      for (const id of [...unchanged, refused]) {
+      for (const id of untouched) {
         expect(await events(id)).toHaveLength(0);
-        expect((await row(id)).version).toBe(1);
       }
+      expect(await Promise.all(untouched.map(row))).toEqual(before);
     });
   });
 
@@ -391,15 +388,19 @@ describeOrSkip('BK-2099: bulk-edit Test tags', () => {
   });
 
   describe('atomicity', () => {
-    it('a failure before the event rolls back that Test only: write_failed, no change, no event', async () => {
+    it('a failure before the event rolls back that Test only, and the other Test in the call still changes', async () => {
       const t1 = await seedTest();
+      const t2 = await seedTest();
       const db = service();
-      must(await db.from('bunkai_test_failpoints').insert({ name: FAILPOINT, workspace_id: need().workspaceId }).select('name').single(), 'failpoint');
+      must(await db.from('bunkai_test_failpoints').insert({ name: `${FAILPOINT}:${t1}`, workspace_id: need().workspaceId }).select('name').single(), 'failpoint');
       try {
-        const report = await ok([t1], 'add', ['smoke']);
+        const report = await ok([t1, t2], 'add', ['smoke']);
         expect(outcomeOf(report, t1)).toMatchObject({ outcome: 'refused', reason: 'write_failed', tags: [], version: 1 });
         expect((await row(t1)).tags).toEqual([]);
         expect(await events(t1)).toHaveLength(0);
+        expect(outcomeOf(report, t2)).toMatchObject({ outcome: 'changed', tags: ['smoke'], version: 2 });
+        expect((await row(t2)).tags).toEqual(['smoke']);
+        expect(await events(t2)).toHaveLength(1);
       }
       finally {
         await db.from('bunkai_test_failpoints').delete().eq('workspace_id', need().workspaceId);
