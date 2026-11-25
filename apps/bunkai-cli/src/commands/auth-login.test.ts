@@ -226,6 +226,7 @@ describe('bunkai auth login — details', () => {
     expect(s.deps.stdoutText()).toContain('Usage: bunkai auth login');
     expect(s.deps.stdoutText()).not.toContain('read-only');
     expect(s.deps.stdoutText()).toContain('read ATCs (atc:read) and execute Runs (run:execute)');
+    expect(s.deps.stdoutText()).toContain('attach or delete evidence, submit finished Runs');
   });
 
   it('refuses an API URL that is not http(s)', async () => {

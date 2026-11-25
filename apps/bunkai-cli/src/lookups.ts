@@ -2,6 +2,7 @@ import type { ApiResponse } from './api';
 import type { Session } from './session';
 import { CliError } from './errors';
 import { invalidSessionMessage } from './session';
+import { printable } from './table';
 
 export const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
@@ -39,13 +40,12 @@ export async function resolveProject(session: Session, arg: string, forbidden: s
   assertReadable(response, session, forbidden);
   const projects = (response.body as { projects?: ProjectRow[] } | null)?.projects;
   if (response.status !== 200 || !Array.isArray(projects)) {
-    throw new CliError(`The Projects of ${workspace.name} could not be read (${response.status}).`);
+    throw new CliError(`The Projects of ${printable(workspace.name)} could not be read (${response.status}).`);
   }
   const found = byId ? projects.find(p => p.id.toLowerCase() === arg.toLowerCase()) : projects.find(p => p.slug === arg.toLowerCase());
-  // BK-1900 PO-9: one answer for a Project of another Workspace and for one
-  // that does not exist; the message depends only on what was typed.
+  // BK-1900 PO-9: a foreign Project and a missing one get the same message.
   if (!found) {
-    throw new CliError(`Project not found: "${arg}". Use the slug from the Project's web address, in your default Workspace ${workspace.name} (${workspace.slug}).`);
+    throw new CliError(`Project not found: "${arg}". Use the slug from the Project's web address, in your default Workspace ${printable(workspace.name)} (${printable(workspace.slug)}).`);
   }
   return found;
 }

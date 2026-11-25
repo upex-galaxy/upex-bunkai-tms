@@ -23,17 +23,25 @@ describe('ApiClient — redirects', () => {
     expect(api.requests).toHaveLength(1);
   });
 
-  it('sends extra headers without letting them replace accept or authorization', async () => {
+  it('sends extra headers in any case without letting them replace accept or authorization', async () => {
+    let sent: Record<string, string> = {};
     const api = fakeApi({ 'POST /api/v1/runs': () => ({ status: 201, body: {} }) });
-    await new ApiClient('https://bunkai.test', api.fetch).request('/api/v1/runs', {
+    const spy = (async (input: string | URL | Request, init?: RequestInit) => {
+      sent = init?.headers as Record<string, string>;
+      return api.fetch(input, init);
+    }) as typeof fetch;
+    await new ApiClient('https://bunkai.test', spy).request('/api/v1/runs', {
       method: 'POST',
       token: 'bk_pat_x',
       body: {},
-      headers: { 'idempotency-key': 'key-12345678', 'accept': 'text/html', 'authorization': 'Bearer other' },
+      headers: { 'Idempotency-Key': 'key-12345678', 'Accept': 'text/html', 'Authorization': 'Bearer other' },
     });
-    expect(api.requests[0]?.headers['idempotency-key']).toBe('key-12345678');
-    expect(api.requests[0]?.headers.accept).toBe('application/json');
-    expect(api.requests[0]?.headers.authorization).toBe('Bearer bk_pat_x');
+    expect(sent).toEqual({
+      'idempotency-key': 'key-12345678',
+      'accept': 'application/json',
+      'authorization': 'Bearer bk_pat_x',
+      'content-type': 'application/json',
+    });
   });
 
   it('still returns an ordinary 4xx answer to the caller', async () => {

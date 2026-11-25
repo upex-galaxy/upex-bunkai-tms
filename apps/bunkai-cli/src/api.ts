@@ -51,8 +51,7 @@ export interface RequestOptions {
   body?: unknown
   token?: string
   headers?: Record<string, string>
-  // A write whose outcome is unknown after these failures says so instead of
-  // the generic "try again", which could start a second one.
+  // A write whose outcome is unknown must not say "try again": a retry could repeat it.
   onTransportFailure?: (failure: TransportFailure) => Error
 }
 
@@ -70,7 +69,8 @@ export class ApiClient {
         url.searchParams.set(key, String(value));
       }
     }
-    const headers: Record<string, string> = { ...options.headers, accept: 'application/json' };
+    const headers: Record<string, string> = Object.fromEntries(Object.entries(options.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v]));
+    headers.accept = 'application/json';
     if (options.token) {
       headers.authorization = `Bearer ${options.token}`;
     }

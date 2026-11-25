@@ -181,8 +181,7 @@ function reasonOf(response: ApiResponse): string | undefined {
   return details && typeof details === 'object' && typeof details.reason === 'string' ? details.reason : undefined;
 }
 
-// TL-1: the run start answers the same 403 for a missing Test, a Test the
-// caller cannot see and a read-only role, so the Test is read first.
+// TL-1: the start answers one 403 for a missing Test, a hidden Test and a read-only role.
 async function assertTestExists(session: Session, testId: string): Promise<void> {
   const response = await session.api.request(`/api/v1/tests/${testId}`, { token: session.token });
   if (response.status === 404 || (response.status === 403 && reasonOf(response) !== 'missing_capability')) {
@@ -199,7 +198,7 @@ export function shellQuote(value: string): string {
 }
 
 function unknownOutcome(startToken: string, why: string): CliError {
-  return new CliError(`The start request was sent, but ${why}, so the Run may or may not have started. Nothing was retried. Repeat the command with --retry-key ${shellQuote(startToken)} to get that Run if it exists, without starting a second one.`);
+  return new CliError(`The start request got no clear answer (${why}), so the Run may or may not have started. Nothing was retried. Repeat the command with --retry-key=${shellQuote(startToken)} to get that Run if it exists, without starting a second one.`);
 }
 
 function transportWhy(failure: TransportFailure): string {
@@ -286,6 +285,9 @@ export async function runStart(argv: string[], deps: Deps): Promise<number> {
     body: { test_id: options.test, environment_id: environment.id, executor_mode: options.executor, start_token: startToken },
     onTransportFailure: failure => unknownOutcome(startToken, transportWhy(failure)),
   });
+  if (response.status >= 200 && response.status < 300 && response.status !== 200 && response.status !== 201) {
+    throw unknownOutcome(startToken, `an unexpected answer (${response.status})`);
+  }
   if (response.status !== 200 && response.status !== 201) {
     throw refusal(response, session, project);
   }

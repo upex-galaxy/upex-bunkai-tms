@@ -246,12 +246,13 @@ describe('bunkai run start — retry key (AC-02)', () => {
     ['the connection dropped', 'drop'],
     ['the server answered with a 5xx error', () => ({ status: 502, headers: { 'x-request-id': 'req-77' } })],
     ['the success answer could not be read', () => ({ status: 201, body: { ok: true } })],
+    ['an unexpected success status came back', () => ({ status: 202, body: {} })],
   ];
   for (const [problem, route] of unknown) {
-    it(`gives the retry key to repeat safely when ${problem}, without retrying`, async () => {
-      const s = await setup();
-      const fetchImpl = s.deps.fetch;
+    it(`gives the exact retry key it sent when ${problem}, after one POST only`, async () => {
+      const s = await setup(route === 'drop' ? {} : { routes: { 'POST /api/v1/runs': route } });
       if (route === 'drop') {
+        const fetchImpl = s.deps.fetch;
         s.deps.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
           if (init?.method === 'POST') {
             s.api.requests.push({ method: 'POST', url: new URL(String(input)), headers: {}, body: JSON.parse(String(init.body)) });
@@ -260,22 +261,25 @@ describe('bunkai run start — retry key (AC-02)', () => {
           return fetchImpl(input, init);
         }) as typeof fetch;
       }
-      else {
-        s.deps.fetch = fakeApi({ ...BASE_ROUTES, 'POST /api/v1/runs': route }).fetch;
-      }
       expect(await s.go(...ARGS, '--json')).toBe(EXIT_FAILURE);
+      expect(s.posts()).toHaveLength(1);
       expect(s.deps.stdoutText()).toBe('');
       const err = s.deps.stderrText();
-      expect(err).toContain('the Run may or may not have started. Nothing was retried.');
-      expect(err).toMatch(/--retry-key [\da-f-]{36} to get that Run/);
+      const sent = postBody(s.posts()[0]).start_token;
+      expect(err).toContain('so the Run may or may not have started. Nothing was retried.');
+      expect(err).toContain(`--retry-key=${sent} to get that Run`);
       expect(err).not.toContain('try again');
     });
   }
 
-  it('names a retry key the person typed, quoted for the shell when needed', async () => {
-    const s = await setup({ routes: { 'POST /api/v1/runs': () => ({ status: 500 }) } });
-    expect(await s.go(...ARGS, '--retry-key', 'night run #1')).toBe(EXIT_FAILURE);
-    expect(s.deps.stderrText()).toContain('--retry-key \'night run #1\' to get that Run');
+  it('names a retry key the person typed, in a form the shell and the option parser take back', async () => {
+    for (const [key, shown] of [['night run #1', '\'night run #1\''], ['-nightly', '-nightly'], ['=nightly', '=nightly']]) {
+      const s = await setup({ routes: { 'POST /api/v1/runs': () => ({ status: 500 }) } });
+      expect(await s.go(...ARGS, `--retry-key=${key}`)).toBe(EXIT_FAILURE);
+      expect(s.deps.stderrText()).toContain(`--retry-key=${shown} to get that Run`);
+      expect(postBody(s.posts()[0]).start_token).toBe(key);
+      cleanup?.();
+    }
   });
 
   it('says no answer came within the time limit on a timeout', async () => {
@@ -288,8 +292,8 @@ describe('bunkai run start — retry key (AC-02)', () => {
       return fetchImpl(input, init);
     }) as typeof fetch;
     expect(await s.go(...ARGS, '--retry-key', 'k1')).toBe(EXIT_FAILURE);
-    expect(s.deps.stderrText()).toContain('no answer came within 30 s, so the Run may or may not have started');
-    expect(s.deps.stderrText()).toContain('--retry-key k1 ');
+    expect(s.deps.stderrText()).toContain('(no answer came within 30 s), so the Run may or may not have started');
+    expect(s.deps.stderrText()).toContain('--retry-key=k1 ');
   });
 });
 

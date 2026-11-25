@@ -18,8 +18,9 @@ prompt and never stored: the CLI keeps a PAT (90 days) and your default
 Workspace, in a file only your user can read.
 
 The PAT can read ATCs (atc:read) and execute Runs (run:execute): start a Run,
-report step results, finish or abort it. It cannot change ATCs or administer
-the Workspace. Revoke it in Settings at any time.
+report step results, attach or delete evidence, submit finished Runs, and
+finish or abort a Run. It cannot change ATCs or administer the Workspace.
+Revoke it in Settings at any time.
 
 Options:
   --email <email>    Skip the email prompt.
