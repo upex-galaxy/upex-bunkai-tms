@@ -125,18 +125,12 @@ export function mapTestTagsError(error: { code?: string, message: string }): nev
   }
 }
 
-// BK-2099 — bunkai_bulk_edit_test_tags. A viewer and a non-member share one
-// body (insufficient_role) so the 403 says nothing about the workspace. Raw
-// database text never reaches the caller.
+// BK-2099: a viewer and a non-member share one 403 body, so it discloses nothing.
 export function mapTestBulkEditError(error: { code?: string, message: string }): never {
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You need write access to this workspace to edit its Tests.', {
         details: { reason: 'insufficient_role' },
-      });
-    case 'P0002':
-      throw new ApiError('not_found', 'Workspace not found.', {
-        details: { reason: 'not_found' },
       });
     case '45129':
       throw new ApiError('validation_failed', 'The selection must hold between 1 and 200 distinct Tests.', {

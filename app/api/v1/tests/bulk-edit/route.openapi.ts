@@ -1,8 +1,7 @@
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 import { TEST_BULK_CEILING, TEST_BULK_RAW_ID_LIMIT, TEST_BULK_REFUSAL_REASONS, TEST_BULK_TAG_MODES, TestBulkEditBodySchema } from '@lib/tests/bulk-edit';
 
-// BK-2099 — the request schema is the route's own, so the documented body
-// cannot drift from the validated one.
+// The route's own schema, so the documented body cannot drift from the validated one.
 const RequestSchema = TestBulkEditBodySchema.openapi('TestBulkEditRequest');
 
 const OutcomeSchema = z
@@ -10,8 +9,8 @@ const OutcomeSchema = z
     test_id: z.string().uuid(),
     outcome: z.enum(['changed', 'unchanged', 'refused']),
     reason: z.enum(TEST_BULK_REFUSAL_REASONS).nullable().describe('Set only when `outcome` is `refused`.'),
-    tags: z.array(z.string()).nullable().describe('The Test\'s tags after the call, or the tags it would have for a dry run. `null` when `not_found`.'),
-    version: z.number().int().nullable().describe('The Test\'s version after the call, or the version it would have for a dry run. `null` when `not_found`.'),
+    tags: z.array(z.string()).nullable().describe('The Test\'s tags after the call, or the tags it would have for a dry run. `null` when `not_found`, and when `write_failed` struck before the Test could be read.'),
+    version: z.number().int().nullable().describe('The Test\'s version after the call, or the version it would have for a dry run. `null` when `tags` is.'),
   })
   .openapi('TestBulkEditOutcome');
 

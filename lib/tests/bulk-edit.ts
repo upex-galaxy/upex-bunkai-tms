@@ -1,10 +1,6 @@
 import { z } from 'zod';
 import { TEST_TAG_MAX_LEN, TEST_TAGS_MAX_COUNT } from './validation';
 
-// BK-2099 — POST /api/v1/tests/bulk-edit (rulings: Jira comments 13948 and
-// 13949 on BK-2099). The schema is the first gate; `bunkai_bulk_edit_test_tags`
-// (migration 0139) re-validates every rule because the RPC is the authority.
-
 export const TEST_BULK_CEILING = 200;
 export const TEST_BULK_RAW_ID_LIMIT = 1000;
 
@@ -62,8 +58,10 @@ export type TestBulkEditBody = z.infer<typeof TestBulkEditBodySchema>;
 
 const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
-export function hasNonUuidId(ids: readonly string[]): boolean {
-  return ids.some(id => !UUID.test(id));
+// Runs on the raw body so a non-UUID Test id is a 400 whatever else is wrong.
+export function hasNonUuidId(body: unknown): boolean {
+  const ids = (body as { test_ids?: unknown } | null)?.test_ids;
+  return Array.isArray(ids) && ids.some(id => typeof id === 'string' && !UUID.test(id));
 }
 
 export type BulkWorkspaceChoice
@@ -72,8 +70,6 @@ export type BulkWorkspaceChoice
     | { kind: 'token_workspace_mismatch' }
     | { kind: 'workspace_required' };
 
-// The body wins, then a PAT's own workspace, then (cookie sessions only) the
-// active-workspace cookie. A scoped PAT may not name another workspace.
 export function pickBulkEditWorkspace(
   bodyWorkspaceId: string | undefined,
   principal: { via: 'cookie' | 'bearer', workspaceId: string | null },

@@ -4,10 +4,7 @@ import { callArgumentObject, camelCase, readsField } from '@lib/api/route-forwar
 import { TestBulkEditBodySchema } from '@lib/tests/bulk-edit';
 import { describe, expect, it } from 'bun:test';
 
-// BK-2099 — the wiring guard for POST /api/v1/tests/bulk-edit: a body field the
-// schema accepts but the route never forwards to the RPC fails silently (a 200
-// whose batch ignored it). `workspace_id` is not forwarded as is: it feeds the
-// workspace resolution, whose result is the `workspaceId` argument.
+// A body field the schema accepts but the route never forwards fails silently (a 200 that ignored it).
 
 const ROUTE = resolve(process.cwd(), 'app/api/v1/tests/bulk-edit/route.ts');
 const source = readFileSync(ROUTE, 'utf8');

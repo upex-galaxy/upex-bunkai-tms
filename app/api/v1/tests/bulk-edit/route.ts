@@ -9,10 +9,6 @@ import { mapTestBulkEditError } from '@lib/tests/errors';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 
-// POST /api/v1/tests/bulk-edit — add or remove 1 to 20 tags on up to 200
-// distinct Tests of one workspace (BK-2099). Partial success is the normal
-// shape: the 200 body lists one outcome per distinct Test. `dry_run: true` runs
-// the same evaluation without writing. Auth: Bearer `atc:write` (or cookie).
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);
 
@@ -23,10 +19,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   catch {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   }
-  const body = TestBulkEditBodySchema.parse(parsed);
-  if (hasNonUuidId(body.test_ids)) {
+  if (hasNonUuidId(parsed)) {
     throw new ApiError('bad_request', 'Every Test id must be a UUID.');
   }
+  const body = TestBulkEditBodySchema.parse(parsed);
 
   const choice = pickBulkEditWorkspace(body.workspace_id, principal);
   let workspaceId: string | null = null;

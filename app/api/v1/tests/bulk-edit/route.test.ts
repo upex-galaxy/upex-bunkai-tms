@@ -6,12 +6,6 @@ void mock.module('server-only', () => ({}));
 const { POST } = await import('./route');
 const { mintPat } = await import('@lib/api/pat');
 
-// BK-2099: the HTTP contract of the Test bulk tag edit, end to end through the
-// real handler, real Bearer PATs and the real RPC. Function-level behaviour is
-// proved by `lib/tests/bulk-edit-isolation.test.ts`; this covers what only the
-// route owns: status codes, the report body, scopes, workspace resolution and
-// the 400 versus 422 split. Env-gated like its siblings.
-
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,6 +30,7 @@ function must<T>(result: { data: T, error: { message: string } | null }, what: s
 }
 
 interface Seed {
+  userId: string
   workspaceId: string
   viewerWorkspaceId: string
   testIds: string[]
@@ -59,6 +54,11 @@ function call(token: string | null, body: unknown, raw = false): NextRequest {
     headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
     body: raw ? String(body) : JSON.stringify(body),
   });
+}
+
+async function freshTest(tags: string[] = []): Promise<string> {
+  const s = need();
+  return must(await service().from('tests').insert({ workspace_id: s.workspaceId, title: `${PREFIX} fresh ${crypto.randomUUID().slice(0, 8)}`, created_by: s.userId, tags }).select('id').single(), 'fresh test').id as string;
 }
 
 async function tagsOf(testId: string): Promise<string[]> {
@@ -108,6 +108,7 @@ describeOrSkip('BK-2099: POST /api/v1/tests/bulk-edit', () => {
     const read = await mintPat({ admin: db, userId, workspaceId: ws.id as string, name: `${PREFIX}-read`, scopes: ['atc:read'] });
     const viewer = await mintPat({ admin: db, userId, workspaceId: viewerWs.id as string, name: `${PREFIX}-viewer`, scopes: ['atc:read', 'atc:write'] });
     seed = {
+      userId,
       workspaceId: ws.id as string,
       viewerWorkspaceId: viewerWs.id as string,
       testIds,
@@ -140,16 +141,19 @@ describeOrSkip('BK-2099: POST /api/v1/tests/bulk-edit', () => {
 
   it('a dry run answers the report and writes nothing', async () => {
     const s = need();
-    const response = await POST(call(s.writeToken, { test_ids: s.testIds, mode: 'add', tags: ['smoke'], dry_run: true }));
+    const [, t2, archived] = s.testIds;
+    const t1 = await freshTest();
+    const response = await POST(call(s.writeToken, { test_ids: [t1, t2, archived], mode: 'add', tags: ['smoke'], dry_run: true }));
     expect(response.status).toBe(200);
     const body = await response.json() as { dry_run: boolean, changed: number, unchanged: number, refused: number };
     expect(body).toMatchObject({ dry_run: true, changed: 1, unchanged: 1, refused: 1 });
-    expect(await tagsOf(s.testIds[0])).toEqual([]);
+    expect(await tagsOf(t1)).toEqual([]);
   });
 
   it('answers 200 with one outcome per Test, using the token\'s own workspace', async () => {
     const s = need();
-    const [t1, t2, archived] = s.testIds;
+    const [, t2, archived] = s.testIds;
+    const t1 = await freshTest();
     const response = await POST(call(s.writeToken, { test_ids: [t1, t2, archived, t1], mode: 'add', tags: ['SMOKE'] }));
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
@@ -164,9 +168,10 @@ describeOrSkip('BK-2099: POST /api/v1/tests/bulk-edit', () => {
 
   it('removes with mode remove', async () => {
     const s = need();
-    const response = await POST(call(s.writeToken, { test_ids: [s.testIds[0]], mode: 'remove', tags: ['smoke'], workspace_id: s.workspaceId }));
+    const t1 = await freshTest(['smoke', 'api']);
+    const response = await POST(call(s.writeToken, { test_ids: [t1], mode: 'remove', tags: ['smoke'], workspace_id: s.workspaceId }));
     expect(response.status).toBe(200);
-    expect(await tagsOf(s.testIds[0])).toEqual([]);
+    expect(await tagsOf(t1)).toEqual(['api']);
   });
 
   it('a viewer gets 403 insufficient_role and nothing is written', async () => {
@@ -188,27 +193,31 @@ describeOrSkip('BK-2099: POST /api/v1/tests/bulk-edit', () => {
 
   it('refuses a token without atc:write (403) and an unknown token (401)', async () => {
     const s = need();
-    const body = { test_ids: [s.testIds[0]], mode: 'add', tags: ['smoke'] };
+    const t1 = await freshTest();
+    const body = { test_ids: [t1], mode: 'add', tags: ['smoke'] };
     const readOnly = await POST(call(s.readToken, body));
     expect(readOnly.status).toBe(403);
     expect((await errorOf(readOnly)).message).toBe('Missing required capability: atc:write');
     // A header-less call falls back to the cookie session, and `cookies()` only exists
     // inside a real Next request, so the 401 is asserted with a token that matches no PAT.
     expect((await POST(call('bk-unknown-token', body))).status).toBe(401);
-    expect(await tagsOf(s.testIds[0])).toEqual([]);
+    expect(await tagsOf(t1)).toEqual([]);
   });
 
   it('answers 400 for malformed JSON and for a non-UUID id', async () => {
     const s = need();
     expect((await POST(call(s.writeToken, '{"test_ids": [', true))).status).toBe(400);
-    const bad = await POST(call(s.writeToken, { test_ids: [s.testIds[0], 'not-a-uuid'], mode: 'add', tags: ['smoke'] }));
+    const t1 = await freshTest();
+    const bad = await POST(call(s.writeToken, { test_ids: [t1, 'not-a-uuid'], mode: 'add', tags: ['smoke'] }));
     expect(bad.status).toBe(400);
-    expect(await tagsOf(s.testIds[0])).toEqual([]);
+    const badAndInvalid = await POST(call(s.writeToken, { test_ids: [t1, 'not-a-uuid'], mode: 'replace', tags: [] }));
+    expect(badAndInvalid.status).toBe(400);
+    expect(await tagsOf(t1)).toEqual([]);
   });
 
   it('answers 422 for replace, mixed sets, invalid tags, an empty selection and 201 distinct ids', async () => {
     const s = need();
-    const id = s.testIds[0];
+    const id = await freshTest();
     const bodies: unknown[] = [
       { test_ids: [id], mode: 'replace', tags: ['smoke'] },
       { test_ids: [id], add: ['a'], remove: ['b'] },

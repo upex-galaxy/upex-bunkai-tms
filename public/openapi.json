@@ -7511,11 +7511,11 @@
             "items": {
               "type": "string"
             },
-            "description": "The Test's tags after the call, or the tags it would have for a dry run. `null` when `not_found`."
+            "description": "The Test's tags after the call, or the tags it would have for a dry run. `null` when `not_found`, and when `write_failed` struck before the Test could be read."
           },
           "version": {
             "type": ["integer", "null"],
-            "description": "The Test's version after the call, or the version it would have for a dry run. `null` when `not_found`."
+            "description": "The Test's version after the call, or the version it would have for a dry run. `null` when `tags` is."
           }
         },
         "required": ["test_id", "outcome", "reason", "tags", "version"]

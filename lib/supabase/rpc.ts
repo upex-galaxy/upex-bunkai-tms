@@ -387,8 +387,6 @@ export async function setTestTags(supabase: Client, args: SetTestTagsArgs) {
   });
 }
 
-// BK-2099 — add or remove tags on up to 200 Tests of one workspace (migration
-// 0139). service_role only, so it runs through the route's admin client.
 export interface BulkEditTestTagsArgs {
   actorUserId: string
   workspaceId: string

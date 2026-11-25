@@ -81,9 +81,12 @@ describe('bK-2099 — TestBulkEditBodySchema', () => {
 });
 
 describe('bK-2099 — hasNonUuidId', () => {
-  it('flags any id that is not a UUID', () => {
-    expect(hasNonUuidId(ids(3))).toBe(false);
-    expect(hasNonUuidId([...ids(2), 'not-a-uuid'])).toBe(true);
+  it('flags a raw body whose test_ids hold a non-UUID string, and nothing else', () => {
+    expect(hasNonUuidId({ test_ids: ids(3) })).toBe(false);
+    expect(hasNonUuidId({ test_ids: [...ids(2), 'not-a-uuid'], tags: [] })).toBe(true);
+    expect(hasNonUuidId({ test_ids: 'not-an-array' })).toBe(false);
+    expect(hasNonUuidId(null)).toBe(false);
+    expect(hasNonUuidId([1, 2])).toBe(false);
   });
 });
 
@@ -124,8 +127,7 @@ describe('bK-2099 — mapTestBulkEditError', () => {
     expect(change.details).toEqual({ reason: 'bulk_change_invalid' });
   });
 
-  it('p0002 → 404, and an unknown error never echoes database text', () => {
-    expect(captured({ code: 'P0002', message: 'workspace_not_found' }).status).toBe(404);
+  it('an unknown error never echoes database text', () => {
     const unknown = captured({ code: 'XX000', message: 'relation "public.tests" secret detail' });
     expect(unknown.status).toBe(500);
     expect(unknown.message).not.toContain('public.tests');
