@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { isProjectReadOnly } from '@lib/billing/read-only-projects';
 import {
   fetchExplorerTests,
   fetchTreeAcceptanceCriteria,
@@ -88,6 +89,10 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     canCreate = membership != null && membership.role !== 'viewer';
     canConfigure = membership != null && (membership.role === 'owner' || membership.role === 'admin');
   }
+  const readOnly = await isProjectReadOnly(supabase, project.workspace_id, project.id);
+  if (readOnly) {
+    canCreate = false;
+  }
 
   // `archived_at IS NULL` keeps soft-deleted (BK-10) modules and their cascade
   // out of the active tree and every downstream listing. BK-1233: every
@@ -163,6 +168,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       environments={environments}
       canCreate={canCreate}
       canConfigure={canConfigure}
+      readOnly={readOnly}
     >
       {children}
     </ProjectShell>
