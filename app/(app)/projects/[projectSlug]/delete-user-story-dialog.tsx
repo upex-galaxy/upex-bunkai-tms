@@ -1,5 +1,6 @@
 'use client';
 
+import { revalidateAfterArchiveChange } from '@app/(app)/atcs/actions';
 import { Button } from '@components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -54,6 +55,7 @@ export function DeleteUserStoryDialog({ storyId, storyTitle, onDeleted, onCancel
         setSubmitting(false);
         return;
       }
+      await revalidateAfterArchiveChange().catch(() => {});
       toast.success(`Removed “${storyTitle}”`);
       router.refresh();
       onDeleted?.();

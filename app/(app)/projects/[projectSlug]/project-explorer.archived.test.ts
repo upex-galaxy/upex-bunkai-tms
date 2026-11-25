@@ -25,6 +25,7 @@ void mock.module('sonner', () => ({
 }));
 void mock.module('@app/(app)/atcs/actions', () => ({
   revalidateAfterArchiveChange: async () => {},
+  revalidateAfterAtcCreated: async () => {},
 }));
 
 const { act, createElement } = await import('react');

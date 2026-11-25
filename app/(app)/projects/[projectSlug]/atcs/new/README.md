@@ -5,7 +5,10 @@ BK-19 (FR-010b) — the **create** twin of the ATC edit screen
 its non-archived modules, user stories, and acceptance criteria, then renders
 `components/atcs/NewAtcEditor.tsx` (client). On submit it `POST`s the BK-18
 contract `POST /api/v1/atcs` (cookie session auth) and redirects to the ATC
-detail page on `201`.
+detail page on `201`. Before redirecting it awaits the Server Action
+`revalidateAfterAtcCreated` (`app/(app)/atcs/actions.ts`, BK-2485), so the
+sidebar's ATC Library count in the shared app layout is current after the
+client navigation. A failed revalidate never reads as a failed create.
 
 ## Client guards (pre-submit)
 

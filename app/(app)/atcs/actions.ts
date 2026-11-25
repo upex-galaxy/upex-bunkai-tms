@@ -19,3 +19,8 @@ export async function revalidateAfterArchiveChange(): Promise<void> {
 export async function revalidateAfterAtcBulkEdit(): Promise<void> {
   revalidatePath('/', 'layout');
 }
+
+// BK-2485 — creating or duplicating an ATC goes through the API too, and the client navigation that follows keeps the cached (app) layout that holds the sidebar's ATC Library count.
+export async function revalidateAfterAtcCreated(): Promise<void> {
+  revalidatePath('/', 'layout');
+}

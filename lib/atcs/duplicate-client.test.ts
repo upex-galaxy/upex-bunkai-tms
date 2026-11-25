@@ -1,5 +1,15 @@
-import { afterEach, describe, expect, it, mock } from 'bun:test';
-import { duplicateAtc } from './duplicate-client';
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+
+const revalidations: string[] = [];
+let revalidateFails = false;
+void mock.module('@app/(app)/atcs/actions', () => ({
+  revalidateAfterAtcCreated: async () => {
+    revalidations.push('revalidate');
+    if (revalidateFails) { throw new Error('revalidate failed'); }
+  },
+}));
+
+const { duplicateAtc } = await import('./duplicate-client');
 
 // BK-185 — "ATC Library: Duplicate: No UI Duplicate action — feature has no UI
 // entry point on staging". Root cause: POST /api/v1/atcs/{id}/duplicate (BK-23)
@@ -105,5 +115,41 @@ describe('duplicateAtc (BK-185 — the client call every "Duplicate" UI entry po
     if (!result.ok) {
       expect(result.errorMessage).toBe('Network error while duplicating the ATC.');
     }
+  });
+});
+
+// BK-2485 — a duplicate adds an ATC, so the cached app layout must drop before the caller navigates or the ATC Library count stays stale.
+describe('duplicateAtc: sidebar count freshness', () => {
+  beforeEach(() => {
+    revalidations.length = 0;
+    revalidateFails = false;
+  });
+
+  it('revalidates the app layout before handing back the new ATC', async () => {
+    mockFetchOnce({ ok: true, status: 201, json: async () => ({ atc: { id: 'new-atc-id' } }) });
+
+    const result = await duplicateAtc('source-atc-id');
+
+    expect(revalidations).toEqual(['revalidate']);
+    expect(result).toEqual({ ok: true, atcId: 'new-atc-id' });
+  });
+
+  it('a failed revalidate still hands back the duplicate that was made', async () => {
+    revalidateFails = true;
+    mockFetchOnce({ ok: true, status: 201, json: async () => ({ atc: { id: 'new-atc-id' } }) });
+
+    const result = await duplicateAtc('source-atc-id');
+
+    expect(revalidations).toEqual(['revalidate']);
+    expect(result).toEqual({ ok: true, atcId: 'new-atc-id' });
+  });
+
+  it('a refused duplicate revalidates nothing', async () => {
+    mockFetchOnce({ ok: false, status: 403, json: async () => ({ error: { message: 'Forbidden.' } }) });
+
+    const result = await duplicateAtc('source-atc-id');
+
+    expect(revalidations).toEqual([]);
+    expect(result).toEqual({ ok: false, errorMessage: 'Forbidden.' });
   });
 });
