@@ -2,8 +2,7 @@ import type { BugFormDialogContext } from './BugFormDialog';
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
-// BK-2484 — filing a defect must drop the cached app layout, or the sidebar's
-// Bug Reports count stays stale on the next client navigation.
+// BK-2484 — filing a defect must drop the cached app layout, or the sidebar's Bug Reports count stays stale.
 GlobalRegistrator.register();
 afterAll(async () => { await GlobalRegistrator.unregister(); });
 
