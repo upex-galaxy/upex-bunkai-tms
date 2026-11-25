@@ -6,16 +6,20 @@ import { CREDENTIALS_VERSION, writeSignIn } from '../credentials';
 import { CliError, EXIT_CANCELLED, EXIT_OK, PromptCancelled, usageError } from '../errors';
 
 // `bunkai auth login` (BK-1900 AC-01). Email + password once; the password is
-// sent to the headless sign-in and dropped. What is kept is a read-only PAT
-// that expires in 90 days and the default Workspace (TL-3, TL-4). The file is
+// sent to the headless sign-in and dropped. What is kept is a PAT that expires
+// in 90 days and the default Workspace (TL-3, TL-4). The file is
 // written only after the sign-in AND the Workspace lookup both succeed, so a
 // wrong password, a network failure or Ctrl+C leaves nothing behind.
 
 export const LOGIN_USAGE = `Usage: bunkai auth login [--email <email>] [--api-url <url>]
 
 Sign in with your Bunkai email and password. The password is typed at a hidden
-prompt and never stored: the CLI keeps a read-only PAT (90 days) and your
-default Workspace, in a file only your user can read.
+prompt and never stored: the CLI keeps a PAT (90 days) and your default
+Workspace, in a file only your user can read.
+
+The PAT can read ATCs (atc:read) and execute Runs (run:execute): start a Run,
+report step results, finish or abort it. It cannot change ATCs or administer
+the Workspace. Revoke it in Settings at any time.
 
 Options:
   --email <email>    Skip the email prompt.
@@ -25,7 +29,7 @@ Options:
 In CI or a script, do not sign in: set BUNKAI_TOKEN to a PAT created in Settings.
 `;
 
-export const PAT_SCOPES = ['atc:read'] as const;
+export const PAT_SCOPES = ['atc:read', 'run:execute'] as const;
 export const PAT_EXPIRES_IN_DAYS = 90;
 const PAT_NAME_MAX = 80;
 

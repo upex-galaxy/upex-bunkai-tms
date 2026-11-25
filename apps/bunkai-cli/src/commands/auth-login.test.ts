@@ -17,7 +17,7 @@ const signInOk: Route = () => ({
   body: {
     user: { id: 'u-1', email: 'karim@acme.test' },
     session: { access_token: 'session-access-token', refresh_token: 'session-refresh-token', expires_at: 1, token_type: 'bearer' },
-    pat: { token: TOKEN, id: 'tok-1', name: 'bunkai-cli test-host', scopes: ['atc:read'], expires_at: '2027-02-13T12:00:00Z' },
+    pat: { token: TOKEN, id: 'tok-1', name: 'bunkai-cli test-host', scopes: ['atc:read', 'run:execute'], expires_at: '2027-02-13T12:00:00Z' },
     warning: 'Store the PAT token now — it cannot be retrieved later.',
   },
 });
@@ -67,7 +67,7 @@ describe('bunkai auth login — signing in', () => {
     });
   });
 
-  it('asks for a read-only PAT that expires, named after the machine', async () => {
+  it('asks for a PAT that reads ATCs and executes Runs, expires, and is named after the machine', async () => {
     const s = setup({ 'POST /api/v1/auth/signin': signInOk, 'GET /api/v1/me': meOk }, ['karim@acme.test', PASSWORD]);
     await s.go();
     const signIn = s.api.requests.find(r => r.url.pathname === '/api/v1/auth/signin');
@@ -75,7 +75,7 @@ describe('bunkai auth login — signing in', () => {
       email: 'karim@acme.test',
       password: PASSWORD,
       pat_name: 'bunkai-cli test-host',
-      pat_scopes: ['atc:read'],
+      pat_scopes: ['atc:read', 'run:execute'],
       pat_expires_in_days: PAT_EXPIRES_IN_DAYS,
     });
     const me = s.api.requests.find(r => r.url.pathname === '/api/v1/me');
@@ -224,6 +224,8 @@ describe('bunkai auth login — details', () => {
     const s = setup({}, [], ['--help']);
     expect(await s.go()).toBe(EXIT_OK);
     expect(s.deps.stdoutText()).toContain('Usage: bunkai auth login');
+    expect(s.deps.stdoutText()).not.toContain('read-only');
+    expect(s.deps.stdoutText()).toContain('read ATCs (atc:read) and execute Runs (run:execute)');
   });
 
   it('refuses an API URL that is not http(s)', async () => {
