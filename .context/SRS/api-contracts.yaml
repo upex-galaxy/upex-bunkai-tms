@@ -521,6 +521,41 @@ paths:
         '400': { description: Cursor not issued by this endpoint }
         '422': { description: Missing tag, or limit outside 1..50 }
 
+  /tests/bulk-edit:
+    post:
+      tags: [Tests]
+      summary: Bulk add or remove tags on up to 200 Tests
+      description: >
+        BK-2099 — adds or removes 1 to 20 tags on up to 200 distinct Tests of one
+        workspace (`workspace_id`, else the token's workspace, else the active
+        workspace). No whole-set replace. Per-Test outcomes `changed`,
+        `unchanged` or `refused` (`not_found`, `archived`, `tags_limit_exceeded`,
+        `write_failed`); partial success is normal. `dry_run` is an advisory
+        preview with no write. Each changed Test writes one `test.tags_changed`
+        event with `bulk: true`. No app-level rate limiter exists, so the
+        200-Test ceiling is the only size guard. The generated contract in
+        `public/openapi.json` is authoritative.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [test_ids, mode, tags]
+              properties:
+                test_ids: { type: array, minItems: 1, maxItems: 1000, items: { type: string, format: uuid }, description: At most 200 distinct }
+                mode: { type: string, enum: [add, remove] }
+                tags: { type: array, minItems: 1, maxItems: 20, items: { type: string, maxLength: 50 } }
+                dry_run: { type: boolean, default: false }
+                workspace_id: { type: string, format: uuid }
+      responses:
+        '200': { description: Per-Test report }
+        '400': { description: Malformed JSON or a non-UUID Test id }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Missing atc:write, not a writer (insufficient_role), or a token scoped to another workspace }
+        '422': { description: Invalid body, empty selection, more than 200 distinct Tests, or no workspace context }
+
   /tests/{test_id}:
     parameters: [{ $ref: '#/components/parameters/TestIdPath' }]
     get:

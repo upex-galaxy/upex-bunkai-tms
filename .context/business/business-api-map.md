@@ -510,7 +510,7 @@ Auth column legend: `Public` (no auth) · `Bearer` (any authenticated caller) ·
 | DELETE | `/atcs/{atc_id}`           | Soft-delete (archive)                      | {{PROJECT_KEY}}-039                       | Bearer + role (member+) | UPDATE `archived_at`; activity_log                                                                                                       |
 | POST   | `/atcs/{atc_id}/duplicate` | Duplicate ATC                              | {{PROJECT_KEY}}-014                       | Bearer + role (member+) | INSERT new `atcs` row + child copies; `atc.created`; activity_log                                                                        |
 
-### 4.8 Tests tag (5 endpoints)
+### 4.8 Tests tag (6 endpoints)
 
 | Method | Path               | Summary                                 | FR                                        | Auth                    | Side effects                                                                                |
 | ------ | ------------------ | --------------------------------------- | ----------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------- |
@@ -519,6 +519,7 @@ Auth column legend: `Public` (no auth) · `Bearer` (any authenticated caller) ·
 | GET    | `/tests/{test_id}` | Get test (expand=atcs.steps,assertions) | {{PROJECT_KEY}}-017                       | Bearer                  | None (single join; Karim journey 3 step 2 uses this)                                        |
 | PATCH  | `/tests/{test_id}` | Reorder / update chain                  | {{PROJECT_KEY}}-016 + {{PROJECT_KEY}}-018 | Bearer + role (member+) | Diff old vs new chain; INSERT/DELETE/UPDATE `test_steps`; rebalance positions; activity_log |
 | DELETE | `/tests/{test_id}` | Soft-delete (archive)                   | {{PROJECT_KEY}}-039                       | Bearer + role (member+) | UPDATE `archived_at`; activity_log                                                          |
+| POST   | `/tests/bulk-edit` | Add or remove tags on up to 200 Tests (BK-2099) | {{PROJECT_KEY}}-030 | Bearer `atc:write` + role (member+) | Per-Test subtransaction: UPDATE `tests.tags` + `version`; one `test.tags_changed` (`bulk: true`) per changed Test; `dry_run` writes nothing |
 
 ### 4.9 Runs tag (6 endpoints)
 
@@ -850,7 +851,7 @@ Frontend subscribes via `@supabase/supabase-js`. Phase 2 introduces a dedicated 
 
 ### Gap #6 — Bulk-edit endpoint declared but not specced
 
-{{PROJECT_KEY}}-030 (Table view) mentions `PATCH /api/v1/{entity}/bulk` accepting `{ ids[], patch }`. The endpoint shape is described in `functional-specs.md` but is not present in `api-contracts.yaml v1.0`. **Resolution**: add to spec during `/project-bootstrap` Step 1, document permissible `{entity}` values (atc / test / run / bug) and `patch` payload constraints (which fields are bulk-editable per entity).
+{{PROJECT_KEY}}-030 (Table view) mentions `PATCH /api/v1/{entity}/bulk` accepting `{ ids[], patch }`. The endpoint shape is described in `functional-specs.md` but is not present in `api-contracts.yaml v1.0`. **Resolution**: add to spec during `/project-bootstrap` Step 1, document permissible `{entity}` values (atc / test / run / bug) and `patch` payload constraints (which fields are bulk-editable per entity). **Shipped shape**: one route per entity instead of a generic `{entity}/bulk`: `POST /api/v1/atcs/bulk-edit` (BK-507, ADR-0027) and `POST /api/v1/tests/bulk-edit` (BK-2099, tags add or remove only). Runs and Bugs have none yet.
 
 ### Gap #7 — Token introspection endpoint missing
 
