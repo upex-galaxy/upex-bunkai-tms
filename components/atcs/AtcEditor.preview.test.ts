@@ -18,7 +18,7 @@ const ROUTER = { push: () => {}, refresh: () => {}, replace: () => {}, back: () 
 const WORKBENCH = { canCreate: true };
 void mock.module('next/navigation', () => ({ useRouter: () => ROUTER }));
 void mock.module('@app/(app)/projects/[projectSlug]/workbench-context', () => ({ useWorkbench: () => WORKBENCH }));
-void mock.module('@app/(app)/atcs/actions', () => ({ revalidateAfterArchiveChange: async () => {} }));
+void mock.module('@app/(app)/atcs/actions', () => ({ revalidateAfterArchiveChange: async () => {}, revalidateAfterAtcCreated: async () => {} }));
 
 function StepEditorStub({ language, value, onChange }: { language: string, value: string, onChange: (next: string) => void }) {
   return createElement('textarea', {

@@ -7,6 +7,8 @@
 // factored out where it can be exercised directly by a test, independent of
 // which component renders the trigger.
 
+import { revalidateAfterAtcCreated } from '@app/(app)/atcs/actions';
+
 export type DuplicateAtcResult
   = | { ok: true, atcId: string | undefined }
     | { ok: false, errorMessage: string };
@@ -23,6 +25,7 @@ export async function duplicateAtc(sourceAtcId: string): Promise<DuplicateAtcRes
       return { ok: false, errorMessage: body.error?.message ?? 'Could not duplicate the ATC.' };
     }
     const body = (await response.json().catch(() => ({}))) as { atc?: { id?: string } };
+    await revalidateAfterAtcCreated().catch(() => {});
     return { ok: true, atcId: body.atc?.id };
   }
   catch {
