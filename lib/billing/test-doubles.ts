@@ -55,6 +55,8 @@ export function fakeSupabase(resolver: Resolver, rpcs: Record<string, RpcHandler
           call.filters.push([column, 'in', value]);
           return builder;
         },
+        order: () => builder,
+        limit: () => builder,
         maybeSingle: finish,
         single: finish,
         then: async (resolve: (value: QueryResult) => unknown, reject?: (reason: unknown) => unknown) => finish().then(resolve, reject),

@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 import {
   PLAN_SUMMARY_LENGTH_MESSAGE,
   PLAN_VERDICT_INVALID_MESSAGE,
@@ -31,6 +32,7 @@ import {
 // the app's error surface as the reason.
 
 export function mapTestPlanRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       // Non-member, or a viewer — member+ write access is required to create
@@ -91,6 +93,7 @@ export function mapTestPlanRpcError(error: { code?: string, message: string }): 
 // add surfaces as the native 23505 (AC 3.2, Dev-answered).
 
 export function mapTestPlanTestsRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {
@@ -141,6 +144,7 @@ export function mapTestPlanTestsRpcError(error: { code?: string, message: string
 // allocates no 456xx code. The mapper always throws.
 
 export function mapTestPlanCloseRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case 'P0002':
       // Missing plan, a plan in another workspace, a non-member: uniform 404.

@@ -1,9 +1,11 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 
 // BK-27 / BK-32 — map a bunkai_create_test / bunkai_get_test_expanded RPC error
 // (Postgres SQLSTATE) to the canonical API envelope. The RPC raises custom
 // 45xxx codes for the domain rules; 42501/P0002 are standard SQLSTATEs.
 export function mapTestRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {
@@ -50,6 +52,7 @@ export function mapTestRpcError(error: { code?: string, message: string }): neve
 // SQLSTATEs. The route computes the friendly chain_mismatch details (missing /
 // extra) BEFORE the RPC call, so the 45123 case here is the under-lock guard.
 export function mapTestReorderError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {
@@ -92,6 +95,7 @@ export function mapTestReorderError(error: { code?: string, message: string }): 
 // (so this is the under-lock backstop), and reuses 45125 (version_conflict),
 // 42501, P0002 unchanged from the reorder/create paths.
 export function mapTestTagsError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {
@@ -127,6 +131,7 @@ export function mapTestTagsError(error: { code?: string, message: string }): nev
 
 // BK-2099: a viewer and a non-member share one 403 body, so it discloses nothing.
 export function mapTestBulkEditError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You need write access to this workspace to edit its Tests.', {
@@ -149,6 +154,7 @@ export function mapTestBulkEditError(error: { code?: string, message: string }):
 // BK-227 — bunkai_set_test_automation_status / bunkai_get_test_automation_status.
 // 45128 is the under-lock backstop of the Zod enum on the request body.
 export function mapTestAutomationStatusError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   if (error.code === '45128') {
     throw new ApiError('validation_failed', 'Status must be manual-only, candidate or automated.', {
       details: { reason: 'automation_status_invalid' },
@@ -163,6 +169,7 @@ export function mapTestAutomationStatusError(error: { code?: string, message: st
 // generic `internal_error` — never embed the raw message in the response (it
 // would leak internal SQL detail and conflate real errors with empty results).
 export function mapTestFilterError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   console.error('bunkai_filter_tests_by_tag RPC failed', error);
   throw new ApiError('internal_error', 'Failed to filter Tests by tag.');
 }

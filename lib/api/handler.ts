@@ -7,6 +7,7 @@ import type { z } from 'zod';
 import { ApiError, errorResponse } from '@lib/api/error-envelope';
 import { logRequest } from '@lib/api/logging';
 import { requireCapability, resolveIdentity } from '@lib/api/principal';
+import { isProjectReadOnlyFailure, projectReadOnlyError } from '@lib/api/project-read-only';
 import { getRequestId, REQUEST_ID_HEADER } from '@lib/api/request-id';
 import { NextResponse } from 'next/server';
 
@@ -128,6 +129,9 @@ export function withApiHandler(
 }
 
 function toApiError(raw: unknown): ApiError {
+  if (isProjectReadOnlyFailure(raw)) {
+    return projectReadOnlyError();
+  }
   if (raw instanceof ApiError) {
     return raw;
   }

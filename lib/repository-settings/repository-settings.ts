@@ -1,6 +1,7 @@
 import type { Principal } from '@lib/api/principal';
 import { ApiError } from '@lib/api/error-envelope';
 import { assertWorkspaceContext } from '@lib/api/principal';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 import { parseRepositoryUrl, REPOSITORY_URL_INVALID_MESSAGE } from '@lib/runs/ci-link';
 import { loadVisibleProject } from '@lib/tracker-settings/access';
 
@@ -78,6 +79,7 @@ export function parseRepositorySettingsBody(payload: unknown): { repository_url:
 }
 
 export function mapRepositorySettingsRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   if (error.code === 'P0002') {
     throw new ApiError('not_found', 'Project not found.', { details: { reason: 'not_found' } });
   }

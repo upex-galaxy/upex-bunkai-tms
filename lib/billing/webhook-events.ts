@@ -1,5 +1,6 @@
 import type Stripe from 'stripe';
 import { internalDbError } from '@lib/billing/errors';
+import { periodEndOf } from '@lib/billing/subscription';
 import { createAdminClient } from '@lib/supabase/admin';
 
 // BK-231 — maps the Stripe invoice events the Billing screen depends on onto the
@@ -34,6 +35,33 @@ export async function applyInvoiceEvent(event: Stripe.Event, now: Date = new Dat
   });
   if (error) {
     throw internalDbError('bunkai_apply_billing_invoice_event failed', error);
+  }
+
+  const status = (data as { status?: string } | null)?.status ?? 'ignored';
+  const recent = now.getTime() - event.created * 1000 < UNKNOWN_CUSTOMER_RETRY_WINDOW_MS;
+  return { status, retryable: status === 'unknown_customer' && recent };
+}
+
+export const SUBSCRIPTION_EVENT_TYPES = new Set(['customer.subscription.updated', 'customer.subscription.deleted']);
+
+export async function applySubscriptionEvent(event: Stripe.Event, now: Date = new Date()): Promise<InvoiceEventOutcome> {
+  const subscription = event.data.object as Stripe.Subscription;
+  const customerId = typeof subscription.customer === 'string' ? subscription.customer : (subscription.customer?.id ?? null);
+  if (!customerId || !subscription.id) {
+    return { status: 'ignored', retryable: false };
+  }
+
+  const { data, error } = await createAdminClient().rpc('bunkai_apply_billing_subscription_event', {
+    p_stripe_event_id: event.id,
+    p_event_type: event.type,
+    p_event_created: new Date(event.created * 1000).toISOString(),
+    p_stripe_customer_id: customerId,
+    p_stripe_subscription_id: subscription.id,
+    p_cancel_at_period_end: subscription.cancel_at_period_end === true || subscription.cancel_at !== null,
+    p_current_period_end: periodEndOf(subscription) as string,
+  });
+  if (error) {
+    throw internalDbError('bunkai_apply_billing_subscription_event failed', error);
   }
 
   const status = (data as { status?: string } | null)?.status ?? 'ignored';

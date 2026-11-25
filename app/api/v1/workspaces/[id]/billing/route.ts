@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { loadReadOnlyProjects } from '@lib/billing/read-only-projects';
 import { loadBillingBlock } from '@lib/billing/summary';
 import { getWorkspaceBillingOverview } from '@lib/supabase/rpc';
 
@@ -58,6 +59,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   // state). `null` for a workspace that does not pay through Stripe. Read through
   // the same caller client: RLS on the underlying tables is owner/admin only.
   const billing = await loadBillingBlock(db, workspaceId);
+  const readOnlyProjects = await loadReadOnlyProjects(db, workspaceId);
 
   return jsonResponse({
     plan: data.plan,
@@ -68,6 +70,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     active_seats: data.active_seats,
     project_count: data.project_count,
     oldest_run_age_days: data.oldest_run_age_days,
+    read_only_projects: readOnlyProjects,
   }, { status: 200 });
 // Scope floor matches the sibling workspace-inventory reads (open-bugs,
 // coverage, recent-projects, active-runs) — `atc:read` gates Bearer PATs;

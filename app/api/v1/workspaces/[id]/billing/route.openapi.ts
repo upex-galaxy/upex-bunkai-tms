@@ -44,6 +44,9 @@ const WorkspaceBillingOverviewSchema = z
         subscription_state: z.enum(['active_paid', 'grace_period', 'free_after_grace']),
         grace: z.object({ started_at: z.string().datetime(), ends_at: z.string().datetime() }).nullable(),
         retry_available: z.boolean().describe('`true` only once a replacement payment method was confirmed after the failure.'),
+        has_subscription: z.boolean().describe('BK-233 — `false` once the subscription ended (downgraded or cancelled at period end); the customer, card summary and invoices stay.'),
+        cancel_at_period_end: z.boolean().describe('BK-233 — `true` while a cancellation is pending: Cloud limits hold until `current_period_end`, then the workspace moves to Community.'),
+        current_period_end: z.string().datetime().nullable().describe('BK-233 — the end of the period already paid (UTC), or `null` when unknown.'),
       })
       .nullable()
       .describe('BK-231 — the maintenance surfaces. `null` for a workspace that does not pay through the payment processor (Community, Enterprise).'),
@@ -65,6 +68,9 @@ const WorkspaceBillingOverviewSchema = z
       .int()
       .nullable()
       .describe('Age in days of the workspace\'s oldest run (`now() - min(runs.created_at)`), or `null` when the workspace has no runs. This reports how much of the plan\'s retention WINDOW is in use — nothing in this product prunes runs, so this figure is never a countdown to deletion.'),
+    read_only_projects: z
+      .array(z.object({ id: z.string().uuid(), name: z.string() }))
+      .describe('BK-233 — projects over the EFFECTIVE plan\'s project limit, oldest first. They stay fully viewable; every write to them answers 422 `project_read_only`. Empty for a workspace within its limit.'),
   })
   .describe('A workspace\'s live billing-relevant counts, admin/owner only.')
   .openapi('WorkspaceBillingOverview');

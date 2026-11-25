@@ -8032,6 +8032,157 @@
         ],
         "description": "The company billing profile. Every field is sent on each save (full replace). There is no tax id: VAT handling is out of scope."
       },
+      "BillingDowngradePreview": {
+        "type": "object",
+        "properties": {
+          "workspace_name": {
+            "type": "string"
+          },
+          "current_plan": {
+            "type": "string",
+            "enum": ["cloud"]
+          },
+          "target_plan": {
+            "type": "string",
+            "enum": ["community"]
+          },
+          "projects": {
+            "type": "object",
+            "properties": {
+              "in_use": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "read_only": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["id", "name"]
+                },
+                "description": "The projects that become read-only, oldest first (`created_at`, then `id`). Empty when the workspace is within the Community limit. Nothing is deleted."
+              }
+            },
+            "required": ["in_use", "limit", "read_only"]
+          },
+          "seats": {
+            "type": "object",
+            "properties": {
+              "in_use": {
+                "type": "integer",
+                "description": "Active members only."
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "over_limit": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "user_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "email": {
+                      "type": ["string", "null"]
+                    }
+                  },
+                  "required": ["user_id", "email"]
+                },
+                "description": "The most recently joined non-owner members beyond the Community seat cap. Non-empty blocks the downgrade until the owner removes members."
+              }
+            },
+            "required": ["in_use", "limit", "over_limit"]
+          },
+          "retention": {
+            "type": "object",
+            "properties": {
+              "current_days": {
+                "type": ["integer", "null"],
+                "description": "Age in days of the oldest run, or `null` with no runs."
+              },
+              "target_days": {
+                "type": ["integer", "null"],
+                "description": "The Community retention window. Older runs stay stored and viewable."
+              }
+            },
+            "required": ["current_days", "target_days"]
+          },
+          "blocked_reason": {
+            "type": ["string", "null"],
+            "enum": ["seats_over_limit", "cancellation_pending", "checkout_open", null],
+            "description": "Why the downgrade cannot be confirmed right now, or `null`."
+          }
+        },
+        "required": [
+          "workspace_name",
+          "current_plan",
+          "target_plan",
+          "projects",
+          "seats",
+          "retention",
+          "blocked_reason"
+        ]
+      },
+      "BillingDowngradeResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["downgraded"]
+          },
+          "plan": {
+            "type": "string",
+            "enum": ["community"]
+          },
+          "read_only_projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "name"]
+            }
+          }
+        },
+        "required": ["status", "plan", "read_only_projects"]
+      },
+      "BillingDowngradeRequest": {
+        "type": "object",
+        "properties": {
+          "target_plan": {
+            "type": "string",
+            "enum": ["community"]
+          },
+          "expected_read_only_project_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The exact `projects.read_only` ids from the preview the owner confirmed. A different live set answers `downgrade_preview_stale`."
+          }
+        },
+        "required": ["target_plan", "expected_read_only_project_ids"]
+      },
       "BillingInvoiceList": {
         "type": "object",
         "properties": {
@@ -8246,6 +8397,19 @@
               "retry_available": {
                 "type": "boolean",
                 "description": "`true` only once a replacement payment method was confirmed after the failure."
+              },
+              "has_subscription": {
+                "type": "boolean",
+                "description": "BK-233 — `false` once the subscription ended (downgraded or cancelled at period end); the customer, card summary and invoices stay."
+              },
+              "cancel_at_period_end": {
+                "type": "boolean",
+                "description": "BK-233 — `true` while a cancellation is pending: Cloud limits hold until `current_period_end`, then the workspace moves to Community."
+              },
+              "current_period_end": {
+                "type": ["string", "null"],
+                "format": "date-time",
+                "description": "BK-233 — the end of the period already paid (UTC), or `null` when unknown."
               }
             },
             "required": [
@@ -8256,7 +8420,10 @@
               "payment_state",
               "subscription_state",
               "grace",
-              "retry_available"
+              "retry_available",
+              "has_subscription",
+              "cancel_at_period_end",
+              "current_period_end"
             ],
             "description": "BK-231 — the maintenance surfaces. `null` for a workspace that does not pay through the payment processor (Community, Enterprise)."
           },
@@ -8275,6 +8442,23 @@
           "oldest_run_age_days": {
             "type": ["integer", "null"],
             "description": "Age in days of the workspace's oldest run (`now() - min(runs.created_at)`), or `null` when the workspace has no runs. This reports how much of the plan's retention WINDOW is in use — nothing in this product prunes runs, so this figure is never a countdown to deletion."
+          },
+          "read_only_projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "name"]
+            },
+            "description": "BK-233 — projects over the EFFECTIVE plan's project limit, oldest first. They stay fully viewable; every write to them answers 422 `project_read_only`. Empty for a workspace within its limit."
           }
         },
         "required": [
@@ -8285,9 +8469,40 @@
           "purchased_seats",
           "active_seats",
           "project_count",
-          "oldest_run_age_days"
+          "oldest_run_age_days",
+          "read_only_projects"
         ],
         "description": "A workspace's live billing-relevant counts, admin/owner only."
+      },
+      "BillingCancelResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["cancel_scheduled"]
+          },
+          "ends_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "The end of the period already paid (UTC). Cloud limits hold until then; the workspace then moves to Community."
+          }
+        },
+        "required": ["status", "ends_at"]
+      },
+      "BillingResubscribeResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["resumed"]
+          },
+          "renews_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the subscription renews (UTC)."
+          }
+        },
+        "required": ["status", "renews_at"]
       },
       "WorkspaceBugs": {
         "type": "object",
@@ -21159,6 +21374,209 @@
         }
       }
     },
+    "/api/v1/workspaces/{id}/billing/downgrade": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "Preview a downgrade to Community",
+        "description": "Owner-only. Lists exactly what a downgrade from Cloud to Community changes: the projects that become read-only (oldest first), members above the Community seat cap (which block the downgrade), and the retention window. Nothing is ever deleted. The preview is mandatory: the confirm must carry the read-only set shown here.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The consequence preview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingDowngradePreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id, body or Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `workspace:admin`, wrong workspace, or not the OWNER (`details.reason: not_workspace_owner`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No paid Cloud subscription (`no_active_subscription`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Billing"],
+        "summary": "Downgrade to Community now",
+        "description": "Owner-only. Ends the Cloud subscription at once with no proration or refund, then moves the workspace to Community. Projects above the Community limit become read-only (oldest first) and stay fully viewable; nothing is deleted, and a re-upgrade restores editing. A payment-processor failure leaves the workspace unchanged.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8-128 chars, [a-zA-Z0-9_-]. A replay with the same key returns the stored response; the same key with a different payload returns 409 `conflict`."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingDowngradeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The workspace is on Community.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingDowngradeResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id, body or Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `workspace:admin`, wrong workspace, or not the OWNER (`details.reason: not_workspace_owner`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No paid Cloud subscription (`no_active_subscription`); the downgrade is blocked (`plan_change_not_available`, `details.reason`: `seats_over_limit` | `cancellation_pending` | `checkout_open`); or the affected projects changed since the preview (`downgrade_preview_stale`, `details.preview` holds the fresh preview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The body failed validation (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment processor could not end the subscription (`upstream_error`). Nothing changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The payment processor is not configured (`payment_processor_unavailable`). Nothing changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{id}/billing/invoices/{invoiceId}/pdf": {
       "get": {
         "tags": ["Billing"],
@@ -21697,6 +22115,222 @@
           },
           "500": {
             "description": "The overview could not be read (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/billing/subscription/cancel": {
+      "post": {
+        "tags": ["Billing"],
+        "summary": "Cancel the subscription at the end of the paid period",
+        "description": "Owner-only. Schedules the cancellation at the end of the period already paid; access and limits are unchanged until then, and the owner can resubscribe before that date with no new charge. A second cancel answers the same end date without calling the payment processor again. A payment-processor failure leaves the subscription unchanged.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8-128 chars, [a-zA-Z0-9_-]. A replay with the same key returns the stored response; the same key with a different payload returns 409 `conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cancellation is scheduled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingCancelResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id or Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `workspace:admin`, wrong workspace, or not the OWNER (`details.reason: not_workspace_owner`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No paid Cloud subscription (`no_active_subscription`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment processor could not schedule the cancellation (`upstream_error`). Nothing changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The payment processor is not configured (`payment_processor_unavailable`). Nothing changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/billing/subscription/resubscribe": {
+      "post": {
+        "tags": ["Billing"],
+        "summary": "Revert a pending cancellation",
+        "description": "Owner-only. Available only while a cancellation is pending and the paid period has not ended. Reverts the cancellation with no new charge for the period already paid. After the period ends, a new upgrade applies instead.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8-128 chars, [a-zA-Z0-9_-]. A replay with the same key returns the stored response; the same key with a different payload returns 409 `conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cancellation is reverted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingResubscribeResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed workspace id or Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `workspace:admin`, wrong workspace, or not the OWNER (`details.reason: not_workspace_owner`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No paid Cloud subscription (`no_active_subscription`), or nothing to revert (`resubscribe_not_available`, `details.reason`: `no_pending_cancellation` | `period_ended`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment processor could not revert the cancellation (`upstream_error`). Nothing changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The payment processor is not configured (`payment_processor_unavailable`). Nothing changed.",
             "content": {
               "application/json": {
                 "schema": {

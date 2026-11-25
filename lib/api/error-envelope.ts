@@ -63,6 +63,13 @@ export const API_ERROR_CODES = {
   PAYMENT_DECLINED: 'payment_declined',
   INVOICE_PDF_UNAVAILABLE: 'invoice_pdf_unavailable',
 
+  // Billing domain (BK-233) — downgrade, cancel, resubscribe, and the write lock
+  // on projects over the effective plan's limit (SQLSTATE 45701).
+  PLAN_CHANGE_NOT_AVAILABLE: 'plan_change_not_available',
+  DOWNGRADE_PREVIEW_STALE: 'downgrade_preview_stale',
+  RESUBSCRIBE_NOT_AVAILABLE: 'resubscribe_not_available',
+  PROJECT_READ_ONLY: 'project_read_only',
+
   // Test Plans domain (BK-203) — a Test added to a Plan must belong to the
   // Plan's own project (derived via its chained ATCs). Distinct from
   // validation_failed so API consumers can branch on it, same shape as
@@ -113,6 +120,10 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   retry_not_available: 409,
   payment_declined: 402,
   invoice_pdf_unavailable: 409,
+  plan_change_not_available: 409,
+  downgrade_preview_stale: 409,
+  resubscribe_not_available: 409,
+  project_read_only: 422,
   test_outside_plan_project: 422,
   file_too_large: 413,
   unsupported_media_type: 415,

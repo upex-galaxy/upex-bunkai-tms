@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 
 // BK-148 — map a bunkai_*_environment RPC error (Postgres SQLSTATE) to the
 // canonical API envelope. The RPCs raise the environments-domain 452xx block
@@ -35,6 +36,7 @@ function inUseMessage(count: number | null): string {
 }
 
 export function mapEnvironmentRpcError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       // Non-member (or a non-disclosing missing-project) — member+ write access

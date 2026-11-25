@@ -26,6 +26,7 @@ const paymentMethodService = await import('@lib/billing/payment-method');
 const retryService = await import('@lib/billing/retry');
 const invoicesService = await import('@lib/billing/invoices');
 const summaryService = await import('@lib/billing/summary');
+const readOnlyService = await import('@lib/billing/read-only-projects');
 const rpcModule = await import('@lib/supabase/rpc');
 const { ApiError } = await import('@lib/api/error-envelope');
 
@@ -344,11 +345,12 @@ describe('GET billing (overview, extended)', () => {
     spies.push(spyOn(rpcModule, 'getWorkspaceBillingOverview').mockResolvedValue({ data: OVERVIEW, error: null } as never) as never);
     const block = { can_edit: true, profile: null, payment_method: null, payment_state: 'paid', subscription_state: 'active_paid', grace: null, retry_available: false };
     spies.push(spyOn(summaryService, 'loadBillingBlock').mockResolvedValue(block as never) as never);
+    spies.push(spyOn(readOnlyService, 'loadReadOnlyProjects').mockResolvedValue([]) as never);
 
     const response = await overview.GET(request(''));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ plan: 'cloud', stored_plan: 'cloud', grace_ends_at: null, billing: block, active_seats: 3 });
+    expect(await response.json()).toMatchObject({ plan: 'cloud', stored_plan: 'cloud', grace_ends_at: null, billing: block, active_seats: 3, read_only_projects: [] });
   });
 
   test('reports the effective plan after the grace expiry and keeps the stored one', async () => {
@@ -358,10 +360,11 @@ describe('GET billing (overview, extended)', () => {
       error: null,
     } as never) as never);
     spies.push(spyOn(summaryService, 'loadBillingBlock').mockResolvedValue(null) as never);
+    spies.push(spyOn(readOnlyService, 'loadReadOnlyProjects').mockResolvedValue([{ id: '22222222-2222-4222-8222-222222222222', name: 'P1' }]) as never);
 
     const body = await (await overview.GET(request(''))).json() as Record<string, unknown>;
 
-    expect(body).toMatchObject({ plan: 'community', stored_plan: 'cloud', billing: null });
+    expect(body).toMatchObject({ plan: 'community', stored_plan: 'cloud', billing: null, read_only_projects: [{ name: 'P1' }] });
     expect(body.grace_ends_at).toBe('2026-10-15T12:00:00+00:00');
   });
 

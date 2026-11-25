@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 import { BUG_EVIDENCE_MESSAGES, BUG_STATUS_VALUES } from '@lib/bugs/constants';
 
 // BK-40 — map a bunkai_create_bug / bunkai_list_project_bugs RPC error
@@ -21,6 +22,7 @@ export function mapBugRpcError(
   error: { code?: string, message: string, hint?: string | null },
   opts: { notFoundEntity?: 'project_or_module' | 'bug', currentStatus?: string } = {},
 ): never {
+  throwIfProjectReadOnly(error);
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {

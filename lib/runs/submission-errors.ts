@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { throwIfProjectReadOnly } from '@lib/api/project-read-only';
 
 // BK-222 — map a bunkai_submit_automated_run RPC error (Postgres SQLSTATE) to
 // the canonical API envelope. Dedicated mapper: the shared `mapRunRpcError`
@@ -19,6 +20,7 @@ function listOf(details: string | null | undefined): number[] {
 }
 
 export function mapSubmissionRpcError(error: SubmissionRpcError): never {
+  throwIfProjectReadOnly(error);
   const detail = error.details ?? '';
   switch (error.code) {
     case 'P0002':
