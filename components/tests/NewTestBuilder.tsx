@@ -1,12 +1,15 @@
 'use client';
 
 import type { AtcLibraryItem } from '@components/tests/AtcChainPicker';
+import type { DuplicatePrefill } from '@lib/tests/duplicate';
 import { AtcChainPicker } from '@components/tests/AtcChainPicker';
+import { TestTagField } from '@components/tests/TestTagField';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
+import { archivedStepsNotice, DUPLICATE_TAGS_NOT_SAVED_COPY } from '@lib/tests/duplicate';
 import { TEST_CHAIN_UI_SOFT_CAP, TEST_TITLE_MAX, testTitleFault } from '@lib/tests/validation';
 import { cn } from '@lib/utils';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { Archive, ChevronLeft, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -16,6 +19,7 @@ interface NewTestBuilderProps {
   projectSlug: string
   // The Project's ATC library (id, slug, title, layer) — loaded server-side (BK-620).
   atcs: AtcLibraryItem[]
+  prefill?: DuplicatePrefill | null
 }
 
 interface ApiErrorBody {
@@ -25,10 +29,13 @@ interface ApiErrorBody {
   }
 }
 
-export function NewTestBuilder({ projectSlug, atcs }: NewTestBuilderProps) {
+export function NewTestBuilder({ projectSlug, atcs, prefill = null }: NewTestBuilderProps) {
   const router = useRouter();
-  const [title, setTitle] = useState('');
-  const [chain, setChain] = useState<AtcLibraryItem[]>([]);
+  const [title, setTitle] = useState(prefill?.title ?? '');
+  const [chain, setChain] = useState<AtcLibraryItem[]>(prefill?.chain ?? []);
+  const [tags, setTags] = useState<string[]>(prefill?.tags ?? []);
+  const [tagError, setTagError] = useState<string | null>(null);
+  const archivedNotice = prefill ? archivedStepsNotice(prefill.archivedStepCount) : null;
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // One idempotency key per submission attempt (lazy initializer → generated
@@ -88,6 +95,24 @@ export function NewTestBuilder({ projectSlug, atcs }: NewTestBuilderProps) {
         setIdempotencyKey(crypto.randomUUID());
         setSubmitting(false);
         return;
+      }
+
+      if (prefill && tags.length > 0) {
+        const created = (await response.json().catch(() => null)) as { test?: { id?: string } } | null;
+        const newId = created?.test?.id;
+        const tagResponse = newId
+          ? await fetch(`/api/v1/tests/${newId}/tags`, {
+              method: 'PUT',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ tags }),
+            }).catch(() => null)
+          : null;
+        if (!tagResponse?.ok) {
+          toast.error(DUPLICATE_TAGS_NOT_SAVED_COPY);
+          router.push(newId ? `/projects/${projectSlug}/tests/${newId}` : `/projects/${projectSlug}`);
+          router.refresh();
+          return;
+        }
       }
 
       toast.success('Test created');
@@ -171,7 +196,29 @@ export function NewTestBuilder({ projectSlug, atcs }: NewTestBuilderProps) {
               className="h-10 text-md font-semibold"
             />
           </label>
+          {prefill && (
+            <div className="mt-3" data-testid="new-test-tags">
+              <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
+                Tags
+                <span className="ml-1 font-normal text-fg-3">optional</span>
+              </span>
+              <div className="rounded-3 border border-stroke-2 bg-surface-2 p-2">
+                <TestTagField tags={tags} onChange={setTags} error={tagError} onErrorChange={setTagError} />
+              </div>
+            </div>
+          )}
         </header>
+
+        {archivedNotice && (
+          <div
+            role="status"
+            data-testid="new-test-archived-notice"
+            className="flex flex-shrink-0 items-start gap-3 rounded-3 border border-stroke-2 bg-surface-2 p-3 text-sm text-fg-1"
+          >
+            <Archive size={16} className="mt-px shrink-0 text-fg-3" aria-hidden="true" />
+            <span>{archivedNotice}</span>
+          </div>
+        )}
 
         <AtcChainPicker
           atcs={atcs}
