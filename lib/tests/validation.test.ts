@@ -99,6 +99,11 @@ describe('TestTagsBodySchema boundaries', () => {
     expect(TestTagsBodySchema.safeParse({ tags: ['x'.repeat(51)] }).success).toBe(false);
   });
 
+  test('counts characters, not UTF-16 units, as the RPC and bulk edit do', () => {
+    expect(TestTagsBodySchema.safeParse({ tags: ['🔥'.repeat(50)] }).success).toBe(true);
+    expect(TestTagsBodySchema.safeParse({ tags: ['🔥'.repeat(51)] }).success).toBe(false);
+  });
+
   test('accepts 20 tags (upper boundary)', () => {
     const tags = Array.from({ length: 20 }, (_, i) => `t${i}`);
     expect(TestTagsBodySchema.safeParse({ tags }).success).toBe(true);
