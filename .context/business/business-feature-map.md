@@ -243,7 +243,7 @@ Added 2026-11-26 (BK-2496) against the shipped code. The Billing Plan (Tier) of 
 | FEAT-B03 | Billing details, payment method, invoice history and PDF, failed-renewal grace window and retry | BK-231 | migration `0113`, ADR-0021 | details, method, retry: owner; invoices: owner and admin | `/settings/billing` |
 | FEAT-B04 | Plan-limit warnings: dismissible banner at 80% and at the cap, blocking modal when a creation is refused | BK-232 | no migration (reads ADR-0021) | owner, admin, member (never a viewer) | every app page (banner), project creation (modal) |
 | FEAT-B05 | Downgrade Cloud to Community at once (mandatory preview, no refund), cancel at the end of the paid period, resubscribe before that date | BK-233 | migration `0140`, ADR-0028 | owner only | `/settings/billing` plan card |
-| FEAT-B06 | Over-limit projects are read-only: the oldest projects beyond the effective tier's limit refuse every write (422 `project_read_only`), stay fully viewable, and become editable again on an upgrade | BK-233, copy BK-2496 | migration `0140`, ADR-0028 | every role sees the notice; the owner gets the upgrade path | project shell notice and empty explorer |
+| FEAT-B06 | Over-limit projects are read-only: the oldest projects beyond the effective tier's limit refuse every write (422 `project_read_only`), stay fully viewable, and become editable again on an upgrade | BK-233, copy BK-2496 | migration `0140`, ADR-0028 | every role sees the notice; the owner gets the path to Billing | project shell notice and empty explorer |
 
 **Rules a story here must keep:**
 - [x] Nothing is ever deleted by a tier change. Projects over the limit become read-only, oldest first (`created_at`, then `id`); seats above the Community cap block the downgrade instead.

@@ -75,7 +75,7 @@ interface ProjectExplorerProps {
   // `selectedTestId` (derived from the active route) highlight the open item.
   selectedAtcId?: string | null
   selectedTestId?: string | null
-  // BK-2496 — set only for a read-only project: who is reading, for the empty tree's restore path.
+  // Set only for a read-only project: whose restore path the empty tree shows.
   readOnlyAudience?: ReadOnlyAudience | null
 }
 

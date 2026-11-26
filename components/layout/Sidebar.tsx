@@ -87,7 +87,7 @@ interface SidebarProps {
   archivedNotice?: ReactNode
   // Opens the restore confirmation for an archived Module.
   onRestoreModule?: (node: ModuleTreeNode) => void
-  // BK-2496 — replaces the empty tree's "ask a member" line when nobody can add a module.
+  // Replaces the "ask a member" line when nobody can add a module (a read-only project).
   emptyHint?: ReactNode
 }
 

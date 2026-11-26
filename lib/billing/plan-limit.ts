@@ -157,8 +157,7 @@ export function resourceNoun(resource: PlanLimitResource): { plural: string, sin
   return RESOURCE_NOUN[resource];
 }
 
-// How many of the oldest resources the plan leaves read-only: the same
-// `count - limit` the database lock derives (ADR-0028).
+// The same `count - limit` the database lock derives (ADR-0028).
 export function overLimitCount(used: number, limit: number | null): number {
   return limit === null ? 0 : Math.max(0, used - limit);
 }

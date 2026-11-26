@@ -1,4 +1,3 @@
-import { UPGRADE_HREF } from '@components/billing/PlanLimitBanner';
 import { buttonVariants } from '@components/ui/button';
 import { cn } from '@lib/utils';
 import { Lock } from 'lucide-react';
@@ -8,8 +7,8 @@ export type ReadOnlyAudience = 'owner' | 'admin' | 'other';
 
 export function readOnlyRestoreLine(audience: ReadOnlyAudience): string {
   return audience === 'owner'
-    ? 'Upgrade the billing plan to edit it again.'
-    : 'Ask the workspace owner to upgrade the billing plan to edit it again.';
+    ? 'Update the billing plan in Billing to edit it again.'
+    : 'Ask the workspace owner to update the billing plan to edit it again.';
 }
 
 export function ReadOnlyProjectNotice({ audience }: { audience: ReadOnlyAudience }) {
@@ -40,8 +39,8 @@ export function ReadOnlyExplorerHint({ audience }: { audience: ReadOnlyAudience 
         {`This project is read-only because the workspace is over its plan's project limit. ${readOnlyRestoreLine(audience)}`}
       </p>
       {audience === 'owner' && (
-        <Link href={UPGRADE_HREF} data-testid="modules-empty-upgrade" className={cn(buttonVariants(), 'mt-1')}>
-          Upgrade plan
+        <Link href="/settings/billing" data-testid="modules-empty-billing" className={cn(buttonVariants(), 'mt-1')}>
+          Open billing
         </Link>
       )}
     </>
