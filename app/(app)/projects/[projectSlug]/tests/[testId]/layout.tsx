@@ -70,7 +70,7 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
           <span className="shrink-0 text-xs text-fg-4">/</span>
           <h1
             data-testid="test-detail-title"
-            className="min-w-0 truncate text-sm font-semibold text-fg-0"
+            className="min-w-16 shrink-[999] truncate text-sm font-semibold text-fg-0"
           >
             {test.title}
           </h1>
