@@ -30,7 +30,7 @@ function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-async function fileBug(mode: 'standalone' | 'run-linked') {
+async function mountForm(mode: 'standalone' | 'run-linked'): Promise<HTMLElement> {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -57,10 +57,33 @@ async function fileBug(mode: 'standalone' | 'run-linked') {
       select.dispatchEvent(new Event('change', { bubbles: true }));
     });
   }
+  return container;
+}
+
+async function submit(container: HTMLElement): Promise<void> {
   await act(async () => {
     (container.querySelector('[data-testid="bug-form-submit"]') as HTMLElement).click();
   });
+}
+
+async function fileBug(mode: 'standalone' | 'run-linked') {
+  const container = await mountForm(mode);
+  await submit(container);
   return container;
+}
+
+function titleInput(container: HTMLElement): HTMLInputElement {
+  const input = container.querySelector<HTMLInputElement>('[data-testid="bug-title-input"]');
+  if (!input) { throw new Error('title input not rendered'); }
+  return input;
+}
+
+async function typeTitle(container: HTMLElement, value: string): Promise<void> {
+  const input = titleInput(container);
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 }
 
 beforeEach(() => {
@@ -106,5 +129,33 @@ describe('file bug: sidebar count freshness', () => {
     const container = await fileBug('standalone');
     expect(events).toEqual(['post']);
     expect(container.querySelector('[data-testid="bug-form-error"]')?.textContent).toBe('Select a module.');
+  });
+});
+
+describe('file bug: title over the limit (BK-2096)', () => {
+  test('the title field does not cap the length itself, so a paste is never cut', async () => {
+    const container = await mountForm('standalone');
+    expect(titleInput(container).hasAttribute('maxlength')).toBe(false);
+  });
+
+  test('a 201-character title is kept and File bug shows the title error without a request', async () => {
+    const container = await mountForm('standalone');
+    await typeTitle(container, 'x'.repeat(201));
+    expect(titleInput(container).value).toHaveLength(201);
+
+    await submit(container);
+
+    expect(container.querySelector('[data-testid="bug-form-error"]')?.textContent).toBe('Title must be between 5 and 200 characters');
+    expect(events).toEqual([]);
+  });
+
+  test('exactly 200 characters passes the title rule and files', async () => {
+    response = () => json({ bug: { id: BUG_ID } }, 201);
+    const container = await mountForm('standalone');
+    await typeTitle(container, 'x'.repeat(200));
+
+    await submit(container);
+
+    expect(events[0]).toBe('post');
   });
 });
