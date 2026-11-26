@@ -149,6 +149,41 @@ describe('bK-1994 NewTestBuilder from a source Test', () => {
     expect(calls.filter(call => call.method === 'POST')).toHaveLength(1);
   });
 
+  test('saves the tags as edited in the builder', async () => {
+    const c = await render(PREFILL);
+    await act(async () => {
+      (byId(c, 'test-tag-remove-smoke') as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (byId(c, 'test-tag-quickadd-regression') as HTMLButtonElement).click();
+    });
+    await submit(c);
+    expect(calls[1].body).toEqual({ tags: ['regression'] });
+  });
+
+  test('a tag call that fails on the network still opens the new Test and never creates twice', async () => {
+    const tagFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: string, init?: RequestInit) => {
+      if ((init?.method ?? 'GET') === 'PUT') { throw new TypeError('network down'); }
+      return tagFetch(input, init);
+    }) as typeof fetch;
+    const c = await render(PREFILL);
+    await submit(c);
+    expect(pushes).toEqual([`/projects/checkout/tests/${NEW_ID}`]);
+    expect(toasts).toEqual([{ kind: 'error', message: 'Test created, but its tags were not saved. Add them on this page.' }]);
+    expect((byId(c, 'new-test-submit') as HTMLButtonElement).disabled).toBe(true);
+    expect(calls.filter(call => call.method === 'POST')).toHaveLength(1);
+  });
+
+  test('a create response without an id lands on the Project and says the tags were not saved', async () => {
+    handler = (_url, method) => (method === 'POST' ? json({}, 201) : json({ test: {} }));
+    const c = await render(PREFILL);
+    await submit(c);
+    expect(calls.map(call => call.method)).toEqual(['POST']);
+    expect(pushes).toEqual(['/projects/checkout']);
+    expect(toasts).toEqual([{ kind: 'error', message: 'Test created, but its tags were not saved. Open the new Test to add them.' }]);
+  });
+
   test('keeps Create disabled while every source ATC was archived', async () => {
     const c = await render({ ...PREFILL, chain: [], archivedStepCount: 2 });
     expect(byId(c, 'new-test-archived-notice')?.textContent).toBe('2 chain steps were left out because their ATCs are archived.');

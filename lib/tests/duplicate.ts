@@ -6,6 +6,8 @@ const COPY_PREFIX = 'Copy of ';
 
 export const DUPLICATE_TAGS_NOT_SAVED_COPY = 'Test created, but its tags were not saved. Add them on this page.';
 
+export const DUPLICATE_TAGS_NOT_SAVED_NO_ID_COPY = 'Test created, but its tags were not saved. Open the new Test to add them.';
+
 export function duplicateSourceId(value: string | string[] | undefined): string | null {
   const raw = Array.isArray(value) ? value[0] : value;
   if (raw === undefined || raw.trim() === '') {

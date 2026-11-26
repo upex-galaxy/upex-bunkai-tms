@@ -6,7 +6,7 @@ import { AtcChainPicker } from '@components/tests/AtcChainPicker';
 import { TestTagField } from '@components/tests/TestTagField';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
-import { archivedStepsNotice, DUPLICATE_TAGS_NOT_SAVED_COPY } from '@lib/tests/duplicate';
+import { archivedStepsNotice, DUPLICATE_TAGS_NOT_SAVED_COPY, DUPLICATE_TAGS_NOT_SAVED_NO_ID_COPY } from '@lib/tests/duplicate';
 import { TEST_CHAIN_UI_SOFT_CAP, TEST_TITLE_MAX, testTitleFault } from '@lib/tests/validation';
 import { cn } from '@lib/utils';
 import { Archive, ChevronLeft, Plus } from 'lucide-react';
@@ -108,7 +108,7 @@ export function NewTestBuilder({ projectSlug, atcs, prefill = null }: NewTestBui
             }).catch(() => null)
           : null;
         if (!tagResponse?.ok) {
-          toast.error(DUPLICATE_TAGS_NOT_SAVED_COPY);
+          toast.error(newId ? DUPLICATE_TAGS_NOT_SAVED_COPY : DUPLICATE_TAGS_NOT_SAVED_NO_ID_COPY);
           router.push(newId ? `/projects/${projectSlug}/tests/${newId}` : `/projects/${projectSlug}`);
           router.refresh();
           return;
