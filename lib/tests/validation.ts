@@ -64,6 +64,10 @@ export const TEST_TAGS_MAX_COUNT = 20;
 // quick-add chips (custom tags preserve casing; reserved ones do not).
 export const RESERVED_TEST_TAGS = ['smoke', 'sanity', 'regression'] as const;
 
+export function testTagLength(tag: string): number {
+  return [...tag].length;
+}
+
 export const TestTagsBodySchema = z.object({
   tags: z
     .array(z.string())
@@ -75,7 +79,7 @@ export const TestTagsBodySchema = z.object({
         .array(
           z
             .string()
-            .max(TEST_TAG_MAX_LEN)
+            .refine(t => testTagLength(t) <= TEST_TAG_MAX_LEN, { message: `Tags must be ${TEST_TAG_MAX_LEN} characters or fewer.` })
             .refine(t => !t.includes(','), { message: 'Tags must not contain commas.' }),
         )
         .max(TEST_TAGS_MAX_COUNT),

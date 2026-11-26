@@ -2,16 +2,20 @@ import type { AtcLibraryItem } from '@components/tests/AtcChainPicker';
 import { NewTestBuilder } from '@components/tests/NewTestBuilder';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
+import { duplicatePrefill, duplicateSourceId } from '@lib/tests/duplicate';
+import { loadTestDetail } from '@lib/tests/load-test-detail';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 interface PageProps {
   params: Promise<{ projectSlug: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default async function NewTestPage({ params }: PageProps) {
+export default async function NewTestPage({ params, searchParams }: PageProps) {
   const { projectSlug } = await params;
+  const sourceId = duplicateSourceId((await searchParams).from);
   const supabase = await createClient();
 
   // Project slugs are only unique PER WORKSPACE (BK-52), so the lookup must be
@@ -53,5 +57,9 @@ export default async function NewTestPage({ params }: PageProps) {
 
   const atcs = (atcRows ?? []) as AtcLibraryItem[];
 
-  return <NewTestBuilder projectSlug={project.slug} atcs={atcs} />;
+  const prefill = sourceId === null
+    ? null
+    : duplicatePrefill((await loadTestDetail(project.slug, sourceId)).test);
+
+  return <NewTestBuilder key={sourceId ?? 'blank'} projectSlug={project.slug} atcs={atcs} prefill={prefill} />;
 }
