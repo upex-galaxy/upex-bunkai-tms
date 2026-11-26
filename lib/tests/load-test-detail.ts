@@ -1,5 +1,6 @@
 import type { ExpandedTest } from '@components/tests/TestDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import { getTestExpanded } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { fetchTestChainProjectIds, isTestChainInProject } from '@lib/tests/project-scope';
@@ -44,6 +45,7 @@ export interface TestDetail {
   // BK-28 — reorder is gated to member/admin/owner. BK-33 reuses it for the tag
   // editor and BK-34 for the Start-run affordance; viewers get the read-only view.
   canReorder: boolean
+  readOnly: boolean
   // BK-34 — the project's environments (id + name) for the Start-run picker.
   environments: TestDetailEnvironment[]
 }
@@ -106,6 +108,8 @@ export const loadTestDetail = cache(async (projectSlug: string, testId: string):
   const chainProjectIds = await fetchTestChainProjectIds(supabase, testId);
   if (!isTestChainInProject(chainProjectIds, project.id)) { notFound(); }
 
+  const readOnly = await readProjectReadOnly(activeWorkspaceId, project.id);
+
   const { data: envRows } = await supabase
     .from('project_environments')
     .select('id, name')
@@ -118,6 +122,7 @@ export const loadTestDetail = cache(async (projectSlug: string, testId: string):
     projectId: project.id,
     test,
     canReorder,
+    readOnly,
     environments: envRows ?? [],
   };
 });

@@ -1,6 +1,7 @@
 'use client';
 
 import type { MilestoneReadiness, OverdueInfo } from '@lib/milestones/readiness-view';
+import { READ_ONLY_PROJECT_NOTE } from '@components/billing/ReadOnlyProjectNotice';
 import { CreateMilestoneForm } from '@components/milestones/CreateMilestoneForm';
 import { MilestoneArchiveButton, MilestoneArchivedBadge } from '@components/milestones/MilestoneArchiveButton';
 import { MilestoneOverdueBadge } from '@components/milestones/MilestoneOverdueBadge';
@@ -54,6 +55,7 @@ interface MilestonesListViewProps {
   // Member+ gate — a viewer sees the list with the create action
   // STRUCTURALLY absent, not merely hidden (business-rules.md).
   canCreate: boolean
+  readOnly?: boolean
   // The server's UTC date, so every countdown chip uses the same day as the
   // overdue badges (D7), never the browser's clock.
   todayIso: string
@@ -68,7 +70,8 @@ const COLUMNS = ['Name', 'Target date', 'Countdown', 'Readiness', 'Creator'];
 // BK-1899 — the trailing Archive / Restore column, only for members who can write.
 const ACTIONS_COLUMN = 'actions';
 
-export function MilestonesListView({ projectId, projectSlug, milestones, canCreate, todayIso, showArchived, archivedCount }: MilestonesListViewProps) {
+export function MilestonesListView({ projectId, projectSlug, milestones, canCreate: canCreateRole, readOnly = false, todayIso, showArchived, archivedCount }: MilestonesListViewProps) {
+  const canCreate = canCreateRole && !readOnly;
   const [creating, setCreating] = useState(false);
   const overdueCount = milestones.filter(milestone => overdueUnlessArchived(milestone.overdue, milestone.archivedAt) !== null).length;
 
@@ -115,7 +118,12 @@ export function MilestonesListView({ projectId, projectSlug, milestones, canCrea
                   New milestone
                 </Button>
               )}
-              {!canCreate && (
+              {readOnly && (
+                <span data-testid="milestones-read-only-note" className="text-xs text-fg-3">
+                  {READ_ONLY_PROJECT_NOTE}
+                </span>
+              )}
+              {!canCreateRole && !readOnly && (
                 <span data-testid="milestones-viewer-note" className="text-xs text-fg-3">
                   Creating milestones requires the member role or higher.
                 </span>

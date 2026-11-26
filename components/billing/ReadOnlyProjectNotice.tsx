@@ -5,6 +5,8 @@ import Link from 'next/link';
 
 export type ReadOnlyAudience = 'owner' | 'admin' | 'other';
 
+export const READ_ONLY_PROJECT_NOTE = 'This project is read-only.';
+
 export function readOnlyRestoreLine(audience: ReadOnlyAudience): string {
   return audience === 'owner'
     ? 'Update the billing plan in Billing to edit it again.'

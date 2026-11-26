@@ -4,6 +4,7 @@ import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
 import type { PlanVerdict } from '@lib/test-plans/close-validation';
 import type { PlanStatusFilter } from '@lib/test-plans/close-view';
 import type { PlanProgressSummary } from '@lib/test-plans/progress-view';
+import { READ_ONLY_PROJECT_NOTE } from '@components/billing/ReadOnlyProjectNotice';
 import { TestPlanForm } from '@components/test-plans/TestPlanForm';
 import { PlanMiniBar } from '@components/test-plans/TestPlanProgress';
 import { TestPlanStatusChip } from '@components/test-plans/TestPlanStatusChip';
@@ -58,11 +59,13 @@ interface TestPlansListViewProps {
   // Member+ gate — a viewer sees the list with the create action
   // STRUCTURALLY absent, not merely hidden (business-rules.md, AC 4.1).
   canCreate: boolean
+  readOnly?: boolean
 }
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function TestPlansListView({ projectId, projectSlug, testPlans, progressUnavailable = false, statusFilter = null, canCreate }: TestPlansListViewProps) {
+export function TestPlansListView({ projectId, projectSlug, testPlans, progressUnavailable = false, statusFilter = null, canCreate: canCreateRole, readOnly = false }: TestPlansListViewProps) {
+  const canCreate = canCreateRole && !readOnly;
   const [creating, setCreating] = useState(false);
 
   return (
@@ -90,7 +93,12 @@ export function TestPlansListView({ projectId, projectSlug, testPlans, progressU
                 New plan
               </Button>
             )}
-            {!canCreate && (
+            {readOnly && (
+              <span data-testid="test-plans-read-only-note" className="text-xs text-fg-3">
+                {READ_ONLY_PROJECT_NOTE}
+              </span>
+            )}
+            {!canCreateRole && !readOnly && (
               <span data-testid="test-plans-viewer-note" className="text-xs text-fg-3">
                 Creating test plans requires the member role or higher.
               </span>

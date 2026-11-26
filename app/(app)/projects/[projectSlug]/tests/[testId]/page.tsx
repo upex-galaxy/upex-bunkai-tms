@@ -12,13 +12,13 @@ interface PageProps {
 // The header lives in the layout; this page renders the tab's own content.
 export default async function TestDetailPage({ params }: PageProps) {
   const { projectSlug, testId } = await params;
-  const { test, canReorder } = await loadTestDetail(projectSlug, testId);
+  const { test, canReorder, readOnly } = await loadTestDetail(projectSlug, testId);
 
   return (
     <TestDetailView
       test={test}
       projectSlug={projectSlug}
-      canReorder={canReorder}
+      canReorder={canReorder && !readOnly}
     />
   );
 }

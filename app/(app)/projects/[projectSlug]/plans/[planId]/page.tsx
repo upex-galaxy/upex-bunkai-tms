@@ -2,6 +2,7 @@ import type { TestPlanDetail } from '@components/test-plans/TestPlanDetailView';
 import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
 import { TestPlanDetailSkeleton, TestPlanDetailView } from '@components/test-plans/TestPlanDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import { planProgress, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { canClosePlan } from '@lib/test-plans/close-view';
@@ -90,6 +91,7 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
   // write access) and to admins / owners of the PLAN'S workspace. Presentation only:
   // the RPCs re-derive the role live on every call.
   const canClose = canClosePlan({ role: memberRow?.role, isCreator: row.created_by === user.id });
+  const readOnly = await readProjectReadOnly(row.workspace_id, row.project_id);
 
   // BK-203 — the plan's member tests, joined with `tests` for title/tags.
   const { data: memberRows } = await supabase
@@ -172,6 +174,7 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
       progressUnavailable={progressUnavailable}
       canEdit={canEdit}
       canClose={canClose}
+      readOnly={readOnly}
     />
   );
 }

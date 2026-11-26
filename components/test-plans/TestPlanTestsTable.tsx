@@ -39,6 +39,7 @@ interface TestPlanTestsTableProps {
   // Member+ gate — a viewer sees the table with the remove action
   // structurally absent (AC 5.1), and a closed plan hides it too (AC E1).
   canEdit: boolean
+  canRemove?: boolean
   onRemoved: (testId: string, memberCount: number) => void
 }
 
@@ -46,7 +47,7 @@ interface ApiErrorBody {
   error?: { message?: string }
 }
 
-export function TestPlanTestsTable({ planId, tests, progressByTest, canEdit, onRemoved }: TestPlanTestsTableProps) {
+export function TestPlanTestsTable({ planId, tests, progressByTest, canEdit, canRemove = canEdit, onRemoved }: TestPlanTestsTableProps) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +106,7 @@ export function TestPlanTestsTable({ planId, tests, progressByTest, canEdit, onR
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              {['Name', 'Tags', ...(progressByTest ? ['Latest outcome', 'Last run'] : []), 'Added by', ...(canEdit ? [''] : [])].map(column => (
+              {['Name', 'Tags', ...(progressByTest ? ['Latest outcome', 'Last run'] : []), 'Added by', ...(canRemove ? [''] : [])].map(column => (
                 <th
                   key={column || 'actions'}
                   scope="col"
@@ -136,7 +137,7 @@ export function TestPlanTestsTable({ planId, tests, progressByTest, canEdit, onR
                 <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
                   <span className="text-sm text-fg-2">{test.addedByLabel}</span>
                 </td>
-                {canEdit && (
+                {canRemove && (
                   <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5 text-right">
                     {confirmingId === test.id
                       ? (

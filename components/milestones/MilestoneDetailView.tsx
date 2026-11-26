@@ -2,6 +2,7 @@
 
 import type { AttachablePlan } from '@components/milestones/AttachPlansDialog';
 import type { MilestoneReadiness, OverdueInfo } from '@lib/milestones/readiness-view';
+import { READ_ONLY_PROJECT_NOTE } from '@components/billing/ReadOnlyProjectNotice';
 import { AttachPlansDialog } from '@components/milestones/AttachPlansDialog';
 import { EditMilestoneForm } from '@components/milestones/EditMilestoneForm';
 import { MilestoneArchiveButton, MilestoneArchivedBadge } from '@components/milestones/MilestoneArchiveButton';
@@ -54,6 +55,7 @@ interface MilestoneDetailViewProps {
   // Member+ gate — a viewer sees the detail read-only, the Edit action
   // structurally absent (business-rules.md).
   canEdit: boolean
+  readOnly?: boolean
   // null when the readiness read failed: the card says so and no overdue state is
   // claimed, rather than guessing one.
   readiness: MilestoneReadiness | null
@@ -67,7 +69,8 @@ interface MilestoneDetailViewProps {
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function MilestoneDetailView({ milestone, canEdit, readiness, overdue: serverOverdue, attachablePlans, todayIso }: MilestoneDetailViewProps) {
+export function MilestoneDetailView({ milestone, canEdit: canEditRole, readOnly = false, readiness, overdue: serverOverdue, attachablePlans, todayIso }: MilestoneDetailViewProps) {
+  const canEdit = canEditRole && !readOnly;
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -155,7 +158,12 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue: se
                   )}
                 </div>
               )}
-              {!canEdit && (
+              {readOnly && (
+                <span data-testid="milestone-detail-read-only-note" className="text-xs text-fg-3">
+                  {READ_ONLY_PROJECT_NOTE}
+                </span>
+              )}
+              {!canEditRole && !readOnly && (
                 <span data-testid="milestone-detail-viewer-note" className="text-xs text-fg-3">
                   Editing and attaching plans require the member role or higher.
                 </span>
@@ -235,7 +243,8 @@ export function MilestoneDetailView({ milestone, canEdit, readiness, overdue: se
               milestoneId={milestone.id}
               plans={readiness.plans}
               canEdit={canWrite}
-              readOnlyNote={archived && canEdit ? 'Restore this milestone to attach test plans.' : undefined}
+              canDetach={canEditRole && !archived}
+              readOnlyNote={readOnly ? READ_ONLY_PROJECT_NOTE : archived && canEdit ? 'Restore this milestone to attach test plans.' : undefined}
               onAttach={() => setPicking(true)}
               onDetached={refresh}
             />

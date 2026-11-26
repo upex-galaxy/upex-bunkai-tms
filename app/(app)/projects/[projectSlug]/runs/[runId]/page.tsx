@@ -1,6 +1,7 @@
 import type { LinkedBugSummary, RunDetail } from '@components/runs/RunnerView';
 import { RunnerView } from '@components/runs/RunnerView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import { formatBugListRow } from '@lib/bugs/list-view';
 import { readRepositoryUrl } from '@lib/repository-settings/repository-settings';
 import { toAttachmentView } from '@lib/runs/attachment-access';
@@ -95,6 +96,7 @@ export default async function RunDetailPage({ params, searchParams }: PageProps)
     .eq('status', 'active')
     .maybeSingle();
   const canManageRun = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
+  const readOnly = await readProjectReadOnly(activeWorkspaceId, run.project_id);
   const canConfigureRepository = ['admin', 'owner'].includes(memberRow?.role ?? '');
   const repositoryUrl = await readRepositoryUrl(supabase, run.project_id);
 
@@ -148,7 +150,7 @@ export default async function RunDetailPage({ params, searchParams }: PageProps)
       canAbort={canManageRun}
       canFinish={canManageRun}
       canMark={canManageRun}
-      canReportBug={canManageRun}
+      canReportBug={canManageRun && !readOnly}
       canAttach={canManageRun}
       initialAttachments={initialAttachments}
       currentUserId={user.id}

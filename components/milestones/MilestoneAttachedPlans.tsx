@@ -29,6 +29,7 @@ interface MilestoneAttachedPlansProps {
   milestoneId: string
   plans: AttachedPlanReadiness[]
   canEdit: boolean
+  canDetach?: boolean
   // BK-1899 — why nothing can be attached when the reason is not the role (an
   // archived Milestone). Replaces the role note; omitted, the role note stands.
   readOnlyNote?: string
@@ -40,7 +41,7 @@ interface ApiErrorBody {
   error?: { message?: string }
 }
 
-export function MilestoneAttachedPlans({ projectId, projectSlug, milestoneId, plans, canEdit, readOnlyNote, onAttach, onDetached }: MilestoneAttachedPlansProps) {
+export function MilestoneAttachedPlans({ projectId, projectSlug, milestoneId, plans, canEdit, canDetach = canEdit, readOnlyNote, onAttach, onDetached }: MilestoneAttachedPlansProps) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [detachingId, setDetachingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +120,7 @@ export function MilestoneAttachedPlans({ projectId, projectSlug, milestoneId, pl
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      {['Name', 'Status', 'Tests passed', 'Plan progress', ...(canEdit ? [''] : [])].map(column => (
+                      {['Name', 'Status', 'Tests passed', 'Plan progress', ...(canDetach ? [''] : [])].map(column => (
                         <th
                           key={column || 'actions'}
                           scope="col"
@@ -157,7 +158,7 @@ export function MilestoneAttachedPlans({ projectId, projectSlug, milestoneId, pl
                             summary={asProgressSummary({ id: plan.plan_id, member_count: plan.member_count, passed_pct: plan.passed_pct, counts: plan.counts })}
                           />
                         </td>
-                        {canEdit && (
+                        {canDetach && (
                           <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5 text-right">
                             {confirmingId === plan.plan_id
                               ? (
