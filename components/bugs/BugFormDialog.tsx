@@ -244,7 +244,6 @@ export function BugFormDialog({
             setTitle(e.target.value);
             if (error) { setError(null); }
           }}
-          maxLength={BUG_TITLE_MAX}
           autoFocus
           disabled={submitting}
           className="w-full rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-2 text-sm text-fg-1 placeholder:text-fg-4 focus:border-accent focus:outline-none"
