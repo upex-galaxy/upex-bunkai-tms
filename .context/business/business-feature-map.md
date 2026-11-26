@@ -250,7 +250,7 @@ Added 2026-11-26 (BK-2496) against the shipped code. The Billing Plan (Tier) of 
 - [x] Read-only is derived, never stored: a workspace at or under its limit cannot be locked, and an upgrade restores editing at once.
 - [x] Every write path to Stripe is owner-only; admins read the overview and invoices; members and viewers get the uniform 404 on billing reads.
 - [x] Local billing state changes only after Stripe confirms; webhooks are idempotent per Stripe event id (`stripe_webhook_events`).
-- [ ] The owner notification when a cancellation is scheduled (BK-233 product ruling 4) is BK-2497.
+- [x] The workspace owners get one email when a cancellation is scheduled, with the end date and the way back (BK-2497); it is transactional, so notification preferences do not turn it off.
 - [ ] Create buttons on the Bug Reports, Milestones, Test Plans and project Settings screens of a read-only project are still shown (the API refuses the write); follow-up of BK-2496.
 
 ---

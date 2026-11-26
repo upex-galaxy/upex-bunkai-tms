@@ -580,7 +580,7 @@ Added 2026-11-26 (BK-2496) from the route contracts (`app/api/v1/workspaces/[id]
 | GET    | `/workspaces/{id}/billing/invoices/{invoiceId}/pdf` | Invoice PDF, proxied | owner, admin | None; another workspace's invoice is the same 404 |
 | GET    | `/workspaces/{id}/billing/downgrade` | Downgrade preview: projects that become read-only (oldest first), members over the Community cap, retention, `preview_token` | owner | None |
 | POST   | `/workspaces/{id}/billing/downgrade` | End Cloud at once (no refund) and move to Community | owner | 409 `plan_change_not_available` (`checkout_open`, `cancellation_pending`, `payment_overdue`); stale preview answers `downgrade_preview_stale` |
-| POST   | `/workspaces/{id}/billing/subscription/cancel` | Cancel at the end of the paid period | owner | Idempotent: a second cancel returns the same end date; activity `workspace.subscription_cancel_scheduled` |
+| POST   | `/workspaces/{id}/billing/subscription/cancel` | Cancel at the end of the paid period | owner | Idempotent: a second cancel returns the same end date; activity `workspace.subscription_cancel_scheduled`; one email to the active owners from whichever path schedules it (BK-2497) |
 | POST   | `/workspaces/{id}/billing/subscription/resubscribe` | Revert a pending cancellation before the period ends | owner | 409 `resubscribe_not_available` (`period_ended`) after the end date |
 | POST   | `/billing/webhook` | Stripe events: `checkout.session.*`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted` | Stripe signature | Idempotent per event id (`stripe_webhook_events`); applied through service-role RPCs |
 

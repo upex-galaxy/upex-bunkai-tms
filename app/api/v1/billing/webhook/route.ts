@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import type Stripe from 'stripe';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { scheduleCancellationNotice } from '@lib/billing/cancellation-notice';
 import { applySetupSessionCompleted } from '@lib/billing/payment-method';
 import { getStripeClient, getStripeWebhookSecret } from '@lib/billing/stripe';
 import { applyInvoiceEvent, applySubscriptionEvent, INVOICE_EVENT_TYPES, SUBSCRIPTION_EVENT_TYPES } from '@lib/billing/webhook-events';
@@ -92,6 +93,9 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     if (outcome.retryable) {
       console.error('stripe subscription event for a customer not known yet', { eventId: event.id, type: event.type });
       throw new ApiError('upstream_error', 'No matching billing customer found yet — retry.');
+    }
+    if (outcome.workspaceId) {
+      scheduleCancellationNotice(outcome.workspaceId);
     }
     return jsonResponse({ status: 'ok', result: { status: outcome.status } }, { status: 200 });
   }

@@ -288,6 +288,39 @@ describe('cancelSubscription', () => {
     });
   });
 
+  test('BK-2497: fires the owner notice hook once when this call scheduled the cancellation', async () => {
+    const { caller } = setup({ rpcStatus: 'cancel_scheduled' });
+    const onCancelScheduled = mock(() => {});
+    await cancelSubscription(caller.client, WORKSPACE_ID, 'key-00000011', { onCancelScheduled });
+    expect(onCancelScheduled).toHaveBeenCalledTimes(1);
+  });
+
+  test('BK-2497: no notice when the webhook already scheduled it (the RPC answers updated)', async () => {
+    const { caller } = setup({ rpcStatus: 'updated' });
+    const onCancelScheduled = mock(() => {});
+    const result = await cancelSubscription(caller.client, WORKSPACE_ID, 'key-00000012', { onCancelScheduled });
+    expect(result.status).toBe('cancel_scheduled');
+    expect(onCancelScheduled).not.toHaveBeenCalled();
+  });
+
+  test('BK-2497: no notice on a second cancel, a Stripe failure or an unconfirmed cancel', async () => {
+    const onCancelScheduled = mock(() => {});
+    const pending = setup({ state: { cancel_at_period_end: true }, rpcStatus: 'cancel_scheduled' });
+    await cancelSubscription(pending.caller.client, WORKSPACE_ID, 'key-00000013', { onCancelScheduled });
+    spies.forEach(spy => spy.mockRestore());
+
+    subscriptionsUpdate = mock(async () => { throw new Error('stripe down'); });
+    const failing = setup({ rpcStatus: 'cancel_scheduled' });
+    await rejection(cancelSubscription(failing.caller.client, WORKSPACE_ID, 'key-00000014', { onCancelScheduled }));
+    spies.forEach(spy => spy.mockRestore());
+
+    subscriptionsUpdate = mock(async () => ({ id: SUB_ID, cancel_at_period_end: false, cancel_at: null, items: { data: [] } }));
+    const unconfirmed = setup({ rpcStatus: 'cancel_scheduled' });
+    await rejection(cancelSubscription(unconfirmed.caller.client, WORKSPACE_ID, 'key-00000015', { onCancelScheduled }));
+
+    expect(onCancelScheduled).not.toHaveBeenCalled();
+  });
+
   test('should write nothing locally when the processor does not confirm the cancellation', async () => {
     subscriptionsUpdate = mock(async () => ({ id: SUB_ID, cancel_at_period_end: false, cancel_at: null, items: { data: [] } }));
     const { admin, caller } = setup();

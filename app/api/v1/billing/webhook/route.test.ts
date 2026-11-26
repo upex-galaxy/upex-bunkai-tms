@@ -262,3 +262,36 @@ describe('POST /api/v1/billing/webhook — invoice and setup-session dispatch (B
     }
   });
 });
+
+const cancellationNotice = await import('@lib/billing/cancellation-notice');
+
+describe('POST /api/v1/billing/webhook — owner notice on a scheduled cancellation (BK-2497)', () => {
+  test('schedules the notice once when the event scheduled the cancellation', async () => {
+    const handler = spyOn(webhookEvents, 'applySubscriptionEvent').mockResolvedValue({ status: 'cancel_scheduled', retryable: false, workspaceId: 'ws-1' });
+    const notice = spyOn(cancellationNotice, 'scheduleCancellationNotice').mockImplementation(() => {});
+    try {
+      const response = await POST(await signedRequest(eventPayload('customer.subscription.updated', { id: 'sub_1', customer: 'cus_1', cancel_at_period_end: true }), TEST_WEBHOOK_SECRET));
+      expect(response.status).toBe(200);
+      expect(notice).toHaveBeenCalledTimes(1);
+      expect(notice).toHaveBeenCalledWith('ws-1');
+    }
+    finally {
+      handler.mockRestore();
+      notice.mockRestore();
+    }
+  });
+
+  test('schedules nothing for an event that only confirms what the app already applied', async () => {
+    const handler = spyOn(webhookEvents, 'applySubscriptionEvent').mockResolvedValue({ status: 'updated', retryable: false });
+    const notice = spyOn(cancellationNotice, 'scheduleCancellationNotice').mockImplementation(() => {});
+    try {
+      const response = await POST(await signedRequest(eventPayload('customer.subscription.updated', { id: 'sub_1', customer: 'cus_1', cancel_at_period_end: true }), TEST_WEBHOOK_SECRET));
+      expect(response.status).toBe(200);
+      expect(notice).not.toHaveBeenCalled();
+    }
+    finally {
+      handler.mockRestore();
+      notice.mockRestore();
+    }
+  });
+});

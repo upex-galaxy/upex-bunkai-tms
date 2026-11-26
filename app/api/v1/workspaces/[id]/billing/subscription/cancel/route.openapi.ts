@@ -13,7 +13,7 @@ registry.registerPath({
   path: '/api/v1/workspaces/{id}/billing/subscription/cancel',
   tags: ['Billing'],
   summary: 'Cancel the subscription at the end of the paid period',
-  description: 'Owner-only. Schedules the cancellation at the end of the period already paid; access and limits are unchanged until then, and the owner can resubscribe before that date with no new charge. A second cancel answers the same end date without calling the payment processor again. A payment-processor failure leaves the subscription unchanged.',
+  description: 'Owner-only. Schedules the cancellation at the end of the period already paid; access and limits are unchanged until then, and the owner can resubscribe before that date with no new charge. A second cancel answers the same end date without calling the payment processor again. A payment-processor failure leaves the subscription unchanged. The cancellation that actually schedules it (this call or the Stripe webhook, whichever applies it first) sends the active workspace owners one email naming the end date, after the response; a second cancel sends none, and a failed or unconfigured send never fails the cancellation.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [WorkspaceIdParam, IdempotencyKeyParam],
   responses: {
