@@ -741,7 +741,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
           data-state={live}
           className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-fg-3"
         >
-          <span className={cn('size-1.5 rounded-full', live === 'live' ? 'bg-pass' : live === 'offline' ? 'bg-blocked' : 'bg-fg-4')} />
+          <span className={cn('size-1.5 rounded-full', live === 'live' ? 'bg-signal-pass' : live === 'offline' ? 'bg-signal-blocked' : 'bg-fg-4')} />
           {live === 'live' ? 'Live' : live === 'offline' ? 'Offline' : 'Connecting'}
         </span>
         <button
@@ -767,7 +767,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       </header>
 
       {live === 'offline' && (
-        <div data-testid="chat_offline_banner" role="status" aria-live="polite" className="flex items-center gap-2 border-b border-blocked/40 bg-surface-3 px-4 py-2 text-xs text-blocked">
+        <div data-testid="chat_offline_banner" role="status" aria-live="polite" className="flex items-center gap-2 border-b border-signal-blocked/40 bg-surface-3 px-4 py-2 text-xs text-signal-blocked">
           <WifiOff size={12} aria-hidden="true" />
           {bindingUnavailable
             ? 'Live updates are unavailable. Reload the page to retry.'
@@ -950,7 +950,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                         </span>
                       )}
                       {mayDelete && (
-                        <button type="button" data-testid="chat_action_delete" aria-label="Delete message" title="Delete message" onClick={() => { setActionError(null); setDeleteTarget(m); }} className="inline-flex size-6 items-center justify-center rounded-1 text-fg-3 hover:bg-fail-bg hover:text-fail">
+                        <button type="button" data-testid="chat_action_delete" aria-label="Delete message" title="Delete message" onClick={() => { setActionError(null); setDeleteTarget(m); }} className="inline-flex size-6 items-center justify-center rounded-1 text-fg-3 hover:bg-signal-fail-bg hover:text-signal-fail">
                           <Trash2 size={12} />
                         </button>
                       )}
@@ -1016,7 +1016,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                   >
                     <Link2 size={14} aria-hidden="true" />
                   </button>
-                  {overLimit && <span data-testid="chat_over_limit" className="text-fail">{`${draftLength}/${CHAT_MESSAGE_MAX_LENGTH}`}</span>}
+                  {overLimit && <span data-testid="chat_over_limit" className="text-signal-fail">{`${draftLength}/${CHAT_MESSAGE_MAX_LENGTH}`}</span>}
                   <button
                     type="button"
                     data-testid="chat_send"
@@ -1028,7 +1028,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                     {sending ? <Loader2 size={14} className="animate-spin" /> : <SendHorizontal size={14} />}
                   </button>
                 </div>
-                {sendError && <p data-testid="chat_send_error" role="alert" className="m-0 mt-1 text-xs text-fail">{sendError}</p>}
+                {sendError && <p data-testid="chat_send_error" role="alert" className="m-0 mt-1 text-xs text-signal-fail">{sendError}</p>}
               </div>
             )
           : (
@@ -1069,7 +1069,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                 data-testid="chat_delete_confirm"
                 disabled={deleteBusy}
                 onClick={() => void confirmDelete()}
-                className="inline-flex items-center gap-1.5 rounded-2 bg-fail px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-2 bg-signal-fail px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
                 {deleteBusy ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Trash2 size={12} aria-hidden="true" />}
                 Delete message
@@ -1103,7 +1103,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                     {initialsOf(m.display_name)}
                     <span
                       aria-hidden="true"
-                      className={cn('absolute -bottom-0.5 -right-0.5 size-2 rounded-full border border-surface-2', isOnline ? 'bg-pass' : 'bg-fg-4')}
+                      className={cn('absolute -bottom-0.5 -right-0.5 size-2 rounded-full border border-surface-2', isOnline ? 'bg-signal-pass' : 'bg-fg-4')}
                     />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[13px] text-fg-0">

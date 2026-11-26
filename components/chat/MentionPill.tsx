@@ -59,7 +59,7 @@ export function MentionPill({ text, member, isSelf, online }: MentionPillProps) 
         <span className="flex items-center gap-2 text-[11px] text-fg-3">
           <span className="font-mono uppercase">{member.role}</span>
           <span className="flex items-center gap-1">
-            <span aria-hidden="true" className={cn('size-1.5 rounded-full', online ? 'bg-pass' : 'bg-fg-4')} />
+            <span aria-hidden="true" className={cn('size-1.5 rounded-full', online ? 'bg-signal-pass' : 'bg-fg-4')} />
             {online ? 'Online' : 'Offline'}
           </span>
         </span>
