@@ -13,7 +13,8 @@ const signalNames = Object.keys(
 ).sort((a, b) => b.length - a.length);
 
 const COLOR_UTILITY = 'text|bg|border(?:-[trblxyse])?|ring(?:-offset)?|outline|fill|stroke|divide|from|via|to|decoration|accent|caret|placeholder|shadow';
-const BARE_SIGNAL_CLASS = new RegExp(`(?<![\\w-])(?:${COLOR_UTILITY})-(?:${signalNames.join('|')})(?:/\\d+)?(?![\\w-])`, 'g');
+const SIGNAL_ALTERNATION = signalNames.map(name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+const BARE_SIGNAL_CLASS = new RegExp(`(?<![\\w./-])(?:${COLOR_UTILITY})-(?:${SIGNAL_ALTERNATION})(?:/\\d+)?(?![\\w-])`, 'g');
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
@@ -31,19 +32,13 @@ function sourceFiles(dir: string): string[] {
   return out;
 }
 
-function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
-}
-
 function bareSignalClasses(code: string): string[] {
   return [...code.matchAll(BARE_SIGNAL_CLASS)].map(match => match[0]);
 }
 
 const files = SCANNED_DIRS
   .flatMap(dir => sourceFiles(join(REPO_ROOT, dir)))
-  .map(path => ({ path: relative(REPO_ROOT, path), code: stripComments(readFileSync(path, 'utf8')) }));
+  .map(path => ({ path: relative(REPO_ROOT, path), code: readFileSync(path, 'utf8') }));
 
 describe('signal color classes resolve to a Tailwind token (BK-2095)', () => {
   it('reads the signal names from tailwind.config.ts', () => {
@@ -55,7 +50,7 @@ describe('signal color classes resolve to a Tailwind token (BK-2095)', () => {
   it('flags a bare signal name and leaves the signal- token alone', () => {
     expect(bareSignalClasses('className="hover:text-fail border-fail/40 bg-fail-bg"')).toEqual(['text-fail', 'border-fail/40', 'bg-fail-bg']);
     expect(bareSignalClasses('className="text-signal-fail bg-signal-pass-bg"')).toEqual([]);
-    expect(bareSignalClasses('data-testid="runner-step-mark-fail-1"')).toEqual([]);
+    expect(bareSignalClasses('data-testid="runner-step-mark-fail-1" src="/icons/bg-pass.png"')).toEqual([]);
   });
 
   it('scans the source tree', () => {
