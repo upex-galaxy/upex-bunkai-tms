@@ -212,9 +212,9 @@ export function TestsListView({
           <div
             role="alert"
             data-testid="tests-list-error"
-            className="m-4 flex items-start gap-3 rounded-3 border border-fail/40 bg-surface-1 p-4"
+            className="m-4 flex items-start gap-3 rounded-3 border border-signal-fail/40 bg-surface-1 p-4"
           >
-            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-fail" aria-hidden />
+            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-signal-fail" aria-hidden />
             <div className="flex flex-1 flex-col gap-2">
               <p className="m-0 text-sm font-semibold text-fg-0">{TEST_LIST_FAILED_TITLE}</p>
               <p className="m-0 text-xs text-fg-3">{TEST_LIST_FAILED_DESCRIPTION}</p>

@@ -180,8 +180,8 @@ function AtcLibraryTable({ rows, onOpen }: { rows: readonly AtcLibraryRow[], onO
 // The named read failure with Retry. Shared with the archived view (BK-571).
 export function AtcLibraryErrorBlock({ error, onRetry }: { error: string, onRetry: () => void }) {
   return (
-    <div role="alert" data-testid="atc-library-error" className="m-6 flex items-start gap-3 rounded-3 border border-fail/40 bg-surface-1 p-4">
-      <AlertTriangle size={16} className="mt-0.5 shrink-0 text-fail" aria-hidden />
+    <div role="alert" data-testid="atc-library-error" className="m-6 flex items-start gap-3 rounded-3 border border-signal-fail/40 bg-surface-1 p-4">
+      <AlertTriangle size={16} className="mt-0.5 shrink-0 text-signal-fail" aria-hidden />
       <div className="flex flex-1 flex-col gap-2">
         <p className="text-sm font-semibold text-fg-0">{ATC_LIBRARY_ERROR_COPY}</p>
         <p className="font-mono text-xs text-fg-3">{error}</p>
