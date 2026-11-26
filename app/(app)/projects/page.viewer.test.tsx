@@ -65,6 +65,14 @@ describe('projects index create affordances by role (BK-2093)', () => {
     expect(out).not.toContain('data-testid="projects-empty-create"');
   });
 
+  test('a Viewer of an empty workspace is told no project exists yet, not to create one (BK-2096)', async () => {
+    role = 'viewer';
+    projects = [];
+    const out = await html(ProjectsIndexPage);
+    expect(out).toContain('No project has been created in this workspace yet.');
+    expect(out).not.toContain('Create the first one');
+  });
+
   test('a member keeps New project and the empty-state button', async () => {
     role = 'member';
     projects = [PROJECT];
@@ -72,6 +80,7 @@ describe('projects index create affordances by role (BK-2093)', () => {
     projects = [];
     const empty = await html(ProjectsIndexPage);
     expect(empty).toContain('data-testid="projects-empty-create"');
+    expect(empty).toContain('Create the first one to start covering this workspace.');
     expect(empty).not.toContain('data-testid="projects-viewer-note"');
   });
 });

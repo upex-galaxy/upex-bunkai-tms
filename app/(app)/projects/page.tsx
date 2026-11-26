@@ -135,9 +135,12 @@ export default async function ProjectsIndexPage() {
                     >
                       <FolderPlus size={18} className="text-fg-3" />
                       <span className="text-md font-semibold text-fg-1">No projects yet</span>
-                      <span className="max-w-[46ch] text-sm text-fg-3">
+                      <span data-testid="projects-empty-body" className="max-w-[46ch] text-sm text-fg-3">
                         A project groups the modules, user stories, and ATCs your team authors.
-                        Create the first one to start covering this workspace.
+                        {' '}
+                        {canCreate
+                          ? 'Create the first one to start covering this workspace.'
+                          : 'No project has been created in this workspace yet.'}
                       </span>
                       {canCreate && (
                         <Link
