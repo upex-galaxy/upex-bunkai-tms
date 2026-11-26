@@ -1,6 +1,7 @@
 import type { MilestoneDetail } from '@components/milestones/MilestoneDetailView';
 import { MilestoneDetailView } from '@components/milestones/MilestoneDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import { overdueUnlessArchived } from '@lib/milestones/archive-view';
 import { overdueInfo, parseMilestonesReadiness } from '@lib/milestones/readiness-view';
 import { todayUtcIso } from '@lib/milestones/validation';
@@ -64,6 +65,7 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
     .eq('status', 'active')
     .maybeSingle();
   const canEdit = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
+  const readOnly = await readProjectReadOnly(activeWorkspaceId, row.project_id);
 
   let creatorLabel = '';
   let archivedByLabel = '';
@@ -89,7 +91,7 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
   );
 
   let attachablePlans: { id: string, name: string }[] = [];
-  if (canEdit && !row.archived_at) {
+  if (canEdit && !readOnly && !row.archived_at) {
     const { data: openPlans } = await supabase
       .from('test_plans')
       .select('id, name')
@@ -116,6 +118,7 @@ export default async function MilestoneDetailPage({ params }: PageProps) {
     <MilestoneDetailView
       milestone={milestone}
       canEdit={canEdit}
+      readOnly={readOnly}
       readiness={readiness}
       overdue={overdue}
       attachablePlans={attachablePlans}

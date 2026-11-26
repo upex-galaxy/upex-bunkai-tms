@@ -2,6 +2,7 @@ import type { MilestoneListItem } from '@components/milestones/MilestonesListVie
 import type { MilestoneReadiness } from '@lib/milestones/readiness-view';
 import { MilestonesListSkeleton, MilestonesListView } from '@components/milestones/MilestonesListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import { isShowArchived, overdueUnlessArchived, SHOW_ARCHIVED_PARAM } from '@lib/milestones/archive-view';
 import { overdueInfo, parseMilestonesReadiness } from '@lib/milestones/readiness-view';
 import { todayUtcIso } from '@lib/milestones/validation';
@@ -79,6 +80,8 @@ async function ProjectMilestonesSection({ projectSlug, showArchived }: { project
     canCreate = membership != null && membership.role !== 'viewer';
   }
 
+  const readOnly = await readProjectReadOnly(activeWorkspaceId, project.id);
+
   let milestonesQuery = supabase
     .from('milestones')
     .select('id, name, target_date, description, created_by, archived_at')
@@ -142,6 +145,7 @@ async function ProjectMilestonesSection({ projectSlug, showArchived }: { project
       projectSlug={project.slug}
       milestones={milestones}
       canCreate={canCreate}
+      readOnly={readOnly}
       todayIso={todayIso}
       showArchived={showArchived}
       archivedCount={archivedTotal ?? 0}
