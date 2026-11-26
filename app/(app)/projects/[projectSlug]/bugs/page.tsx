@@ -2,6 +2,7 @@ import type { BugsListPageResponse } from '@app/api/v1/bugs/list-response';
 import { fetchBugsListPage } from '@app/api/v1/bugs/list-response';
 import { BugsListSkeleton, BugsListView } from '@components/bugs/BugsListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import { BUGS_LIST_PAGE_SIZE } from '@lib/bugs/constants';
 import { bugsFiltersFromSearchParams } from '@lib/bugs/filter-params';
 import { createAdminClient } from '@lib/supabase/admin';
@@ -91,6 +92,9 @@ async function ProjectBugsSection({ projectSlug, rawFilters }: { projectSlug: st
       .eq('status', 'active')
       .maybeSingle();
     canCreateBug = membership != null && membership.role !== 'viewer';
+  }
+  if (canCreateBug && await readProjectReadOnly(activeWorkspaceId, project.id)) {
+    canCreateBug = false;
   }
 
   // BK-264 — every active member of the current workspace, feeding the List

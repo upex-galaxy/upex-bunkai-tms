@@ -1,6 +1,7 @@
 import type { BugDetailInput } from '@lib/bugs/detail-view';
 import { BugDetailView } from '@components/bugs/BugDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import { canCorrectDefect } from '@lib/bugs/correction-view';
 import { getBugJson, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
@@ -126,6 +127,9 @@ async function BugDetailSection({ projectSlug, bugId }: { projectSlug: string, b
       .eq('status', 'active')
       .maybeSingle();
     canCorrect = canCorrectDefect(membership?.role);
+  }
+  if (canCorrect && await readProjectReadOnly(bugWorkspaceId, project.id)) {
+    canCorrect = false;
   }
 
   return (
