@@ -2,7 +2,7 @@ import type { ReadOnlyAudience } from '@components/billing/ReadOnlyProjectNotice
 import type { ReactNode } from 'react';
 import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
-import { isProjectReadOnly } from '@lib/billing/read-only-projects';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import {
   fetchExplorerTests,
   fetchTreeAcceptanceCriteria,
@@ -94,7 +94,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       readOnlyAudience = membership.role;
     }
   }
-  const readOnly = await isProjectReadOnly(supabase, project.workspace_id, project.id);
+  const readOnly = await readProjectReadOnly(project.workspace_id, project.id);
   if (readOnly) {
     canCreate = false;
     canConfigure = false;

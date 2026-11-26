@@ -4,8 +4,6 @@ import { StartRunButton } from '@components/tests/StartRunButton';
 import { TestArchiveButton, TestArchivedBanner, TestRenameControl } from '@components/tests/TestArchiveControls';
 import { TestDetailTabs } from '@components/tests/TestDetailTabs';
 import { buttonVariants } from '@components/ui/button';
-import { isProjectReadOnly } from '@lib/billing/read-only-projects';
-import { createClient } from '@lib/supabase/server';
 import { loadTestAutomationStatus } from '@lib/tests/load-automation-status';
 import { loadTestDetail } from '@lib/tests/load-test-detail';
 import { ChevronLeft, Files, GitBranch } from 'lucide-react';
@@ -28,13 +26,14 @@ interface LayoutProps {
 // are unchanged and now guard the whole route group.
 export default async function TestDetailLayout({ children, params }: LayoutProps) {
   const { projectSlug, testId } = await params;
-  const { test, canReorder, environments, userId, activeWorkspaceId, projectId } = await loadTestDetail(projectSlug, testId);
+  const { test, canReorder, readOnly, environments, userId } = await loadTestDetail(projectSlug, testId);
   const { automation_status: automationStatus } = await loadTestAutomationStatus(testId, userId);
   // BK-596 — an archived Test is read-only until restored: no Start run, no
   // rename, no archive; the banner below the header carries Restore.
   const archived = test.archived_at != null;
-  const canChange = canReorder && !archived;
-  const canDuplicate = canReorder && !(await isProjectReadOnly(await createClient(), activeWorkspaceId, projectId));
+  const canWrite = canReorder && !readOnly;
+  const canChange = canWrite && !archived;
+  const canDuplicate = canWrite;
   const subject = {
     id: test.id,
     title: test.title,
@@ -114,7 +113,7 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
       </div>
 
       {archived && (
-        <TestArchivedBanner testId={test.id} title={test.title} archivedAt={test.archived_at!} canRestore={canReorder} />
+        <TestArchivedBanner testId={test.id} title={test.title} archivedAt={test.archived_at!} canRestore={canWrite} />
       )}
 
       <TestDetailTabs projectSlug={projectSlug} testId={testId} />
