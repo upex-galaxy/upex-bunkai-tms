@@ -3,6 +3,7 @@ import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
 import type { PlanProgressSummary } from '@lib/test-plans/progress-view';
 import { TestPlansListSkeleton, TestPlansListView } from '@components/test-plans/TestPlansListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import { plansProgress, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { parseStatusFilter, parseVerdict } from '@lib/test-plans/close-view';
@@ -75,6 +76,8 @@ async function ProjectTestPlansSection({ projectSlug, statusFilter }: { projectS
       .maybeSingle();
     canCreate = membership != null && membership.role !== 'viewer';
   }
+
+  const readOnly = await readProjectReadOnly(activeWorkspaceId, project.id);
 
   // The status filter is part of the query itself, so it applies before anything else
   // (there is no paging on this list today, and a future one inherits the right order).
@@ -159,6 +162,7 @@ async function ProjectTestPlansSection({ projectSlug, statusFilter }: { projectS
       progressUnavailable={progressUnavailable}
       statusFilter={statusFilter}
       canCreate={canCreate}
+      readOnly={readOnly}
     />
   );
 }

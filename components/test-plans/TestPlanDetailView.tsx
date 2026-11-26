@@ -3,6 +3,7 @@
 import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
 import type { TestPlanMemberTest } from '@components/test-plans/TestPlanTestsTable';
 import type { PlanProgress } from '@lib/test-plans/progress-view';
+import { READ_ONLY_PROJECT_NOTE } from '@components/billing/ReadOnlyProjectNotice';
 import { CloseTestPlanDialog } from '@components/test-plans/CloseTestPlanDialog';
 import { TestPickerDialog } from '@components/test-plans/TestPickerDialog';
 import { TestPlanClosedBanner } from '@components/test-plans/TestPlanClosedBanner';
@@ -66,11 +67,14 @@ interface TestPlanDetailViewProps {
   // BK-207 — the plan's creator (with write access) or an admin / owner. Offers Close
   // and Reopen; presentation only, the RPC re-checks the live role on every call.
   canClose: boolean
+  readOnly?: boolean
 }
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function TestPlanDetailView({ testPlan, initialTests, progress, progressUnavailable = false, canEdit, canClose }: TestPlanDetailViewProps) {
+export function TestPlanDetailView({ testPlan, initialTests, progress, progressUnavailable = false, canEdit: canEditRole, canClose: canCloseRole, readOnly = false }: TestPlanDetailViewProps) {
+  const canEdit = canEditRole && !readOnly;
+  const canClose = canCloseRole && !readOnly;
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [tests, setTests] = useState<TestPlanMemberTest[]>(initialTests);
@@ -84,6 +88,7 @@ export function TestPlanDetailView({ testPlan, initialTests, progress, progressU
   // entirely, not disabled, matching the viewer treatment above. The server
   // RPCs enforce the identical gate as a backstop.
   const canEditMembership = canEdit && testPlan.status === 'open';
+  const canRemoveMembers = canEditRole && testPlan.status === 'open';
 
   const refetchTests = async () => {
     setRefreshing(true);
@@ -188,7 +193,12 @@ export function TestPlanDetailView({ testPlan, initialTests, progress, progressU
                     Edit details
                   </Button>
                 )}
-                {!canEdit && (
+                {readOnly && (
+                  <span data-testid="test-plan-detail-read-only-note" className="text-xs text-fg-3">
+                    {READ_ONLY_PROJECT_NOTE}
+                  </span>
+                )}
+                {!canEditRole && !readOnly && (
                   <span data-testid="test-plan-detail-viewer-note" className="text-xs text-fg-3">
                     Editing requires the member role or higher.
                   </span>
@@ -239,6 +249,7 @@ export function TestPlanDetailView({ testPlan, initialTests, progress, progressU
             tests={tests}
             progressByTest={progressByTest}
             canEdit={canEditMembership}
+            canRemove={canRemoveMembers}
             onRemoved={handleRemoved}
           />
         </div>
