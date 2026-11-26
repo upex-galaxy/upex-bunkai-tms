@@ -3,9 +3,12 @@ import { AutomationStatusControl } from '@components/tests/AutomationStatusContr
 import { StartRunButton } from '@components/tests/StartRunButton';
 import { TestArchiveButton, TestArchivedBanner, TestRenameControl } from '@components/tests/TestArchiveControls';
 import { TestDetailTabs } from '@components/tests/TestDetailTabs';
+import { buttonVariants } from '@components/ui/button';
+import { isProjectReadOnly } from '@lib/billing/read-only-projects';
+import { createClient } from '@lib/supabase/server';
 import { loadTestAutomationStatus } from '@lib/tests/load-automation-status';
 import { loadTestDetail } from '@lib/tests/load-test-detail';
-import { ChevronLeft, GitBranch } from 'lucide-react';
+import { ChevronLeft, Files, GitBranch } from 'lucide-react';
 import Link from 'next/link';
 
 interface LayoutProps {
@@ -25,12 +28,13 @@ interface LayoutProps {
 // are unchanged and now guard the whole route group.
 export default async function TestDetailLayout({ children, params }: LayoutProps) {
   const { projectSlug, testId } = await params;
-  const { test, canReorder, environments, userId } = await loadTestDetail(projectSlug, testId);
+  const { test, canReorder, environments, userId, activeWorkspaceId, projectId } = await loadTestDetail(projectSlug, testId);
   const { automation_status: automationStatus } = await loadTestAutomationStatus(testId, userId);
   // BK-596 — an archived Test is read-only until restored: no Start run, no
   // rename, no archive; the banner below the header carries Restore.
   const archived = test.archived_at != null;
   const canChange = canReorder && !archived;
+  const canDuplicate = canReorder && !(await isProjectReadOnly(await createClient(), activeWorkspaceId, projectId));
   const subject = {
     id: test.id,
     title: test.title,
@@ -78,6 +82,18 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {canChange && <TestRenameControl test={subject} />}
             {canChange && <TestArchiveButton test={subject} />}
+            {canDuplicate && (
+              <Link
+                href={`/projects/${projectSlug}/tests/new?from=${test.id}`}
+                data-testid="test-detail-duplicate"
+                className={buttonVariants({ size: 'sm' })}
+                title="Duplicate this Test as a starting point for a similar one"
+                aria-label="Duplicate this Test"
+              >
+                <Files size={11} />
+                <span className="hidden sm:inline">Duplicate</span>
+              </Link>
+            )}
             {canChange && (
               <StartRunButton
                 testId={test.id}
