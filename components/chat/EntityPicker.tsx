@@ -110,7 +110,7 @@ export function EntityPicker({ searchUrl, onPick, onClose }: EntityPickerProps) 
       {!loading && !failed && items.length === 0 && (
         <div data-testid="chat_entity_empty" className="px-4 py-2 text-xs italic text-fg-3">No ATC, Test, or Run matches this search</div>
       )}
-      {failed && <div role="alert" className="px-4 py-2 text-xs text-fail">Search is unavailable right now.</div>}
+      {failed && <div role="alert" className="px-4 py-2 text-xs text-signal-fail">Search is unavailable right now.</div>}
       <div className="flex gap-3 border-t border-stroke-1 px-4 py-2 text-[11px] text-fg-3">
         <span>↑↓ navigate · Enter insert · Esc dismiss</span>
       </div>
