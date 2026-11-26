@@ -1,6 +1,7 @@
 import { RepositorySettingsForm } from '@components/repository-settings/RepositorySettingsForm';
 import { TrackerSettingsForm } from '@components/tracker-settings/TrackerSettingsForm';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { readProjectReadOnly } from '@lib/billing/project-read-only-state';
 import { readRepositoryUrl } from '@lib/repository-settings/repository-settings';
 import { createClient } from '@lib/supabase/server';
 import { readTrackerSettings } from '@lib/tracker-settings/access';
@@ -60,6 +61,7 @@ export default async function ProjectSettingsPage({ params }: PageProps) {
     canEdit = membership != null && ['owner', 'admin'].includes(membership.role);
   }
 
+  const readOnly = await readProjectReadOnly(activeWorkspaceId, project.id);
   const stored = await readTrackerSettings(supabase, project.id);
   const repositoryUrl = await readRepositoryUrl(supabase, project.id);
 
@@ -76,10 +78,11 @@ export default async function ProjectSettingsPage({ params }: PageProps) {
               .
             </p>
           </div>
-          <RepositorySettingsForm projectId={project.id} initialUrl={repositoryUrl} canEdit={canEdit} />
+          <RepositorySettingsForm projectId={project.id} initialUrl={repositoryUrl} canEdit={canEdit} readOnly={readOnly} />
           <TrackerSettingsForm
             projectId={project.id}
             canEdit={canEdit}
+            readOnly={readOnly}
             initial={{
               destinationKey: stored?.destination_project_key ?? '',
               issueTypeName: stored?.issue_type_name ?? DEFAULT_ISSUE_TYPE,

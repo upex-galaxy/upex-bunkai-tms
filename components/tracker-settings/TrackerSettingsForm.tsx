@@ -2,6 +2,7 @@
 
 import type { SaveOutcome } from '@lib/tracker-settings/api-client';
 import type { TrackerFieldErrors, TrackerFormValues } from '@lib/tracker-settings/form-state';
+import { READ_ONLY_PROJECT_NOTE } from '@components/billing/ReadOnlyProjectNotice';
 import { QueueConfirmDialog } from '@components/tracker-settings/QueueConfirmDialog';
 import { Badge } from '@components/ui/badge';
 import { Button } from '@components/ui/button';
@@ -32,13 +33,15 @@ interface TrackerSettingsFormProps {
   // Owner or admin of the workspace. Everyone else reads the same card with every
   // control disabled (PO Q4 / AC-10); the server remains the authority.
   canEdit: boolean
+  readOnly?: boolean
 }
 
 type Busy = 'check' | 'save' | null;
 
 // "Jira defect sync" card (BK-371, PO Q6): one Card on a single column, existing
 // primitives only. It configures WHERE a Project's defects go; it never sends one.
-export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }: TrackerSettingsFormProps) {
+export function TrackerSettingsForm({ projectId, initial, canEdit: canEditRole, readOnly = false }: TrackerSettingsFormProps) {
+  const canEditProp = canEditRole && !readOnly;
   // saved / current / check move together through the pure transitions of
   // form-state.ts (the check result is cleared on ANY edit and after a save).
   const [card, setCard] = useState(() => initialCardState(initial));
@@ -178,7 +181,7 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
         <CardContent className="flex flex-col gap-4">
           {!canEditProp && (
             <p data-testid="tracker-settings-readonly-note" className="m-0 text-xs text-fg-3">
-              {READ_ONLY_NOTE}
+              {readOnly ? READ_ONLY_PROJECT_NOTE : READ_ONLY_NOTE}
             </p>
           )}
 

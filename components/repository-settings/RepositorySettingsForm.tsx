@@ -1,5 +1,6 @@
 'use client';
 
+import { READ_ONLY_PROJECT_NOTE } from '@components/billing/ReadOnlyProjectNotice';
 import { Button } from '@components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@components/ui/card';
 import { Input } from '@components/ui/input';
@@ -12,6 +13,7 @@ interface RepositorySettingsFormProps {
   projectId: string
   initialUrl: string | null
   canEdit: boolean
+  readOnly?: boolean
 }
 
 interface SaveResponse {
@@ -19,7 +21,8 @@ interface SaveResponse {
   error?: { message?: string }
 }
 
-export function RepositorySettingsForm({ projectId, initialUrl, canEdit }: RepositorySettingsFormProps) {
+export function RepositorySettingsForm({ projectId, initialUrl, canEdit: canEditRole, readOnly = false }: RepositorySettingsFormProps) {
+  const canEdit = canEditRole && !readOnly;
   const [saved, setSaved] = useState(initialUrl ?? '');
   const [value, setValue] = useState(initialUrl ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +78,7 @@ export function RepositorySettingsForm({ projectId, initialUrl, canEdit }: Repos
       <CardContent className="flex flex-col gap-4">
         {!canEdit && (
           <p data-testid="repository-settings-readonly-note" className="m-0 text-xs text-fg-3">
-            {REPOSITORY_HINT_MEMBER}
+            {readOnly ? READ_ONLY_PROJECT_NOTE : REPOSITORY_HINT_MEMBER}
           </p>
         )}
         <form
