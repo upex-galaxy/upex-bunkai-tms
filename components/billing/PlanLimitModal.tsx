@@ -3,7 +3,7 @@
 import type { PlanLimitDetails } from '@lib/billing/plan-limit';
 import { UPGRADE_HREF } from '@components/billing/PlanLimitBanner';
 import { Button, buttonVariants } from '@components/ui/button';
-import { ownerLabel, resourceNoun, usageLine } from '@lib/billing/plan-limit';
+import { overLimitCount, ownerLabel, readOnlyLine, resourceNoun, usageLine } from '@lib/billing/plan-limit';
 import { PLAN_TIERS } from '@lib/billing/plan-tiers';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Info, Lock } from 'lucide-react';
@@ -24,6 +24,7 @@ export function PlanLimitModal({ open, onOpenChange, details }: PlanLimitModalPr
   const planName = PLAN_TIERS[details.plan].displayName;
   const owner = ownerLabel(details.owners);
   const heading = `${noun.singular.charAt(0).toUpperCase()}${noun.singular.slice(1)} limit reached`;
+  const over = overLimitCount(details.used, details.limit);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -64,8 +65,10 @@ export function PlanLimitModal({ open, onOpenChange, details }: PlanLimitModalPr
                           <span data-testid="plan-limit-modal-owner">Only the workspace owner can change the plan. Ask the workspace owner to upgrade.</span>
                         ))}
               </p>
-              <p className="m-0 text-sm text-fg-3">
-                {`Your existing ${noun.plural} and their data are untouched: limits only gate new ones.`}
+              <p className="m-0 text-sm text-fg-3" data-testid="plan-limit-modal-existing">
+                {over > 0
+                  ? `${readOnlyLine(details.resource, over)} ${over === 1 ? 'It becomes' : 'They become'} editable again once the plan has room.`
+                  : `Your existing ${noun.plural} and their data are untouched: limits only gate new ones.`}
               </p>
               <p className="m-0 flex items-start gap-2 rounded-2 border border-stroke-2 bg-surface-2 px-3 py-2 text-sm text-fg-2">
                 <Info size={13} aria-hidden="true" className="mt-0.5 shrink-0 text-fg-3" />

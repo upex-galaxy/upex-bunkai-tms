@@ -157,6 +157,18 @@ export function resourceNoun(resource: PlanLimitResource): { plural: string, sin
   return RESOURCE_NOUN[resource];
 }
 
+// The same `count - limit` the database lock derives (ADR-0028).
+export function overLimitCount(used: number, limit: number | null): number {
+  return limit === null ? 0 : Math.max(0, used - limit);
+}
+
+export function readOnlyLine(resource: PlanLimitResource, over: number): string {
+  const { plural, singular } = RESOURCE_NOUN[resource];
+  return over === 1
+    ? `Your oldest ${singular} is read-only. It stays viewable and nothing was deleted.`
+    : `Your ${over} oldest ${plural} are read-only. They stay viewable and nothing was deleted.`;
+}
+
 // Narrows an untyped error `details` value (client side) to PlanLimitDetails.
 export function parsePlanLimitDetails(value: unknown): PlanLimitDetails | null {
   if (typeof value !== 'object' || value === null) {

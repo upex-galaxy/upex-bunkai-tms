@@ -491,6 +491,28 @@ This is the workhorse query for the left-side navigation. It is read-heavy and p
 
 ---
 
+### Flow 5: Billing plan lifecycle (EPIC-BK-224, shipped)
+
+Added 2026-11-26 (BK-2496) from migrations `0072`, `0077`, `0113` and `0140`. ADR-0014, ADR-0021, ADR-0028.
+
+| Table | Business role | Written by |
+| ----- | ------------- | ---------- |
+| `workspaces.plan`, `workspaces.purchased_seats` | The Billing Plan (Tier) and the seats paid for | the checkout and subscription webhook RPCs, and the owner's downgrade |
+| `workspace_billing_state` | One row per paying workspace: Stripe customer and subscription ids, payment-method summary (brand, last 4, expiry; never the card number), `payment_state` (`paid`, `payment_failed`, `retry_pending`, `recovered`), and since `0140` `cancel_at_period_end`, `current_period_end`, `cancel_requested_at` | service-role RPCs only (`bunkai_apply_billing_*`) |
+| `workspace_billing_profiles` | Company name, billing email and address printed on later invoices | the owner, after Stripe accepts them |
+| `workspace_grace_periods` | The grace window opened by a failed renewal | the invoice webhook RPC; cleared on payment or at the end of a cancelled subscription |
+| `billing_checkout_sessions` | One open Checkout per workspace, target tier `cloud`, its expiry | the checkout route and the checkout webhook RPC |
+| `stripe_webhook_events` | Stripe event ids already applied, for idempotency | the webhook route |
+
+How the tier moves:
+
+1. Community to Cloud: the owner opens Checkout; `checkout.session.completed` (or `async_payment_succeeded`) sets `plan = 'cloud'` and the seats.
+2. Failed renewal: `invoice.payment_failed` opens a grace window; `bunkai_effective_plan(plan, grace ends_at)` returns `community` once the window ends, so every limit reads Community without rewriting `plan`.
+3. Downgrade: the owner ends Cloud at once; the workspace is Community right after the confirm.
+4. Cancel: `customer.subscription.updated` with `cancel_at_period_end` records the pending cancellation (activity `workspace.subscription_cancel_scheduled`, or `workspace.subscription_resumed` on a revert); `customer.subscription.deleted` at the period end moves the workspace to Community and clears the grace window. Nothing is deleted.
+
+Limits enforced in the database: `bunkai_enforce_project_limit` refuses a project INSERT past the effective tier's limit (SQLSTATE `45700`, API 422 `project_limit_reached`). `bunkai_read_only_project_ids` derives the projects over the limit, oldest first, through the one ranking `bunkai_project_ids_over_limit`; the trigger `bunkai_guard_project_writable` refuses INSERT and UPDATE on project content for them (SQLSTATE `45701`, API 422 `project_read_only`). DELETE is never guarded, runs and imports are guarded on INSERT only, and a workspace at or under its limit never reaches the lookup.
+
 ## 4. State Machines
 
 ### 4.1 `runs.status`

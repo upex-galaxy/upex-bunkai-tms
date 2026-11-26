@@ -232,6 +232,27 @@ Each feature row maps to:
 - [x] Realtime channels keyed by `project_id`
 - [ ] Compliance-grade audit log (immutable, exportable) — Phase 3 flag `enterprise.audit_log`
 
+### 2.11 Domain: Billing & plans (EPIC-BK-224, post-MVP, shipped)
+
+Added 2026-11-26 (BK-2496) against the shipped code. The Billing Plan (Tier) of a workspace is `workspaces.plan` (`community` | `cloud` | `enterprise`); the project and seat limits per tier live in `lib/billing/plan-tiers.ts`, mirrored in SQL. The limits that apply right now come from `bunkai_effective_plan`, which is grace aware (ADR-0021).
+
+| #        | Feature | US | Shipped by | Who | Screen |
+| -------- | ------- | -- | ---------- | --- | ------ |
+| FEAT-B01 | Billing overview: tier, seats, project and seat usage meters, read-only project list | BK-229 | migration `0072` | owner and admin (admin reads only) | `/settings/billing` |
+| FEAT-B02 | Self-serve upgrade from Community to Cloud through Stripe Checkout; the webhook activates the tier | BK-230 | migration `0077`, ADR-0014 | owner only | `/settings/billing/upgrade` |
+| FEAT-B03 | Billing details, payment method, invoice history and PDF, failed-renewal grace window and retry | BK-231 | migration `0113`, ADR-0021 | details, method, retry: owner; invoices: owner and admin | `/settings/billing` |
+| FEAT-B04 | Plan-limit warnings: dismissible banner at 80% and at the cap, blocking modal when a creation is refused | BK-232 | no migration (reads ADR-0021) | owner, admin, member (never a viewer) | every app page (banner), project creation (modal) |
+| FEAT-B05 | Downgrade Cloud to Community at once (mandatory preview, no refund), cancel at the end of the paid period, resubscribe before that date | BK-233 | migration `0140`, ADR-0028 | owner only | `/settings/billing` plan card |
+| FEAT-B06 | Over-limit projects are read-only: the oldest projects beyond the effective tier's limit refuse every write (422 `project_read_only`), stay fully viewable, and become editable again on an upgrade | BK-233, copy BK-2496 | migration `0140`, ADR-0028 | every role sees the notice; the owner gets the path to Billing | project shell notice and empty explorer |
+
+**Rules a story here must keep:**
+- [x] Nothing is ever deleted by a tier change. Projects over the limit become read-only, oldest first (`created_at`, then `id`); seats above the Community cap block the downgrade instead.
+- [x] Read-only is derived, never stored: a workspace at or under its limit cannot be locked, and an upgrade restores editing at once.
+- [x] Every write path to Stripe is owner-only; admins read the overview and invoices; members and viewers get the uniform 404 on billing reads.
+- [x] Local billing state changes only after Stripe confirms; webhooks are idempotent per Stripe event id (`stripe_webhook_events`).
+- [ ] The owner notification when a cancellation is scheduled (BK-233 product ruling 4) is BK-2497.
+- [ ] Create buttons on the Bug Reports, Milestones, Test Plans and project Settings screens of a read-only project are still shown (the API refuses the write); follow-up of BK-2496.
+
 ---
 
 ## 3. CRUD matrix
@@ -262,6 +283,9 @@ Legend: ✅ Full, ⚠️ Partial / conditional, ❌ Not available. `~` = soft-de
 | activity_log         | ⚠️ (system) | ✅    | ✅            | ❌      | ❌           | {{PROJECT_KEY}}-038                                       | System-owned; user reads timeline                        |
 | feature_flag         | ❌ (system) | ✅    | ✅            | ⚠️      | ❌           | (architecture-specs §1)                                   | Toggled by admin (Phase 2 mechanism)                     |
 | idempotency_key      | ⚠️ (system) | ❌    | ❌            | ❌      | ⚠️ (TTL 24h) | {{PROJECT_KEY}}-037                                       | System-owned                                             |
+| workspace plan (tier) | ⚠️ (system) | ✅ | ❌ | ⚠️ | ❌ | BK-230 / BK-233 | Changed only by checkout, downgrade and the Stripe webhook (owner-initiated); see §2.11 |
+| workspace_billing_profile | ✅ | ✅ | ❌ | ✅ | ❌ | BK-231 | Owner writes, owner and admin read |
+| workspace_billing_state | ⚠️ (system) | ⚠️ | ❌ | ⚠️ (system) | ❌ | BK-231 / BK-233 | Written by the webhook RPCs and the owner's Stripe calls; read through the overview |
 
 ---
 
@@ -635,7 +659,7 @@ Greenfield project gaps surfaced while mapping PRD/SRS to features. None block M
 
 ### Gap #6 — Workspace plan field has no toggle / billing endpoint
 
-`workspaces.plan` ∈ {community, cloud, enterprise} is the license-gate mechanism (architecture-specs §1) but no FR or endpoint documents how it's set. Implicit assumption: provisioned out-of-band (manual SQL by founder for design-partners in MVP; Stripe webhook later). **Ask**: confirm MVP plan = out-of-band provisioning; defer Stripe / billing to Phase 2.
+**Resolved 2026-11-26 (BK-2496 note):** EPIC-BK-224 shipped the billing endpoints and the Stripe webhook (BK-229 to BK-233). The tier is set by checkout, downgrade and the webhook; see §2.11. Original gap: `workspaces.plan` ∈ {community, cloud, enterprise} is the license-gate mechanism (architecture-specs §1) but no FR or endpoint documents how it's set.
 
 ### Gap #7 — Search across `acceptance_criteria` not in API
 

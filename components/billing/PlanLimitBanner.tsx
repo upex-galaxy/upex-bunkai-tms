@@ -2,7 +2,7 @@
 
 import type { PlanLimitOwner, PlanLimitResource } from '@lib/billing/plan-limit';
 import { buttonVariants } from '@components/ui/button';
-import { ownerLabel, resourceNoun, usageLine } from '@lib/billing/plan-limit';
+import { overLimitCount, ownerLabel, readOnlyLine, resourceNoun, usageLine } from '@lib/billing/plan-limit';
 import { meterFillPercent } from '@lib/billing/plan-tiers';
 import { cn } from '@lib/utils';
 import { AlertTriangle, X } from 'lucide-react';
@@ -61,8 +61,10 @@ export function PlanLimitBanner({ workspaceId, resource, state, used, limit, pla
   const reached = state === 'limit-reached';
   const owner = ownerLabel(owners);
   const title = reached ? `${capitalize(noun.singular)} limit reached` : 'Approaching plan limit';
+  const over = overLimitCount(used, limit);
+  const existing = over > 0 ? readOnlyLine(resource, over) : `Your existing ${noun.plural} are untouched.`;
   const body = reached
-    ? `Your existing ${noun.plural} are untouched. Creating a new ${noun.singular} is blocked until the plan has room.`
+    ? `${existing} Creating a new ${noun.singular} is blocked until the plan has room.`
     : `You can still create ${remaining} more. Nothing is blocked yet.`;
 
   const dismiss = () => {

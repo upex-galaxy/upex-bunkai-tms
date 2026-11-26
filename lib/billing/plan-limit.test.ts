@@ -1,6 +1,6 @@
 import type { QueryCall, QueryResult, RpcHandler } from '@lib/billing/test-doubles';
 import { ApiError } from '@lib/api/error-envelope';
-import { buildProjectLimitDetails, parsePlanLimitDetails, planLimitView, projectLimitMessage, usageLine } from '@lib/billing/plan-limit';
+import { buildProjectLimitDetails, overLimitCount, parsePlanLimitDetails, planLimitView, projectLimitMessage, readOnlyLine, usageLine } from '@lib/billing/plan-limit';
 import { fakeSupabase, WORKSPACE_ID } from '@lib/billing/test-doubles';
 import { describe, expect, test } from 'bun:test';
 import { projectLimitReached } from '../../app/api/v1/workspaces/[id]/projects/response';
@@ -159,5 +159,19 @@ describe('parsePlanLimitDetails', () => {
     expect(parsePlanLimitDetails({ reason: 'project_limit_reached' })).toBeNull();
     expect(parsePlanLimitDetails({ reason: 'name_too_short' })).toBeNull();
     expect(parsePlanLimitDetails(undefined)).toBeNull();
+  });
+});
+
+describe('overLimitCount and readOnlyLine (BK-2496)', () => {
+  test('counts the projects beyond the limit, never below zero, none on an unlimited plan', () => {
+    expect(overLimitCount(4, 3)).toBe(1);
+    expect(overLimitCount(3, 3)).toBe(0);
+    expect(overLimitCount(1, 3)).toBe(0);
+    expect(overLimitCount(80, null)).toBe(0);
+  });
+
+  test('singular and plural read-only lines', () => {
+    expect(readOnlyLine('projects', 1)).toBe('Your oldest project is read-only. It stays viewable and nothing was deleted.');
+    expect(readOnlyLine('projects', 3)).toBe('Your 3 oldest projects are read-only. They stay viewable and nothing was deleted.');
   });
 });

@@ -84,3 +84,17 @@ describe('PlanLimitModal', () => {
     expect(id('plan-limit-modal-usage')?.textContent).toBe('10 of 3 projects used');
   });
 });
+
+describe('PlanLimitModal over the limit', () => {
+  test('at the limit: existing projects are untouched', () => {
+    mount(base);
+    expect(id('plan-limit-modal-existing')?.textContent).toBe('Your existing projects and their data are untouched: limits only gate new ones.');
+  });
+
+  test('over the limit: the oldest project is read-only, nothing deleted, no untouched claim', () => {
+    mount({ ...base, used: 4, is_owner: true });
+    const text = id('plan-limit-modal-existing')?.textContent ?? '';
+    expect(text).toBe('Your oldest project is read-only. It stays viewable and nothing was deleted. It becomes editable again once the plan has room.');
+    expect(id('plan-limit-modal')?.textContent).not.toContain('untouched');
+  });
+});

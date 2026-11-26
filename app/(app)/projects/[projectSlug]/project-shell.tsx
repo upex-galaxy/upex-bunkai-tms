@@ -51,6 +51,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
     canCreate,
     canConfigure,
     readOnly,
+    readOnlyAudience = 'other',
     view,
     setView,
     openTabs,
@@ -160,6 +161,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
               canConfigure={canConfigure}
               selectedAtcId={activeAtcId}
               selectedTestId={activeTestId}
+              readOnlyAudience={readOnly ? readOnlyAudience : null}
             />
           </Suspense>
         )}
@@ -216,7 +218,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
               })}
             </div>
           )}
-          {readOnly && <ReadOnlyProjectNotice />}
+          {readOnly && <ReadOnlyProjectNotice audience={readOnlyAudience} />}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
         </main>
       </div>

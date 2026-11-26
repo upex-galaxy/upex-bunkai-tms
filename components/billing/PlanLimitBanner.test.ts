@@ -46,6 +46,20 @@ describe('PlanLimitBanner copy', () => {
     expect(id(c, 'plan-limit-banner-body')?.textContent).toContain('You can still create 10 more. Nothing is blocked yet.');
   });
 
+  test('over the cap: names the oldest projects as read-only and never claims they are untouched', () => {
+    const c = mount({ ...cloud40, state: 'limit-reached', planName: 'Community', used: 4, limit: 3 });
+    const body = id(c, 'plan-limit-banner-body')?.textContent ?? '';
+    expect(id(c, 'plan-limit-banner-usage')?.textContent).toBe('4 of 3 projects used');
+    expect(body).toContain('Your oldest project is read-only. It stays viewable and nothing was deleted.');
+    expect(body).toContain('Creating a new project is blocked until the plan has room.');
+    expect(body).not.toContain('untouched');
+  });
+
+  test('two over the cap: counts the read-only projects', () => {
+    const c = mount({ ...cloud40, state: 'limit-reached', planName: 'Community', used: 5, limit: 3 });
+    expect(id(c, 'plan-limit-banner-body')?.textContent).toContain('Your 2 oldest projects are read-only. They stay viewable and nothing was deleted.');
+  });
+
   test('at the cap: a non-blocking notice that existing projects are untouched', () => {
     const c = mount({ ...cloud40, state: 'limit-reached', planName: 'Community', used: 3, limit: 3 });
     expect(id(c, 'plan-limit-banner-title')?.textContent).toBe('Project limit reached');
