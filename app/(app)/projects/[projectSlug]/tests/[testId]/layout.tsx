@@ -79,7 +79,7 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
           )}
           {/* BK-227 — member+ on a live Test changes it here; anyone else reads the badge. */}
           <AutomationStatusControl testId={test.id} status={automationStatus} canChange={canChange} />
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div data-testid="test-detail-actions" className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [scrollbar-width:none] *:shrink-0">
             {canChange && <TestRenameControl test={subject} />}
             {canChange && <TestArchiveButton test={subject} />}
             {canDuplicate && (
@@ -91,7 +91,7 @@ export default async function TestDetailLayout({ children, params }: LayoutProps
                 aria-label="Duplicate this Test"
               >
                 <Files size={11} />
-                <span className="hidden sm:inline">Duplicate</span>
+                <span className="hidden 2xl:inline">Duplicate</span>
               </Link>
             )}
             {canChange && (
