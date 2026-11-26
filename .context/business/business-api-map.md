@@ -564,6 +564,28 @@ Named, per-member filter views for four surfaces (`traceability`, `run_history`,
 | PATCH  | `/projects/{id}/saved-views/{viewId}`        | Rename and/or replace the filters it holds  | {{PROJECT_KEY}}-032 | `required:atc:write`       | UPDATE; another member's, another project's or a missing view is the same 404 |
 | DELETE | `/projects/{id}/saved-views/{viewId}`        | Delete one view                             | {{PROJECT_KEY}}-032 | `required:atc:write`       | DELETE; the applied filters are untouched                                      |
 
+### 4.12c Billing tag (13 operations, BK-229 to BK-233)
+
+Added 2026-11-26 (BK-2496) from the route contracts (`app/api/v1/workspaces/[id]/billing/**/route.openapi.ts`, `app/api/v1/billing/webhook/`). Every write that reaches Stripe is owner-only (`bunkai_is_workspace_owner`) and runs before any local write; local state changes only on Stripe's confirmation. Reads answer members, viewers and other workspaces with the same 404. ADR-0014 (Checkout and the webhook), ADR-0021 (grace and the effective tier), ADR-0028 (read-only projects).
+
+| Method | Path | Summary | Who | Side effects |
+| ------ | ---- | ------- | --- | ------------ |
+| GET    | `/workspaces/{id}/billing` | Tier, seats, usage, payment state, pending cancellation, read-only projects | owner, admin | None |
+| POST   | `/workspaces/{id}/billing/checkout` | Start a Stripe Checkout for Cloud (`Idempotency-Key` required) | owner | One open session per workspace; the tier changes only from the webhook |
+| POST   | `/workspaces/{id}/billing/checkout/cancel` | Expire the open Checkout session | owner | Releases the one-open-session lock; 204 when none is open |
+| PATCH  | `/workspaces/{id}/billing/details` | Company name, billing email and address | owner | Pushed to the Stripe Customer first, then `workspace_billing_profiles` |
+| POST   | `/workspaces/{id}/billing/payment-method` | Checkout page in setup mode to replace the card | owner | The webhook records the new default method |
+| POST   | `/workspaces/{id}/billing/retry` | Pay the failed renewal with the new default method | owner | Only while a renewal failed and a newer method was confirmed |
+| GET    | `/workspaces/{id}/billing/invoices` | Invoice history, newest first, read live from Stripe | owner, admin | None |
+| GET    | `/workspaces/{id}/billing/invoices/{invoiceId}/pdf` | Invoice PDF, proxied | owner, admin | None; another workspace's invoice is the same 404 |
+| GET    | `/workspaces/{id}/billing/downgrade` | Downgrade preview: projects that become read-only (oldest first), members over the Community cap, retention, `preview_token` | owner | None |
+| POST   | `/workspaces/{id}/billing/downgrade` | End Cloud at once (no refund) and move to Community | owner | 409 `plan_change_not_available` (`checkout_open`, `cancellation_pending`, `payment_overdue`); stale preview answers `downgrade_preview_stale` |
+| POST   | `/workspaces/{id}/billing/subscription/cancel` | Cancel at the end of the paid period | owner | Idempotent: a second cancel returns the same end date; activity `workspace.subscription_cancel_scheduled` |
+| POST   | `/workspaces/{id}/billing/subscription/resubscribe` | Revert a pending cancellation before the period ends | owner | 409 `resubscribe_not_available` (`period_ended`) after the end date |
+| POST   | `/billing/webhook` | Stripe events: `checkout.session.*`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted` | Stripe signature | Idempotent per event id (`stripe_webhook_events`); applied through service-role RPCs |
+
+A write to a project over the effective tier's limit answers 422 `project_read_only` on every route that writes project content; creating a project past the limit answers 422 `project_limit_reached` with the role-aware `details` of BK-232.
+
 ### 4.13 Integrations tag (declared, 0 endpoints — see Gap #2)
 
 The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exist under it. {{PROJECT_KEY}}-009 + {{PROJECT_KEY}}-028 reference Jira credentials "retrieved from Workspace integration config", implying a settings-layer Server Action path rather than a public Bearer-accessible API. **Open question** below.
@@ -843,7 +865,7 @@ Frontend subscribes via `@supabase/supabase-js`. Phase 2 introduces a dedicated 
 
 ### Gap #4 — Workspace `plan` setter missing
 
-`workspaces.plan` ∈ {community, cloud, enterprise} is the license-gate mechanism (architecture-specs §1) but no FR or endpoint documents how it's set. Implicit assumption: provisioned out-of-band (manual SQL by founder for design-partners in MVP; Stripe webhook later). **Resolution**: confirm MVP plan = out-of-band provisioning; defer Stripe / billing endpoint to Phase 2. Also documented as Gap #6 in `business-feature-map.md`.
+`workspaces.plan` ∈ {community, cloud, enterprise} is the license-gate mechanism (architecture-specs §1) but no FR or endpoint documents how it's set. Implicit assumption: provisioned out-of-band (manual SQL by founder for design-partners in MVP; Stripe webhook later). **Resolution**: confirm MVP plan = out-of-band provisioning; defer Stripe / billing endpoint to Phase 2. Also documented as Gap #6 in `business-feature-map.md`. **Closed 2026-11-26 (BK-2496 note):** EPIC-BK-224 shipped the setter paths (checkout, downgrade, the Stripe webhook); see §4.12c.
 
 ### Gap #5 — Run-timeout sweeper cron is journey-implied but not exposed
 
