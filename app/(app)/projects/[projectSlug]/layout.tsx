@@ -1,3 +1,4 @@
+import type { ReadOnlyAudience } from '@components/billing/ReadOnlyProjectNotice';
 import type { ReactNode } from 'react';
 import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
@@ -79,6 +80,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
   // BK-1619 — owner / admin only: the import dialog links to Settings > Jira for
   // them, and stays text-only for everyone else. A UX hint; the API is the authority.
   let canConfigure = false;
+  let readOnlyAudience: ReadOnlyAudience = 'other';
   if (user) {
     const { data: membership } = await supabase
       .from('workspace_members')
@@ -88,6 +90,9 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       .maybeSingle();
     canCreate = membership != null && membership.role !== 'viewer';
     canConfigure = membership != null && (membership.role === 'owner' || membership.role === 'admin');
+    if (membership?.role === 'owner' || membership?.role === 'admin') {
+      readOnlyAudience = membership.role;
+    }
   }
   const readOnly = await isProjectReadOnly(supabase, project.workspace_id, project.id);
   if (readOnly) {
@@ -170,6 +175,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       canCreate={canCreate}
       canConfigure={canConfigure}
       readOnly={readOnly}
+      readOnlyAudience={readOnlyAudience}
     >
       {children}
     </ProjectShell>

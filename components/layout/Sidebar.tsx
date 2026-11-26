@@ -87,6 +87,8 @@ interface SidebarProps {
   archivedNotice?: ReactNode
   // Opens the restore confirmation for an archived Module.
   onRestoreModule?: (node: ModuleTreeNode) => void
+  // BK-2496 — replaces the empty tree's "ask a member" line when nobody can add a module.
+  emptyHint?: ReactNode
 }
 
 export function Sidebar({
@@ -113,6 +115,7 @@ export function Sidebar({
   onToggleIncludeArchived,
   archivedNotice,
   onRestoreModule,
+  emptyHint,
 }: SidebarProps) {
   const router = useRouter();
   const [filter, setFilter] = useState<ExplorerFilter>('all');
@@ -216,9 +219,7 @@ export function Sidebar({
                         Create your first module
                       </Button>
                     )
-                  : (
-                      <p className="text-xs text-fg-4">Ask a workspace member to add one.</p>
-                    )}
+                  : (emptyHint ?? <p className="text-xs text-fg-4">Ask a workspace member to add one.</p>)}
               </div>
             )
           : tree.map(node => (

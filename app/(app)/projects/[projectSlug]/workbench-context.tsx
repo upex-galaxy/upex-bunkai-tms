@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReadOnlyAudience } from '@components/billing/ReadOnlyProjectNotice';
 import type { AtcListFilters } from '@lib/atcs/list-filters';
 import type { AddressWriter } from '@lib/saved-views/address-writer';
 import type { SavedViewState } from '@lib/saved-views/state';
@@ -57,6 +58,7 @@ export interface WorkbenchData {
   // BK-1619 — true only for a workspace owner / admin (may open Settings > Jira).
   canConfigure?: boolean
   readOnly?: boolean
+  readOnlyAudience?: ReadOnlyAudience
 }
 
 interface WorkbenchContextValue extends WorkbenchData {
@@ -172,6 +174,7 @@ export function WorkbenchProvider({
   canCreate,
   canConfigure = false,
   readOnly = false,
+  readOnlyAudience = 'other',
 }: WorkbenchData & { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -357,6 +360,7 @@ export function WorkbenchProvider({
     canCreate,
     canConfigure,
     readOnly,
+    readOnlyAudience,
     view,
     setView,
     openTabs,
@@ -392,6 +396,7 @@ export function WorkbenchProvider({
     canCreate,
     canConfigure,
     readOnly,
+    readOnlyAudience,
     view,
     openTabs,
     activeAtcId,

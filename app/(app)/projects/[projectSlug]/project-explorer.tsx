@@ -1,9 +1,11 @@
 'use client';
 
+import type { ReadOnlyAudience } from '@components/billing/ReadOnlyProjectNotice';
 import type { AutomationStatus } from '@lib/tests/automation-status';
 import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import type { CSSProperties } from 'react';
 import { ArchiveAtcOverlay } from '@components/atcs/ArchiveAtcDialog';
+import { ReadOnlyExplorerHint } from '@components/billing/ReadOnlyProjectNotice';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { Button } from '@components/ui/button';
@@ -73,6 +75,8 @@ interface ProjectExplorerProps {
   // `selectedTestId` (derived from the active route) highlight the open item.
   selectedAtcId?: string | null
   selectedTestId?: string | null
+  // BK-2496 — set only for a read-only project: who is reading, for the empty tree's restore path.
+  readOnlyAudience?: ReadOnlyAudience | null
 }
 
 interface CreateTarget {
@@ -152,6 +156,7 @@ export function ProjectExplorer({
   canConfigure = false,
   selectedAtcId,
   selectedTestId,
+  readOnlyAudience = null,
 }: ProjectExplorerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -356,6 +361,7 @@ export function ProjectExplorer({
                   />
                 )}
                 onRestoreModule={setRestoreTarget}
+                emptyHint={readOnlyAudience ? <ReadOnlyExplorerHint audience={readOnlyAudience} /> : undefined}
                 selectedModuleId={selectedModuleId}
                 selectedAtcId={selectedAtcId}
                 onNewModule={() => setTarget({ parentModuleId: null })}
