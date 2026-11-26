@@ -203,7 +203,7 @@ async function applyRpc(admin: Client, args: {
   cancelAtPeriodEnd: boolean
   currentPeriodEnd: string | null
   expected: string[]
-}): Promise<void> {
+}): Promise<string | undefined> {
   const { data, error } = await admin.rpc('bunkai_apply_billing_subscription_event', {
     p_stripe_event_id: null as unknown as string,
     p_event_type: args.eventType,
@@ -220,6 +220,7 @@ async function applyRpc(admin: Client, args: {
   if (!status || !args.expected.includes(status)) {
     console.error('subscription change confirmed by the processor but not applied locally; the webhook reconciles it', { workspaceId: args.state.workspace_id, status });
   }
+  return status;
 }
 
 export interface DowngradeResult {
@@ -278,7 +279,8 @@ export interface CancelResult {
   ends_at: string | null
 }
 
-export async function cancelSubscription(db: Client, workspaceId: string, idempotencyKey: string): Promise<CancelResult> {
+// `onCancelScheduled` fires only when this call is the one that flipped the flag, so the owner notice goes out once (BK-2497).
+export async function cancelSubscription(db: Client, workspaceId: string, idempotencyKey: string, hooks: { onCancelScheduled?: () => void } = {}): Promise<CancelResult> {
   const ctx = await loadCloudContext(db, workspaceId, 'cancel the subscription');
   if (ctx.state.cancel_at_period_end) {
     return { status: 'cancel_scheduled', ends_at: ctx.state.current_period_end };
@@ -303,13 +305,16 @@ export async function cancelSubscription(db: Client, workspaceId: string, idempo
   }
 
   const endsAt = periodEndOf(subscription) ?? ctx.state.current_period_end;
-  await applyRpc(ctx.admin, {
+  const applied = await applyRpc(ctx.admin, {
     eventType: 'customer.subscription.updated',
     state: ctx.state,
     cancelAtPeriodEnd: true,
     currentPeriodEnd: endsAt,
     expected: ['cancel_scheduled', 'updated'],
   });
+  if (applied === 'cancel_scheduled') {
+    hooks.onCancelScheduled?.();
+  }
   return { status: 'cancel_scheduled', ends_at: endsAt };
 }
 

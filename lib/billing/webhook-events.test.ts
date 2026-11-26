@@ -114,6 +114,19 @@ describe('applySubscriptionEvent (BK-233)', () => {
     });
   });
 
+  test('BK-2497: names the workspace only when this event scheduled the cancellation', async () => {
+    const scheduled = event('customer.subscription.updated', subscription({ cancel_at_period_end: true, cancel_at: 1798675200 }));
+    setupSubscription({ data: { status: 'cancel_scheduled', workspace_id: 'ws-1' }, error: null });
+    expect(await applySubscriptionEvent(scheduled, NOW)).toEqual({ status: 'cancel_scheduled', retryable: false, workspaceId: 'ws-1' });
+    spies.forEach(spy => spy.mockRestore());
+
+    for (const status of ['updated', 'stale', 'duplicate', 'ignored', 'resumed']) {
+      setupSubscription({ data: { status, workspace_id: 'ws-1' }, error: null });
+      expect((await applySubscriptionEvent(scheduled, NOW)).workspaceId).toBeUndefined();
+      spies.forEach(spy => spy.mockRestore());
+    }
+  });
+
   test('passes the end of the subscription so the workspace drops to Community (Scenario 3.2)', async () => {
     const admin = setupSubscription({ data: { status: 'downgraded' }, error: null });
     await applySubscriptionEvent(event('customer.subscription.deleted', subscription()), NOW);

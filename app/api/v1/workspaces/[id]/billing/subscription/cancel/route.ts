@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { beginIdempotentRequest, discardIdempotencyResult, recordIdempotencyResult } from '@lib/api/idempotency';
 import { assertWorkspaceContext } from '@lib/api/principal';
+import { scheduleCancellationNotice } from '@lib/billing/cancellation-notice';
 import { workspaceIdFromRequest } from '@lib/billing/route-helpers';
 import { cancelSubscription } from '@lib/billing/subscription';
 
@@ -24,7 +25,9 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 
   let result: Awaited<ReturnType<typeof cancelSubscription>>;
   try {
-    result = await cancelSubscription(db, workspaceId, request.headers.get('idempotency-key') as string);
+    result = await cancelSubscription(db, workspaceId, request.headers.get('idempotency-key') as string, {
+      onCancelScheduled: () => scheduleCancellationNotice(workspaceId),
+    });
   }
   catch (error) {
     await discardIdempotencyResult(begin.token);

@@ -44,7 +44,12 @@ export async function applyInvoiceEvent(event: Stripe.Event, now: Date = new Dat
 
 export const SUBSCRIPTION_EVENT_TYPES = new Set(['customer.subscription.updated', 'customer.subscription.deleted']);
 
-export async function applySubscriptionEvent(event: Stripe.Event, now: Date = new Date()): Promise<InvoiceEventOutcome> {
+export interface SubscriptionEventOutcome extends InvoiceEventOutcome {
+  // Set only on `cancel_scheduled`: the workspace whose owners get the BK-2497 notice.
+  workspaceId?: string
+}
+
+export async function applySubscriptionEvent(event: Stripe.Event, now: Date = new Date()): Promise<SubscriptionEventOutcome> {
   const subscription = event.data.object as Stripe.Subscription;
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : (subscription.customer?.id ?? null);
   if (!customerId || !subscription.id) {
@@ -64,7 +69,11 @@ export async function applySubscriptionEvent(event: Stripe.Event, now: Date = ne
     throw internalDbError('bunkai_apply_billing_subscription_event failed', error);
   }
 
-  const status = (data as { status?: string } | null)?.status ?? 'ignored';
+  const result = data as { status?: string, workspace_id?: string } | null;
+  const status = result?.status ?? 'ignored';
   const recent = now.getTime() - event.created * 1000 < UNKNOWN_CUSTOMER_RETRY_WINDOW_MS;
+  if (status === 'cancel_scheduled' && result?.workspace_id) {
+    return { status, retryable: false, workspaceId: result.workspace_id };
+  }
   return { status, retryable: status === 'unknown_customer' && recent };
 }
