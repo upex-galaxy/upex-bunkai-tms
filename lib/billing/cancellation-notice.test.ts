@@ -22,6 +22,7 @@ const OWNER_B = '00000000-0000-4000-8000-00000000000b';
 
 interface Setup {
   name?: string
+  deletedAt?: string | null
   state?: { current_period_end: string | null, cancel_at_period_end: boolean } | null
   owners?: Array<{ user_id: string }>
   failTable?: string
@@ -34,7 +35,7 @@ function setup(opts: Setup = {}) {
     }
     switch (call.table) {
       case 'workspaces':
-        return { data: { name: opts.name ?? 'Acme QA' }, error: null };
+        return { data: { name: opts.name ?? 'Acme QA', deleted_at: opts.deletedAt ?? null }, error: null };
       case 'workspace_billing_state':
         return { data: opts.state === undefined ? { current_period_end: PERIOD_END, cancel_at_period_end: true } : opts.state, error: null };
       case 'workspace_members':
@@ -108,6 +109,44 @@ describe('notifyCancellationScheduled', () => {
     expect(deps.sendMail).not.toHaveBeenCalled();
   });
 
+  test('sends nothing for a deleted workspace', async () => {
+    const { deps } = setup({ deletedAt: '2026-11-20T00:00:00.000Z' });
+    expect(await notifyCancellationScheduled(WORKSPACE_ID, deps)).toEqual({ sent: 0, failed: 0, skipped: 1 });
+    expect(deps.sendMail).not.toHaveBeenCalled();
+  });
+
+  test('a Resend error is logged by name only, never with its message', async () => {
+    const { deps } = setup();
+    deps.sendMail = mock<SendMailFn>(async () => ({ ok: false, error: 'validation_error: owner-a@acme.test is invalid' }));
+    const log = spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(await notifyCancellationScheduled(WORKSPACE_ID, deps)).toEqual({ sent: 0, failed: 1, skipped: 0 });
+      expect(log).toHaveBeenCalledWith('cancellation notice not sent', { workspaceId: WORKSPACE_ID, error: 'validation_error' });
+      expect(JSON.stringify(log.mock.calls)).not.toContain('owner-a@acme.test');
+    }
+    finally {
+      log.mockRestore();
+    }
+  });
+
+  test('one failing owner lookup does not stop the next owner', async () => {
+    const { deps, sent } = setup({ owners: [{ user_id: OWNER_A }, { user_id: OWNER_B }] });
+    deps.lookupEmail = async (userId: string) => {
+      if (userId === OWNER_A) {
+        throw new Error('auth down');
+      }
+      return 'owner-b@acme.test';
+    };
+    const log = spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(await notifyCancellationScheduled(WORKSPACE_ID, deps)).toEqual({ sent: 1, failed: 1, skipped: 0 });
+      expect(sent.map(s => s.to)).toEqual(['owner-b@acme.test']);
+    }
+    finally {
+      log.mockRestore();
+    }
+  });
+
   test('a sender that is not configured is logged and never throws', async () => {
     const { deps } = setup();
     deps.sendMail = mock<SendMailFn>(async () => ({ ok: false, error: 'resend_not_configured' }));
@@ -164,5 +203,16 @@ describe('scheduleCancellationNotice', () => {
     const tasks: Array<() => Promise<void>> = [];
     scheduleCancellationNotice(WORKSPACE_ID, task => tasks.push(task));
     expect(tasks).toHaveLength(1);
+  });
+
+  test('a scheduler that throws never reaches the cancellation', () => {
+    const log = spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(() => scheduleCancellationNotice(WORKSPACE_ID, () => { throw new Error('outside a request scope'); })).not.toThrow();
+      expect(log).toHaveBeenCalledWith('cancellation notice not scheduled', { workspaceId: WORKSPACE_ID, error: 'Error' });
+    }
+    finally {
+      log.mockRestore();
+    }
   });
 });

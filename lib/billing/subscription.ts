@@ -279,7 +279,7 @@ export interface CancelResult {
   ends_at: string | null
 }
 
-// `onCancelScheduled` fires only when this call is the one that flipped the flag, so the owner notice goes out once (BK-2497).
+// `onCancelScheduled` fires only when this call is the one that flipped the flag, so the owner notice goes out once.
 export async function cancelSubscription(db: Client, workspaceId: string, idempotencyKey: string, hooks: { onCancelScheduled?: () => void } = {}): Promise<CancelResult> {
   const ctx = await loadCloudContext(db, workspaceId, 'cancel the subscription');
   if (ctx.state.cancel_at_period_end) {

@@ -45,7 +45,7 @@ export async function applyInvoiceEvent(event: Stripe.Event, now: Date = new Dat
 export const SUBSCRIPTION_EVENT_TYPES = new Set(['customer.subscription.updated', 'customer.subscription.deleted']);
 
 export interface SubscriptionEventOutcome extends InvoiceEventOutcome {
-  // Set only on `cancel_scheduled`: the workspace whose owners get the BK-2497 notice.
+  // Set only on `cancel_scheduled`: the workspace whose owners get the cancellation notice.
   workspaceId?: string
 }
 

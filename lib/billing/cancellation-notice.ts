@@ -41,6 +41,11 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+// Resend reports `name: message`, and the message can echo the recipient address.
+function errorName(error: string): string {
+  return error.split(':')[0];
+}
+
 export function formatPeriodEnd(endsAt: string | null): string | null {
   if (!endsAt) {
     return null;
@@ -95,7 +100,7 @@ export async function notifyCancellationScheduled(workspaceId: string, deps: Can
   const outcome: CancellationNoticeOutcome = { sent: 0, failed: 0, skipped: 0 };
   try {
     const [workspace, state, owners] = await Promise.all([
-      deps.admin.from('workspaces').select('name').eq('id', workspaceId).maybeSingle(),
+      deps.admin.from('workspaces').select('name, deleted_at').eq('id', workspaceId).maybeSingle(),
       deps.admin.from('workspace_billing_state').select('current_period_end, cancel_at_period_end').eq('workspace_id', workspaceId).maybeSingle(),
       deps.admin.from('workspace_members').select('user_id').eq('workspace_id', workspaceId).eq('role', 'owner').eq('status', 'active'),
     ]);
@@ -103,7 +108,7 @@ export async function notifyCancellationScheduled(workspaceId: string, deps: Can
       console.error('cancellation notice not sent: lookup failed', { workspaceId });
       return { ...outcome, failed: 1 };
     }
-    if (!state.data?.cancel_at_period_end) {
+    if (!state.data?.cancel_at_period_end || workspace.data.deleted_at) {
       return { ...outcome, skipped: 1 };
     }
     const input: CancellationNoticeInput = { workspaceName: workspace.data.name, endsAt: state.data.current_period_end };
@@ -114,19 +119,25 @@ export async function notifyCancellationScheduled(workspaceId: string, deps: Can
     const html = buildCancellationNoticeHtml(input);
 
     for (const owner of owners.data ?? []) {
-      const email = await deps.lookupEmail(owner.user_id);
-      if (!email) {
-        outcome.skipped += 1;
-        console.error('cancellation notice skipped: owner has no email', { workspaceId });
-        continue;
+      try {
+        const email = await deps.lookupEmail(owner.user_id);
+        if (!email) {
+          outcome.skipped += 1;
+          console.error('cancellation notice skipped: owner has no email', { workspaceId });
+          continue;
+        }
+        const result = await deps.sendMail({ to: email, subject, html });
+        if (result.ok) {
+          outcome.sent += 1;
+        }
+        else {
+          outcome.failed += 1;
+          console.error('cancellation notice not sent', { workspaceId, error: errorName(result.error) });
+        }
       }
-      const result = await deps.sendMail({ to: email, subject, html });
-      if (result.ok) {
-        outcome.sent += 1;
-      }
-      else {
+      catch (error) {
         outcome.failed += 1;
-        console.error('cancellation notice not sent', { workspaceId, error: result.error });
+        console.error('cancellation notice not sent: unexpected error', { workspaceId, error: error instanceof Error ? error.name : 'unknown' });
       }
     }
   }
@@ -143,7 +154,10 @@ export function cancellationNoticeDeps(config: { apiKey: string | undefined, fro
     admin,
     sendMail: async input => sendDigestEmail(input, config),
     lookupEmail: async (userId) => {
-      const { data } = await admin.auth.admin.getUserById(userId);
+      const { data, error } = await admin.auth.admin.getUserById(userId);
+      if (error) {
+        throw error;
+      }
       return data?.user?.email ?? null;
     },
   };
@@ -151,7 +165,17 @@ export function cancellationNoticeDeps(config: { apiKey: string | undefined, fro
 
 // Runs after the response, once the cancellation has committed; a failed send never reaches the caller.
 export function scheduleCancellationNotice(workspaceId: string, schedule: (task: () => Promise<void>) => void = after): void {
-  schedule(async () => {
-    await notifyCancellationScheduled(workspaceId, cancellationNoticeDeps({ apiKey: env.RESEND_API_KEY, fromEmail: env.RESEND_DIGEST_FROM_EMAIL }));
-  });
+  try {
+    schedule(async () => {
+      try {
+        await notifyCancellationScheduled(workspaceId, cancellationNoticeDeps({ apiKey: env.RESEND_API_KEY, fromEmail: env.RESEND_DIGEST_FROM_EMAIL }));
+      }
+      catch (error) {
+        console.error('cancellation notice not sent: setup failed', { workspaceId, error: error instanceof Error ? error.name : 'unknown' });
+      }
+    });
+  }
+  catch (error) {
+    console.error('cancellation notice not scheduled', { workspaceId, error: error instanceof Error ? error.name : 'unknown' });
+  }
 }
