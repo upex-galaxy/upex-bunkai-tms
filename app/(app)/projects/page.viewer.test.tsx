@@ -89,8 +89,13 @@ describe('projects index create affordances by role (BK-2093)', () => {
     role = 'member';
     membershipError = { message: 'connection reset' };
     projects = [PROJECT];
-    const out = await html(ProjectsIndexPage);
-    membershipError = null;
+    let out: string;
+    try {
+      out = await html(ProjectsIndexPage);
+    }
+    finally {
+      membershipError = null;
+    }
     expect(out).toContain('data-testid="projects-list"');
     expect(out).not.toContain('data-testid="projects-viewer-note"');
     expect(out).not.toContain('data-testid="projects-new-link"');
