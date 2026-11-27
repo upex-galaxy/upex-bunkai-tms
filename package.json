@@ -95,6 +95,8 @@
     "cli-table3": "^0.6.5",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "fast-xml-parser": "5.12.1",
+    "fast-xml-validator": "1.4.4",
     "fflate": "^0.8.3",
     "figures": "^6.1.0",
     "lucide-react": "^1.16.0",
