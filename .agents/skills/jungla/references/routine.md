@@ -31,6 +31,8 @@ Then the watcher, with the Bash tool and **`run_in_background: true`**:
 
 `proactive_at` is the next proactive block (Phase 2 · PROACTIVE): the earliest of `09:00`, `13:00`, `17:00` not yet in `proactive_done`, or `-` when none is left or a heavy worker is running. If a worker is running, launch its wait in the background in the same turn too. Then end your turn doing nothing else.
 
+**When the harness has no `run_in_background`** (only a script REPL with a shell), background the keepalive and the watcher with a short shell timeout: `await $`bash <skill>/scripts/wait-jungla.sh ...`.timeout(3000)`. The completion notification wakes the session; exit codes 10, 11 and 13 show as "failed", so read the code. A command that starts with `sleep` is stopped at the timeout, so the keepalive runs as `python3 -c 'import time; time.sleep(21600)' jungla-keepalive`.
+
 **Never end a turn without the watcher running.** If one is still alive when you come back here, do not launch another. The last line of its output says what happened:
 
 | Output | What you do |

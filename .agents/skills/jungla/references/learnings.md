@@ -268,6 +268,7 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - Rule for next time a fix is tempting right before a scheduled launch: ship the diagnosed, low-blast-radius fix now; stage the larger, untested one for a session that has runway to test it, because an automation with nobody watching cannot recover from "the new mechanism has a typo" the way a watched session can.
 
 ## 2026-11-26 · A harness with no `run_in_background`
+- **Promoted 2026-11-27** into `routine.md` Phase 1: the next run had the same harness.
 - The session offered only a JavaScript REPL: `Bash` with `run_in_background` answers "not available in the async REPL". The watcher goes to the background with a short shell timeout (`await $\`bash <skill>/scripts/wait-jungla.sh ...\`.timeout(3000)`) and its completion notification wakes the session, for every verdict of the day (the notification says "failed" for exit codes 10, 11 and 13: read the code, not the word).
 - A command that starts with `sleep` is stopped at the timeout instead of backgrounded. The keepalive ran as `python3 -c 'import time; time.sleep(21600)' jungla-keepalive`. Seen on one day: if the next run has the same harness, promote into `routine.md` Phase 1.
 - Workers still woke the session on `worker_done` (four of four, runs created with the CLI).
@@ -283,3 +284,6 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 - `orca worktree rm` refuses a worktree holding untracked `.playwright` output: confirm with `git status --porcelain --untracked-files=all` that nothing else is there, then `--force`. Briefs that ask the worker to delete its output avoided it (two later runs).
 - Four heavy workers in one day, one at a time, each 26 to 36 minutes from dispatch to merge, delivered six pull requests. A queued follow-up is cheap to take in the first free hour.
 - Another session worked in the primary checkout at start-up and left an unpushed commit. A short `SendMessage` to that session settled it: it pushed before closing.
+
+## 2026-11-27 · A new day drops owner messages sent after the close
+- Phase 0 step 3 sets `last_seen_ts` to now on a new day, so a reply written between the 21:00 close and the 06:00 start (a veto on a held sign-off, an order) is never delivered. At this start a one-off pass before touching the state found none: `JUNGLA_MIN_RUNTIME=0 wait-jungla.sh <epoch of yesterday's close> 21:00 1 -` (it also rewrites `jira-seen.json`, so read its whole verdict line). Do that pass at every start; confirmed twice, change step 3 to keep `last_seen_ts`.
