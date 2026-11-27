@@ -193,6 +193,9 @@ function resolveAssigneeUserId(row: Pick<ActivityRpcRow, 'action' | 'payload'>):
 // when it is the target of a `member.removed` row in this workspace, even if
 // that teammate never acted here.
 function resolveRemovedMemberUserId(row: Pick<ActivityRpcRow, 'action' | 'payload'>): string | null {
+  if (row.action === 'member.role_changed') {
+    return nonEmptyString(row.payload.user_id);
+  }
   if (row.action !== 'member.removed') {
     return null;
   }
@@ -222,7 +225,7 @@ export interface BuildActivityItemParams {
 // it; the allowlist projection is owned entirely by migration 0045's SQL
 // (single source of truth, not duplicated in TypeScript).
 export function buildActivityItem({ row, actorEmail, assigneeEmail, removedMemberEmail = null }: BuildActivityItemParams): ActivityItemResponse {
-  const label = row.action === 'member.removed'
+  const label = row.action === 'member.removed' || row.action === 'member.role_changed'
     ? (removedMemberEmail ?? UNRESOLVED_REMOVED_MEMBER_LABEL)
     : deriveItemLabel(row);
   return {

@@ -67,6 +67,10 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   'test.renamed',
   'test.archived',
   'test.restored',
+  // BK-2542 — one entry per real role change, none for a same-role request
+  // (migration 0144; entity_type workspace_member). Payload: user_id,
+  // previous_role, role.
+  'member.role_changed',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ALLOWED_ACTIONS)[number];
