@@ -148,7 +148,7 @@ describe('UploadCiResultsDialog', () => {
     await pickFile(xmlFile());
 
     const preview = calls[0];
-    expect((preview.init.headers as Record<string, string>)['content-type']).toBe('application/xml');
+    expect((preview.init.headers as Record<string, string>)['content-type']).toBe('application/gzip');
     expect(new URL(preview.url, 'http://x').searchParams.get('test_id')).toBe('t-1');
     expect(id('ci-upload-dialog')?.getAttribute('data-step')).toBe('map');
     expect(id('ci-upload-row-1')?.textContent).toContain('Add item to cart');
@@ -173,6 +173,22 @@ describe('UploadCiResultsDialog', () => {
     expect(create.searchParams.get('preview_fingerprint')).toBe(PREVIEW.fingerprint);
     expect(create.searchParams.get('idempotency_key')).toMatch(/^[0-9a-f-]{36}$/);
     expect(created).toEqual(['run-9']);
+  });
+
+  test('a lost response keeps the idempotency key so the retry cannot create a second run', async () => {
+    mountDialog();
+    choose('ci-upload-test', 't-1');
+    choose('ci-upload-env', 'Staging');
+    responses.push({ status: 200, body: { preview: { ...PREVIEW, unmapped: [], requires_acknowledgement: false } } });
+    await pickFile(xmlFile());
+    await click('ci-upload-continue');
+    responses.push({ status: 502, body: {} });
+    await click('ci-upload-create');
+    responses.push({ status: 200, body: { run: { id: 'run-1', replayed: true } } });
+    await click('ci-upload-create');
+    const keys = calls.slice(1).map(call => new URL(call.url, 'http://x').searchParams.get('idempotency_key'));
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBe(keys[1]);
   });
 
   test('keeps the confirm step and shows the server message when the create fails', async () => {

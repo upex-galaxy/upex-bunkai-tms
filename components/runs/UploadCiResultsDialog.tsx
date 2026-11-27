@@ -5,11 +5,15 @@ import { Button } from '@components/ui/button';
 import { Select } from '@components/ui/select';
 import { cn } from '@lib/utils';
 import * as Dialog from '@radix-ui/react-dialog';
+import { gzipSync } from 'fflate';
 import { AlertTriangle, ArrowRight, Check, FileText, Minus, Upload, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 export const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+export const UPLOAD_TRANSPORT_MAX_BYTES = 4 * 1024 * 1024;
+
+const SIZE_REJECTION = 'The limit is 10 MB per report. Only JUnit XML (.xml) is accepted. No run was created.';
 
 export interface UploadTestOption {
   id: string
@@ -80,6 +84,11 @@ function rejectionTitle(reason: string | undefined): string {
   if (reason === 'report_too_many_entries') { return 'Too many entries.'; }
   if (reason?.startsWith('report_')) { return 'Not a JUnit XML report.'; }
   return 'Upload rejected.';
+}
+
+export async function compressReport(file: File): Promise<Blob> {
+  const packed = gzipSync(new Uint8Array(await file.arrayBuffer()));
+  return new Blob([packed], { type: 'application/gzip' });
 }
 
 function uploadUrl(path: string, params: Record<string, string>): string {
@@ -298,6 +307,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
   const [testId, setTestId] = useState('');
   const [environment, setEnvironment] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [payload, setPayload] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<UploadPreview | null>(null);
   const [rejection, setRejection] = useState<Rejection | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -312,6 +322,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
     requestRef.current?.abort();
     setStep('file');
     setFile(null);
+    setPayload(null);
     setPreview(null);
     setRejection(null);
     setCreateError(null);
@@ -328,27 +339,36 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
     setBusy(true);
     setRejection(null);
     try {
+      const packed = await compressReport(nextFile);
+      if (controller.signal.aborted) { return; }
+      if (packed.size > UPLOAD_TRANSPORT_MAX_BYTES) {
+        setFile(null);
+        setRejection({ title: 'File too large.', fileName: nextFile.name, message: `cannot be sent: even compressed it is ${formatReportSize(packed.size)}. ${SIZE_REJECTION}` });
+        return;
+      }
       const response = await fetch(uploadUrl('/api/v1/runs/uploads/preview', {
         test_id: nextTestId,
         environment: nextEnvironment,
         file_name: nextFile.name,
       }), {
         method: 'POST',
-        headers: { 'content-type': 'application/xml' },
-        body: nextFile,
+        headers: { 'content-type': 'application/gzip' },
+        body: packed,
         signal: controller.signal,
       });
       const body = await response.json().catch(() => ({})) as ApiErrorBody & { preview?: UploadPreview };
       if (controller.signal.aborted) { return; }
       if (!response.ok || !body.preview) {
         setFile(null);
+        const tooLarge = response.status === 413;
         setRejection({
-          title: rejectionTitle(body.error?.details?.reason),
+          title: tooLarge ? 'File too large.' : rejectionTitle(body.error?.details?.reason),
           fileName: nextFile.name,
-          message: body.error?.message ?? 'The report could not be read.',
+          message: body.error?.message ?? (tooLarge ? SIZE_REJECTION : 'The report could not be read.'),
         });
         return;
       }
+      setPayload(packed);
       setPreview(body.preview);
       setAcknowledged(false);
       setCreateError(null);
@@ -373,7 +393,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
     const next = files[0];
     if (next.size > UPLOAD_MAX_BYTES) {
       setFile(null);
-      setRejection({ title: 'File too large.', fileName: next.name, message: `is ${formatReportSize(next.size)}; the limit is 10 MB per report. Only JUnit XML (.xml) is accepted. No run was created.` });
+      setRejection({ title: 'File too large.', fileName: next.name, message: `is ${formatReportSize(next.size)}. ${SIZE_REJECTION}` });
       return;
     }
     setFile(next);
@@ -396,7 +416,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
   };
 
   const create = async () => {
-    if (!preview || !file || busy) { return; }
+    if (!preview || !file || !payload || busy) { return; }
     setBusy(true);
     setCreateError(null);
     try {
@@ -409,13 +429,15 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
         preview_fingerprint: preview.fingerprint,
       }), {
         method: 'POST',
-        headers: { 'content-type': 'application/xml' },
-        body: file,
+        headers: { 'content-type': 'application/gzip' },
+        body: payload,
       });
       const body = await response.json().catch(() => ({})) as ApiErrorBody & { run?: { id?: string } };
       if (!response.ok || !body.run?.id) {
-        setIdempotencyKey(crypto.randomUUID());
-        setCreateError(body.error?.message ?? 'Could not create the run.');
+        if (response.status >= 400 && response.status < 500) {
+          setIdempotencyKey(crypto.randomUUID());
+        }
+        setCreateError(body.error?.message ?? 'Could not create the run. Try again: a retry never creates a second run.');
         setBusy(false);
         return;
       }
@@ -425,8 +447,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
       onOpenChange(false);
     }
     catch (error) {
-      setIdempotencyKey(crypto.randomUUID());
-      setCreateError(error instanceof Error ? error.message : 'Network error.');
+      setCreateError(error instanceof Error ? `${error.message} Try again: a retry never creates a second run.` : 'Network error. Try again: a retry never creates a second run.');
       setBusy(false);
     }
   };
