@@ -372,6 +372,20 @@ describeOrSkip('BK-226 — CI results upload through bunkai_submit_automated_run
     expect(await runCount(service())).toBe(before);
   });
 
+  it('BK-2097: a bad detail is refused before the content type and the body are read', async () => {
+    if (!ready()) { return; }
+    const before = await runCount(service());
+    const response = await uploadRoute(new NextRequest(`http://localhost/api/v1/runs/uploads?test_id=${testId}&environment=${encodeURIComponent(anchor.environmentName)}&commit=zz!&branch=`, {
+      method: 'POST',
+      headers: { 'authorization': `Bearer ${ownerToken}`, 'content-type': 'text/plain' },
+      body: 'not a report',
+    }));
+    expect(response.status).toBe(422);
+    const body = await response.json() as { error: { details: { reason: string, field: string } } };
+    expect(body.error.details).toEqual({ reason: 'commit_invalid', field: 'commit' });
+    expect(await runCount(service())).toBe(before);
+  });
+
   it('BK-2097: under one key the details are written once; other or missing details are a conflict', async () => {
     if (!ready()) { return; }
     const db = service();
