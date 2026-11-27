@@ -32,6 +32,8 @@
 --   3. The actor bind at step 0 is unchanged. With a token, the token must be the
 --      actor's own (unchanged). Without one (upload only), the actor is the session
 --      user: a present auth.uid() different from p_actor_user_id is the same P0002.
+--      Its audit rows say via 'cookie', so the run-event trigger (0107) keeps
+--      suppressing the uploader's own notification.
 --   4. Only the run just created or replayed is returned, inside the Test's workspace.
 --   5. Missing Test, foreign workspace, non-member: the same P0002. Viewer: 42501
 --      after membership is proven. A token still only reaches its own workspace.
@@ -334,13 +336,24 @@ begin
     if exists (
       select 1 from jsonb_array_elements(v_unmapped) u
       where jsonb_typeof(u) <> 'object'
+         or jsonb_typeof(u -> 'index') is distinct from 'number'
+         or (u ->> 'index') !~ '^[1-9][0-9]{0,3}$'
          or jsonb_typeof(u -> 'name') is distinct from 'string'
          or char_length(u ->> 'name') > 255
+         or jsonb_typeof(coalesce(u -> 'classname', '""'::jsonb)) <> 'string'
          or char_length(coalesce(u ->> 'classname', '')) > 255
          or coalesce(u ->> 'result', '') not in ('pass', 'fail', 'block')
     ) then
       raise exception 'submission_field_invalid' using errcode = '45236', detail = 'report';
     end if;
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'index', (u ->> 'index')::int,
+             'name', u ->> 'name',
+             'classname', coalesce(u ->> 'classname', ''),
+             'result', u ->> 'result'
+           ) order by n), '[]'::jsonb)
+      into v_unmapped
+      from jsonb_array_elements(v_unmapped) with ordinality as e(u, n);
   end if;
 
   if p_verdict is null or p_verdict not in ('passed', 'failed') then
@@ -564,7 +577,7 @@ begin
     v_workspace_id, p_actor_user_id, 'run', v_run_id, 'run.finished',
     jsonb_build_object(
       'verdict', p_verdict, 'skipped_steps', 0,
-      'via', case when p_token_id is null then 'session' else 'bearer' end,
+      'via', case when p_token_id is null then 'cookie' else 'bearer' end,
       'source', v_source, 'submitted', true
     )
   );

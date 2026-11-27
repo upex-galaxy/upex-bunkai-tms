@@ -259,6 +259,8 @@ describeOrSkip('BK-226 — CI results upload through bunkai_submit_automated_run
     expect(run.atcs[0].steps[0].note).toBe('Failure: expected 200\ntrace');
     expect(run.atcs[0].steps.slice(1).every(s => s.note === null)).toBe(true);
     expect(run.report).toEqual({ file_name: 'junit.xml', entry_count: 1, unmapped_count: 0, unmapped: [] });
+    const { data: finished } = await service().from('activity_log').select('payload').eq('entity_id', run.id).eq('action', 'run.finished').single();
+    expect((finished as { payload: { via: string, source: string } }).payload).toMatchObject({ via: 'cookie', source: 'upload' });
   });
 
   it('the pipeline token path creates the same kind of run and keeps acknowledged unmapped entries', async () => {
