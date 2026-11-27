@@ -65,7 +65,7 @@ export default async function ProjectsIndexPage() {
   const showEmptyState = !loadFailed && projects.length === 0;
 
   // BK-2093: the same member+ gate as the Milestones and Bug Reports create actions.
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', activeWorkspaceId)
@@ -73,6 +73,7 @@ export default async function ProjectsIndexPage() {
     .eq('status', 'active')
     .maybeSingle();
   const canCreate = membership != null && membership.role !== 'viewer';
+  const isViewer = membershipError === null && !canCreate;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -101,7 +102,7 @@ export default async function ProjectsIndexPage() {
             New project
           </Link>
         )}
-        {!canCreate && (
+        {isViewer && (
           <span data-testid="projects-viewer-note" className="text-xs text-fg-3">
             Creating projects requires the member role or higher.
           </span>

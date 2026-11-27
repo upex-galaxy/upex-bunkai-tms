@@ -5,6 +5,7 @@ import { describe, expect, mock, test } from 'bun:test';
 
 const WS = '8a2d1ff6-5e00-4c23-84d5-4d4aa3c021ec';
 let role: string | null = 'viewer';
+let membershipError: { message: string } | null = null;
 let projects: Array<{ slug: string, name: string, description: string | null, created_at: string }> = [];
 
 function query(table: string) {
@@ -18,7 +19,7 @@ function query(table: string) {
     eq: () => builder,
     order: () => builder,
     limit: () => builder,
-    maybeSingle: async () => ({ data: table === 'workspace_members' && role ? { role } : null, error: null }),
+    maybeSingle: async () => ({ data: table === 'workspace_members' && role && !membershipError ? { role } : null, error: membershipError }),
     then: (resolve: (value: { data: unknown, error: null }) => unknown) => resolve({ data: rows(), error: null }),
   };
   return builder;
@@ -82,6 +83,22 @@ describe('projects index create affordances by role (BK-2093)', () => {
     expect(empty).toContain('data-testid="projects-empty-create"');
     expect(empty).toContain('Create the first one to start covering this workspace.');
     expect(empty).not.toContain('data-testid="projects-viewer-note"');
+  });
+
+  test('a failed membership read is not taken for a Viewer (BK-2546)', async () => {
+    role = 'member';
+    membershipError = { message: 'connection reset' };
+    projects = [PROJECT];
+    let out: string;
+    try {
+      out = await html(ProjectsIndexPage);
+    }
+    finally {
+      membershipError = null;
+    }
+    expect(out).toContain('data-testid="projects-list"');
+    expect(out).not.toContain('data-testid="projects-viewer-note"');
+    expect(out).not.toContain('data-testid="projects-new-link"');
   });
 });
 

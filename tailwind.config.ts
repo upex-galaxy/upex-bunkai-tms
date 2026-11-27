@@ -1,5 +1,33 @@
 import type { Config } from 'tailwindcss';
 
+type ColorFn = (options: { opacityValue?: string | number }) => string;
+interface Palette { [key: string]: string | Palette }
+interface AlphaPalette { [key: string]: string | ColorFn | AlphaPalette }
+
+function alphaPercent(opacity: string | number): string {
+  const value = String(opacity);
+  if (value.endsWith('%')) {
+    return value;
+  }
+  const fraction = Number(value);
+  return Number.isNaN(fraction) ? `calc(${value} * 100%)` : `${Number((fraction * 100).toFixed(2))}%`;
+}
+
+function withAlphaModifier(palette: Palette): AlphaPalette {
+  return Object.fromEntries(Object.entries(palette).map(([key, value]) => {
+    if (typeof value !== 'string') {
+      return [key, withAlphaModifier(value)];
+    }
+    if (!value.startsWith('var(')) {
+      return [key, value];
+    }
+    const color: ColorFn = ({ opacityValue }) => opacityValue === undefined
+      ? value
+      : `color-mix(in srgb, ${value} ${alphaPercent(opacityValue)}, transparent)`;
+    return [key, color];
+  }));
+}
+
 const config: Config = {
   darkMode: ['class'],
   content: [
@@ -7,13 +35,22 @@ const config: Config = {
     './components/**/*.{ts,tsx}',
     './lib/**/*.{ts,tsx}',
   ],
+  // A function color would add a --tw-*-opacity: 1 declaration to every unmodified class while these plugins are on.
+  corePlugins: {
+    backgroundOpacity: false,
+    borderOpacity: false,
+    divideOpacity: false,
+    placeholderOpacity: false,
+    ringOpacity: false,
+    textOpacity: false,
+  },
   theme: {
     container: {
       center: true,
       padding: '1rem',
     },
     extend: {
-      colors: {
+      colors: withAlphaModifier({
         // Surfaces — warm-cool neutral, dark
         surface: {
           0: 'var(--bg-0)',
@@ -94,7 +131,7 @@ const config: Config = {
         border: 'var(--stroke-2)',
         input: 'var(--stroke-2)',
         ring: 'var(--accent)',
-      },
+      }) as Record<string, string>,
       fontFamily: {
         sans: ['var(--font-sans)'],
         mono: ['var(--font-mono)'],
