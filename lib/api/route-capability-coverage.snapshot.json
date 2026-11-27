@@ -110,6 +110,12 @@
     "posture": "public"
   },
   {
+    "file": "app/api/v1/auth/sign-out/route.ts",
+    "method": "POST",
+    "posture": "cookie-only",
+    "why": "Sign-out ends a browser session. A personal access token cannot sign itself out."
+  },
+  {
     "file": "app/api/v1/auth/signin/route.ts",
     "method": "POST",
     "posture": "public"
