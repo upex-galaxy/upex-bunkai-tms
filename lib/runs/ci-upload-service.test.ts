@@ -1,9 +1,11 @@
 import type { UploadCaller } from './ci-upload-service';
 import { ApiError } from '@lib/api/error-envelope';
 import { describe, expect, it } from 'bun:test';
+import { gzipSync } from 'fflate';
 import {
   assertXmlContentType,
   executeUpload,
+  gunzipCapped,
   parseUploadQuery,
   previewUpload,
   readCappedBody,
@@ -114,7 +116,8 @@ describe('parseUploadQuery', () => {
 describe('assertXmlContentType', () => {
   it('accepts application/xml and text/xml only', async () => {
     expect(() => assertXmlContentType('application/xml; charset=utf-8')).not.toThrow();
-    expect(() => assertXmlContentType('text/xml')).not.toThrow();
+    expect(assertXmlContentType('text/xml')).toBe('xml');
+    expect(assertXmlContentType('application/gzip')).toBe('gzip');
     for (const type of [null, 'application/pdf', 'text/plain', 'application/x-www-form-urlencoded', 'multipart/form-data']) {
       const error = await apiError(() => assertXmlContentType(type));
       expect(error.status).toBe(415);
@@ -149,7 +152,35 @@ describe('readCappedBody (Scenarios 4.1, 4.2)', () => {
   });
 });
 
+describe('gunzipCapped (reports sent compressed past the 4.5 MB hosting limit)', () => {
+  it('accepts a report of exactly 10 MB once decompressed and refuses 10 MB + 1', async () => {
+    expect(gunzipCapped(gzipSync(new Uint8Array(JUNIT_MAX_BYTES))).byteLength).toBe(JUNIT_MAX_BYTES);
+    const error = await apiError(() => gunzipCapped(gzipSync(new Uint8Array(JUNIT_MAX_BYTES + 1))));
+    expect(error.status).toBe(413);
+  });
+
+  it('stops a decompression bomb at the limit', async () => {
+    const bomb = gzipSync(new Uint8Array(40 * 1024 * 1024));
+    expect(bomb.byteLength).toBeLessThan(1024 * 1024);
+    expect((await apiError(() => gunzipCapped(bomb))).status).toBe(413);
+  });
+
+  it('refuses a body that is not gzip', async () => {
+    expect((await apiError(() => gunzipCapped(new TextEncoder().encode('<testsuite/>')))).details).toEqual({ reason: 'report_not_gzip' });
+  });
+
+  it('reads a gzip-compressed report through the preview', async () => {
+    const preview = await previewUpload(caller(state()), query(), gzipSync(xml('<testcase name="a"/><testcase name="b"/>')), 'gzip');
+    expect(preview.mapped.map(row => row.entry.name)).toEqual(['a', 'b']);
+  });
+});
+
 describe('previewUpload', () => {
+  it('authorizes the Test before reading the report', async () => {
+    const error = await apiError(async () => previewUpload(caller(state({ test: null })), query(), new TextEncoder().encode('<!DOCTYPE x><testsuite/>')));
+    expect(error.status).toBe(404);
+  });
+
   it('maps the report onto the chain without writing', async () => {
     const s = state();
     const preview = await previewUpload(caller(s), query(), xml('<testcase name="a"/><testcase name="b"><failure message="x"/></testcase><testcase name="c"/>'));

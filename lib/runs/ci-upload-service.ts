@@ -5,6 +5,7 @@ import { buildUploadPreview, toUploadSubmission } from '@lib/runs/ci-upload';
 import { decodeReportBytes, JUNIT_MAX_BYTES, JunitReportError, readJunitReport } from '@lib/runs/junit-report';
 import { mapSubmissionRpcError } from '@lib/runs/submission-errors';
 import { submitAutomatedRun } from '@lib/supabase/rpc';
+import { Gunzip } from 'fflate';
 
 export type UploadCaller = Pick<Principal, 'userId' | 'workspaceId' | 'via' | 'tokenId' | 'db'>;
 
@@ -21,7 +22,9 @@ export const UPLOAD_ENVIRONMENT_MAX = 60;
 export const UPLOAD_KEY_MAX = 64;
 export const UPLOAD_FILE_NAME_MAX = 255;
 export const UPLOAD_DEFAULT_FILE_NAME = 'report.xml';
-export const UPLOAD_CONTENT_TYPES = ['application/xml', 'text/xml'] as const;
+export const UPLOAD_CONTENT_TYPES = ['application/xml', 'text/xml', 'application/gzip', 'application/x-gzip'] as const;
+export type UploadEncoding = 'xml' | 'gzip';
+const GUNZIP_CHUNK = 16 * 1024;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const FINGERPRINT_RE = /^[0-9a-f]{64}$/;
@@ -68,19 +71,54 @@ export function parseUploadQuery(params: URLSearchParams): UploadQuery {
   };
 }
 
-export function assertXmlContentType(header: string | null): void {
+export function assertXmlContentType(header: string | null): UploadEncoding {
   const type = (header ?? '').split(';')[0].trim().toLowerCase();
   if (!(UPLOAD_CONTENT_TYPES as readonly string[]).includes(type)) {
     throw new ApiError(
       'unsupported_media_type',
-      'Send the report as the request body with Content-Type: application/xml. Only JUnit XML (.xml) reports of 10 MB at most are accepted.',
+      'Send the report as the request body with Content-Type: application/xml (or application/gzip for a gzip-compressed report). Only JUnit XML (.xml) reports of 10 MB at most are accepted.',
       { details: { reason: 'content_type_invalid', accepted: UPLOAD_CONTENT_TYPES } },
     );
   }
+  return type.endsWith('gzip') ? 'gzip' : 'xml';
 }
 
 function tooLarge(): never {
   throw new ApiError('file_too_large', SIZE_MESSAGE, { details: { reason: 'file_too_large', max_bytes: JUNIT_MAX_BYTES } });
+}
+
+class InflateLimitError extends Error {}
+
+export function gunzipCapped(bytes: Uint8Array, max: number = JUNIT_MAX_BYTES): Uint8Array {
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const stream = new Gunzip((chunk) => {
+    total += chunk.byteLength;
+    if (total > max) {
+      throw new InflateLimitError();
+    }
+    chunks.push(chunk);
+  });
+  try {
+    for (let offset = 0; offset < bytes.byteLength; offset += GUNZIP_CHUNK) {
+      stream.push(bytes.subarray(offset, offset + GUNZIP_CHUNK), offset + GUNZIP_CHUNK >= bytes.byteLength);
+    }
+  }
+  catch (error) {
+    if (error instanceof InflateLimitError) {
+      return tooLarge();
+    }
+    throw new ApiError('validation_failed', 'The body is declared as gzip but is not a valid gzip file. Send the JUnit XML report as application/xml or gzip it whole.', {
+      details: { reason: 'report_not_gzip' },
+    });
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return out;
 }
 
 export async function readCappedBody(
@@ -190,9 +228,10 @@ async function loadTestChain(caller: UploadCaller, testId: string, environment: 
   };
 }
 
-function readReport(bytes: Uint8Array) {
+function readReport(bytes: Uint8Array, encoding: UploadEncoding) {
+  const raw = encoding === 'gzip' ? (bytes.byteLength === 0 ? bytes : gunzipCapped(bytes)) : bytes;
   try {
-    return readJunitReport(decodeReportBytes(bytes));
+    return readJunitReport(decodeReportBytes(raw));
   }
   catch (error) {
     if (error instanceof JunitReportError) {
@@ -202,10 +241,15 @@ function readReport(bytes: Uint8Array) {
   }
 }
 
-export async function previewUpload(caller: UploadCaller, query: UploadQuery, bytes: Uint8Array): Promise<UploadPreview> {
+export async function previewUpload(
+  caller: UploadCaller,
+  query: UploadQuery,
+  bytes: Uint8Array,
+  encoding: UploadEncoding = 'xml',
+): Promise<UploadPreview> {
   assertBearerShape(caller);
-  const report = readReport(bytes);
   const { test, chain } = await loadTestChain(caller, query.testId, query.environment);
+  const report = readReport(bytes, encoding);
   return buildUploadPreview({ test, environment: query.environment, fileName: query.fileName, chain, report });
 }
 
@@ -214,8 +258,13 @@ export interface UploadResult {
   body: { run: unknown }
 }
 
-export async function executeUpload(caller: UploadCaller, query: UploadQuery, bytes: Uint8Array): Promise<UploadResult> {
-  const preview = await previewUpload(caller, query, bytes);
+export async function executeUpload(
+  caller: UploadCaller,
+  query: UploadQuery,
+  bytes: Uint8Array,
+  encoding: UploadEncoding = 'xml',
+): Promise<UploadResult> {
+  const preview = await previewUpload(caller, query, bytes, encoding);
   if (query.previewFingerprint !== undefined && query.previewFingerprint !== preview.fingerprint) {
     throw new ApiError('conflict', 'The Test or the report changed after the preview. Review the mapping again before creating the run.', {
       details: { reason: 'preview_stale' },

@@ -5,8 +5,8 @@ import { assertXmlContentType, parseUploadQuery, previewUpload, readCappedBody }
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal } = getAuth(ctx);
   const query = parseUploadQuery(request.nextUrl.searchParams);
-  assertXmlContentType(request.headers.get('content-type'));
+  const encoding = assertXmlContentType(request.headers.get('content-type'));
   const bytes = await readCappedBody(request.body, request.headers.get('content-length'));
-  const preview = await previewUpload(principal, query, bytes);
+  const preview = await previewUpload(principal, query, bytes, encoding);
   return jsonResponse({ preview });
 }, { auth: 'required', requires: ['run:execute'] });
