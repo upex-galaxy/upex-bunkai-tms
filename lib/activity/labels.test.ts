@@ -50,6 +50,7 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
       'test.renamed': 'renamed a Test',
       'test.archived': 'archived a Test',
       'test.restored': 'restored a Test',
+      'member.role_changed': 'changed a teammate\'s role',
     });
   });
 });

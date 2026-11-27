@@ -1,10 +1,12 @@
 'use client';
 
+import type { MemberRoleChange } from '@components/workspaces/ChangeMemberRoleModal';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { Select } from '@components/ui/select';
+import { ChangeMemberRoleModal } from '@components/workspaces/ChangeMemberRoleModal';
 import { RemoveMemberModal } from '@components/workspaces/RemoveMemberModal';
-import { canRemoveMember } from '@lib/workspaces/member-ladder';
+import { ASSIGNABLE_ROLES, canChangeMemberRole, canRemoveMember } from '@lib/workspaces/member-ladder';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -46,6 +48,7 @@ interface ApiErrorBody {
 export function MembersClient({ workspaceId, workspaceName, currentUserId, callerRole, members, invites }: Props) {
   const router = useRouter();
   const [removeTarget, setRemoveTarget] = useState<{ userId: string, email: string, role: string } | null>(null);
+  const [roleChange, setRoleChange] = useState<MemberRoleChange | null>(null);
   const membersHeadingRef = useRef<HTMLHeadingElement>(null);
   const [removals, setRemovals] = useState(0);
 
@@ -176,6 +179,7 @@ export function MembersClient({ workspaceId, workspaceName, currentUserId, calle
             const isSelf = m.user_id === currentUserId;
             const label = m.email ?? 'Unknown member';
             const removable = m.email !== null && canRemoveMember({ callerId: currentUserId, callerRole, target: m });
+            const changeable = m.email !== null && canChangeMemberRole({ callerId: currentUserId, callerRole, target: m });
             return (
               <li key={m.user_id} data-testid={`member-row-${m.user_id}`} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
                 <div className="min-w-0">
@@ -184,24 +188,47 @@ export function MembersClient({ workspaceId, workspaceName, currentUserId, calle
                     {isSelf && <span className="text-fg-3"> (you)</span>}
                   </div>
                   <div className="text-xs text-fg-4">
-                    {m.role}
-                    {' '}
-                    ·
-                    {' '}
+                    {!changeable && (
+                      <>
+                        {m.role}
+                        {' '}
+                        ·
+                        {' '}
+                      </>
+                    )}
                     {m.status}
                   </div>
                 </div>
-                {removable && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    data-testid={`member-remove-${m.user_id}`}
-                    aria-label={`Remove ${label}`}
-                    onClick={() => setRemoveTarget({ userId: m.user_id, email: label, role: m.role })}
-                  >
-                    Remove
-                  </Button>
+                {(changeable || removable) && (
+                  <div className="flex items-center gap-2">
+                    {changeable && (
+                      <Select
+                        size="sm"
+                        value={m.role}
+                        data-testid={`member-role-${m.user_id}`}
+                        aria-label={`Role for ${label}`}
+                        onChange={(e) => {
+                          if (e.target.value !== m.role) {
+                            setRoleChange({ userId: m.user_id, email: label, from: m.role, to: e.target.value });
+                          }
+                        }}
+                      >
+                        {ASSIGNABLE_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      </Select>
+                    )}
+                    {removable && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        data-testid={`member-remove-${m.user_id}`}
+                        aria-label={`Remove ${label}`}
+                        onClick={() => setRemoveTarget({ userId: m.user_id, email: label, role: m.role })}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
                 )}
               </li>
             );
@@ -246,6 +273,15 @@ export function MembersClient({ workspaceId, workspaceName, currentUserId, calle
           {invites.length === 0 && <li className="py-2 text-sm text-fg-4">No invites yet.</li>}
         </ul>
       </section>
+
+      <ChangeMemberRoleModal
+        workspaceId={workspaceId}
+        workspaceName={workspaceName}
+        change={roleChange}
+        onClose={() => setRoleChange(null)}
+        onChanged={() => router.refresh()}
+        onRefused={() => router.refresh()}
+      />
 
       <RemoveMemberModal
         workspaceId={workspaceId}

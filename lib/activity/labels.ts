@@ -42,6 +42,7 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   'test.renamed': 'renamed a Test',
   'test.archived': 'archived a Test',
   'test.restored': 'restored a Test',
+  'member.role_changed': 'changed a teammate\'s role',
 };
 
 // R1 backstop (implementation-plan.md Risk R1 — allowlist/label-map drift):

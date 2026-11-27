@@ -133,6 +133,13 @@ const ActivityItemSchema = z
       removed_user_id: z.string().uuid().nullable(),
       removed_role: z.enum(['viewer', 'member', 'admin', 'owner']).nullable(),
     }),
+    // BK-2542 — projection of migration 0144. `item.label` is the teammate's
+    // email ("a former member" when it does not resolve).
+    activityItemVariant('MemberRoleChanged', 'member.role_changed', 'workspace_member', {
+      user_id: z.string().uuid().nullable(),
+      previous_role: z.enum(['viewer', 'member', 'admin']).nullable(),
+      role: z.enum(['viewer', 'member', 'admin']).nullable(),
+    }),
     // BK-1619 — projection of migration 0120. `item.label` is the Jira site
     // host; the payload never carries the token, the secret id or the email.
     activityItemVariant('JiraConnectionConnected', 'jira_connection.connected', 'workspace_jira_connection', {
