@@ -1,5 +1,6 @@
 'use client';
 
+import type { RunReportUpload } from '@components/runs/RunSubmissionProvenance';
 import type { StepAttachment } from '@lib/runs/evidence-view';
 import type { StepMarkStatus } from '@lib/runs/mark-step-view';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
@@ -115,6 +116,7 @@ export interface RunDetail {
   branch?: string | null
   pipeline_name?: string | null
   pipeline_url?: string | null
+  report?: RunReportUpload | null
   test_title: string
   version: number
   started_at: string | null
@@ -901,6 +903,7 @@ export function RunnerView({ run, projectSlug, repositoryUrl = null, canConfigur
         executorName={view.executor_name}
         evidenceUrls={view.evidence_urls}
         executorMode={view.executor_mode}
+        report={view.report}
         waitingForFirstResult={view.status === 'running' && view.executor_mode !== 'human' && done === 0}
       />
 

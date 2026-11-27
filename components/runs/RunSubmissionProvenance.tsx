@@ -13,13 +13,21 @@ interface RunSubmissionProvenanceProps {
   executorMode?: string | null
   // BK-223 — a streamed run that has not reported a step yet.
   waitingForFirstResult?: boolean
+  report?: RunReportUpload | null
+}
+
+export interface RunReportUpload {
+  file_name: string
+  entry_count: number
+  unmapped_count: number
+  unmapped: { index: number, name: string, classname: string, result: string }[]
 }
 
 const MODE_PREFIX: Record<string, string> = { agent: 'Agent — ', ci: 'CI — ' };
 
-export function RunSubmissionProvenance({ executorName, evidenceUrls, executorMode, waitingForFirstResult }: RunSubmissionProvenanceProps) {
+export function RunSubmissionProvenance({ executorName, evidenceUrls, executorMode, waitingForFirstResult, report }: RunSubmissionProvenanceProps) {
   const links = (evidenceUrls ?? []).filter(isHttpUrl);
-  if (!executorName && links.length === 0 && !waitingForFirstResult) {
+  if (!executorName && links.length === 0 && !waitingForFirstResult && !report) {
     return null;
   }
   return (
@@ -36,6 +44,31 @@ export function RunSubmissionProvenance({ executorName, evidenceUrls, executorMo
             <span data-testid="runner-reported-by" className="min-w-0 break-words text-xs font-medium text-fg-1">
               {`${MODE_PREFIX[executorMode ?? ''] ?? ''}${executorName}`}
             </span>
+          </div>
+        )}
+        {report && (
+          <div className="flex items-baseline gap-2">
+            <span className="shrink-0 font-mono text-2xs font-medium uppercase tracking-wider text-fg-3">
+              CI report
+            </span>
+            <div data-testid="runner-ci-report" className="flex min-w-0 flex-col gap-1 text-xs text-fg-1">
+              <span className="break-words">
+                <span className="font-mono">{report.file_name}</span>
+                {` · ${report.entry_count} ${report.entry_count === 1 ? 'entry' : 'entries'} · ${report.unmapped_count} not mapped`}
+              </span>
+              {report.unmapped.length > 0 && (
+                <details data-testid="runner-ci-report-unmapped">
+                  <summary className="cursor-pointer text-fg-2">Show the entries linked to no step</summary>
+                  <ul className="mt-1 flex flex-col gap-0.5">
+                    {report.unmapped.map(entry => (
+                      <li key={entry.index} className="min-w-0 break-words font-mono text-2xs text-fg-2">
+                        {`#${entry.index} ${entry.name}${entry.classname ? ` (${entry.classname})` : ''} · ${entry.result}`}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
           </div>
         )}
         {waitingForFirstResult && (
