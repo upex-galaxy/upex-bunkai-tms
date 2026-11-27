@@ -72,6 +72,15 @@ describe('readJunitReport', () => {
     expect(JSON.stringify(entries[0].name)).not.toContain('\\ud83d');
   });
 
+  it('does not count log text inside CDATA or comments against the limits, and keeps it verbatim', () => {
+    const log = `<system-out><![CDATA[${'GET /api status="200" id="x" <div><testcase \n'.repeat(1200)} x &#60; y]]></system-out>`;
+    const cases = Array.from({ length: JUNIT_MAX_ENTRIES }, (_, i) => `<testcase name="t${i}">${i === 0 ? log : ''}<!-- <testcase a="1"/> --></testcase>`).join('');
+    const { entries } = readJunitReport(suite(cases));
+    expect(entries).toHaveLength(JUNIT_MAX_ENTRIES);
+    const { entries: one } = readJunitReport(suite('<testcase name="a"><failure><![CDATA[x &#60; y]]></failure></testcase>'));
+    expect(one[0].message).toBe('Failure: x &#60; y');
+  });
+
   it('refuses a report with too many elements or attributes before parsing it', () => {
     const elements = `<testsuite>${'<x/>'.repeat(JUNIT_MAX_ELEMENTS + 1)}<testcase name="a"/></testsuite>`;
     expect(rejection(() => readJunitReport(elements))).toBe('report_too_complex');

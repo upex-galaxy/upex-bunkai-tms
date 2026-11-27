@@ -99,18 +99,28 @@ const LONE_SURROGATES = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])
 
 const SPECIAL_REFS: Record<string, string> = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', '\'': '&apos;' };
 
-function decodeNumericRefs(xml: string): string {
-  return xml.replace(/&#(x[0-9a-f]{1,6}|\d{1,7});/gi, (_match, code: string) => {
-    const point = code[0] === 'x' || code[0] === 'X' ? Number.parseInt(code.slice(1), 16) : Number.parseInt(code, 10);
-    if (point === 0x9 || point === 0xA || point === 0xD) {
-      return String.fromCodePoint(point);
-    }
-    if (point < 0x20 || point > 0x10FFFF || (point >= 0xD800 && point <= 0xDFFF)) {
-      return '';
-    }
-    const char = String.fromCodePoint(point);
-    return SPECIAL_REFS[char] ?? char;
-  });
+function decodeRef(code: string): string {
+  const point = code[0] === 'x' || code[0] === 'X' ? Number.parseInt(code.slice(1), 16) : Number.parseInt(code, 10);
+  if (point === 0x9 || point === 0xA || point === 0xD) {
+    return String.fromCodePoint(point);
+  }
+  if (point < 0x20 || point > 0x10FFFF || (point >= 0xD800 && point <= 0xDFFF)) {
+    return '';
+  }
+  const char = String.fromCodePoint(point);
+  return SPECIAL_REFS[char] ?? char;
+}
+
+const VERBATIM_SPANS = /(<!\[CDATA\[[\s\S]*?\]\]>|<!--[\s\S]*?-->)/;
+
+function splitVerbatim(xml: string): string[] {
+  return xml.split(VERBATIM_SPANS);
+}
+
+function decodeNumericRefs(parts: string[]): string {
+  return parts
+    .map((part, i) => (i % 2 === 1 ? part : part.replace(/&#(x[0-9a-f]{1,6}|\d{1,7});/gi, (_match, code: string) => decodeRef(code))))
+    .join('');
 }
 
 function countMatches(text: string, pattern: RegExp, limit: number): number {
@@ -121,6 +131,20 @@ function countMatches(text: string, pattern: RegExp, limit: number): number {
     if (count > limit) {
       return count;
     }
+  }
+  return count;
+}
+
+function countAttributes(markup: string, limit: number): number {
+  let count = 0;
+  const tags = /<[^>]*>/g;
+  let tag = tags.exec(markup);
+  while (tag !== null) {
+    count += countMatches(tag[0], /\s[\w:.-]+\s*=/g, limit);
+    if (count > limit) {
+      return count;
+    }
+    tag = tags.exec(markup);
   }
   return count;
 }
@@ -204,14 +228,16 @@ export function readJunitReport(raw: string): JunitReport {
   if (/<!DOCTYPE/i.test(text) || /<!ENTITY/i.test(text)) {
     throw new JunitReportError('report_dtd_forbidden');
   }
-  const decoded = decodeNumericRefs(text);
-  if (countMatches(text, /<[^!?/]/g, JUNIT_MAX_ELEMENTS) > JUNIT_MAX_ELEMENTS
-    || countMatches(text, /\s[\w:.-]+\s*=\s*["']/g, JUNIT_MAX_ATTRIBUTES) > JUNIT_MAX_ATTRIBUTES) {
+  const parts = splitVerbatim(text);
+  const markup = parts.filter((_part, i) => i % 2 === 0).join('');
+  if (countMatches(markup, /<[^!?/]/g, JUNIT_MAX_ELEMENTS) > JUNIT_MAX_ELEMENTS
+    || countAttributes(markup, JUNIT_MAX_ATTRIBUTES) > JUNIT_MAX_ATTRIBUTES) {
     throw new JunitReportError('report_too_complex');
   }
-  if (countMatches(text, /<(?:[\w.-]+:)?testcase[\s/>]/g, JUNIT_MAX_ENTRIES) > JUNIT_MAX_ENTRIES) {
+  if (countMatches(markup, /<(?:[\w.-]+:)?testcase[\s/>]/g, JUNIT_MAX_ENTRIES) > JUNIT_MAX_ENTRIES) {
     throw new JunitReportError('report_too_many_entries');
   }
+  const decoded = decodeNumericRefs(parts);
 
   let document: XmlNode[];
   try {
