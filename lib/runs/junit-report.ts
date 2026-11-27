@@ -172,6 +172,9 @@ export function readJunitReport(raw: string): JunitReport {
   if (text.trim() === '') {
     throw new JunitReportError('report_empty');
   }
+  if (/^\s*<!DOCTYPE\s+html\b/i.test(text)) {
+    throw new JunitReportError('report_not_junit');
+  }
   if (/<!DOCTYPE/i.test(text) || /<!ENTITY/i.test(text)) {
     throw new JunitReportError('report_dtd_forbidden');
   }

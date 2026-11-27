@@ -106,6 +106,7 @@ describe('readJunitReport', () => {
   it('refuses well-formed XML that is not a JUnit report', () => {
     expect(rejection(() => readJunitReport('<html><body><testcase name="a"/></body></html>'))).toBe('report_not_junit');
     expect(rejection(() => readJunitReport('<?xml version="1.0"?><rss><channel/></rss>'))).toBe('report_not_junit');
+    expect(rejection(() => readJunitReport('<!DOCTYPE html><html><body><h1>Report</h1></body></html>'))).toBe('report_not_junit');
   });
 
   it('refuses an empty file and a report with no testcase', () => {
