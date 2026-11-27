@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { isAuthSessionMissingError } from '@supabase/supabase-js';
 import { z } from 'zod';
 
 const BodySchema = z.object({
@@ -70,7 +71,7 @@ async function endEverySession(db: SupabaseClient<Database>): Promise<void> {
   if (!error) {
     return;
   }
-  if (SESSION_GONE_STATUSES.has(error.status ?? 0)) {
+  if (SESSION_GONE_STATUSES.has(error.status ?? 0) || isAuthSessionMissingError(error)) {
     await db.auth.signOut({ scope: 'local' });
     throw new ApiError('unauthorized', 'This session ended before every session could be signed out. Sign in again and retry.');
   }
