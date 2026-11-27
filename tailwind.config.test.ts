@@ -71,12 +71,9 @@ async function emittedRules(config: Config, classes: string[]): Promise<Map<stri
     .process('@tailwind utilities;', { from: undefined });
   const rules = new Map<string, string>();
   result.root.walkRules((rule) => {
-    for (const selector of rule.selectors) {
-      const match = /^\.((?:\\.|[^\s:>~+.\\[])+)/.exec(selector);
-      if (match) {
-        const cls = match[1].replace(/\\(.)/g, '$1');
-        rules.set(cls, `${rules.get(cls) ?? ''}${rule.toString().replace(/\s+/g, ' ')}\n`);
-      }
+    const classes = new Set(rule.selectors.flatMap(selector => [...selector.matchAll(/\.((?:\\.|[^\s:>~+.\\[\]()#,])+)/g)].map(match => match[1].replace(/\\(.)/g, '$1'))));
+    for (const cls of classes) {
+      rules.set(cls, `${rules.get(cls) ?? ''}${rule.toString().replace(/\s+/g, ' ')}\n`);
     }
   });
   return rules;
@@ -97,6 +94,7 @@ describe('opacity modifiers on var() color tokens (BK-2546)', () => {
   it('scans the source tree and finds modified token classes', () => {
     expect(candidates.length).toBeGreaterThan(1000);
     expect(modifiedInventory).toContain('border-accent/35');
+    expect(modifiedInventory).toContain('hover:bg-accent/30');
     expect(tokenNames).toContain('accent-soft');
     expect(tokenNames).toContain('primary');
   });
