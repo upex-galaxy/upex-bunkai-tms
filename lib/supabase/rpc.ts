@@ -52,6 +52,25 @@ export async function removeWorkspaceMember(supabase: Client, args: RemoveWorksp
   });
 }
 
+// BK-2542 — change a teammate's role (migration 0144, ADR-0022). The SECURITY
+// DEFINER RPC binds the actor to auth.uid(), takes 0114's lock and ladder, and
+// in one transaction sets the role, unassigns the target's Bugs when the new
+// role is viewer and writes `member.role_changed`. Call it with the caller's
+// OWN client.
+export interface ChangeWorkspaceMemberRoleArgs {
+  workspaceId: string
+  userId: string
+  role: string
+}
+
+export async function changeWorkspaceMemberRole(supabase: Client, args: ChangeWorkspaceMemberRoleArgs) {
+  return supabase.rpc('bunkai_change_workspace_member_role', {
+    p_workspace_id: args.workspaceId,
+    p_user_id: args.userId,
+    p_role: args.role,
+  });
+}
+
 // BK-1589 — redeem a workspace invite in one transaction (migration 0118). The
 // SECURITY DEFINER RPC locks the inviter's and invitee's member rows, re-checks
 // the invite, never demotes, and refuses an inviter who lost the authority. Its

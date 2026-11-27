@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
-import type { RemoveMemberResult } from './response';
+import type { ChangeMemberRoleResult, RemoveMemberResult } from './response';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { assertWorkspaceContext } from '@lib/api/principal';
-import { removeWorkspaceMember } from '@lib/supabase/rpc';
-import { assertRemovalAllowed, mapRemoveMemberError } from './response';
+import { changeWorkspaceMemberRole, removeWorkspaceMember } from '@lib/supabase/rpc';
+import { assertRemovalAllowed, assertRoleChangeAllowed, mapChangeRoleError, mapRemoveMemberError, parseRoleChangeBody } from './response';
 
 // DELETE /api/v1/workspaces/{id}/members/{userId} — an Owner or Admin removes
 // a teammate (BK-572, ADR-0022). A thin wrapper over the SECURITY DEFINER RPC
@@ -38,6 +38,36 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse(data as unknown as RemoveMemberResult);
+}, { auth: 'required', requires: ['workspace:admin'] });
+
+// PATCH /api/v1/workspaces/{id}/members/{userId} — an Owner or Admin changes a
+// teammate's role between viewer, member and admin (BK-2542, ADR-0022). A thin
+// wrapper over `bunkai_change_workspace_member_role` (migration 0144), with the
+// DELETE posture: `workspace:admin` plus the ADR-0006 binding, PAT callers
+// allowed, self-targeting refused here and in the RPC.
+export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
+  const { workspaceId, userId } = extractIds(request);
+  if (!UUID.test(workspaceId)) {
+    throw new ApiError('bad_request', 'Workspace id must be a UUID.');
+  }
+  if (!UUID.test(userId)) {
+    throw new ApiError('bad_request', 'User id must be a UUID.');
+  }
+
+  const body: unknown = await request.json().catch(() => null);
+  const role = parseRoleChangeBody(body);
+
+  const { principal, db } = getAuth(ctx);
+  assertWorkspaceContext(principal, workspaceId);
+
+  await assertRoleChangeAllowed(db, { workspaceId, callerId: principal.userId, targetId: userId });
+
+  const { data, error } = await changeWorkspaceMemberRole(db, { workspaceId, userId, role });
+  if (error) {
+    mapChangeRoleError(error);
+  }
+
+  return jsonResponse(data as unknown as ChangeMemberRoleResult);
 }, { auth: 'required', requires: ['workspace:admin'] });
 
 // `/api/v1/workspaces/{id}/members/{userId}`: the segments after the literal

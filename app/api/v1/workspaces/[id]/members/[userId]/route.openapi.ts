@@ -44,3 +44,43 @@ registry.registerPath({
     409: { description: 'Either `details.reason = cannot_remove_self` (with `details.leave_endpoint`), or `details.reason = sole_owner` (a backstop: the workspace would be left with no Owner).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
+
+// BK-2542 — PATCH /api/v1/workspaces/{id}/members/{userId} (ADR-0022, migration 0144).
+
+const AssignableRoleSchema = z.enum(['viewer', 'member', 'admin']);
+
+const ChangeMemberRoleRequestSchema = z
+  .object({
+    role: AssignableRoleSchema.describe('The new role. `owner` is never accepted: the Owner role is neither granted nor taken away here.'),
+  })
+  .openapi('WorkspaceMemberRoleChangeRequest');
+
+const ChangeMemberRoleResponseSchema = z
+  .object({
+    user_id: z.string().uuid(),
+    previous_role: AssignableRoleSchema.describe('The role the teammate held when the change was written (after the row lock), which can differ from what the caller saw.'),
+    role: AssignableRoleSchema,
+    changed: z.boolean().describe('false when the teammate already held `role`: nothing was written and no activity event was recorded.'),
+    unassigned_bug_count: z.number().int().describe('Bugs of this workspace that were assigned to the teammate and are now unassigned (only when the new role is viewer; each one records a bug.unassigned activity event).'),
+  })
+  .openapi('WorkspaceMemberRoleChangeResponse');
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/workspaces/{id}/members/{userId}',
+  tags: ['Members'],
+  summary: 'Change a teammate\'s role',
+  description: 'An Owner or Admin changes a teammate\'s role between viewer, member and admin, in one all-or-nothing act that writes a `member.role_changed` activity event. Becoming a viewer unassigns every Bug of the teammate in this workspace. Personal Access Tokens are not revoked: the current role decides what a token may do, from the next request. The ladder is the removal ladder (viewer < member < admin < owner): an Owner row is never changeable and nobody changes their own role. Refusals are checked in this order: role value (422 `invalid_member_role`), workspace visibility (404), caller role (403 `not_an_admin`), self (409 `cannot_change_own_role`), target membership, suspended included (404, the same body as the first 404), Owner target (403 `cannot_change_owner_role`). Asking for the current role answers 200 with `changed: false` after every check passes.',
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [IdParam, { ...UserIdParam, description: 'The teammate whose role changes.' }],
+  request: { body: { content: { 'application/json': { schema: ChangeMemberRoleRequestSchema } } } },
+  responses: {
+    200: { description: 'Changed, or already held (`changed: false`).', content: { 'application/json': { schema: ChangeMemberRoleResponseSchema } } },
+    400: { description: 'A path id is not a UUID.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Any of: the caller is a Member or Viewer (`details.reason = not_an_admin`); the target is an Owner (`details.reason = cannot_change_owner_role`); the Bearer PAT lacks the `workspace:admin` capability, is not bound to any workspace, or is bound to a DIFFERENT workspace than `{id}` (ADR-0006, identical whether `{id}` exists or not).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'The workspace does not exist, is scheduled for deletion or is not visible to the caller, or the target is not an active member. Indistinguishable by design.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: '`details.reason = cannot_change_own_role`.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: '`role` is missing or is not exactly one of viewer, member, admin (`details.reason = invalid_member_role`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+  },
+});

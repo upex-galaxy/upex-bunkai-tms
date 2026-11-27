@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { canRemoveMember, canRemoveRole } from './member-ladder';
+import { ASSIGNABLE_ROLES, canChangeMemberRole, canChangeRole, canRemoveMember, canRemoveRole, isAssignableRole } from './member-ladder';
 
 // BK-572 — the ladder (ADR-0022). The database enforces it on its own; see
 // member-removal-isolation.test.ts.
@@ -34,5 +34,57 @@ describe('canRemoveMember — which rows offer Remove (AC-01, 02, 03, 11)', () =
   });
   it('only active memberships', () => {
     expect(canRemoveMember({ callerId: me, callerRole: 'owner', target: { user_id: 'x', role: 'member', status: 'invited' } })).toBe(false);
+  });
+});
+
+describe('canChangeRole — the role-change ladder (BK-2542)', () => {
+  it('an Owner changes Admin, Member and Viewer, never an Owner', () => {
+    expect(ROLES.map(r => canChangeRole('owner', r))).toEqual([true, true, true, false]);
+  });
+  it('an Admin changes Admin, Member and Viewer, never an Owner', () => {
+    expect(ROLES.map(r => canChangeRole('admin', r))).toEqual([true, true, true, false]);
+  });
+  it('a Member, a Viewer or no role changes nobody', () => {
+    for (const caller of ['member', 'viewer', null, 'stranger']) {
+      expect(ROLES.some(r => canChangeRole(caller, r))).toBe(false);
+    }
+  });
+});
+
+describe('canChangeMemberRole — which rows offer the role control', () => {
+  const me = 'me';
+  const row = (user_id: string, role: string, status = 'active') => ({ user_id, role, status });
+  it('the Owner gets it on every other row but an Owner row; never on their own', () => {
+    expect(canChangeMemberRole({ callerId: me, callerRole: 'owner', target: row(me, 'owner') })).toBe(false);
+    expect(canChangeMemberRole({ callerId: me, callerRole: 'owner', target: row('o2', 'owner') })).toBe(false);
+    for (const role of ['admin', 'member', 'viewer']) {
+      expect(canChangeMemberRole({ callerId: me, callerRole: 'owner', target: row('x', role) })).toBe(true);
+    }
+  });
+  it('an Admin gets it on another Admin, a Member and a Viewer, not on their own row', () => {
+    expect(canChangeMemberRole({ callerId: me, callerRole: 'admin', target: row(me, 'admin') })).toBe(false);
+    expect(canChangeMemberRole({ callerId: me, callerRole: 'admin', target: row('a2', 'admin') })).toBe(true);
+  });
+  it('a Member or a Viewer gets it on no row', () => {
+    for (const caller of ['member', 'viewer']) {
+      expect(canChangeMemberRole({ callerId: me, callerRole: caller, target: row('x', 'viewer') })).toBe(false);
+    }
+  });
+  it('never on a suspended row', () => {
+    expect(canChangeMemberRole({ callerId: me, callerRole: 'owner', target: row('x', 'member', 'suspended') })).toBe(false);
+  });
+});
+
+describe('isAssignableRole — the three roles a change may set', () => {
+  it('accepts exactly viewer, member and admin', () => {
+    expect([...ASSIGNABLE_ROLES]).toEqual(['viewer', 'member', 'admin']);
+    for (const value of ASSIGNABLE_ROLES) {
+      expect(isAssignableRole(value)).toBe(true);
+    }
+  });
+  it('refuses owner, case and space variants, empty, null and numbers', () => {
+    for (const value of ['owner', 'superadmin', 'Admin', ' admin ', '', null, undefined, 7, {}]) {
+      expect(isAssignableRole(value)).toBe(false);
+    }
   });
 });

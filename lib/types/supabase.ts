@@ -2718,6 +2718,10 @@ export interface Database {
       }
       bunkai_caller_workspace_rank: { Args: { ws_id: string }, Returns: number }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_change_workspace_member_role: {
+        Args: { p_role: string, p_user_id: string, p_workspace_id: string }
+        Returns: Json
+      }
       bunkai_chat_delete_message: {
         Args: { p_message_id: string }
         Returns: {

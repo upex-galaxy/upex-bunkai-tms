@@ -394,6 +394,9 @@
             "$ref": "#/components/schemas/ActivityItemMemberRemoved"
           },
           {
+            "$ref": "#/components/schemas/ActivityItemMemberRoleChanged"
+          },
+          {
             "$ref": "#/components/schemas/ActivityItemJiraConnectionConnected"
           },
           {
@@ -441,6 +444,7 @@
             "bug.unassigned": "#/components/schemas/ActivityItemBugUnassigned",
             "bug.status_changed": "#/components/schemas/ActivityItemBugStatusChanged",
             "member.removed": "#/components/schemas/ActivityItemMemberRemoved",
+            "member.role_changed": "#/components/schemas/ActivityItemMemberRoleChanged",
             "jira_connection.connected": "#/components/schemas/ActivityItemJiraConnectionConnected",
             "jira_connection.changed": "#/components/schemas/ActivityItemJiraConnectionChanged",
             "jira_connection.disconnected": "#/components/schemas/ActivityItemJiraConnectionDisconnected",
@@ -1473,6 +1477,69 @@
           }
         },
         "required": ["removed_user_id", "removed_role"]
+      },
+      "ActivityItemMemberRoleChanged": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["workspace_member"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["member.role_changed"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadMemberRoleChanged"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadMemberRoleChanged": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "previous_role": {
+            "type": ["string", "null"],
+            "enum": ["viewer", "member", "admin", null]
+          },
+          "role": {
+            "type": ["string", "null"],
+            "enum": ["viewer", "member", "admin", null]
+          }
+        },
+        "required": ["user_id", "previous_role", "role"]
       },
       "ActivityItemJiraConnectionConnected": {
         "type": "object",
@@ -9478,6 +9545,44 @@
           "unassigned_bug_count",
           "revoked_invite_count"
         ]
+      },
+      "WorkspaceMemberRoleChangeResponse": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "previous_role": {
+            "type": "string",
+            "enum": ["viewer", "member", "admin"],
+            "description": "The role the teammate held when the change was written (after the row lock), which can differ from what the caller saw."
+          },
+          "role": {
+            "type": "string",
+            "enum": ["viewer", "member", "admin"]
+          },
+          "changed": {
+            "type": "boolean",
+            "description": "false when the teammate already held `role`: nothing was written and no activity event was recorded."
+          },
+          "unassigned_bug_count": {
+            "type": "integer",
+            "description": "Bugs of this workspace that were assigned to the teammate and are now unassigned (only when the new role is viewer; each one records a bug.unassigned activity event)."
+          }
+        },
+        "required": ["user_id", "previous_role", "role", "changed", "unassigned_bug_count"]
+      },
+      "WorkspaceMemberRoleChangeRequest": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["viewer", "member", "admin"],
+            "description": "The new role. `owner` is never accepted: the Owner role is neither granted nor taken away here."
+          }
+        },
+        "required": ["role"]
       },
       "WorkspaceLeaveResponse": {
         "type": "object",
@@ -24968,6 +25073,121 @@
           },
           "409": {
             "description": "Either `details.reason = cannot_remove_self` (with `details.leave_endpoint`), or `details.reason = sole_owner` (a backstop: the workspace would be left with no Owner).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Members"],
+        "summary": "Change a teammate's role",
+        "description": "An Owner or Admin changes a teammate's role between viewer, member and admin, in one all-or-nothing act that writes a `member.role_changed` activity event. Becoming a viewer unassigns every Bug of the teammate in this workspace. Personal Access Tokens are not revoked: the current role decides what a token may do, from the next request. The ladder is the removal ladder (viewer < member < admin < owner): an Owner row is never changeable and nobody changes their own role. Refusals are checked in this order: role value (422 `invalid_member_role`), workspace visibility (404), caller role (403 `not_an_admin`), self (409 `cannot_change_own_role`), target membership, suspended included (404, the same body as the first 404), Owner target (403 `cannot_change_owner_role`). Asking for the current role answers 200 with `changed: false` after every check passes.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The teammate whose role changes."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceMemberRoleChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Changed, or already held (`changed: false`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceMemberRoleChangeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A path id is not a UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Any of: the caller is a Member or Viewer (`details.reason = not_an_admin`); the target is an Owner (`details.reason = cannot_change_owner_role`); the Bearer PAT lacks the `workspace:admin` capability, is not bound to any workspace, or is bound to a DIFFERENT workspace than `{id}` (ADR-0006, identical whether `{id}` exists or not).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The workspace does not exist, is scheduled for deletion or is not visible to the caller, or the target is not an active member. Indistinguishable by design.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`details.reason = cannot_change_own_role`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`role` is missing or is not exactly one of viewer, member, admin (`details.reason = invalid_member_role`).",
             "content": {
               "application/json": {
                 "schema": {

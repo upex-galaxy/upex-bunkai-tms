@@ -1,7 +1,8 @@
 import type { Database } from '@lib/types/supabase';
+import type { AssignableRole } from '@lib/workspaces/member-ladder';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError } from '@lib/api/error-envelope';
-import { canRemoveRole, roleRank } from '@lib/workspaces/member-ladder';
+import { canChangeRole, canRemoveRole, isAssignableRole, roleRank } from '@lib/workspaces/member-ladder';
 
 // BK-572 — dependency-free / DB-parametrized logic for
 // `DELETE /api/v1/workspaces/{id}/members/{userId}`, split out of `route.ts`
@@ -113,4 +114,112 @@ export interface RemoveMemberResult {
   revoked_token_count: number
   unassigned_bug_count: number
   revoked_invite_count: number
+}
+
+// BK-2542 — `PATCH /api/v1/workspaces/{id}/members/{userId}`. Same split and
+// the same early refusals as removal, in the order the RPC re-checks
+// (`bunkai_change_workspace_member_role`, migration 0144):
+//   role 422 -> visibility 404 -> caller role 403 -> self 409 -> target 404
+//   -> Owner target 403.
+
+export const ROLE_CHANGE_INVALID_ROLE_MESSAGE = 'Role must be one of viewer, member or admin.';
+export const ROLE_CHANGE_NOT_ADMIN_MESSAGE = 'You must be an admin or owner of this workspace to change a teammate\'s role.';
+export const ROLE_CHANGE_SELF_MESSAGE = 'You can\'t change your own role.';
+export const ROLE_CHANGE_OWNER_MESSAGE = 'The Owner role can\'t be changed.';
+
+function invalidRole(): never {
+  throw new ApiError('validation_failed', ROLE_CHANGE_INVALID_ROLE_MESSAGE, { details: { reason: 'invalid_member_role' } });
+}
+
+function notAnAdmin(): never {
+  throw new ApiError('forbidden', ROLE_CHANGE_NOT_ADMIN_MESSAGE, { details: { reason: 'not_an_admin' } });
+}
+
+function ownRoleRefusal(): never {
+  throw new ApiError('conflict', ROLE_CHANGE_SELF_MESSAGE, { details: { reason: 'cannot_change_own_role' } });
+}
+
+function ownerRoleRefusal(): never {
+  throw new ApiError('forbidden', ROLE_CHANGE_OWNER_MESSAGE, { details: { reason: 'cannot_change_owner_role' } });
+}
+
+export function parseRoleChangeBody(body: unknown): AssignableRole {
+  const role = body !== null && typeof body === 'object' ? (body as { role?: unknown }).role : undefined;
+  if (!isAssignableRole(role)) {
+    invalidRole();
+  }
+  return role;
+}
+
+export async function assertRoleChangeAllowed(
+  db: SupabaseClient<Database>,
+  params: AssertRemovalAllowedParams,
+): Promise<void> {
+  const { data: caller, error: callerError } = await db
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', params.workspaceId)
+    .eq('user_id', params.callerId)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (callerError) {
+    throw new ApiError('internal_error', callerError.message);
+  }
+  if (!caller) {
+    notFound();
+  }
+  if (roleRank(caller.role) < roleRank('admin')) {
+    notAnAdmin();
+  }
+
+  if (params.targetId.toLowerCase() === params.callerId.toLowerCase()) {
+    ownRoleRefusal();
+  }
+
+  const { data: target, error: targetError } = await db
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', params.workspaceId)
+    .eq('user_id', params.targetId)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (targetError) {
+    throw new ApiError('internal_error', targetError.message);
+  }
+  if (!target) {
+    notFound();
+  }
+  if (!canChangeRole(caller.role, target.role)) {
+    ownerRoleRefusal();
+  }
+}
+
+export function mapChangeRoleError(error: { code?: string, message: string }): never {
+  if (error.code === '42501' && error.message === 'not_authenticated') {
+    throw new ApiError('unauthorized', 'You must be signed in to change a teammate\'s role.');
+  }
+  if (error.code === '42501') {
+    notAnAdmin();
+  }
+  if (error.code === 'P0002') {
+    notFound();
+  }
+  if (error.code === '45225') {
+    ownRoleRefusal();
+  }
+  if (error.code === '45226') {
+    ownerRoleRefusal();
+  }
+  if (error.code === '45227') {
+    invalidRole();
+  }
+  throw new ApiError('internal_error', error.message);
+}
+
+export interface ChangeMemberRoleResult {
+  user_id: string
+  previous_role: AssignableRole
+  role: AssignableRole
+  changed: boolean
+  unassigned_bug_count: number
 }
