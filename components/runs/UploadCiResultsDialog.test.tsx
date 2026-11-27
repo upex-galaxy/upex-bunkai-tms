@@ -12,7 +12,7 @@ void mock.module('sonner', () => ({ toast: { success: () => {}, error: () => {} 
 
 const { act, createElement } = await import('react');
 const { createRoot } = await import('react-dom/client');
-const { UploadCiResultsDialog, UPLOAD_MAX_BYTES, verdictReason } = await import('./UploadCiResultsDialog');
+const { KEY_CONFLICT_MESSAGE, UploadCiResultsDialog, UPLOAD_MAX_BYTES, verdictReason } = await import('./UploadCiResultsDialog');
 const { UploadCiResultsButton } = await import('./UploadCiResultsButton');
 
 const TEST_ID = '11111111-1111-4111-8111-111111111111';
@@ -202,6 +202,116 @@ describe('UploadCiResultsDialog', () => {
     await click('ci-upload-create');
     expect(id('ci-upload-create-error')?.textContent).toBe('The Test or the report changed after the preview.');
     expect(id('ci-upload-dialog')?.getAttribute('data-step')).toBe('confirm');
+  });
+});
+
+describe('UploadCiResultsDialog CI context (BK-2097)', () => {
+  const CLEAN_PREVIEW = { ...PREVIEW, unmapped: [], requires_acknowledgement: false };
+
+  async function reachConfirm() {
+    choose('ci-upload-test', 't-1');
+    choose('ci-upload-env', 'Staging');
+    responses.push({ status: 200, body: { preview: CLEAN_PREVIEW } });
+    await pickFile(xmlFile());
+    await click('ci-upload-continue');
+  }
+
+  function type(testId: string, value: string) {
+    const input = id(testId) as unknown as HTMLInputElement;
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
+  const value = (testId: string) => (id(testId) as unknown as HTMLInputElement).value;
+  const sent = (index: number) => new URL(calls[index].url, 'http://x').searchParams;
+  const CI_IDS = ['ci-upload-commit', 'ci-upload-branch', 'ci-upload-pipeline-name', 'ci-upload-pipeline-url'];
+
+  test('offers the four optional details on the Confirm step and says they cannot change (AC8)', async () => {
+    mountDialog();
+    await reachConfirm();
+    const section = id('ci-upload-ci-context')!;
+    expect(section.textContent).toContain('CI context');
+    expect(section.textContent).toContain('Optional');
+    expect(section.textContent).toContain('Saved with the run. They cannot be changed later.');
+    expect(CI_IDS.map(testId => (id(testId) as unknown as HTMLInputElement).placeholder)).toEqual(['a1b2c3d', 'feature/checkout-discounts', 'nightly-regression', 'https://ci.acme.dev/p/42']);
+    expect(CI_IDS.map(testId => id(testId)!.getAttribute('maxlength'))).toEqual([null, null, null, null]);
+  });
+
+  test('sends only the details given, exactly as typed, with reserved characters intact (AC1, AC8, AC14)', async () => {
+    mountDialog();
+    await reachConfirm();
+    type('ci-upload-commit', 'a1b2c3d');
+    type('ci-upload-branch', 'release/v2+hotfix&x=1#é');
+    type('ci-upload-pipeline-name', '   ');
+    responses.push({ status: 201, body: { run: { id: 'run-1' } } });
+    await click('ci-upload-create');
+    const params = sent(1);
+    expect(params.get('commit')).toBe('a1b2c3d');
+    expect(params.get('branch')).toBe('release/v2+hotfix&x=1#é');
+    expect(params.has('pipeline_name')).toBe(false);
+    expect(params.has('pipeline_url')).toBe(false);
+  });
+
+  test('sends no detail when every field is blank (AC8)', async () => {
+    mountDialog();
+    await reachConfirm();
+    type('ci-upload-branch', '  ');
+    responses.push({ status: 201, body: { run: { id: 'run-1' } } });
+    await click('ci-upload-create');
+    expect(['commit', 'branch', 'pipeline_name', 'pipeline_url'].map(key => sent(1).has(key))).toEqual([false, false, false, false]);
+  });
+
+  test('keeps everything and marks the refused field, then creates one run under the same key (AC9)', async () => {
+    mountDialog();
+    await reachConfirm();
+    type('ci-upload-commit', 'zz!');
+    type('ci-upload-branch', 'feature/checkout-discounts');
+    responses.push({ status: 422, body: { error: { code: 'validation_failed', message: 'commit must be a hexadecimal commit reference of 7 to 64 characters.', details: { reason: 'commit_invalid', field: 'commit' } } } });
+    await click('ci-upload-create');
+    expect(id('ci-upload-dialog')?.getAttribute('data-step')).toBe('confirm');
+    expect(id('ci-upload-create-error')?.textContent).toBe('commit must be a hexadecimal commit reference of 7 to 64 characters.');
+    expect(id('ci-upload-commit')!.getAttribute('aria-invalid')).toBe('true');
+    expect(id('ci-upload-commit')!.getAttribute('aria-describedby')).toBe('ci-upload-create-error');
+    expect(id('ci-upload-branch')!.getAttribute('aria-invalid')).toBeNull();
+    expect([value('ci-upload-commit'), value('ci-upload-branch')]).toEqual(['zz!', 'feature/checkout-discounts']);
+    type('ci-upload-commit', 'a1b2c3d');
+    expect(id('ci-upload-commit')!.getAttribute('aria-invalid')).toBeNull();
+    responses.push({ status: 201, body: { run: { id: 'run-1' } } });
+    await click('ci-upload-create');
+    expect(sent(1).get('idempotency_key')).toBe(sent(2).get('idempotency_key'));
+    expect([sent(2).get('commit'), sent(2).get('branch'), sent(2).get('acknowledge_unmapped'), sent(2).get('test_id')]).toEqual(['a1b2c3d', 'feature/checkout-discounts', 'false', 't-1']);
+  });
+
+  test('a key conflict after a lost answer says a run already exists and never mints a new key (AC12)', async () => {
+    mountDialog();
+    await reachConfirm();
+    type('ci-upload-branch', 'main');
+    responses.push({ status: 502, body: {} });
+    await click('ci-upload-create');
+    type('ci-upload-branch', 'develop');
+    responses.push({ status: 409, body: { error: { code: 'conflict', message: 'idempotency_key was already used with a different request.', details: { reason: 'idempotency_key_conflict' } } } });
+    await click('ci-upload-create');
+    expect(id('ci-upload-create-error')?.textContent).toBe(KEY_CONFLICT_MESSAGE);
+    responses.push({ status: 409, body: { error: { details: { reason: 'idempotency_key_conflict' } } } });
+    await click('ci-upload-create');
+    const keys = [1, 2, 3].map(i => sent(i).get('idempotency_key'));
+    expect(new Set(keys).size).toBe(1);
+  });
+
+  test('keeps the details after Back and clears them when the dialog closes', async () => {
+    mountDialog();
+    await reachConfirm();
+    type('ci-upload-pipeline-url', 'https://ci.acme.dev/p/42');
+    await click('ci-upload-back-to-map');
+    await click('ci-upload-continue');
+    expect(value('ci-upload-pipeline-url')).toBe('https://ci.acme.dev/p/42');
+    await click('ci-upload-close');
+    responses.push({ status: 200, body: { preview: CLEAN_PREVIEW } });
+    await pickFile(xmlFile());
+    await click('ci-upload-continue');
+    expect(CI_IDS.map(value)).toEqual(['', '', '', '']);
   });
 });
 
