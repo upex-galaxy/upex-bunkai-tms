@@ -18,9 +18,10 @@
 --    also revokes the column-level grants, so the order makes a re-run converge.
 -- 2. Policies: the INSERT policy goes, and the UPDATE policy only matches the
 --    caller's own unrevoked row and only accepts a row that comes out revoked.
--- 3. Trigger: once revoked_at is set, no role (service_role included) may clear or
---    change it. It fires only on UPDATE OF revoked_at, so the per-request
---    last_used_at touch never runs it.
+-- 3. Trigger: a revocation by anon or authenticated is stamped with the database
+--    clock, so a client cannot write its own timestamp. Once revoked_at is set, no
+--    role (service_role included) may clear or change it. It fires only on UPDATE OF
+--    revoked_at, so the per-request last_used_at touch never runs it.
 --
 -- qa_inspector_rw keeps its grants (non-client QA tooling role, out of scope here).
 
@@ -44,6 +45,9 @@ as $$
 begin
   if old.revoked_at is not null and new.revoked_at is distinct from old.revoked_at then
     raise exception 'token_revocation_final' using errcode = '42501';
+  end if;
+  if old.revoked_at is null and new.revoked_at is not null and current_user in ('anon', 'authenticated') then
+    new.revoked_at := now();
   end if;
   return new;
 end;

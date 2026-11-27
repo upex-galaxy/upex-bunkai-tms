@@ -249,6 +249,18 @@ describeOrSkip('BK-2588 access_tokens writes from the data API (database)', () =
     expect(await authenticates(pat.token)).toBe(false);
   }, 20_000);
 
+  for (const [label, claimed] of [['a far-future', '9999-12-31T00:00:00.000Z'], ['a far-past', '1970-01-01T00:00:00.000Z']] as const) {
+    it(`a revocation that claims ${label} timestamp is stamped with the database clock`, async () => {
+      const pat = await mint(owner.id, `stamped-${label}`);
+      const { data, error } = await owner.db.from('access_tokens').update({ revoked_at: claimed }).eq('id', pat.id).select('id');
+      expect(error).toBeNull();
+      expect(data).toEqual([{ id: pat.id }]);
+      const stored = Date.parse((await readToken(pat.id)).revoked_at!);
+      expect(Math.abs(stored - Date.now())).toBeLessThan(5 * 60_000);
+      expect(await authenticates(pat.token)).toBe(false);
+    }, 20_000);
+  }
+
   it('a revoked token stays revoked for the service role too', async () => {
     const pat = await mint(owner.id, 'final-service');
     const admin = service();
