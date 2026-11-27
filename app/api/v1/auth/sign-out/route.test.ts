@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { AuthSessionMissingError } from '@supabase/supabase-js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { NextRequest } from 'next/server';
 
@@ -172,6 +173,16 @@ describe('BK-2447 POST /api/v1/auth/sign-out', () => {
       expect(json.revoked_pats).toBeUndefined();
       expect(state.calls).toEqual(['access_tokens:update:revoked_at|select:id', 'logout:global:access-jwt', 'signOut:local']);
     }
+  });
+
+  it('answers 401, never 500, when a concurrent global sign-out already ended this session', async () => {
+    state.revokeBatches = [[], []];
+    state.globalError = new AuthSessionMissingError();
+    const { status, json } = await call('{"revoke_pats": true}');
+    expect(status).toBe(401);
+    expect(json.error?.code).toBe('unauthorized');
+    expect(json.revoked_pats).toBeUndefined();
+    expect(state.calls).toEqual(['access_tokens:update:revoked_at|select:id', 'logout:global:access-jwt', 'signOut:local']);
   });
 
   it('answers 401 when no session can be read for the global sign-out', async () => {
