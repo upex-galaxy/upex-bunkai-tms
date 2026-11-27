@@ -118,6 +118,7 @@ async function ProjectRunsReportSection({ projectSlug }: { projectSlug: string }
         projectId={project.id}
         modules={modules}
         branchSuggestions={branchSuggestions}
+        canUpload
         initialPage={{
           items: payload.items ?? [],
           totals: payload.totals ?? EMPTY_TOTALS,
@@ -137,6 +138,7 @@ async function ProjectRunsReportSection({ projectSlug }: { projectSlug: string }
         projectId={project.id}
         modules={modules}
         branchSuggestions={branchSuggestions}
+        canUpload
         initialPage={{ items: [], totals: EMPTY_TOTALS, next_cursor: null }}
         initialError="Could not load the Run report."
       />
