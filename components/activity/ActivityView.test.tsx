@@ -2,8 +2,7 @@ import type { ActivityItem, ActivityPage } from './ActivityView';
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'bun:test';
 
-// BK-2589: "Load older activity" keeps the reading position. Driven in a DOM
-// with a stubbed fetch, so this is NOT live-UI evidence.
+// happy-dom with a stubbed fetch: proves the focus call, not live-UI scrolling.
 GlobalRegistrator.register();
 afterAll(async () => { await GlobalRegistrator.unregister(); });
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -34,6 +33,7 @@ let root: ReturnType<typeof createRoot>;
 
 beforeEach(() => {
   focusCalls.length = 0;
+  nextPage = { items: [], next_cursor: null };
   globalThis.fetch = (async () => Response.json(nextPage)) as unknown as typeof fetch;
   Object.defineProperty(HTMLElement.prototype, 'focus', {
     ...realFocus,
