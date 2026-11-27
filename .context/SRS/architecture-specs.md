@@ -106,7 +106,7 @@ erDiagram
 
 | Entity | Key columns | Notes |
 |---|---|---|
-| `workspaces` | `id`, `slug`, `name`, `owner_user_id`, `plan` | Tenant root. Plan ∈ {community, cloud, enterprise} (license gate). |
+| `workspaces` | `id`, `slug`, `name`, `owner_user_id`, `plan` | Tenant root. Plan ∈ {community, cloud, enterprise} (license gate). Clients may only rename a workspace they own: `authenticated` holds UPDATE on `name` alone and no INSERT or DELETE; creation, plan, seats and deletion state go through the SECURITY DEFINER functions and the service role (migration `0143`). |
 | `workspace_members` | `workspace_id`, `user_id`, `role`, `status` | RBAC. |
 | `projects` | `id`, `workspace_id`, `slug`, `name` | App-under-test. |
 | `modules` | `id`, `project_id`, `parent_module_id`, `path` (materialized) | Tree. Depth ≤ 6. |
