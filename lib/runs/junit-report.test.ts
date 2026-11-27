@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import {
   decodeReportBytes,
+  JUNIT_MAX_ATTRIBUTES,
+  JUNIT_MAX_ELEMENTS,
   JUNIT_MAX_ENTRIES,
   JUNIT_MESSAGE_MAX,
   JUNIT_TEXT_MAX,
@@ -56,6 +58,25 @@ describe('readJunitReport', () => {
     expect(entries[1].message).toBe('Error: timeout');
     expect(entries[2].message).toBe('Skipped: flaky');
     expect(entries[3].message).toBeNull();
+  });
+
+  it('decodes character references once, so an escaped reference stays literal', () => {
+    const { entries } = readJunitReport(suite('<testcase name="lit &amp;#65; ref &#65; lt &#60;b&#62;"/>'));
+    expect(entries[0].name).toBe('lit &#65; ref A lt <b>');
+  });
+
+  it('cuts long text on whole characters, never inside an emoji', () => {
+    const name = `${'a'.repeat(253)}😀😀😀`;
+    const { entries } = readJunitReport(suite(`<testcase name="${name}"/>`));
+    expect(entries[0].name).toBe(`${'a'.repeat(253)}😀…`);
+    expect(JSON.stringify(entries[0].name)).not.toContain('\\ud83d');
+  });
+
+  it('refuses a report with too many elements or attributes before parsing it', () => {
+    const elements = `<testsuite>${'<x/>'.repeat(JUNIT_MAX_ELEMENTS + 1)}<testcase name="a"/></testsuite>`;
+    expect(rejection(() => readJunitReport(elements))).toBe('report_too_complex');
+    const attributes = `<testsuite><testcase name="a" ${Array.from({ length: JUNIT_MAX_ATTRIBUTES + 1 }, (_, i) => `a${i}="1"`).join(' ')}/></testsuite>`;
+    expect(rejection(() => readJunitReport(attributes))).toBe('report_too_complex');
   });
 
   it('decodes predefined entities and character references, and drops control characters', () => {

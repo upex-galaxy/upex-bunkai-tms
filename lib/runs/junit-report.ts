@@ -7,6 +7,8 @@ export const JUNIT_TEXT_MAX = 255;
 export const JUNIT_MESSAGE_MAX = 2000;
 export const JUNIT_MAX_DEPTH = 64;
 export const JUNIT_DURATION_MAX_SECONDS = 86400;
+export const JUNIT_MAX_ELEMENTS = 50000;
+export const JUNIT_MAX_ATTRIBUTES = 100000;
 
 export type JunitResult = 'pass' | 'fail' | 'block';
 export type JunitOutcome = 'passed' | 'failed' | 'errored' | 'skipped';
@@ -33,7 +35,8 @@ export type JunitRejectReason
     | 'report_not_xml'
     | 'report_not_junit'
     | 'report_no_entries'
-    | 'report_too_many_entries';
+    | 'report_too_many_entries'
+    | 'report_too_complex';
 
 const REJECT_MESSAGES: Record<JunitRejectReason, string> = {
   report_empty: 'The file is empty. Upload a JUnit XML report (.xml), 10 MB at most.',
@@ -43,6 +46,7 @@ const REJECT_MESSAGES: Record<JunitRejectReason, string> = {
   report_not_junit: 'The file is XML but not a JUnit report: its root element must be <testsuites> or <testsuite>.',
   report_no_entries: 'The report contains no <testcase> entries, so there is nothing to map. Export the JUnit XML report from your CI job and retry.',
   report_too_many_entries: `The report has more than ${JUNIT_MAX_ENTRIES} <testcase> entries. Upload a report with at most ${JUNIT_MAX_ENTRIES} entries.`,
+  report_too_complex: `The report has more than ${JUNIT_MAX_ELEMENTS} XML elements or ${JUNIT_MAX_ATTRIBUTES} attributes. Upload a JUnit XML report with at most ${JUNIT_MAX_ENTRIES} entries.`,
 };
 
 export class JunitReportError extends Error {
@@ -91,17 +95,39 @@ export function decodeReportBytes(bytes: Uint8Array): string {
   }
 }
 
-function decodeCharRefs(value: string): string {
-  return value.replace(/&#(x[0-9a-f]{1,6}|\d{1,7});/gi, (ref, code: string) => {
+const LONE_SURROGATES = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
+const SPECIAL_REFS: Record<string, string> = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', '\'': '&apos;' };
+
+function decodeNumericRefs(xml: string): string {
+  return xml.replace(/&#(x[0-9a-f]{1,6}|\d{1,7});/gi, (_match, code: string) => {
     const point = code[0] === 'x' || code[0] === 'X' ? Number.parseInt(code.slice(1), 16) : Number.parseInt(code, 10);
-    const valid = point > 0 && point <= 0x10FFFF && (point < 0xD800 || point > 0xDFFF);
-    return valid ? String.fromCodePoint(point) : ref;
+    if (point === 0x9 || point === 0xA || point === 0xD) {
+      return String.fromCodePoint(point);
+    }
+    if (point < 0x20 || point > 0x10FFFF || (point >= 0xD800 && point <= 0xDFFF)) {
+      return '';
+    }
+    const char = String.fromCodePoint(point);
+    return SPECIAL_REFS[char] ?? char;
   });
 }
 
+function countMatches(text: string, pattern: RegExp, limit: number): number {
+  let count = 0;
+  pattern.lastIndex = 0;
+  while (pattern.exec(text) !== null) {
+    count += 1;
+    if (count > limit) {
+      return count;
+    }
+  }
+  return count;
+}
+
 function clean(value: string, max: number): string {
-  const text = decodeCharRefs(value).replace(CONTROL_CHARS, '').trim();
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+  const chars = Array.from(value.replace(CONTROL_CHARS, '').replace(LONE_SURROGATES, '').trim());
+  return chars.length > max ? `${chars.slice(0, max - 1).join('')}…` : chars.join('');
 }
 
 function tagOf(node: XmlNode): string | null {
@@ -178,10 +204,19 @@ export function readJunitReport(raw: string): JunitReport {
   if (/<!DOCTYPE/i.test(text) || /<!ENTITY/i.test(text)) {
     throw new JunitReportError('report_dtd_forbidden');
   }
+  const decoded = decodeNumericRefs(text);
+  if (countMatches(text, /<[^!?/]/g, JUNIT_MAX_ELEMENTS) > JUNIT_MAX_ELEMENTS
+    || countMatches(text, /\s[\w:.-]+\s*=\s*["']/g, JUNIT_MAX_ATTRIBUTES) > JUNIT_MAX_ATTRIBUTES) {
+    throw new JunitReportError('report_too_complex');
+  }
+  if (countMatches(text, /<(?:[\w.-]+:)?testcase[\s/>]/g, JUNIT_MAX_ENTRIES) > JUNIT_MAX_ENTRIES) {
+    throw new JunitReportError('report_too_many_entries');
+  }
+
   let document: XmlNode[];
   try {
-    validator.validate(text);
-    document = parser.parse(text) as XmlNode[];
+    validator.validate(decoded);
+    document = parser.parse(decoded) as XmlNode[];
   }
   catch {
     throw new JunitReportError('report_not_xml');
