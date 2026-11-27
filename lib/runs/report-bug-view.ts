@@ -1,5 +1,4 @@
 import type { BugSeverity } from '@lib/bugs/constants';
-import { BUG_TITLE_MAX } from '@lib/bugs/constants';
 import { isHttpUrl } from '@lib/utils/url';
 
 // BK-40 Slice 2 — Report-bug view-state logic for the run-linked entry point
@@ -64,7 +63,7 @@ export interface ReportBugPrefill {
 // not a guaranteed rejection. The value is trimmed before it is checked AND
 // seeded, so what got validated is exactly what gets posted.
 export function buildReportBugPrefill({ atcTitle, stepContent, stepEvidenceUrl }: ReportBugPrefillSource): ReportBugPrefill {
-  const title = `${atcTitle} failed`.trim().slice(0, BUG_TITLE_MAX);
+  const title = `${atcTitle} failed`.trim();
   const seededEvidenceUrl = stepEvidenceUrl?.trim() ?? '';
 
   return {

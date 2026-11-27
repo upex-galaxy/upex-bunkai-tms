@@ -45,14 +45,14 @@ describe('buildReportBugPrefill', () => {
     expect(prefill.evidenceUrls).toEqual(['https://example.com/screenshot.png']);
   });
 
-  test('truncates a stub over BUG_TITLE_MAX rather than sending an unfileable title', () => {
+  test('keeps a stub over BUG_TITLE_MAX whole, so the filing form shows the title error instead of a silent cut (BK-2546)', () => {
     const longAtcTitle = 'A'.repeat(250);
     const prefill = buildReportBugPrefill({
       atcTitle: longAtcTitle,
       stepContent: 'step content',
       stepEvidenceUrl: null,
     });
-    expect(prefill.title.length).toBe(200);
+    expect(prefill.title).toBe(`${longAtcTitle} failed`);
   });
 
   test('the " failed" suffix alone clears BUG_TITLE_MIN even for a blank ATC title (never happens in practice, but stays valid if it did)', () => {
