@@ -55,6 +55,7 @@ Counts are the live census in `lib/api/route-capability-coverage.snapshot.json` 
 
 - `POST /api/v1/tokens` — a PAT must not mint a PAT (ADR-0001's deliberate exception)
 - `DELETE /api/v1/tokens/{id}` — nor revoke one
+- `POST /api/v1/auth/sign-out` — a PAT cannot sign itself out (BK-2447)
 - `POST /api/v1/me/active-workspace` — browser UI state
 - `PUT` / `DELETE /api/v1/me/display-name` — identity details (BK-1949)
 - `DELETE /api/v1/workspaces/{id}/membership` — leaving a workspace
@@ -109,7 +110,7 @@ Counts are the live census in `lib/api/route-capability-coverage.snapshot.json` 
       |                          |                          |
 ```
 
-**Notes**: JWT is 1h access + 30d refresh, sliding renewal (NFR §2). Logout server-side-revokes the refresh token. CSRF tokens accompany Supabase Auth flows; subsequent API calls are exempt because the cookie is `SameSite=Lax` and the API has no third-party origin (same domain as the SPA).
+**Notes**: JWT is 1h access + 30d refresh, sliding renewal (NFR §2). The web sign-out buttons call `supabase.auth.signOut()` in the browser, which ends every session of the person (Supabase's default `global` scope). API callers sign out through `POST /api/v1/auth/sign-out` (BK-2447): it ends only the calling session, or with `{"revoke_pats": true}` revokes every active PAT of the caller and ends every session. Either way Supabase Auth deletes the session and its refresh tokens; an access JWT captured before sign-out keeps reaching the Supabase REST API until it expires, while Bunkai routes reject it at once. CSRF tokens accompany Supabase Auth flows; subsequent API calls are exempt because the cookie is `SameSite=Lax` and the API has no third-party origin (same domain as the SPA).
 
 ### 2.3 Auth flow — API operator (CLI / agent / CI, Bearer PAT)
 
@@ -452,6 +453,7 @@ Auth column legend: `Public` (no auth) · `Bearer` (any authenticated caller) ·
 | POST   | `/api/v1/auth/signin`      | Password sign-in (+ mints a default PAT) | (ADR-0007)          | `public`                                           | Supabase session; PAT minted with `DEFAULT_PAT_SCOPES` (never `workspace:admin`)            |
 | POST   | `/api/v1/auth/signup`      | Password sign-up                         | (ADR-0007)          | `public`                                           | Supabase user; email-OTP confirmation required before a session or PAT is minted            |
 | POST   | `/api/v1/auth/confirm`     | Confirm the email OTP                    | (ADR-0007)          | `public`                                           | Confirms the account; session issued                                                        |
+| POST   | `/api/v1/auth/sign-out`    | Sign out, optionally revoking my PATs    | BK-2447             | **`cookie-only`** — a Bearer PAT gets **403**      | Ends the calling session (`local`); with `revoke_pats: true` sets `access_tokens.revoked_at` on the caller's active PATs, then ends every session (`global`). Body `{"revoked_pats": n}` |
 | POST   | `/api/v1/auth/resend`      | Resend the confirmation OTP              | (ADR-0007)          | `public`                                           | Supabase email send; 429 passthrough                                                        |
 | POST   | `/api/v1/auth/magic-link`  | Magic-link rail                          | (ADR-0007)          | `public`                                           | `magic_link_tokens` + `magic_link_token_secrets` rows; email send                           |
 
