@@ -33,6 +33,8 @@ const WRITER_ROLES = new Set(['member', 'admin', 'owner']);
 const MIGRATION = join(import.meta.dir, '../../supabase/migrations/0137_run_ci_context.sql');
 const LATEST_SOURCE: Record<string, string> = {
   bunkai_report_project_runs: join(import.meta.dir, '../../supabase/migrations/0138_project_repository_url.sql'),
+  bunkai_run_json: join(import.meta.dir, '../../supabase/migrations/0141_run_ci_results_upload.sql'),
+  bunkai_submit_automated_run: join(import.meta.dir, '../../supabase/migrations/0141_run_ci_results_upload.sql'),
 };
 const TOUCHED = [
   'bunkai_run_json',

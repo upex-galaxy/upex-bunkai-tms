@@ -79,6 +79,23 @@ const RunSchema = z
     branch: z.string().nullable().describe('BK-1995 — the branch (or tag name) reported with the run; null when none was reported.'),
     pipeline_name: z.string().nullable().describe('BK-1995 — the pipeline name reported with the run; null when none was reported.'),
     pipeline_url: z.string().nullable().describe('BK-1995 — the http(s) link to the pipeline run reported with the run; null when none was reported.'),
+    report: z
+      .object({
+        file_name: z.string().describe('The name of the uploaded CI results file.'),
+        entry_count: z.number().int().describe('How many `testcase` entries the report held (1..1000).'),
+        unmapped_count: z.number().int().describe('How many entries had no matching chain step.'),
+        unmapped: z
+          .array(z.object({
+            index: z.number().int().describe('The entry position in the report, 1-based, in document order.'),
+            name: z.string(),
+            classname: z.string(),
+            result: z.enum(['pass', 'fail', 'block']),
+          }))
+          .describe('Every entry beyond the chain length, kept on the run and linked to no step.'),
+      })
+      .nullable()
+      .optional()
+      .describe('BK-226 — the CI results file the run was created from; null for every run not created by an upload.'),
     test_title: z.string().describe('Snapshot of the Test title at start.'),
     version: z.number().int(),
     started_at: z.string().datetime(),

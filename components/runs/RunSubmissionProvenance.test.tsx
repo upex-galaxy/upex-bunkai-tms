@@ -57,4 +57,30 @@ describe('RunSubmissionProvenance', () => {
     );
     expect(reported).not.toContain('Waiting for first result');
   });
+  it('BK-226: shows the CI report and lists the entries linked to no step as text', () => {
+    const html = renderToStaticMarkup(
+      <RunSubmissionProvenance
+        executorName={null}
+        evidenceUrls={[]}
+        report={{ file_name: 'junit.xml', entry_count: 6, unmapped_count: 2, unmapped: [
+          { index: 5, name: '<b>telemetry</b>', classname: 'extra', result: 'pass' },
+          { index: 6, name: 'cleanup', classname: '', result: 'block' },
+        ] }}
+      />,
+    );
+    expect(html).toContain('CI report');
+    expect(html).toContain('junit.xml');
+    expect(html).toContain(' · 6 entries · 2 not mapped');
+    expect(html).toContain('#5 &lt;b&gt;telemetry&lt;/b&gt; (extra) · pass');
+    expect(html).toContain('#6 cleanup · block');
+    expect(html).not.toContain('<b>telemetry');
+  });
+
+  it('BK-226: a fully mapped report shows the counts without the list', () => {
+    const html = renderToStaticMarkup(
+      <RunSubmissionProvenance executorName={null} evidenceUrls={[]} report={{ file_name: 'junit.xml', entry_count: 1, unmapped_count: 0, unmapped: [] }} />,
+    );
+    expect(html).toContain('1 entry · 0 not mapped');
+    expect(html).not.toContain('runner-ci-report-unmapped');
+  });
 });

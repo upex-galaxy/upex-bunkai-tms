@@ -5,6 +5,7 @@ import type { ReportFilterState, ReportScope } from '@lib/runs/report-view';
 import type { LucideIcon } from 'lucide-react';
 import { BranchChip } from '@components/runs/CiContext';
 import { RunModeBadge } from '@components/runs/RunModeBadge';
+import { UploadCiResultsButton } from '@components/runs/UploadCiResultsButton';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { Input } from '@components/ui/input';
@@ -108,6 +109,7 @@ interface ProjectRunsReportViewProps {
   // Set when the SERVER-side first-page read failed; the client renders the
   // error block with a Retry that re-queries through the API route.
   initialError?: string | null
+  canUpload?: boolean
 }
 
 interface ApiErrorBody {
@@ -188,7 +190,8 @@ async function fetchReport(
   return { ok: true, page: (await response.json()) as RunReportPage };
 }
 
-export function ProjectRunsReportView({ projectId, modules, branchSuggestions = [], initialPage, initialError = null }: ProjectRunsReportViewProps) {
+export function ProjectRunsReportView({ projectId, modules, branchSuggestions = [], initialPage, initialError = null, canUpload = false }: ProjectRunsReportViewProps) {
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [filters, setFilters] = useState<ReportFilterState>(EMPTY_REPORT_FILTERS);
   const [branchDraft, setBranchDraft] = useState('');
   const [items, setItems] = useState<RunReportItem[]>(initialPage.items);
@@ -351,6 +354,11 @@ export function ProjectRunsReportView({ projectId, modules, branchSuggestions = 
   };
 
   const retry = () => {
+    void loadFirstPage(filters, startRequest());
+  };
+
+  const onUploaded = (runId: string) => {
+    setHighlightId(runId);
     void loadFirstPage(filters, startRequest());
   };
 
@@ -571,6 +579,11 @@ export function ProjectRunsReportView({ projectId, modules, branchSuggestions = 
                 Clear filters
               </Button>
             )}
+            {canUpload && (
+              <div className={hasActiveFilters ? undefined : 'ml-auto'}>
+                <UploadCiResultsButton onCreated={onUploaded} />
+              </div>
+            )}
           </div>
 
           {/* Totals — Passed/Failed straight from the API's `totals` object,
@@ -679,7 +692,7 @@ export function ProjectRunsReportView({ projectId, modules, branchSuggestions = 
                       </tr>
                     </thead>
                     <tbody data-testid="report-rows">
-                      {items.map(run => <ReportRow key={run.id} run={run} />)}
+                      {items.map(run => <ReportRow key={run.id} run={run} highlighted={run.id === highlightId} />)}
                     </tbody>
                   </table>
                 </div>
@@ -722,13 +735,14 @@ export function ProjectRunsReportView({ projectId, modules, branchSuggestions = 
   );
 }
 
-function ReportRow({ run }: { run: RunReportItem }) {
+function ReportRow({ run, highlighted = false }: { run: RunReportItem, highlighted?: boolean }) {
   const ExecutorIcon = EXECUTOR_ICON[run.executor_mode] ?? User;
 
   return (
     <tr
       data-testid={`report-row-${run.id}`}
-      className="transition-colors duration-token ease-token hover:bg-surface-3"
+      data-highlighted={highlighted || undefined}
+      className={highlighted ? 'bg-accent-glow transition-colors duration-token ease-token' : 'transition-colors duration-token ease-token hover:bg-surface-3'}
     >
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="font-mono text-xs font-medium text-fg-0" title={run.id}>{run.id.slice(0, 8)}</span>

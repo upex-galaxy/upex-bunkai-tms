@@ -6013,6 +6013,49 @@
             "type": ["string", "null"],
             "description": "BK-1995 — the http(s) link to the pipeline run reported with the run; null when none was reported."
           },
+          "report": {
+            "type": ["object", "null"],
+            "properties": {
+              "file_name": {
+                "type": "string",
+                "description": "The name of the uploaded CI results file."
+              },
+              "entry_count": {
+                "type": "integer",
+                "description": "How many `testcase` entries the report held (1..1000)."
+              },
+              "unmapped_count": {
+                "type": "integer",
+                "description": "How many entries had no matching chain step."
+              },
+              "unmapped": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "index": {
+                      "type": "integer",
+                      "description": "The entry position in the report, 1-based, in document order."
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "classname": {
+                      "type": "string"
+                    },
+                    "result": {
+                      "type": "string",
+                      "enum": ["pass", "fail", "block"]
+                    }
+                  },
+                  "required": ["index", "name", "classname", "result"]
+                },
+                "description": "Every entry beyond the chain length, kept on the run and linked to no step."
+              }
+            },
+            "required": ["file_name", "entry_count", "unmapped_count", "unmapped"],
+            "description": "BK-226 — the CI results file the run was created from; null for every run not created by an upload."
+          },
           "test_title": {
             "type": "string",
             "description": "Snapshot of the Test title at start."
@@ -6787,6 +6830,160 @@
           }
         },
         "required": ["position", "result"]
+      },
+      "RunUploadPreview": {
+        "type": "object",
+        "properties": {
+          "test": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "title"]
+          },
+          "environment": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "entry_count": {
+            "type": "integer"
+          },
+          "step_count": {
+            "type": "integer",
+            "description": "The chain length of the Test."
+          },
+          "mapped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "type": "integer"
+                },
+                "step_title": {
+                  "type": "string"
+                },
+                "entry": {
+                  "$ref": "#/components/schemas/RunUploadPreviewEntry"
+                }
+              },
+              "required": ["position", "step_title", "entry"]
+            },
+            "description": "Entry i on chain step i, for every step an entry reached."
+          },
+          "gaps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "type": "integer"
+                },
+                "step_title": {
+                  "type": "string"
+                }
+              },
+              "required": ["position", "step_title"]
+            },
+            "description": "Chain steps no entry reached; recorded as blocked."
+          },
+          "unmapped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunUploadPreviewEntry"
+            },
+            "description": "Entries beyond the chain length; kept on the run, linked to no step."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["passed", "failed"],
+            "description": "passed only when every chain step passed."
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "passed": {
+                "type": "integer"
+              },
+              "failed": {
+                "type": "integer"
+              },
+              "skipped": {
+                "type": "integer"
+              },
+              "gaps": {
+                "type": "integer"
+              },
+              "unmapped": {
+                "type": "integer"
+              }
+            },
+            "required": ["passed", "failed", "skipped", "gaps", "unmapped"]
+          },
+          "duration_seconds": {
+            "type": "integer"
+          },
+          "requires_acknowledgement": {
+            "type": "boolean",
+            "description": "true when there are unmapped entries: the upload then needs `acknowledge_unmapped=true`."
+          },
+          "fingerprint": {
+            "type": "string",
+            "description": "Pass it as `preview_fingerprint` to the upload so it refuses to record anything else than this preview."
+          }
+        },
+        "required": [
+          "test",
+          "environment",
+          "file_name",
+          "entry_count",
+          "step_count",
+          "mapped",
+          "gaps",
+          "unmapped",
+          "verdict",
+          "totals",
+          "duration_seconds",
+          "requires_acknowledgement",
+          "fingerprint"
+        ]
+      },
+      "RunUploadPreviewEntry": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "Position of the entry in the report, 1-based."
+          },
+          "name": {
+            "type": "string"
+          },
+          "classname": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string",
+            "enum": ["pass", "fail", "block"],
+            "description": "`failure` and `error` are fail, `skipped` is block, anything else is pass."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": ["passed", "failed", "errored", "skipped"]
+          },
+          "message": {
+            "type": ["string", "null"],
+            "description": "The failure, error or skip message, at most 2000 characters; stored as the note of the first step of its chain step."
+          }
+        },
+        "required": ["index", "name", "classname", "result", "outcome", "message"]
       },
       "SearchPageResponse": {
         "type": "object",
@@ -18517,6 +18714,379 @@
           },
           "422": {
             "description": "Validation failed (`validation_failed`: reasons `verdict_invalid`, `step_result_invalid`, `steps_incomplete` with `missing_positions`, `steps_duplicate_position`, `verdict_inconsistent`, `duration_invalid`, `evidence_*`, `idempotency_key_invalid`, and for a CI detail `commit_invalid`, `branch_invalid`, `pipeline_name_invalid` or `pipeline_url_invalid` with `details.field` naming it), `environment_invalid` (names the unknown environment) or `no_executable_steps`. Nothing is recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/uploads/preview": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Preview how a CI results file maps onto a Test",
+        "description": "BK-226. Reads a JUnit XML report and returns the mapping by position (entry i to chain step i) without writing anything. Signed-in session or Bearer token with scope `run:execute`. Report rejections (`validation_failed`, `details.reason`): `report_empty`, `report_not_utf8`, `report_not_gzip`, `report_dtd_forbidden`, `report_not_xml`, `report_not_junit`, `report_no_entries`, `report_too_many_entries`, `report_too_complex`; also `environment_invalid` and `no_executable_steps`.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The Test the report belongs to. A token only reaches Tests of its own workspace (otherwise 404)."
+            },
+            "required": true,
+            "description": "The Test the report belongs to. A token only reaches Tests of its own workspace (otherwise 404).",
+            "name": "test_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60,
+              "description": "The NAME of one of the Test's Project environments (case-insensitive)."
+            },
+            "required": true,
+            "description": "The NAME of one of the Test's Project environments (case-insensitive).",
+            "name": "environment",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "description": "The report's file name, kept on the run. Defaults to `report.xml`."
+            },
+            "required": false,
+            "description": "The report's file name, kept on the run. Defaults to `report.xml`.",
+            "name": "file_name",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "The JUnit XML report itself, 10 MB (10485760 bytes) at most once decompressed, UTF-8. Root `<testsuites>` or `<testsuite>`; every `<testcase>` is one entry, nested suites flattened in document order, at most 1000 entries, 50000 elements and 100000 attributes. A DOCTYPE or entity declaration is refused. The hosting platform refuses request bodies above 4.5 MB, so send a larger report gzip-compressed with `Content-Type: application/gzip`.",
+          "content": {
+            "application/xml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/xml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/gzip": {
+              "schema": {
+                "type": "string",
+                "description": "The same JUnit XML report, gzip-compressed."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The mapping preview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preview": {
+                      "$ref": "#/components/schemas/RunUploadPreview"
+                    }
+                  },
+                  "required": ["preview"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated, or the token is revoked or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `run:execute` scope, a viewer, or a token not bound to a workspace (`token_not_workspace_scoped`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Test does not exist, is not visible, or belongs to another workspace than the token's (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Test is archived (`details.reason: test_archived`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The report is larger than 10 MB, compressed or once decompressed (`file_too_large`). Nothing is read or inflated past the limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The Content-Type is not `application/xml`, `text/xml` or `application/gzip` (`unsupported_media_type`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Nothing to preview. Report rejections (`validation_failed`, `details.reason`): `report_empty`, `report_not_utf8`, `report_not_gzip`, `report_dtd_forbidden`, `report_not_xml`, `report_not_junit`, `report_no_entries`, `report_too_many_entries`, `report_too_complex`; also `environment_invalid` and `no_executable_steps`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/uploads": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Create a finished run from a CI results file",
+        "description": "BK-226. Signed-in session or Bearer token with scope `run:execute`, member role or higher; a read-only project refuses it (`project_read_only`). Maps the JUnit XML report onto the Test's chain by position and creates the run already finished through the same rulebook as POST /runs/submissions, with executor mode `ci`: `failure` and `error` fail the step, `skipped` and uncovered steps are blocked, the verdict is passed only when every step passed, and unmapped entries are kept on the run (`report`). Example: `curl -X POST \"$BUNKAI_URL/api/v1/runs/uploads?test_id=…&environment=Staging&acknowledge_unmapped=true\" -H \"Authorization: Bearer $BUNKAI_TOKEN\" -H \"Content-Type: application/xml\" --data-binary @junit.xml`. Report rejections (`validation_failed`, `details.reason`): `report_empty`, `report_not_utf8`, `report_not_gzip`, `report_dtd_forbidden`, `report_not_xml`, `report_not_junit`, `report_no_entries`, `report_too_many_entries`, `report_too_complex`; also `environment_invalid` and `no_executable_steps`.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The Test the report belongs to. A token only reaches Tests of its own workspace (otherwise 404)."
+            },
+            "required": true,
+            "description": "The Test the report belongs to. A token only reaches Tests of its own workspace (otherwise 404).",
+            "name": "test_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60,
+              "description": "The NAME of one of the Test's Project environments (case-insensitive)."
+            },
+            "required": true,
+            "description": "The NAME of one of the Test's Project environments (case-insensitive).",
+            "name": "environment",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "description": "The report's file name, kept on the run. Defaults to `report.xml`."
+            },
+            "required": false,
+            "description": "The report's file name, kept on the run. Defaults to `report.xml`.",
+            "name": "file_name",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"],
+              "description": "Required as `true` when the report has more entries than the Test has chain steps; the extra entries are recorded as not mapped."
+            },
+            "required": false,
+            "description": "Required as `true` when the report has more entries than the Test has chain steps; the extra entries are recorded as not mapped.",
+            "name": "acknowledge_unmapped",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "description": "Optional domain key, same rules as POST /runs/submissions (ADR-0026): the same key with the same report, Test and environment within 24 hours returns the first run (200); anything different is 409."
+            },
+            "required": false,
+            "description": "Optional domain key, same rules as POST /runs/submissions (ADR-0026): the same key with the same report, Test and environment within 24 hours returns the first run (200); anything different is 409.",
+            "name": "idempotency_key",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64,
+              "description": "The `fingerprint` of the preview the person confirmed. When the Test chain or the report differs, the upload is refused with 409 `preview_stale` and nothing is recorded."
+            },
+            "required": false,
+            "description": "The `fingerprint` of the preview the person confirmed. When the Test chain or the report differs, the upload is refused with 409 `preview_stale` and nothing is recorded.",
+            "name": "preview_fingerprint",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "The JUnit XML report itself, 10 MB (10485760 bytes) at most once decompressed, UTF-8. Root `<testsuites>` or `<testsuite>`; every `<testcase>` is one entry, nested suites flattened in document order, at most 1000 entries, 50000 elements and 100000 attributes. A DOCTYPE or entity declaration is refused. The hosting platform refuses request bodies above 4.5 MB, so send a larger report gzip-compressed with `Content-Type: application/gzip`.",
+          "content": {
+            "application/xml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/xml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/gzip": {
+              "schema": {
+                "type": "string",
+                "description": "The same JUnit XML report, gzip-compressed."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replay: the same `idempotency_key` and report within 24 hours returned the original Run (`replayed: true`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Run recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated, or the token is revoked or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `run:execute` scope, a viewer, or a token not bound to a workspace (`token_not_workspace_scoped`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Test does not exist, is not visible, or belongs to another workspace than the token's (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Test is archived (`test_archived`), the preview is stale (`preview_stale`), or the `idempotency_key` was used with a different report (`idempotency_key_conflict`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The report is larger than 10 MB, compressed or once decompressed (`file_too_large`). Nothing is read or inflated past the limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The Content-Type is not `application/xml`, `text/xml` or `application/gzip` (`unsupported_media_type`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Nothing is recorded. `unmapped_not_acknowledged` lists the entries without a matching step; `project_read_only` for a locked project. Report rejections (`validation_failed`, `details.reason`): `report_empty`, `report_not_utf8`, `report_not_gzip`, `report_dtd_forbidden`, `report_not_xml`, `report_not_junit`, `report_no_entries`, `report_too_many_entries`, `report_too_complex`; also `environment_invalid` and `no_executable_steps`.",
             "content": {
               "application/json": {
                 "schema": {
