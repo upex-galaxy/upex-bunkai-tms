@@ -1620,6 +1620,9 @@ export interface Database {
           id: string
           module_id: string | null
           project_id: string
+          report_entry_count: number | null
+          report_file_name: string | null
+          report_unmapped: Json
           start_token: string
           started_at: string
           status: string
@@ -1646,6 +1649,9 @@ export interface Database {
           id?: string
           module_id?: string | null
           project_id: string
+          report_entry_count?: number | null
+          report_file_name?: string | null
+          report_unmapped?: Json
           start_token: string
           started_at?: string
           status?: string
@@ -1672,6 +1678,9 @@ export interface Database {
           id?: string
           module_id?: string | null
           project_id?: string
+          report_entry_count?: number | null
+          report_file_name?: string | null
+          report_unmapped?: Json
           start_token?: string
           started_at?: string
           status?: string
@@ -3341,6 +3350,9 @@ export interface Database {
           p_environment_name: string
           p_evidence_urls?: string[]
           p_idempotency_key?: string
+          p_report?: Json
+          p_source?: string
+          p_step_notes?: Json
           p_steps: Json
           p_test_id: string
           p_token_id: string

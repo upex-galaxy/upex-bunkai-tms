@@ -527,7 +527,7 @@ export async function createRun(supabase: Client, args: CreateRunArgs) {
 // idempotency key hit an existing Run -> HTTP 200; false = created -> 201).
 export interface SubmitAutomatedRunArgs {
   actorUserId: string
-  tokenId: string
+  tokenId: string | null
   testId: string
   environmentName: string
   verdict: string
@@ -536,12 +536,16 @@ export interface SubmitAutomatedRunArgs {
   evidenceUrls: string[]
   idempotencyKey?: string
   ci?: CiContext
+  upload?: {
+    stepNotes: Record<string, string>
+    report: { file_name: string, entry_count: number, unmapped: { index: number, name: string, classname: string, result: string }[] }
+  }
 }
 
 export async function submitAutomatedRun(supabase: Client, args: SubmitAutomatedRunArgs) {
   return supabase.rpc('bunkai_submit_automated_run', {
     p_actor_user_id: args.actorUserId,
-    p_token_id: args.tokenId,
+    p_token_id: args.tokenId as string,
     p_test_id: args.testId,
     p_environment_name: args.environmentName,
     p_verdict: args.verdict,
@@ -550,6 +554,9 @@ export async function submitAutomatedRun(supabase: Client, args: SubmitAutomated
     p_evidence_urls: args.evidenceUrls,
     p_idempotency_key: args.idempotencyKey,
     ...ciContextArgs(args.ci),
+    ...(args.upload
+      ? { p_source: 'upload', p_step_notes: args.upload.stepNotes, p_report: args.upload.report }
+      : {}),
   });
 }
 
