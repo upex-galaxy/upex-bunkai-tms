@@ -431,6 +431,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
       setPreview(body.preview);
       setAcknowledged(false);
       setCreateError(null);
+      setCiInvalid(null);
       setIdempotencyKey(crypto.randomUUID());
       setStep('map');
     }
@@ -478,6 +479,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
     if (!preview || !file || !payload || busy) { return; }
     setBusy(true);
     setCreateError(null);
+    setCiInvalid(null);
     try {
       const response = await fetch(uploadUrl('/api/v1/runs/uploads', {
         test_id: testId,

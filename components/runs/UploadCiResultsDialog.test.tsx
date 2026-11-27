@@ -300,6 +300,36 @@ describe('UploadCiResultsDialog CI context (BK-2097)', () => {
     expect(new Set(keys).size).toBe(1);
   });
 
+  test('drops the field mark once its message is gone: a new attempt or a new preview (AC9)', async () => {
+    mountDialog();
+    await reachConfirm();
+    type('ci-upload-commit', 'zz!');
+    responses.push({ status: 422, body: { error: { message: 'commit must be a hexadecimal commit reference of 7 to 64 characters.', details: { reason: 'commit_invalid', field: 'commit' } } } });
+    await click('ci-upload-create');
+    expect(id('ci-upload-commit')!.getAttribute('aria-invalid')).toBe('true');
+    globalThis.fetch = (async () => { throw new Error('Network error.'); }) as unknown as typeof fetch;
+    await click('ci-upload-create');
+    expect(id('ci-upload-create-error')?.textContent).toContain('Network error.');
+    expect(id('ci-upload-commit')!.getAttribute('aria-invalid')).toBeNull();
+    expect(id('ci-upload-commit')!.getAttribute('aria-describedby')).toBe('ci-upload-ci-help');
+  });
+
+  test('a new preview clears a mark left by the previous one', async () => {
+    mountDialog();
+    await reachConfirm();
+    type('ci-upload-commit', 'zz!');
+    responses.push({ status: 422, body: { error: { message: 'commit must be a hexadecimal commit reference of 7 to 64 characters.', details: { reason: 'commit_invalid', field: 'commit' } } } });
+    await click('ci-upload-create');
+    await click('ci-upload-back-to-map');
+    await click('ci-upload-back');
+    responses.push({ status: 200, body: { preview: CLEAN_PREVIEW } });
+    await pickFile(xmlFile());
+    await click('ci-upload-continue');
+    expect(value('ci-upload-commit')).toBe('zz!');
+    expect(id('ci-upload-commit')!.getAttribute('aria-invalid')).toBeNull();
+    expect(id('ci-upload-create-error')).toBeNull();
+  });
+
   test('keeps the details after Back and clears them when the dialog closes', async () => {
     mountDialog();
     await reachConfirm();
