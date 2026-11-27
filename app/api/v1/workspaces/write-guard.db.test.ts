@@ -169,6 +169,7 @@ describeOrSkip('BK-2590 workspaces writes from the data API (database)', () => {
     ['deletion_requested_by', () => ({ deletion_requested_by: owner.id })],
     ['slug', () => ({ slug: `${PREFIX}-moved` })],
     ['created_at', () => ({ created_at: new Date(0).toISOString() })],
+    ['id', () => ({ id: crypto.randomUUID() })],
     ['name together with plan', () => ({ name: `${PREFIX} renamed`, plan: 'cloud' })],
   ];
 
@@ -192,6 +193,45 @@ describeOrSkip('BK-2590 workspaces writes from the data API (database)', () => {
     expect(error?.code).toBe('42501');
     const { count } = await service().from('workspaces').select('id', { count: 'exact', head: true }).eq('slug', `${PREFIX}-inserted`);
     expect(count).toBe(0);
+  }, 20_000);
+
+  it('the owner cannot upsert over their own workspace row', async () => {
+    const before = await readWorkspace(workspaceId);
+    const { error } = await owner.db.from('workspaces').upsert({ id: workspaceId, slug: before.slug, name: before.name, owner_user_id: owner.id, plan: 'cloud' }).select('id');
+    expect(error?.code).toBe('42501');
+    expect(await readWorkspace(workspaceId)).toEqual(before);
+  }, 20_000);
+
+  it('an anonymous caller cannot insert or delete a workspace row', async () => {
+    const inserted = await anon().from('workspaces').insert({ slug: `${PREFIX}-anon`, name: `${PREFIX} anon`, owner_user_id: owner.id }).select('id');
+    expect(inserted.error?.code).toBe('42501');
+    const deleted = await anon().from('workspaces').delete().eq('id', workspaceId).select('id');
+    expect(deleted.error?.code).toBe('42501');
+    const { count } = await service().from('workspaces').select('id', { count: 'exact', head: true }).eq('slug', `${PREFIX}-anon`);
+    expect(count).toBe(0);
+    expect((await readWorkspace(workspaceId)).id).toBe(workspaceId);
+  }, 20_000);
+
+  it('the owner cannot rename a workspace that is pending deletion', async () => {
+    const actor = await newActor('pending');
+    const pendingId = await newWorkspace('pending', [{ userId: actor.id, role: 'owner' }]);
+    expect((await service().from('workspaces').update({ deleted_at: new Date().toISOString(), deletion_requested_by: actor.id }).eq('id', pendingId)).error).toBeNull();
+    const before = await readWorkspace(pendingId);
+    const { data, error } = await actor.db.from('workspaces').update({ name: `${PREFIX} pending renamed` }).eq('id', pendingId).select('id');
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+    expect(await readWorkspace(pendingId)).toEqual(before);
+  }, 20_000);
+
+  it('a suspended owner cannot rename the workspace', async () => {
+    const actor = await newActor('suspended');
+    const suspendedId = await newWorkspace('suspended', [{ userId: actor.id, role: 'owner' }]);
+    expect((await service().from('workspace_members').update({ status: 'suspended' }).eq('workspace_id', suspendedId).eq('user_id', actor.id)).error).toBeNull();
+    const before = await readWorkspace(suspendedId);
+    const { data, error } = await actor.db.from('workspaces').update({ name: `${PREFIX} suspended renamed` }).eq('id', suspendedId).select('id');
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+    expect(await readWorkspace(suspendedId)).toEqual(before);
   }, 20_000);
 
   it('the owner cannot delete their own workspace row', async () => {
