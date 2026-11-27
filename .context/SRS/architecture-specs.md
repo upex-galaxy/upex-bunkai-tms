@@ -124,7 +124,7 @@ erDiagram
 | `bugs` | `id`, `project_id`, `module_id`, `atc_id?`, `run_id?`, `title`, `severity`, `status`, `description`, `steps_to_reproduce`, `evidence_urls[]`, `external_id?` | Native defect. |
 | `environments` | `project_id`, `name`, `web_url`, `api_url` | Run targeting. |
 | `integrations` | `project_id`, `kind`, `config` (jsonb), `secrets_ref` | Jira, GitHub, etc. |
-| `access_tokens` | `id`, `user_id`, `workspace_id?`, `name`, `token_prefix`, `scopes`, `expires_at`, `revoked_at`, `last_used_at`, `created_at` | Bearer auth (PAT). Carries **no** secret material: the `hash` column was dropped in migration `0012`. Revocation is `revoked_at` (soft); there is no DELETE policy. |
+| `access_tokens` | `id`, `user_id`, `workspace_id?`, `name`, `token_prefix`, `scopes`, `expires_at`, `revoked_at`, `last_used_at`, `created_at` | Bearer auth (PAT). Carries **no** secret material: the `hash` column was dropped in migration `0012`. Revocation is `revoked_at` (soft). Clients may only revoke their own active token: `authenticated` holds UPDATE on `revoked_at` alone and no INSERT or DELETE, and a trigger makes a revocation final for every role (migration `0142`). |
 | `access_token_secrets` | `token_id`, `hash` | 1:1 sibling of `access_tokens` holding `sha256(secret)`. Migration `0011`. RLS on with **no policies** + all grants revoked from `anon` / `authenticated` / QA roles — `service_role` only. |
 | `magic_link_token_secrets` | `magic_link_token_id`, `token_hash`, `ip_hash` | 1:1 sibling of `magic_link_tokens`. Same isolation contract. Migration `0011`. |
 | `workspace_invite_secrets` | `invite_id`, `token_hash` | 1:1 sibling of `workspace_invites`. Same isolation contract. Migration `0011`. |
