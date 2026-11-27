@@ -34,6 +34,7 @@ void mock.module('@lib/supabase/server', () => ({
 }));
 
 const { POST } = await import('./route');
+const { POST: headlessSignin } = await import('../signin/route');
 const { mintPat } = await import('@lib/api/pat');
 const { resolveIdentity } = await import('@lib/api/principal');
 const { requireBearerToken } = await import('@lib/api/middleware/bearer');
@@ -46,7 +47,7 @@ function service() {
   return createClient(url!, serviceKey!, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-interface Session { jar: Jar, refreshToken: string }
+interface Session { jar: Jar, accessToken: string, refreshToken: string }
 
 async function newUser(label: string): Promise<{ id: string, email: string }> {
   const email = `bk2447-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@bunkai.test`;
@@ -64,7 +65,25 @@ async function signIn(email: string): Promise<Session> {
   if (error || !data.session) {
     throw error ?? new Error('Failed to sign in a BK-2447 test user.');
   }
-  return { jar, refreshToken: data.session.refresh_token };
+  return { jar, accessToken: data.session.access_token, refreshToken: data.session.refresh_token };
+}
+
+async function signInHeadless(email: string): Promise<Jar> {
+  const jar: Jar = new Map();
+  boundJar = jar;
+  const response = await headlessSignin(new NextRequest('http://localhost/api/v1/auth/signin', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-vercel-forwarded-for': `198.51.100.${Math.floor(Math.random() * 250) + 1}` },
+    body: JSON.stringify({ email, password: PASSWORD, pat_name: 'bk2447-headless' }),
+  }));
+  if (response.status !== 200) {
+    throw new Error(`Headless sign-in answered ${response.status}.`);
+  }
+  return jar;
+}
+
+function hasAuthCookie(jar: Jar): boolean {
+  return [...jar.keys()].some(name => name.startsWith('sb-'));
 }
 
 async function send(jar: Jar, opts: { body?: string, bearer?: string } = {}): Promise<Response> {
@@ -100,8 +119,8 @@ async function patAuthenticates(token: string): Promise<boolean> {
   }
 }
 
-async function mint(userId: string, name: string, workspaceId: string | null = null) {
-  return mintPat({ admin: service(), userId, name, scopes: ['atc:read'], workspaceId, expiresInDays: null });
+async function mint(userId: string, name: string) {
+  return mintPat({ admin: service(), userId, name, scopes: ['atc:read'], workspaceId: null, expiresInDays: null });
 }
 
 async function revokedAt(tokenId: string): Promise<string | null> {
@@ -110,12 +129,6 @@ async function revokedAt(tokenId: string): Promise<string | null> {
     throw error ?? new Error('Token row not found.');
   }
   return data.revoked_at;
-}
-
-async function anyWorkspaceIds(): Promise<Array<string | null>> {
-  const { data } = await service().from('workspaces').select('id').limit(2);
-  const ids = (data ?? []).map(row => row.id as string);
-  return [ids[0] ?? null, ids[1] ?? null];
 }
 
 async function json(response: Response): Promise<{ revoked_pats?: number, error?: { code?: string } }> {
@@ -132,17 +145,21 @@ describeOrSkip('BK-2447 POST /api/v1/auth/sign-out (database)', () => {
       await admin.from('access_token_secrets').delete().in('token_id', ids);
       await admin.from('access_tokens').delete().in('id', ids);
     }
+    const failedDeletes: string[] = [];
     for (const id of createdUserIds) {
-      await admin.auth.admin.deleteUser(id);
+      const { error } = await admin.auth.admin.deleteUser(id);
+      if (error) { failedDeletes.push(id); }
     }
     const { count } = await admin.from('access_tokens').select('id', { count: 'exact', head: true }).in('user_id', createdUserIds);
-    console.log(`[bk2447] cleanup: ${createdUserIds.length} users deleted, ${count ?? 'unknown'} tokens left`);
+    console.log(`[bk2447] cleanup: ${createdUserIds.length - failedDeletes.length}/${createdUserIds.length} users deleted, ${count ?? 'unknown'} tokens left`);
+    if (failedDeletes.length > 0 || count !== 0) {
+      throw new Error(`BK-2447 cleanup left ${failedDeletes.length} users and ${count ?? 'unknown'} tokens behind.`);
+    }
   });
 
   it('default sign-out ends only this session, keeps every token, and the same cookie then answers 401', async () => {
     const u1 = await newUser('default');
-    const [wsA, wsB] = await anyWorkspaceIds();
-    const pats = [await mint(u1.id, 'pat-unscoped'), await mint(u1.id, 'pat-wsA', wsA), await mint(u1.id, 'pat-wsB', wsB)];
+    const pats = [await mint(u1.id, 'pat-1'), await mint(u1.id, 'pat-2'), await mint(u1.id, 'pat-3')];
     const s1 = await signIn(u1.email);
     const s1b = await signIn(u1.email);
     const s1Copy = new Map(s1.jar);
@@ -150,6 +167,8 @@ describeOrSkip('BK-2447 POST /api/v1/auth/sign-out (database)', () => {
     const response = await send(s1.jar);
     expect(response.status).toBe(200);
     expect(await json(response)).toEqual({ revoked_pats: 0 });
+    expect(hasAuthCookie(s1Copy)).toBe(true);
+    expect(hasAuthCookie(s1.jar)).toBe(false);
 
     expect(await sessionAlive(s1Copy)).toBe(false);
     expect(await sessionAlive(s1b.jar)).toBe(true);
@@ -163,7 +182,7 @@ describeOrSkip('BK-2447 POST /api/v1/auth/sign-out (database)', () => {
     for (const pat of pats) {
       expect(await revokedAt(pat.id)).toBeNull();
     }
-  }, 60_000);
+  }, 20_000);
 
   it('revoke_pats true revokes only my active tokens, ends every session, and a fresh session reports 0', async () => {
     const u1 = await newUser('revoke');
@@ -183,6 +202,7 @@ describeOrSkip('BK-2447 POST /api/v1/auth/sign-out (database)', () => {
     const response = await send(s1.jar, { body: '{"revoke_pats": true}' });
     expect(response.status).toBe(200);
     expect(await json(response)).toEqual({ revoked_pats: 3 });
+    expect(hasAuthCookie(s1.jar)).toBe(false);
 
     for (const pat of active) {
       expect(await revokedAt(pat.id)).not.toBeNull();
@@ -206,7 +226,12 @@ describeOrSkip('BK-2447 POST /api/v1/auth/sign-out (database)', () => {
     const repeat = await send(s2.jar, { body: '{"revoke_pats": true}' });
     expect(repeat.status).toBe(200);
     expect(await json(repeat)).toEqual({ revoked_pats: 0 });
-  }, 60_000);
+
+    const headless = await signInHeadless(u1.email);
+    const headlessRepeat = await send(headless, { body: '{"revoke_pats": true}' });
+    expect(headlessRepeat.status).toBe(200);
+    expect(await json(headlessRepeat)).toEqual({ revoked_pats: 1 });
+  }, 20_000);
 
   it('a Bearer PAT is 403 with or without a cookie, a bad Bearer next to a cookie is 401, and nothing changes', async () => {
     const u1 = await newUser('bearer');
@@ -230,13 +255,25 @@ describeOrSkip('BK-2447 POST /api/v1/auth/sign-out (database)', () => {
     expect(await revokedAt(pat.id)).toBeNull();
     expect(await patAuthenticates(pat.token)).toBe(true);
     expect(await sessionAlive(s1.jar)).toBe(true);
-  }, 60_000);
+  }, 20_000);
 
   it('no credentials is 401', async () => {
     const response = await send(new Map());
     expect(response.status).toBe(401);
     expect((await json(response)).error?.code).toBe('unauthorized');
-  }, 30_000);
+  }, 20_000);
+
+  it('a session that is no longer valid is 401 and revokes nothing', async () => {
+    const u1 = await newUser('invalid');
+    const pat = await mint(u1.id, 'pat-kept');
+    const s1 = await signIn(u1.email);
+    const { error } = await service().auth.admin.signOut(s1.accessToken, 'local');
+    expect(error).toBeNull();
+
+    const response = await send(s1.jar, { body: '{"revoke_pats": true}' });
+    expect(response.status).toBe(401);
+    expect(await revokedAt(pat.id)).toBeNull();
+  }, 20_000);
 
   it('two simultaneous revoke calls count each token once', async () => {
     const u1 = await newUser('race');
@@ -259,5 +296,7 @@ describeOrSkip('BK-2447 POST /api/v1/auth/sign-out (database)', () => {
     for (const pat of pats) {
       expect(await revokedAt(pat.id)).not.toBeNull();
     }
-  }, 60_000);
+    expect(await sessionAlive(s1.jar)).toBe(false);
+    expect(await sessionAlive(s1b.jar)).toBe(false);
+  }, 20_000);
 });
