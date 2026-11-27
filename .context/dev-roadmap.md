@@ -221,6 +221,7 @@ BK-221 Automation & CI Ingestion:
   BK-223 Stream step results ──> BK-222, BK-88, BK-34, BK-39  ··> BK-35
   BK-226 Upload CI file ──> BK-222, BK-88
   BK-226 ✅ dev-done (2026-11-27) — feat/BK-226-upload-ci-results: POST /api/v1/runs/uploads/preview and /api/v1/runs/uploads (session or run:execute token), JUnit XML reader, migration 0141 (upload source on bunkai_submit_automated_run, runs.report_*), Upload CI results dialog on the project runs view (master-design-plan §5 D82). Unblocks BK-2097.
+  BK-2097 ✅ dev-done (2026-11-27) — feat/BK-2097-upload-ci-context: commit, branch, pipeline_name and pipeline_url as optional query parameters of POST /api/v1/runs/uploads (BK-1995 rules, no migration), a CI context section on the upload dialog's Confirm step (master-design-plan §5 D83). Depends on BK-1995 and BK-226.
   BK-222 ✅ dev-done (2026-11-09) — PR #332 (feat/BK-222-submit-automated-run): POST /api/v1/runs/submissions, migration 0121, ADR-0026. Unblocks BK-223 and BK-226.
   BK-223 ✅ dev-done (2026-11-10) — feat/BK-223-stream-step-results: streaming contract on the live run lifecycle (bearer idempotent step re-report + 409 conflict, executor_name snapshot at start, 60 minute agent/ci inactivity sweep), migration 0122, OpenAPI streaming sequence.
   BK-228 Commit/branch links ──> BK-1995 ✅ unblocked (2026-11-20) — BK-1995 merged via PR #384 (adaa68df), migration 0137_run_ci_context, Ready For QA. BK-228's display/filter scope is pickable now; the upload-modal fields (TS6/D8) stay deferred until BK-226 ships, per the 2026-11-17 grooming.

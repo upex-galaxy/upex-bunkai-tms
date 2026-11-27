@@ -13,7 +13,7 @@ const describeOrSkip = hasEnv ? describe : describe.skip;
 
 void mock.module('server-only', () => ({}));
 const { POST: uploadRoute } = await import('@app/api/v1/runs/uploads/route');
-const { executeUpload, parseUploadQuery } = await import('@lib/runs/ci-upload-service');
+const { executeUpload, parseUploadCiContext, parseUploadQuery } = await import('@lib/runs/ci-upload-service');
 const { mintPat } = await import('@lib/api/pat');
 const { mintUserJwt } = await import('@lib/api/user-jwt');
 
@@ -134,7 +134,8 @@ function query(extra = '') {
 
 async function asSession(userId: string, extra: string, body: Uint8Array) {
   const db = await impersonate(userId);
-  return executeUpload({ userId, workspaceId: null, via: 'cookie', tokenId: null, db: db as never }, query(extra), body);
+  const ci = parseUploadCiContext(new URLSearchParams(extra));
+  return executeUpload({ userId, workspaceId: null, via: 'cookie', tokenId: null, db: db as never }, { ...query(extra), ci }, body);
 }
 
 async function status(run: () => Promise<unknown>): Promise<number> {
@@ -159,6 +160,10 @@ interface RunJson {
   executor_mode: string
   executor_name: string | null
   replayed: boolean
+  commit: string | null
+  branch: string | null
+  pipeline_name: string | null
+  pipeline_url: string | null
   report: { file_name: string, entry_count: number, unmapped_count: number, unmapped: { index: number, name: string }[] } | null
   atcs: { position: number, status: string, steps: { status: string, note: string | null }[] }[]
 }
@@ -333,5 +338,69 @@ describeOrSkip('BK-226 — CI results upload through bunkai_submit_automated_run
     expect((again.body.run as RunJson).id).toBe((first.body.run as RunJson).id);
     expect(await status(async () => asSession(anchor.writerUserId, key, report(cases(2, 2))))).toBe(409);
     expect(await runCount(db)).toBe(count);
+  });
+  it('BK-2097: a session upload stores the CI details it gives and returns them on the run', async () => {
+    if (!ready()) { return; }
+    const extra = `&${new URLSearchParams({ commit: 'A1B2C3D', branch: ' feature/checkout-discounts ', pipeline_name: 'nightly-regression', pipeline_url: 'https://ci.acme.dev/p/42?job=7&attempt=2#log' }).toString()}`;
+    const result = await asSession(anchor.writerUserId, extra, report(cases(2)));
+    expect(result.status).toBe(201);
+    const run = result.body.run as RunJson;
+    expect([run.commit, run.branch, run.pipeline_name, run.pipeline_url]).toEqual(['a1b2c3d', 'feature/checkout-discounts', 'nightly-regression', 'https://ci.acme.dev/p/42?job=7&attempt=2#log']);
+    const plain = await asSession(anchor.writerUserId, '', report(cases(2)));
+    const bare = plain.body.run as RunJson;
+    expect([bare.commit, bare.branch, bare.pipeline_name, bare.pipeline_url]).toEqual([null, null, null, null]);
+  });
+
+  it('BK-2097: the token path stores percent-encoded details and refuses a credentialed pipeline URL before recording', async () => {
+    if (!ready()) { return; }
+    const base = `http://localhost/api/v1/runs/uploads?test_id=${testId}&environment=${encodeURIComponent(anchor.environmentName)}`;
+    const send = async (params: Record<string, string>) => uploadRoute(new NextRequest(`${base}&${new URLSearchParams(params).toString()}`, {
+      method: 'POST',
+      headers: { 'authorization': `Bearer ${ownerToken}`, 'content-type': 'application/xml' },
+      body: reportText(cases(2)),
+    }));
+    const ok = await send({ branch: 'release/v2+hotfix&x=1#é', pipeline_name: 'nightly-regression' });
+    expect(ok.status).toBe(201);
+    const { run } = await ok.json() as { run: RunJson };
+    expect([run.commit, run.branch, run.pipeline_name, run.pipeline_url]).toEqual([null, 'release/v2+hotfix&x=1#é', 'nightly-regression', null]);
+    const before = await runCount(service());
+    const refused = await send({ pipeline_url: 'https://deploy:s3cret@ci.acme.dev/p/42' });
+    expect(refused.status).toBe(422);
+    const body = await refused.json() as { error: { message: string, details: { field: string } } };
+    expect(body.error.details.field).toBe('pipeline_url');
+    expect(body.error.message).not.toContain('s3cret');
+    expect(await runCount(service())).toBe(before);
+  });
+
+  it('BK-2097: a bad detail is refused before the content type and the body are read', async () => {
+    if (!ready()) { return; }
+    const before = await runCount(service());
+    const response = await uploadRoute(new NextRequest(`http://localhost/api/v1/runs/uploads?test_id=${testId}&environment=${encodeURIComponent(anchor.environmentName)}&commit=zz!&branch=`, {
+      method: 'POST',
+      headers: { 'authorization': `Bearer ${ownerToken}`, 'content-type': 'text/plain' },
+      body: 'not a report',
+    }));
+    expect(response.status).toBe(422);
+    const body = await response.json() as { error: { details: { reason: string, field: string } } };
+    expect(body.error.details).toEqual({ reason: 'commit_invalid', field: 'commit' });
+    expect(await runCount(service())).toBe(before);
+  });
+
+  it('BK-2097: under one key the details are written once; other or missing details are a conflict', async () => {
+    if (!ready()) { return; }
+    const db = service();
+    const key = `&idempotency_key=${PREFIX}-ci`;
+    const first = await asSession(anchor.writerUserId, `${key}&branch=feature%2Fcheckout-discounts`, report(cases(2)));
+    expect(first.status).toBe(201);
+    const count = await runCount(db);
+    const same = await asSession(anchor.writerUserId, `${key}&branch=%20feature%2Fcheckout-discounts%20`, report(cases(2)));
+    expect(same.status).toBe(200);
+    expect((same.body.run as RunJson).id).toBe((first.body.run as RunJson).id);
+    expect(await status(async () => asSession(anchor.writerUserId, `${key}&branch=main`, report(cases(2))))).toBe(409);
+    expect(await status(async () => asSession(anchor.writerUserId, key, report(cases(2))))).toBe(409);
+    expect(await status(async () => asSession(anchor.writerUserId, `${key}&branch=feature%2Fcheckout-discounts&commit=a1b2c3d`, report(cases(2))))).toBe(409);
+    expect(await runCount(db)).toBe(count);
+    const { data } = await db.from('runs').select('ci_branch, ci_commit').eq('id', (first.body.run as RunJson).id).single();
+    expect(data).toEqual({ ci_branch: 'feature/checkout-discounts', ci_commit: null });
   });
 });

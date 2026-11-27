@@ -1,7 +1,9 @@
 'use client';
 
+import type { CiContextField } from '@lib/runs/ci-context';
 import type { UploadPreview, UploadPreviewEntry } from '@lib/runs/ci-upload';
 import { Button } from '@components/ui/button';
+import { Input } from '@components/ui/input';
 import { Select } from '@components/ui/select';
 import { cn } from '@lib/utils';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -14,6 +16,26 @@ export const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
 export const UPLOAD_TRANSPORT_MAX_BYTES = 4 * 1024 * 1024;
 
 const SIZE_REJECTION = 'The limit is 10 MB per report. Only JUnit XML (.xml) is accepted. No run was created.';
+export const KEY_CONFLICT_MESSAGE = 'A run was already created from this upload with different CI details. They cannot be changed. Reload the runs view to see it.';
+
+export type CiInput = Record<CiContextField, string>;
+
+const EMPTY_CI_INPUT: CiInput = { commit: '', branch: '', pipeline_name: '', pipeline_url: '' };
+
+const CI_INPUTS: { field: CiContextField, label: string, placeholder: string, mono: boolean, testId: string }[] = [
+  { field: 'commit', label: 'Commit', placeholder: 'a1b2c3d', mono: true, testId: 'ci-upload-commit' },
+  { field: 'branch', label: 'Branch', placeholder: 'feature/checkout-discounts', mono: true, testId: 'ci-upload-branch' },
+  { field: 'pipeline_name', label: 'Pipeline name', placeholder: 'nightly-regression', mono: false, testId: 'ci-upload-pipeline-name' },
+  { field: 'pipeline_url', label: 'Pipeline URL', placeholder: 'https://ci.acme.dev/p/42', mono: true, testId: 'ci-upload-pipeline-url' },
+];
+
+export function ciUploadParams(values: CiInput): Record<string, string> {
+  return Object.fromEntries(CI_INPUTS.filter(({ field }) => values[field].trim() !== '').map(({ field }) => [field, values[field]]));
+}
+
+function asCiField(field: string | undefined): CiContextField | null {
+  return CI_INPUTS.find(input => input.field === field)?.field ?? null;
+}
 
 export interface UploadTestOption {
   id: string
@@ -42,7 +64,7 @@ interface Rejection {
 }
 
 interface ApiErrorBody {
-  error?: { code?: string, message?: string, details?: { reason?: string } }
+  error?: { code?: string, message?: string, details?: { reason?: string, field?: string } }
 }
 
 const STEPS: { id: Step, label: string }[] = [
@@ -302,6 +324,39 @@ function ConfirmStep({ preview, file }: { preview: UploadPreview, file: File }) 
   );
 }
 
+function CiContextSection({ values, invalid, disabled, onChange }: { values: CiInput, invalid: CiContextField | null, disabled: boolean, onChange: (field: CiContextField, value: string) => void }) {
+  return (
+    <section className="flex flex-col gap-3 rounded-2 border border-stroke-2 bg-surface-2 p-4" aria-labelledby="ci-upload-ci-title" data-testid="ci-upload-ci-context">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h3 id="ci-upload-ci-title" className="m-0 text-sm font-semibold text-fg-1">CI context</h3>
+        <span className="text-xs text-fg-3">Optional</span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {CI_INPUTS.map(input => (
+          <div key={input.field} className="flex min-w-0 flex-col gap-1">
+            <label htmlFor={`ci-upload-input-${input.field}`} className="text-2xs font-medium uppercase tracking-[0.06em] text-fg-3">{input.label}</label>
+            <Input
+              id={`ci-upload-input-${input.field}`}
+              data-testid={input.testId}
+              type="text"
+              value={values[input.field]}
+              placeholder={input.placeholder}
+              disabled={disabled}
+              autoComplete="off"
+              spellCheck={false}
+              aria-invalid={invalid === input.field ? true : undefined}
+              aria-describedby={invalid === input.field ? 'ci-upload-create-error' : 'ci-upload-ci-help'}
+              className={cn(input.mono && 'font-mono text-xs', invalid === input.field && 'border-signal-fail hover:border-signal-fail')}
+              onChange={e => onChange(input.field, e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+      <p id="ci-upload-ci-help" className="m-0 text-xs text-fg-3">Saved with the run. They cannot be changed later.</p>
+    </section>
+  );
+}
+
 export function UploadCiResultsDialog({ open, onOpenChange, tests, environments, onCreated }: UploadCiResultsDialogProps) {
   const [step, setStep] = useState<Step>('file');
   const [testId, setTestId] = useState('');
@@ -315,6 +370,8 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [ci, setCi] = useState<CiInput>(EMPTY_CI_INPUT);
+  const [ciInvalid, setCiInvalid] = useState<CiContextField | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const requestRef = useRef<AbortController | null>(null);
 
@@ -328,6 +385,8 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
     setCreateError(null);
     setAcknowledged(false);
     setBusy(false);
+    setCi(EMPTY_CI_INPUT);
+    setCiInvalid(null);
   }, []);
 
   useEffect(() => () => requestRef.current?.abort(), []);
@@ -372,6 +431,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
       setPreview(body.preview);
       setAcknowledged(false);
       setCreateError(null);
+      setCiInvalid(null);
       setIdempotencyKey(crypto.randomUUID());
       setStep('map');
     }
@@ -419,6 +479,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
     if (!preview || !file || !payload || busy) { return; }
     setBusy(true);
     setCreateError(null);
+    setCiInvalid(null);
     try {
       const response = await fetch(uploadUrl('/api/v1/runs/uploads', {
         test_id: testId,
@@ -427,6 +488,7 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
         acknowledge_unmapped: acknowledged ? 'true' : 'false',
         idempotency_key: idempotencyKey,
         preview_fingerprint: preview.fingerprint,
+        ...ciUploadParams(ci),
       }), {
         method: 'POST',
         headers: { 'content-type': 'application/gzip' },
@@ -434,10 +496,10 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
       });
       const body = await response.json().catch(() => ({})) as ApiErrorBody & { run?: { id?: string } };
       if (!response.ok || !body.run?.id) {
-        if (response.status >= 400 && response.status < 500) {
-          setIdempotencyKey(crypto.randomUUID());
-        }
-        setCreateError(body.error?.message ?? 'Could not create the run. Try again: a retry never creates a second run.');
+        setCiInvalid(asCiField(body.error?.details?.field));
+        setCreateError(body.error?.details?.reason === 'idempotency_key_conflict'
+          ? KEY_CONFLICT_MESSAGE
+          : body.error?.message ?? 'Could not create the run. Try again: a retry never creates a second run.');
         setBusy(false);
         return;
       }
@@ -645,9 +707,18 @@ export function UploadCiResultsDialog({ open, onOpenChange, tests, environments,
             {step === 'confirm' && preview && file && (
               <div className="flex flex-col gap-3" data-testid="ci-upload-step-confirm">
                 <ConfirmStep preview={preview} file={file} />
+                <CiContextSection
+                  values={ci}
+                  invalid={ciInvalid}
+                  disabled={busy}
+                  onChange={(field, value) => {
+                    setCi(prev => ({ ...prev, [field]: value }));
+                    if (ciInvalid === field) { setCiInvalid(null); }
+                  }}
+                />
                 <div role="alert" aria-live="assertive">
                   {createError && (
-                    <p data-testid="ci-upload-create-error" className="m-0 rounded-2 border border-signal-fail/30 bg-signal-fail-bg px-3 py-2 text-sm text-fg-1">{createError}</p>
+                    <p id="ci-upload-create-error" data-testid="ci-upload-create-error" className="m-0 rounded-2 border border-signal-fail/30 bg-signal-fail-bg px-3 py-2 text-sm text-fg-1">{createError}</p>
                   )}
                 </div>
               </div>

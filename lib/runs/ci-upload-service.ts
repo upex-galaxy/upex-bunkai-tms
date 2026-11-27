@@ -1,6 +1,8 @@
 import type { Principal } from '@lib/api/principal';
+import type { CiContext } from '@lib/runs/ci-context';
 import type { UploadChainStep, UploadPreview } from '@lib/runs/ci-upload';
 import { ApiError } from '@lib/api/error-envelope';
+import { CI_CONTEXT_FIELDS, parseCiContext } from '@lib/runs/ci-context';
 import { buildUploadPreview, toUploadSubmission } from '@lib/runs/ci-upload';
 import { decodeReportBytes, JUNIT_MAX_BYTES, JunitReportError, readJunitReport } from '@lib/runs/junit-report';
 import { mapSubmissionRpcError } from '@lib/runs/submission-errors';
@@ -16,6 +18,7 @@ export interface UploadQuery {
   acknowledgeUnmapped: boolean
   idempotencyKey?: string
   previewFingerprint?: string
+  ci?: CiContext
 }
 
 export const UPLOAD_ENVIRONMENT_MAX = 60;
@@ -69,6 +72,10 @@ export function parseUploadQuery(params: URLSearchParams): UploadQuery {
     idempotencyKey: key ?? undefined,
     previewFingerprint: fingerprint ?? undefined,
   };
+}
+
+export function parseUploadCiContext(params: URLSearchParams): CiContext {
+  return parseCiContext(Object.fromEntries(CI_CONTEXT_FIELDS.map(field => [field, params.get(field)])));
 }
 
 export function assertXmlContentType(header: string | null): UploadEncoding {
@@ -289,6 +296,7 @@ export async function executeUpload(
     steps: submission.steps,
     evidenceUrls: [],
     idempotencyKey: query.idempotencyKey,
+    ci: query.ci,
     upload: { stepNotes: submission.stepNotes, report: submission.report },
   });
   if (error) {

@@ -6,6 +6,7 @@ import {
   assertXmlContentType,
   executeUpload,
   gunzipCapped,
+  parseUploadCiContext,
   parseUploadQuery,
   previewUpload,
   readCappedBody,
@@ -110,6 +111,72 @@ describe('parseUploadQuery', () => {
     expect((await apiError(() => parseUploadQuery(new URLSearchParams(`test_id=${TEST_ID}`)))).details).toEqual({ reason: 'environment_invalid' });
     expect((await apiError(() => parseUploadQuery(new URLSearchParams(`test_id=${TEST_ID}&environment=s&idempotency_key=${'k'.repeat(65)}`)))).details).toEqual({ reason: 'idempotency_key_invalid' });
     expect((await apiError(() => parseUploadQuery(new URLSearchParams(`test_id=${TEST_ID}&environment=s&preview_fingerprint=abc`)))).details).toEqual({ reason: 'preview_fingerprint_invalid' });
+  });
+});
+
+describe('parseUploadCiContext (BK-2097)', () => {
+  const ci = (params: Record<string, string> | string) => parseUploadCiContext(new URLSearchParams(params));
+  const refusedField = async (params: Record<string, string> | string) => (await apiError(() => ci(params))).details;
+
+  it('reads no detail when none is sent, and the preview query ignores the details', () => {
+    expect(ci(`test_id=${TEST_ID}&environment=s`)).toEqual({ commit: null, branch: null, pipeline_name: null, pipeline_url: null });
+    const plain = `test_id=${TEST_ID}&environment=s`;
+    expect(parseUploadQuery(new URLSearchParams(`${plain}&commit=zz!&branch=`))).toEqual(parseUploadQuery(new URLSearchParams(plain)));
+  });
+
+  it('records any subset, lower-cases the commit, trims and keeps a tag name as the branch', () => {
+    expect(ci({ commit: 'A1B2C3D', branch: ' feature/checkout-discounts ' })).toEqual({ commit: 'a1b2c3d', branch: 'feature/checkout-discounts', pipeline_name: null, pipeline_url: null });
+    expect(ci({ pipeline_name: 'nightly-regression', pipeline_url: 'https://ci.acme.dev/p/42' })).toEqual({ commit: null, branch: null, pipeline_name: 'nightly-regression', pipeline_url: 'https://ci.acme.dev/p/42' });
+    expect(ci({ branch: 'v2.4.0' }).branch).toBe('v2.4.0');
+  });
+
+  it('keeps reserved and accented characters sent percent-encoded (AC14)', () => {
+    const branch = 'release/v2+hotfix&x=1#é';
+    const pipelineUrl = 'https://ci.acme.dev/p/42?job=7&attempt=2#log';
+    expect(ci(new URLSearchParams({ branch, pipeline_url: pipelineUrl }).toString())).toMatchObject({ branch, pipeline_url: pipelineUrl });
+    expect(ci('branch=a+b').branch).toBe('a b');
+  });
+
+  it('counts the first of a repeated parameter, like the other upload parameters', () => {
+    expect(ci('branch=main&branch=develop').branch).toBe('main');
+  });
+
+  it('refuses a present empty or spaces-only value, naming the field (AC4, AC6)', async () => {
+    for (const field of ['commit', 'branch', 'pipeline_name', 'pipeline_url']) {
+      expect(await refusedField(`${field}=`)).toEqual({ reason: `${field}_invalid`, field });
+      expect(await refusedField(`${field}=%20%20`)).toEqual({ reason: `${field}_invalid`, field });
+    }
+  });
+
+  it('refuses bad values with the BK-1995 message that names the field', async () => {
+    const commit = await apiError(() => ci({ commit: 'zz!' }));
+    expect(commit.status).toBe(422);
+    expect(commit.message).toBe('commit must be a hexadecimal commit reference of 7 to 64 characters.');
+    expect(await refusedField({ branch: 'feature/checkout\ndiscounts' })).toEqual({ reason: 'branch_invalid', field: 'branch' });
+    expect(await refusedField({ pipeline_name: 'nightly\u0007' })).toEqual({ reason: 'pipeline_name_invalid', field: 'pipeline_name' });
+    expect(await refusedField({ pipeline_url: 'javascript:alert(1)' })).toEqual({ reason: 'pipeline_url_invalid', field: 'pipeline_url' });
+    expect(await refusedField({ pipeline_url: 'https://deploy:s3cret@ci.acme.dev/p/42' })).toEqual({ reason: 'pipeline_url_invalid', field: 'pipeline_url' });
+  });
+
+  it('reports the first invalid detail in the order commit, branch, pipeline_name, pipeline_url', async () => {
+    expect(await refusedField({ pipeline_url: 'ftp://x', branch: '', commit: 'zz' })).toEqual({ reason: 'commit_invalid', field: 'commit' });
+    expect(await refusedField({ pipeline_url: 'ftp://x', branch: '' })).toEqual({ reason: 'branch_invalid', field: 'branch' });
+  });
+
+  it('enforces each limit at its boundaries (AC5)', async () => {
+    const hex = (n: number) => 'a'.repeat(n);
+    expect(ci({ commit: hex(7) }).commit).toBe(hex(7));
+    expect(ci({ commit: hex(64) }).commit).toBe(hex(64));
+    expect(await refusedField({ commit: hex(6) })).toEqual({ reason: 'commit_invalid', field: 'commit' });
+    expect(await refusedField({ commit: hex(65) })).toEqual({ reason: 'commit_invalid', field: 'commit' });
+    expect(ci({ branch: 'b' }).branch).toBe('b');
+    expect(ci({ branch: 'é'.repeat(255) }).branch).toBe('é'.repeat(255));
+    expect(await refusedField({ branch: 'b'.repeat(256) })).toEqual({ reason: 'branch_invalid', field: 'branch' });
+    expect(ci({ pipeline_name: 'n'.repeat(100) }).pipeline_name).toBe('n'.repeat(100));
+    expect(await refusedField({ pipeline_name: 'n'.repeat(101) })).toEqual({ reason: 'pipeline_name_invalid', field: 'pipeline_name' });
+    const url = (n: number) => `https://ci.acme.dev/${'p'.repeat(n - 'https://ci.acme.dev/'.length)}`;
+    expect(ci({ pipeline_url: url(2048) }).pipeline_url).toBe(url(2048));
+    expect(await refusedField({ pipeline_url: url(2049) })).toEqual({ reason: 'pipeline_url_invalid', field: 'pipeline_url' });
   });
 });
 
@@ -239,6 +306,25 @@ describe('executeUpload', () => {
       p_step_notes: { 2: 'Failure: boom' },
       p_report: { file_name: 'junit.xml', entry_count: 2, unmapped: [] },
     });
+  });
+
+  it('passes the CI details to the submission RPC, and none when the upload carries none (BK-2097)', async () => {
+    const s = state();
+    const body = xml('<testcase name="a"/><testcase name="b"/>');
+    const ciParams = new URLSearchParams({ commit: 'A1B2C3D', branch: 'feature/checkout-discounts', pipeline_name: 'nightly-regression', pipeline_url: 'https://ci.acme.dev/p/42' });
+    await executeUpload(caller(s, 'bearer', WS), { ...query(), ci: parseUploadCiContext(ciParams) }, body);
+    expect(s.rpcCalls[0].args).toMatchObject({
+      p_source: 'upload',
+      p_ci_commit: 'a1b2c3d',
+      p_ci_branch: 'feature/checkout-discounts',
+      p_ci_pipeline_name: 'nightly-regression',
+      p_ci_pipeline_url: 'https://ci.acme.dev/p/42',
+    });
+    await executeUpload(caller(s), { ...query(), ci: parseUploadCiContext(new URLSearchParams()) }, body);
+    await executeUpload(caller(s), query(), body);
+    for (const call of s.rpcCalls.slice(1)) {
+      expect([call.args.p_ci_commit, call.args.p_ci_branch, call.args.p_ci_pipeline_name, call.args.p_ci_pipeline_url]).toEqual([undefined, undefined, undefined, undefined]);
+    }
   });
 
   it('passes the token id on the scripted path (Scenario 1.2)', async () => {
