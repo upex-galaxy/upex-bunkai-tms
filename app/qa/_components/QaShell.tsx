@@ -94,7 +94,7 @@ function CredentialCard({ row, config }: { row: CredentialRow, config: QaConfig 
       <p className="mt-2 text-base text-fg-2"><Rich text={row.purpose} /></p>
       {row.value && (
         <div className="mt-2 flex items-center gap-2 rounded-2 border border-stroke-1 bg-surface-1 py-0.5 pl-2.5 pr-1">
-          <span className="min-w-0 flex-1 truncate font-mono text-sm text-fg-1">{row.value}</span>
+          <span className="min-w-0 flex-1 break-all font-mono text-sm text-fg-1">{row.value}</span>
           <CopyButton code={row.value} />
         </div>
       )}
@@ -106,7 +106,7 @@ function Fact({ label, value, href }: { label: string, value: string, href?: str
   return (
     <div className="flex items-center gap-3 border-b border-stroke-1 py-2 last:border-b-0">
       <dt className="w-20 shrink-0 font-mono text-2xs uppercase tracking-wider text-fg-3">{label}</dt>
-      <dd className="min-w-0 flex-1 truncate font-mono text-sm text-fg-1">
+      <dd className="min-w-0 flex-1 break-all font-mono text-sm text-fg-1">
         {href ? <a href={href} target="_blank" rel="noopener noreferrer" className="hover:text-fg-0 hover:underline">{value}</a> : value}
       </dd>
       <CopyButton code={value} />
@@ -156,7 +156,7 @@ export async function QaShell({ config }: { config: QaConfig }) {
           {h.notes.map(n => (
             <li key={n} className="flex gap-2 text-base text-fg-2">
               <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-fg-3" aria-hidden />
-              <Rich text={n} />
+              <span className="min-w-0"><Rich text={n} /></span>
             </li>
           ))}
         </ul>
@@ -224,7 +224,7 @@ export async function QaShell({ config }: { config: QaConfig }) {
                 {config.prerequisites.map(p => (
                   <li key={p} className="flex gap-2.5 text-md text-fg-1">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-signal-pass" aria-hidden />
-                    <Rich text={p} />
+                    <span className="min-w-0"><Rich text={p} /></span>
                   </li>
                 ))}
               </ul>
