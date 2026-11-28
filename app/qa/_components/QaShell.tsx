@@ -235,11 +235,7 @@ export async function QaShell({ config }: { config: QaConfig }) {
                 {config.credentials.map(row => <CredentialCard key={row.names[0]} row={row} config={config} />)}
               </ul>
               <Callout tone="warn">
-                <p>
-                  Nunca copies un valor de BK-29 fuera de tu
-                  <Code>.env</Code>
-                  : ni en un commit, ni en un chat, ni en una captura. El token de API es personal: no lo compartas.
-                </p>
+                <p><Rich text="Nunca copies un valor de BK-29 fuera de tu `.env`: ni en un commit, ni en un chat, ni en una captura. El token de API es personal: no lo compartas." /></p>
               </Callout>
             </Section>
 
@@ -281,21 +277,18 @@ export async function QaShell({ config }: { config: QaConfig }) {
                       {s.title}
                     </p>
                     <CodeBlock code={s.code} language="bash" />
+                    <p className="flex items-start gap-1.5 text-base text-fg-1">
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal-pass" aria-hidden />
+                      <span>
+                        <span className="font-medium text-signal-pass">Listo si: </span>
+                        {s.done}
+                      </span>
+                    </p>
                   </li>
                 ))}
               </ol>
               <Callout tone="info">
-                <p>
-                  Reemplazá
-                  <Code>{'<WORKSPACE_ID>'}</Code>
-                  {' '}
-                  y
-                  <Code>{'<PAT_ID>'}</Code>
-                  {' '}
-                  con los ids que te devolvieron los pasos 1 y 2. Ningún comando imprime un token: queda en
-                  <Code>.auth/</Code>
-                  , que no se commitea.
-                </p>
+                <p><Rich text="Ningún comando imprime un token: quedan en `.auth/`, que git ignora. Ejecutalos desde la raíz de tu repo de QA." /></p>
               </Callout>
             </Section>
 
@@ -329,16 +322,7 @@ export async function QaShell({ config }: { config: QaConfig }) {
                 rows={reference.dbRoles.map(r => [<Code key="n">{r.name}</Code>, r.access])}
               />
               <Callout tone="warn">
-                <p>
-                  Los dos roles tienen BYPASSRLS: ven los datos de todos los workspaces. Las tablas de secretos están revocadas:
-                  {reference.revokedSecretTables.map((t, i) => (
-                    <span key={t}>
-                      {i > 0 && ', '}
-                      <Code>{t}</Code>
-                    </span>
-                  ))}
-                  .
-                </p>
+                <p><Rich text={`Los dos roles tienen \`BYPASSRLS\`: ven los datos de todos los workspaces. Las tablas de secretos están revocadas: ${reference.revokedSecretTables.map(t => `\`${t}\``).join(', ')}.`} /></p>
                 <p><Rich text={reference.rlsProbe} /></p>
               </Callout>
               <Callout tone="danger">

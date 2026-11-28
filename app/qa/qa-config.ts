@@ -73,7 +73,7 @@ export interface QaConfig {
   harnesses: Harness[]
   adminToken: {
     why: string
-    steps: { title: string, code: string }[]
+    steps: { title: string, code: string, done: string }[]
   }
   troubleshooting: TroubleGroup[]
   reference: {
@@ -104,10 +104,10 @@ export const qaConfig: QaConfig = {
     url: 'https://upexgalaxy74.atlassian.net/browse/BK-29',
   },
   prerequisites: [
-    'Tu repo de QA (generado del boilerplate de QA), con bun install hecho.',
+    'Tu repo de QA (el que trae `.mcp.json`, `dbhub.toml` y `scripts/api-login.ts`), con `bun install` hecho. Si no lo tenés, pedíselo a tu mentor.',
     'Un harness: Claude Code, Codex, OpenCode o Pi.',
     'Un email real que puedas leer: el registro manda un código.',
-    'Acceso a la épica BK-29 en Jira (ahí están los valores de la base).',
+    'Acceso a la épica BK-29 en Jira, donde están los valores de la base. Si Jira te pide login y no entrás, pedí acceso a tu mentor.',
   ],
   credentials: [
     {
@@ -167,12 +167,12 @@ export const qaConfig: QaConfig = {
           'DBHUB_PASSWORD=',
         ),
       },
-      done: 'No quedó ninguna variable vacía.',
+      done: 'Lo comprobás en el paso 3.',
     },
     {
       id: 'chequeo',
       title: 'Chequeá las variables sin imprimir secretos',
-      body: 'varlock muestra cada variable por nombre y enmascara las sensibles. Nunca uses grep sobre `.env` ni `env | grep`: imprimen el password.',
+      body: 'varlock muestra cada variable por nombre y enmascara las sensibles. Si imprime `{}`, esas variables no están en `.env`. Nunca uses grep sobre `.env` ni `env | grep`: imprimen el password.',
       code: {
         language: 'bash',
         code: lines(
@@ -180,12 +180,12 @@ export const qaConfig: QaConfig = {
           'bun run vars:env:check',
         ),
       },
-      done: 'Aparecen los seis `DBHUB_*` y `vars:env:check` no marca nada.',
+      done: 'Aparecen los seis `DBHUB_*` con el password enmascarado y `vars:env:check` no marca errores.',
     },
     {
       id: 'token',
       title: 'Sacá tu token de API y probalo',
-      body: '`api:login:staging` inicia sesión con tu cuenta y guarda el PAT en `.auth/tokens.env`. El MCP de OpenAPI no lleva token: el token es para tus curl.',
+      body: 'Este script es de tu repo de QA, no del de Bunkai. Inicia sesión con tu cuenta y guarda el PAT en `.auth/tokens.env`, que git ignora. El OpenAPI MCP no lleva token: el token es para tus curl.',
       code: {
         language: 'bash',
         code: lines(
@@ -231,7 +231,7 @@ export const qaConfig: QaConfig = {
           'Después llamá GET /api/v1/me con curl y el token de .auth/tokens.env.',
         ),
       },
-      done: 'Lista signin, signup, confirm y el GET /me devuelve 200.',
+      done: 'Lista las rutas de `/api/v1/auth` y el `GET /me` devuelve 200.',
     },
     {
       id: 'ui',
@@ -245,7 +245,7 @@ export const qaConfig: QaConfig = {
           'playwright-cli close',
         ),
       },
-      done: 'El snapshot muestra el campo de email (`data-testid="login-email"`).',
+      done: 'El snapshot muestra la página de login con el campo `Email`.',
     },
   ],
   harnessCommon: 'Los cuatro harness levantan dbhub y openapi con el mismo comando: `bun x -p varlock@1.20.0 varlock run --filter <sus variables> -- <servidor>`. Cada servidor lee `.env` cuando arranca, así que después de cambiar `.env` hay que cerrar y abrir el agente.',
@@ -258,6 +258,7 @@ export const qaConfig: QaConfig = {
       status: '`/mcp` dentro de la sesión, o `claude mcp list` en la terminal',
       reload: 'Salí (`/exit`) y volvé a abrir claude.',
       notes: [
+        'Sano: `/mcp` muestra `dbhub` y `openapi` como connected.',
         'Un servidor del proyecto sin aprobar figura como Pending approval y no se conecta: aprobalo desde `/mcp`.',
       ],
     },
@@ -269,6 +270,7 @@ export const qaConfig: QaConfig = {
       status: '`codex mcp list`',
       reload: 'Cerrá y volvé a abrir codex.',
       notes: [
+        'Sano: `codex mcp list` muestra `dbhub` y `openapi`. Si solo ves servidores globales, la carpeta no es de confianza.',
         'Codex solo carga la config del proyecto si confiás en la carpeta: aceptá el aviso de confianza la primera vez.',
         'Cada servidor tiene `startup_timeout_sec = 30`. La primera descarga de bun x puede tardar; si falla por timeout, reabrí.',
         'Abrilo desde la raíz del repo: ahí resuelve `OPENAPI_SPEC_PATH` si es un archivo.',
@@ -283,6 +285,7 @@ export const qaConfig: QaConfig = {
       reload: 'Cerrá y volvé a abrir opencode.',
       notes: [
         'Los servidores están bajo la clave mcp, con type "local" y el comando como lista.',
+        'Sano: `opencode mcp list` muestra `dbhub` y `openapi`. Si dice No MCP servers configured, no leyó el `opencode.jsonc` del repo.',
         'Abrilo desde la raíz del repo para que encuentre `opencode.jsonc` y `.env`.',
       ],
     },
@@ -294,6 +297,7 @@ export const qaConfig: QaConfig = {
       status: '`pi mcp list` (sale con código 1 si un servidor falla)',
       reload: '`/reload` dentro de la sesión.',
       notes: [
+        'Sano: `pi mcp list` muestra los dos servidores sin error.',
         'Pi solo lee `.pi/mcp.json` en un proyecto de confianza: corré `/trust` y después `/reload`.',
         'Los servidores son deferred: el agente los encuentra con su búsqueda de tools, no aparecen todos de entrada.',
       ],
@@ -308,28 +312,35 @@ export const qaConfig: QaConfig = {
           'mkdir -p .auth',
           `bunx varlock run --filter STAGING_USER_EMAIL,STAGING_USER_PASSWORD -- sh -c 'curl -s -c .auth/bunkai-cookie.txt -H "Content-Type: application/json" -d "{\\"email\\":\\"$STAGING_USER_EMAIL\\",\\"password\\":\\"$STAGING_USER_PASSWORD\\",\\"pat_name\\":\\"cookie-bridge\\",\\"pat_scopes\\":[\\"atc:read\\"],\\"pat_expires_in_days\\":1}" ${WEB}/api/v1/auth/signin | jq "{pat_id: .pat.id}"'`,
         ),
+        done: 'Imprime {"pat_id": "..."}: anotá ese id, es tu <PAT_ID>.',
       },
       {
         title: 'Elegí el workspace',
         code: `curl -s -b .auth/bunkai-cookie.txt ${WEB}/api/v1/workspaces | jq '.workspaces[] | {id, name, role}'`,
+        done: 'Ves tus workspaces con su rol. Copiá el id de uno donde seas owner o admin: es tu <WORKSPACE_ID>.',
       },
       {
-        title: 'Emití el PAT de ese workspace y guardalo sin imprimirlo',
+        title: 'Emití el PAT de ese workspace y guardalo sin imprimirlo (<WORKSPACE_ID> va en los dos lugares)',
         code: lines(
           'curl -s -b .auth/bunkai-cookie.txt -H "Content-Type: application/json" \\',
           '  -d \'{"name":"qa-ws-admin","scopes":["atc:read","atc:write","run:execute","workspace:admin"],"workspace_id":"<WORKSPACE_ID>","expires_in_days":7}\' \\',
-          `  ${WEB}/api/v1/tokens | jq -r '"export API_TOKEN_WSADMIN_STAGING=" + .token' > .auth/ws-admin.env`,
+          `  ${WEB}/api/v1/tokens | jq -r '"export API_TOKEN_WSADMIN_STAGING=" + .token, "export API_TOKEN_WSADMIN_ID=" + .id' > .auth/ws-admin.env`,
           'source .auth/ws-admin.env && curl -s -H "Authorization: Bearer $API_TOKEN_WSADMIN_STAGING" \\',
           `  ${WEB}/api/v1/workspaces/<WORKSPACE_ID> | jq '.workspace.name'`,
         ),
+        done: 'Imprime el nombre del workspace. El token queda en .auth/ws-admin.env.',
       },
       {
-        title: 'Limpieza: revocá el PAT del paso 1, cerrá la sesión y borrá la cookie',
+        title: 'Cuando termines: revocá los dos PAT, cerrá la sesión y borrá los archivos',
         code: lines(
-          `curl -s -o /dev/null -w '%{http_code}\\n' -b .auth/bunkai-cookie.txt -X DELETE ${WEB}/api/v1/tokens/<PAT_ID>`,
+          'source .auth/ws-admin.env',
+          'for id in <PAT_ID> "$API_TOKEN_WSADMIN_ID"; do',
+          `  curl -s -o /dev/null -w '%{http_code}\\n' -b .auth/bunkai-cookie.txt -X DELETE ${WEB}/api/v1/tokens/$id`,
+          'done',
           `curl -s -o /dev/null -w '%{http_code}\\n' -b .auth/bunkai-cookie.txt -X POST ${WEB}/api/v1/auth/sign-out`,
-          'rm .auth/bunkai-cookie.txt',
+          'rm .auth/bunkai-cookie.txt .auth/ws-admin.env',
         ),
+        done: 'Imprime 204, 204 y 200. Si un DELETE da 401, la cookie venció: repetí el paso 1 y volvé a revocar.',
       },
     ],
   },
@@ -350,7 +361,7 @@ export const qaConfig: QaConfig = {
           fix: 'Abrí `/mcp` y aprobalo.',
         },
         {
-          symptom: 'Codex no carga ningún MCP del proyecto',
+          symptom: 'codex mcp list no muestra dbhub ni openapi',
           cause: 'La carpeta no está marcada como confiable.',
           fix: 'Reabrí codex desde la raíz del repo, aceptá la confianza y revisá con `codex mcp list`.',
         },
@@ -360,7 +371,7 @@ export const qaConfig: QaConfig = {
           fix: 'Corré `/trust` y `/reload`, y revisá con `pi mcp list`.',
         },
         {
-          symptom: 'OpenCode no muestra los servidores',
+          symptom: 'opencode mcp list dice No MCP servers configured',
           cause: 'Se abrió desde otra carpeta y no encontró `opencode.jsonc`.',
           fix: 'Abrí opencode desde la raíz del repo y revisá con `opencode mcp list`.',
         },
@@ -410,7 +421,7 @@ export const qaConfig: QaConfig = {
         {
           symptom: 'ECONNRESET, Connection terminated o timeout al conectar',
           cause: 'Tu red corta el puerto 5432 (pasa seguido desde Windows y redes corporativas).',
-          fix: 'Cambiá a `DBHUB_PORT=6543` (transaction pooler de Supabase, mismo host y usuario) y reabrí el agente.',
+          fix: 'Cambiá a `DBHUB_PORT=6543` (transaction pooler de Supabase, mismo host y usuario) y reabrí el agente. Si el 6543 también corta, probá sin VPN o desde otra red.',
         },
         {
           // eslint-disable-next-line no-template-curly-in-string -- the literal placeholder is the error text a tester sees
