@@ -14,7 +14,6 @@ import 'server-only';
 // failed (missing header vs malformed shape vs unknown prefix vs hash mismatch
 // vs revoked vs expired). Standard auth-style uniform 401.
 
-const BEARER_PREFIX = 'Bearer ';
 const TOKEN_FAMILY_PREFIX = 'bk_pat_';
 const TOKEN_PREFIX_LENGTH = 12;
 
@@ -25,13 +24,19 @@ export interface BearerContext {
   tokenId: string
 }
 
+// Fetch strips the trailing space of an empty Bearer header, so the bare scheme must still count as a Bearer attempt.
+export function bearerCredentials(header: string | null): string | null {
+  const value = header?.trim() ?? '';
+  const scheme = value.split(/\s/, 1)[0] ?? '';
+  return scheme.toLowerCase() === 'bearer' ? value.slice(scheme.length).trim() : null;
+}
+
 export async function requireBearerToken(request: Request): Promise<BearerContext> {
-  const header = request.headers.get('authorization') ?? request.headers.get('Authorization');
-  if (!header || !header.startsWith(BEARER_PREFIX)) {
+  const raw = bearerCredentials(request.headers.get('authorization'));
+  if (!raw) {
     throw new ApiError('unauthorized', 'Missing or invalid Authorization header.');
   }
 
-  const raw = header.slice(BEARER_PREFIX.length).trim();
   if (!raw.startsWith(TOKEN_FAMILY_PREFIX)) {
     throw new ApiError('unauthorized', 'Invalid token.');
   }
