@@ -21,16 +21,16 @@ const byTestId = (testId: string) => document.querySelector<HTMLElement>(`[data-
 
 export function itFocusesTheFootWithoutScrolling({ render, lastPage, loadTestId, footTestId, rowsTestId, rowCount }: LastPageFocusCase) {
   const focusCalls: FocusCall[] = [];
-  let realFocus: PropertyDescriptor;
-  let realFetch: typeof fetch;
+  const realFocus = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'focus')!;
+  const realFetch = globalThis.fetch;
+  let nextPage: unknown = lastPage;
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(() => {
     focusCalls.length = 0;
-    realFetch = globalThis.fetch;
-    globalThis.fetch = (async () => Response.json(lastPage)) as unknown as typeof fetch;
-    realFocus = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'focus')!;
+    nextPage = lastPage;
+    globalThis.fetch = (async () => Response.json(nextPage)) as unknown as typeof fetch;
     Object.defineProperty(HTMLElement.prototype, 'focus', {
       ...realFocus,
       value(this: HTMLElement, options?: FocusOptions) {
@@ -61,5 +61,18 @@ export function itFocusesTheFootWithoutScrolling({ render, lastPage, loadTestId,
     expect(byTestId(loadTestId)).toBeNull();
     expect(document.activeElement).toBe(byTestId(footTestId));
     expect(focusCalls).toEqual([{ testId: footTestId, options: { preventScroll: true } }]);
+  });
+
+  it('does not move focus while older pages remain', async () => {
+    nextPage = { ...(lastPage as object), next_cursor: 'cursor-2' };
+    act(() => root.render(render()));
+
+    await act(async () => {
+      byTestId(loadTestId)!.click();
+    });
+
+    expect(byTestId(rowsTestId)!.querySelectorAll(':scope > tr').length).toBe(rowCount);
+    expect(byTestId(loadTestId)).not.toBeNull();
+    expect(focusCalls).toEqual([]);
   });
 }
