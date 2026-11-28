@@ -142,7 +142,7 @@ export const qaConfig: QaConfig = {
     {
       id: 'cuenta',
       title: 'Creá tu usuario en staging',
-      body: 'Entrá a `/login`, escribí tu email y elegí crear contraseña. Te llega un código de 6 a 8 dígitos: pegalo. La primera vez la app te lleva a `/onboarding`, donde creás tu workspace y quedás como owner. Cada tester usa su propia cuenta.',
+      body: 'En `/login` escribí tu email y tocá Continue. Si la cuenta no existe, aparece Create a password: elegí una de 8 caracteres o más. Te llega un código de 6 a 8 dígitos para el campo Verification code; si venció o no llegó, tocá Request a new code y usá el último. La primera vez la app te lleva a `/onboarding`, donde creás tu workspace y quedás como owner. Cada tester usa su propia cuenta.',
       done: 'Ves tu workspace en la app.',
     },
     {
@@ -180,12 +180,12 @@ export const qaConfig: QaConfig = {
           'bun run vars:env:check',
         ),
       },
-      done: 'Aparecen los seis `DBHUB_*` con el password enmascarado y `vars:env:check` termina sin errores (su lista INFO es normal).',
+      done: 'Aparecen los seis `DBHUB_*` con el password enmascarado (si sale `{}`, faltan en `.env`) y `vars:env:check` termina sin errores (su lista INFO es normal).',
     },
     {
       id: 'token',
       title: 'Sacá tu token de API y probalo',
-      body: 'Este script es de tu repo de QA, no del de Bunkai. Inicia sesión con tu cuenta y guarda el PAT en `.auth/tokens.env`, que git ignora. El OpenAPI MCP no lleva token: el token es para tus curl.',
+      body: 'Este script es de tu repo de QA, no del de Bunkai. Inicia sesión con tu cuenta y guarda el PAT en `.auth/tokens.env`, que git ignora. El OpenAPI MCP no lleva token: el token es para tus curl. Si tu repo no tiene el script, los pasos 1 a 3 de la sección 05 te dan un token igual (y el 4 lo revoca).',
       code: {
         language: 'bash',
         code: lines(
@@ -488,7 +488,7 @@ export const qaConfig: QaConfig = {
         {
           symptom: 'Tu repo no tiene el script api:login:staging',
           cause: 'El repo no es el de QA o quedó viejo.',
-          fix: 'Actualizalo con `bun sync`. Mientras tanto, los pasos 1 y 4 de la sección 05 te dan una sesión y un token sin ese script.',
+          fix: 'Actualizalo con `bun sync`. Mientras tanto, los pasos 1 a 3 de la sección 05 te dan una sesión y un token sin ese script, y el paso 4 lo revoca.',
         },
         {
           symptom: 'El registro devuelve 422',
