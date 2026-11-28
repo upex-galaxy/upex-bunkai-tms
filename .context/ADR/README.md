@@ -87,6 +87,7 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0026](./ADR-0026-automated-run-submission-idempotency.md) | Automated run submission: optional body field `idempotency_key` (1..64, per workspace, 24h) as a domain key inside the RPC, instead of the ADR-0002 header; narrows ADR-0002 for this endpoint | Accepted | — | — |
 | [ADR-0027](./ADR-0027-atc-bulk-edit-semantics.md) | ATC bulk edit: one batch RPC with per-ATC outcomes, tags add or remove, partial success is normal, no-op before stale; amends ADR-0009 decision 3 for the bulk path | Proposed | ADR-0009 (decision 3, bulk path only) | — |
 | [ADR-0028](./ADR-0028-over-limit-projects-read-only.md) | Over-limit projects are read-only: a derived list (oldest first beyond the effective plan limit) and a DEFINER trigger refusing INSERT/UPDATE with 45701 `project_read_only`; DELETE never guarded | Proposed | — | — |
+| [ADR-0029](./ADR-0029-bug-bulk-edit-semantics.md) | Bug bulk edit: one batch function, one field per request (status or severity), the single-Bug lifecycle and staleness rules per Bug, the single-Bug events plus `bulk: true`, partial success is normal | Proposed | — | — |
 
 > ADR-0016 is taken by other in-flight work not yet present in this branch — confirmed by the Conductor 2026-08-28/30. BK-214 took the next free number, 0017.
 
