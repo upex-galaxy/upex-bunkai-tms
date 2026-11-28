@@ -3,22 +3,7 @@
 import { cn } from '@lib/utils';
 import { Check, Link2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-export interface QaSection {
-  id: string
-  label: string
-}
-
-// Section anchors + TOC labels (es). Order is canonical §1–§7.
-export const qaSections: QaSection[] = [
-  { id: 'credenciales', label: 'Credenciales' },
-  { id: 'arquitectura', label: 'Arquitectura' },
-  { id: 'trifuerza', label: 'La Trifuerza + Env' },
-  { id: 'db', label: 'DB testing' },
-  { id: 'api', label: 'API testing' },
-  { id: 'ui', label: 'UI testing' },
-  { id: 'referencia', label: 'Referencia rápida' },
-];
+import { qaSections } from '../_lib/sections';
 
 export function Toc({ className }: { className?: string }) {
   const [active, setActive] = useState<string>(qaSections[0].id);
@@ -67,8 +52,7 @@ export function Toc({ className }: { className?: string }) {
               )}
             >
               <span className="mr-1.5 font-mono text-xs text-fg-4">
-                §
-                {i + 1}
+                {String(i + 1).padStart(2, '0')}
               </span>
               {s.label}
             </a>

@@ -1,59 +1,3 @@
-// app/qa/qa-config.ts — the detection → render bridge.
-//
-// Every value here is produced by /testability-guide Phase-1 detection. The
-// page and its _components read ONLY from this object: grep page.tsx and
-// _components/ for a literal host / endpoint / project-ref → must be zero.
-//
-// The ONLY literals allowed in this file are the docs route, the spec route,
-// and the credentials-source URL. The DB host / user / project-ref are
-// referenced by their `.env` slot NAME (DBHUB_HOST, DBHUB_USER, …) — never the
-// literal pooler host or project ref. `null` ⇒ the UI renders an explicit
-// "preguntá a tu lead" gap, never a fabricated default.
-
-export type AgentKey = 'claude' | 'opencode' | 'codex' | 'gemini';
-
-export interface AuthMethod {
-  id: string
-  label: string
-  snippet: string
-}
-
-export interface ApiEndpoint {
-  method: string
-  path: string
-  purpose: string
-}
-
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
-
-export interface RequestHeader {
-  key: string
-  value: string
-}
-
-// Structured, Postman-style description of a single API request. Mirrors the
-// raw curl snippets — no new endpoints, only placeholders (never a literal
-// host/secret). `body`/`response` are JSON strings (highlighted server-side);
-// `curl` is the equivalent shell command.
-export interface ApiRequest {
-  id: string
-  label: string
-  method: HttpMethod
-  url: string
-  description?: string
-  headers: RequestHeader[]
-  body: string | null
-  response: string | null
-  curl: string
-}
-
-export interface DbRole {
-  name: string
-  access: string
-}
-
-// Public CA certificate for verifying the database's TLS (BK-49). Every field
-// is plain text: the file itself lives in public/qa and carries no secret.
 export interface DbTlsCa {
   fileName: string
   href: string
@@ -61,749 +5,558 @@ export interface DbTlsCa {
   validUntil: string
   sha256: string
   purpose: string
-  verified: string
   nodeEnv: string
   pgClient: string
   lastResort: string
-  access: string
+}
+
+export type CredentialSource = 'bk29' | 'own' | 'public' | 'generated';
+
+export interface CredentialRow {
+  names: string[]
+  purpose: string
+  source: CredentialSource
+  value?: string
+}
+
+export interface CodeSnippet {
+  code: string
+  language: 'bash' | 'json' | 'jsonc' | 'toml' | 'typescript'
+  title?: string
+}
+
+export interface QaStep {
+  id: string
+  title: string
+  body: string
+  code?: CodeSnippet
+  done: string
+}
+
+export interface Harness {
+  id: 'claude' | 'codex' | 'opencode' | 'pi'
+  label: string
+  file: string
+  open: string
+  status: string
+  reload: string
+  notes: string[]
+}
+
+export interface Trouble {
+  symptom: string
+  cause: string
+  fix: string
+  code?: string
+}
+
+export interface TroubleGroup {
+  id: string
+  title: string
+  items: Trouble[]
 }
 
 export interface QaConfig {
-  lang: 'es' | 'en'
-  project: {
-    name: string
-    reposShape: 'mono' | 'poly'
-    backendRepo: string | null
-    frontendRepo: string | null
+  lang: 'es'
+  urls: {
+    web: string
+    api: string
+    spec: string
+    docs: string
+    login: string
   }
-  stack: {
-    framework: string
-    ui: string
-    db: string
-    orm: string | null
-    auth: string[]
+  credentialsSource: { label: string, url: string }
+  prerequisites: string[]
+  credentials: CredentialRow[]
+  steps: QaStep[]
+  harnessCommon: string
+  harnesses: Harness[]
+  adminToken: {
+    why: string
+    steps: { title: string, code: string, done: string }[]
   }
-  credentialsSource: { label: string, url: string } | null
-  docs: {
-    ui: 'scalar' | 'redoc' | 'swagger' | null
-    route: string | null
-    specUrl: string | null
-  }
-  api: {
-    baseUrl: string | null
-    loginEndpoint: string | null
-    tokenShape: string | null
-    loginHelper: string | null
-    authMethods: AuthMethod[]
-    // Headless onboarding (verification-first, BK-166). signup creates an
-    // unconfirmed account (NO session, NO PAT) and triggers an email OTP;
-    // confirm verifies the code and mints the session + PAT. signin reuses an
-    // existing email+password account and mints a fresh PAT.
-    signupEndpoint: string | null
-    signinEndpoint: string | null
-    // Hybrid path: reuse a browser cookie session to mint a PAT via the API.
-    tokensEndpoint: string | null
-    cookieMintSnippet: string | null
-    patScopes: { scope: string, purpose: string }[]
-    endpoints: ApiEndpoint[]
-    // Postman-style structured view of the auth requests (restructure of the
-    // curl snippets above — same info, no new endpoints, placeholders only).
-    apiRequests: ApiRequest[]
-  }
-  db: {
-    engine: 'postgres' | 'sqlserver' | 'mysql' | 'sqlite' | 'mariadb'
-    tomlPath: string
-    uriScheme: string
-    // Teaching snippets for the DBHub `[[sources]]` block vs a raw SQL-extension
-    // URI (placeholders only — every value is a .env slot NAME, never a literal).
-    tomlBlock: string
-    uriBlock: string
-    // QA roles + isolation invariant — all referenced by .env slot name only.
-    roles: DbRole[]
+  troubleshooting: TroubleGroup[]
+  reference: {
+    dbRoles: { name: string, access: string }[]
     revokedSecretTables: string[]
-    poolerNote: string
-    // Public CA that signs the database's TLS certificate (BK-49 Stage 5: Node
-    // clients fail with SELF_SIGNED_CERT_IN_CHAIN without it). Not a secret.
-    tlsCa: DbTlsCa
-    rpcAccess: string
+    scopes: { name: string, onSignin: boolean, note: string }[]
+    authEndpoints: { method: string, path: string, auth: string, purpose: string }[]
     rlsProbe: string
+    rpcAccess: string
   }
-  mcp: {
-    agents: AgentKey[]
-    dbhub: Record<string, string>
-    openapi: Record<string, string>
-    postman: Record<string, string>
-  }
-  env: {
-    strategy: 'expansion' | 'literal'
-    activation: ('mcp-loader' | 'varlock-run' | 'auto')[]
-    slots: string[]
-  }
-  demoUsers: { email: string, note: string }[]
-  // §6 Playwright fixtures (scripted regression + hybrid UI→API bridge).
-  playwright: {
-    loginTestIds: { id: string, purpose: string }[]
-    scriptedFixture: string
-    hybridBridge: string
-    cliExample: string
-    agenticPrompts: string[]
-  }
+  db: { tlsCa: DbTlsCa }
 }
 
-// ---------------------------------------------------------------------------
-// MCP config blocks. dbhub mirrors the committed .mcp.json (Claude) and
-// opencode.jsonc (OpenCode); openapi and postman are OPT-IN examples for QA
-// engineers, the repo does not declare them (no env contract in .env.example).
-// No secrets: every placeholder expands from .env at MCP spawn time. Claude
-// uses ${VAR}; OpenCode uses {env:VAR}.
-// ---------------------------------------------------------------------------
-
-const dbhubClaude = `// Claude Code → .mcp.json   (el loader del .env le pasa solo las vars DBHUB_*)
-"dbhub": {
-  "command": "bunx",
-  "args": [
-    "-p", "varlock@1.20.0", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
-    "--filter", "DBHUB_TYPE,DBHUB_HOST,DBHUB_PORT,DBHUB_DATABASE,DBHUB_USER,DBHUB_PASSWORD",
-    "--", "bunx", "-y", "@bytebase/dbhub@1.2.3", "--config", "dbhub.toml"
-  ]
-}`;
-
-const dbhubOpencode = `// OpenCode → opencode.jsonc   (el loader del .env le pasa solo las vars DBHUB_*)
-"dbhub": {
-  "type": "local",
-  "command": [
-    "bunx", "-p", "varlock@1.20.0", "varlock", "run", "--no-redact-stdout", "--inject", "vars",
-    "--filter", "DBHUB_TYPE,DBHUB_HOST,DBHUB_PORT,DBHUB_DATABASE,DBHUB_USER,DBHUB_PASSWORD",
-    "--", "bunx", "-y", "@bytebase/dbhub@1.2.3", "--config", "dbhub.toml"
-  ],
-  "enabled": true
-}`;
-
-const openapiClaude = `// Claude Code → .mcp.json   (--tools dynamic es OBLIGATORIO; sin él da 400)
-"openapi": {
-  "command": "bunx",
-  "args": ["-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-  "env": {
-    "API_BASE_URL": "\${API_BASE_URL}",
-    "OPENAPI_SPEC_PATH": "\${OPENAPI_SPEC_PATH}",
-    "API_HEADERS": "Authorization:Bearer \${API_TOKEN}"
-  }
-}`;
-
-const openapiOpencode = `// OpenCode → opencode.jsonc   (env key = "environment", sintaxis {env:VAR})
-"openapi": {
-  "type": "local",
-  "command": ["bunx", "-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-  "environment": {
-    "API_BASE_URL": "{env:API_BASE_URL}",
-    "OPENAPI_SPEC_PATH": "{env:OPENAPI_SPEC_PATH}",
-    "API_HEADERS": "Authorization:Bearer {env:API_TOKEN}"
-  },
-  "enabled": true
-}`;
-
-const postmanClaude = `// Claude Code → .mcp.json
-"postman": {
-  "type": "http",
-  "url": "https://mcp.postman.com/mcp",
-  "headers": { "Authorization": "Bearer \${POSTMAN_API_KEY}" }
-}`;
-
-const postmanOpencode = `// OpenCode → opencode.jsonc
-"postman": {
-  "type": "remote",
-  "url": "https://mcp.postman.com/mcp",
-  "headers": { "Authorization": "Bearer {env:POSTMAN_API_KEY}" },
-  "enabled": true
-}`;
-
-// Agentic UI driving uses the playwright-cli binary (NOT the Playwright MCP).
-// The /playwright-cli skill auto-loads when the agent runs `playwright-cli`.
-const playwrightCli = `# 1. Instalá el CLI (una vez) + los browsers
-npm i -g @playwright/cli@latest    # o usá: npx playwright-cli <cmd>
-bunx playwright install            # chromium / firefox / webkit
-
-# 2. La skill /playwright-cli se auto-carga al detectar llamadas a 'playwright-cli'.
-# 3. El agente maneja el browser por comandos directos:
-playwright-cli open http://localhost:3000/login
-playwright-cli snapshot                              # árbol con refs (e1, e2, ...)
-playwright-cli fill e5 "qa.bot@bunkai-test.dev" --submit
-playwright-cli click e7
-playwright-cli screenshot --filename=login.png
-playwright-cli close`;
-
-// ---------------------------------------------------------------------------
-// §5 auth-method snippets. Hosts/endpoints come from the slots below; the
-// curl examples use API_BASE_URL (relative /api/v1) — never a literal host.
-// ---------------------------------------------------------------------------
-
-const cookieSnippet = `# Cookie de sesión (browser) — la obtenés logueándote por la UI de /login.
-# Flujo primario: email + password (con OTP por mail en alta de cuenta). El
-# navegador guarda la cookie de sesión:
-#   sb-<project-ref>-auth-token   (<project-ref> sale del .env, nunca acá)
-# Reusá esa cookie desde curl para llamar la API como ese usuario:
-curl '<API_BASE_URL>/me' \\
-  --cookie 'sb-<project-ref>-auth-token=<valor-de-DevTools>'
-# → la respuesta trae auth.source = "cookie"`;
-
-const bearerSnippet = `# Bearer PAT (headless) — sin navegador, ideal para CLI / CI / agentes.
-# El token tiene forma bk_pat_<prefix>.<secret> y va en cada request:
-curl '<API_BASE_URL>/me' \\
-  -H 'Authorization: Bearer bk_pat_<prefix>.<secret>'
-# → auth.source = "bearer", auth.scopes = [...]
-# COEXISTENCIA (ADR-0001 / ADR-0007): la cookie del browser y el Bearer PAT de
-# la MISMA cuenta conviven independientes — ninguno revoca al otro. Podés tener
-# sesión por UI y PAT por API al mismo tiempo, ambos válidos (resolveIdentity).
-# QUÉ ACEPTA BEARER: casi toda la API. De los ~92 handlers, sólo CUATRO son
-# cookie-only (un PAT no puede tocarlos, devuelven 403):
-#   POST   /api/v1/tokens                       (un PAT no mintea otro PAT)
-#   DELETE /api/v1/tokens/{id}                  (un PAT no se revoca a sí mismo)
-#   POST   /api/v1/me/active-workspace          (un PAT no tiene workspace activo)
-#   DELETE /api/v1/workspaces/{id}/membership   (un PAT no abandona un workspace)
-# El resto acepta cookie O Bearer; los scope-gated además exigen el scope.
-# OJO: la cookie de sesión lleva TODAS las capabilities, el PAT sólo las suyas.
-# Por eso algo puede andar en el browser y dar 403 desde curl.`;
-
-const signinSnippet = `# Onboarding headless (verification-first, BK-166) — signup → confirm → signin.
-# El alta NO loguea a nadie: signup crea la cuenta SIN confirmar y dispara un
-# OTP por mail. Recién /auth/confirm verifica el código y mintea sesión + PAT.
-
-# 1) Crear la cuenta (una vez por entorno) — password vive en el Epic, no acá:
-curl -X POST '<API_BASE_URL>/auth/signup' \\
-  -H 'content-type: application/json' \\
-  -d '{
-    "email": "<see credentials source>",
-    "password": "<see credentials source>"
-  }'
-# 202 Accepted → { status: "pending_confirmation", email }   (SIN session, SIN PAT)
-# Llega un código de 6-8 dígitos por mail (Resend, no-reply@mail.upexgalaxy.com).
-# 409 → el user ya existe; saltá al signin.
-
-# 2) Confirmar el OTP → mintea sesión + PAT (misma forma que signin):
-curl -X POST '<API_BASE_URL>/auth/confirm' \\
-  -H 'content-type: application/json' \\
-  -d '{
-    "email": "<see credentials source>",
-    "token": "<código de 6-8 dígitos del mail>",
-    "pat_name": "qa-bot-primary",
-    "pat_expires_in_days": 7
-  }'
-# 200 OK → { user, session, pat:{ token:"bk_pat_<prefix>.<secret>", scopes, expires_at }, warning }
-#   El campo pat.token se muestra UNA sola vez — guardalo.
-
-# 3) Signin para mintear un PAT fresco (cada corrida de CI / sesión de test):
-curl -X POST '<API_BASE_URL>/auth/signin' \\
-  -H 'content-type: application/json' \\
-  -d '{
-    "email": "<see credentials source>",
-    "password": "<see credentials source>",
-    "pat_name": "ci-run",
-    "pat_expires_in_days": 7
-  }'
-# 200 OK → misma forma que confirm.
-# 401 → credenciales mal (o cuenta sin confirmar — usá /auth/confirm primero).
-
-# Scopes por defecto (least-privilege): atc:read, atc:write, run:execute.
-# workspace:admin NO es default y NO se puede pedir acá (ADR-0005) — se mintea
-# vía POST /api/v1/tokens con un workspace_id donde seas admin/owner.`;
-
-const cookieMintSnippet = `# UI → API BRIDGE (hybrid): ya logueado en el navegador (email+password o
-# magic-link), reusá la cookie de sesión para mintear un PAT sin re-autenticar.
-# La cookie y el PAT conviven independientes (ADR-0001) — el mint NO toca la sesión.
-# 1) Logueate normal en /login.
-# 2) Copiá la cookie sb-<project-ref>-auth-token (DevTools → Application → Cookies),
-#    o pasá la sesión directo con --cookie.
-# 3) Minteá un PAT atado a esa sesión:
-curl -X POST '<API_BASE_URL>/tokens' \\
-  -H 'content-type: application/json' \\
-  --cookie 'sb-<project-ref>-auth-token=<valor>' \\
-  -d '{ "name": "browser-hybrid", "scopes": ["atc:read","atc:write"] }'
-# 201 Created → { id, token:"bk_pat_<prefix>.<secret>", scopes, warning }
-#   token se muestra UNA vez. Listar: GET /tokens. Revocar: DELETE /tokens/{id}.
-# 4) Usá el Bearer para los tests de API. Cookie de UI + Bearer de API = ambos
-#    válidos a la vez para la misma cuenta, sin que uno revoque al otro.`;
-
-// ---------------------------------------------------------------------------
-// §6 Playwright — scripted regression drives the email-first password UI (the
-// primary login flow, BK-166): one email field → Continue → password step →
-// signed in. The UI→API bridge is the hybrid cookie→PAT path (headline of §6).
-// ---------------------------------------------------------------------------
-
-const scriptedFixture = `import { expect, test } from '@playwright/test';
-
-// Regresión de UI sobre el login email-first con password (flujo primario, BK-166).
-// Un solo campo de email → Continue → check-email enruta → step de password → adentro.
-// (Cuenta nueva: el step "create" pide setear password y un OTP de 6-8 dígitos.)
-test('login email-first: email → password → entra a la app', async ({ page }) => {
-  await page.goto('/login');
-
-  // Selectores reales del login (ver tabla de data-testids abajo).
-  await page.getByTestId('login-email').fill('qa.bot@bunkai-test.dev');
-  await page.getByTestId('login-continue').click();
-
-  // check-email detectó cuenta existente + confirmada → step de password.
-  await page.getByTestId('login-password').fill('<see credentials source>');
-  await page.getByTestId('login-signin').click();
-
-  // Sesión establecida (cookie) → la app redirige fuera de /login.
-  await expect(page).not.toHaveURL(/\\/login/);
-});`;
-
-const hybridBridge = `import { expect, request, test } from '@playwright/test';
-
-// UI → API BRIDGE (el puente entre testing de UI y de API).
-// El login establece una cookie de sesión (email+password o magic-link). El
-// puente HÍBRIDO reusa esa cookie para mintear un PAT vía POST /api/v1/tokens,
-// y después testeás la API con Bearer. La cookie y el PAT conviven independientes
-// (ADR-0001): mintear el PAT no toca la sesión del browser.
-
-// Fixture reutilizable: dado un browser ya logueado (storageState con la cookie
-// sb-<project-ref>-auth-token), mintea un PAT y expone un cliente API con Bearer.
-type AuthFixtures = { authToken: string; authApi: Awaited<ReturnType<typeof request.newContext>> };
-
-export const authedTest = test.extend<AuthFixtures>({
-  authToken: async ({ context }, use) => {
-    // El context trae la cookie de sesión (storageState del paso de magic-link).
-    const cookieApi = await request.newContext({ storageState: await context.storageState() });
-    const res = await cookieApi.post('/api/v1/tokens', {
-      data: { name: 'pw-hybrid', scopes: ['atc:read', 'atc:write'] },
-    });
-    expect(res.ok()).toBeTruthy();
-    const { token } = (await res.json()) as { token: string };
-    await use(token); // bk_pat_<prefix>.<secret> — se muestra una vez
-    await cookieApi.dispose();
-  },
-  authApi: async ({ authToken }, use) => {
-    const api = await request.newContext({
-      extraHTTPHeaders: { Authorization: \`Bearer \${authToken}\` },
-    });
-    await use(api);
-    await api.dispose();
-  },
-});
-
-authedTest('el PAt minteado desde la sesión sirve la API', async ({ authApi }) => {
-  const me = await authApi.get('/api/v1/me');
-  expect(me.ok()).toBeTruthy();
-  expect((await me.json()).auth.source).toBe('bearer');
-});`;
-
-// ---------------------------------------------------------------------------
-// §4 DB snippets — DBHub `[[sources]]` (split fields, \${VAR} expansion) vs a
-// raw SQL-extension URI. `\${...}` is LITERAL teaching text, never evaluated.
-// IMPORTANT (teaching note): DBHub does NOT accept a DSN / connection string —
-// only the split `[[sources]]` fields. The URI form is ONLY for a VSCode/Cursor
-// SQL extension.
-// ---------------------------------------------------------------------------
-
-const dbTomlBlock = `# dbhub.toml — committed, \${VAR} expansion, sin secretos.
-# DBHub SOLO acepta estos campos separados — NO un DSN / connection string.
-[[sources]]
-id = "primary"
-type = "\${DBHUB_TYPE}"        # postgres
-host = "\${DBHUB_HOST}"
-port = "\${DBHUB_PORT}"        # 5432 (Session Pooler)
-database = "\${DBHUB_DATABASE}"
-user = "\${DBHUB_USER}"        # <DBHUB_USER>.<project-ref> en el pooler
-password = "\${DBHUB_PASSWORD}"
-sslmode = "require"`;
-
-const dbUriBlock = `# Connection string CRUDA para una extensión SQL de VSCode/Cursor.
-# Esto SOLO sirve para clientes SQL — DBHub NO lo acepta (usá el [[sources]] de arriba).
-# Session Pooler, puerto 5432, IPv4-friendly. Host/user/ref viven en el .env.
-postgresql://<DBHUB_USER>.<project-ref>:<DBHUB_PASSWORD>@<DBHUB_HOST>:5432/<DBHUB_DATABASE>?sslmode=require
-
-# Ejemplos de queries (mismas credenciales read-only de QA):
-#   "Mostrame todas las tablas"
-#   "Contá las tasks del usuario <email>"`;
-
-// ---------------------------------------------------------------------------
-// §5 structured API requests — a Postman-style restructure of the curl
-// snippets above. Same endpoints, same shapes, placeholders only. The
-// RequestCard renders these; the `curl` field is the toggle's raw view.
-// ---------------------------------------------------------------------------
-
-const apiRequests: ApiRequest[] = [
-  {
-    id: 'cookie-me',
-    label: 'GET /me (cookie)',
-    method: 'GET',
-    url: '<API_BASE_URL>/me',
-    description:
-      'Cookie de sesión (browser). Logueate en /login (email+password, flujo primario), '
-      + 'el navegador guarda sb-<project-ref>-auth-token y reusás esa cookie desde curl. '
-      + 'La respuesta trae auth.source = "cookie". La cookie convive con un Bearer PAT de '
-      + 'la misma cuenta sin que uno revoque al otro (ADR-0001).',
-    headers: [
-      { key: 'Cookie', value: 'sb-<project-ref>-auth-token=<valor-de-DevTools>' },
-    ],
-    body: null,
-    response: `{
-  "user": { "id": "<uuid>", "email": "<email>" },
-  "workspaces": [ /* ... */ ],
-  "active_workspace_id": "<uuid|null>",
-  "active_workspace_role": "owner|admin|member|viewer|null",
-  "auth": { "source": "cookie", "scopes": [ /* todas las capabilities */ ] }
-}`,
-    curl: `curl '<API_BASE_URL>/me' \\
-  --cookie 'sb-<project-ref>-auth-token=<valor-de-DevTools>'
-# → la respuesta trae auth.source = "cookie"`,
-  },
-  {
-    id: 'bearer-me',
-    label: 'GET /me (Bearer PAT)',
-    method: 'GET',
-    url: '<API_BASE_URL>/me',
-    description:
-      'Bearer PAT (headless) — sin navegador, ideal para CLI / CI / agentes. El token '
-      + 'tiene forma bk_pat_<prefix>.<secret> y va en cada request. Convive con la cookie '
-      + 'de sesión de la misma cuenta — ninguno revoca al otro (ADR-0001 / ADR-0007). '
-      + 'Casi toda la API acepta Bearer: de ~92 handlers sólo cuatro son cookie-only '
-      + '(POST /tokens, DELETE /tokens/{id}, POST /me/active-workspace, '
-      + 'DELETE /workspaces/{id}/membership). El resto acepta cookie O Bearer. La cookie '
-      + 'lleva TODAS las capabilities; el PAT sólo las suyas — por eso algo puede andar en '
-      + 'el browser y dar 403 desde curl.',
-    headers: [
-      { key: 'Authorization', value: 'Bearer bk_pat_<prefix>.<secret>' },
-    ],
-    body: null,
-    response: `{
-  "user": { "id": "<uuid>", "email": "<email>" },
-  "workspaces": [ /* ... */ ],
-  "active_workspace_id": "<uuid|null>",
-  "active_workspace_role": "owner|admin|member|viewer|null",
-  "auth": { "source": "bearer", "scopes": ["atc:read", "atc:write", "run:execute"] }
-}`,
-    curl: `curl '<API_BASE_URL>/me' \\
-  -H 'Authorization: Bearer bk_pat_<prefix>.<secret>'
-# → auth.source = "bearer", auth.scopes = [...]`,
-  },
-  {
-    id: 'signup',
-    label: 'POST /auth/signup',
-    method: 'POST',
-    url: '<API_BASE_URL>/auth/signup',
-    description:
-      'Crear cuenta (verification-first, BK-166). NO loguea ni mintea PAT: crea la cuenta '
-      + 'SIN confirmar y dispara un OTP de 6-8 dígitos por mail (Resend). El password (min 8) '
-      + 'vive en el Epic, no acá. 202 Accepted → seguí con /auth/confirm. 409 → el user ya '
-      + 'existe; saltá al signin.',
-    headers: [
-      { key: 'content-type', value: 'application/json' },
-    ],
-    body: `{
-  "email": "<see credentials source>",
-  "password": "<see credentials source>"
-}`,
-    response: `{
-  "status": "pending_confirmation",
-  "email": "<email>"
-}`,
-    curl: `curl -X POST '<API_BASE_URL>/auth/signup' \\
-  -H 'content-type: application/json' \\
-  -d '{
-    "email": "<see credentials source>",
-    "password": "<see credentials source>"
-  }'
-# 202 Accepted → { status: "pending_confirmation", email }   (SIN session, SIN PAT)
-# Llega un OTP de 6-8 dígitos por mail → confirmá con POST /auth/confirm.
-# 409 → el user ya existe; saltá al signin.`,
-  },
-  {
-    id: 'confirm',
-    label: 'POST /auth/confirm',
-    method: 'POST',
-    url: '<API_BASE_URL>/auth/confirm',
-    description:
-      'Verificar el OTP del signup → establece la sesión (cookie) y mintea un PAT en la '
-      + 'misma llamada. token = código de 6-8 dígitos del mail. Scopes por defecto '
-      + '(least-privilege): atc:read, atc:write, run:execute. workspace:admin se rechaza acá '
-      + '(ADR-0005). 200 OK → pat.token se muestra UNA sola vez. 401 → código inválido o vencido.',
-    headers: [
-      { key: 'content-type', value: 'application/json' },
-    ],
-    body: `{
-  "email": "<see credentials source>",
-  "token": "<6-8 dígitos del mail>",
-  "pat_name": "qa-bot-primary",
-  "pat_expires_in_days": 7
-}`,
-    response: `{
-  "user": { "id": "<uuid>", "email": "<email>" },
-  "session": { "access_token": "<jwt>", "refresh_token": "<token>", "expires_at": 0, "token_type": "bearer" },
-  "pat": {
-    "token": "bk_pat_<prefix>.<secret>",
-    "id": "<uuid>",
-    "name": "qa-bot-primary",
-    "scopes": ["atc:read", "atc:write", "run:execute"],
-    "expires_at": "<iso-8601>"
-  },
-  "warning": "Store the PAT token now — it cannot be retrieved later."
-}`,
-    curl: `curl -X POST '<API_BASE_URL>/auth/confirm' \\
-  -H 'content-type: application/json' \\
-  -d '{
-    "email": "<see credentials source>",
-    "token": "<6-8 dígitos del mail>",
-    "pat_name": "qa-bot-primary",
-    "pat_expires_in_days": 7
-  }'
-# 200 OK → { user, session, pat:{ token, scopes, expires_at }, warning }
-# El campo pat.token se muestra UNA sola vez — guardalo.
-# 401 → código inválido o vencido.`,
-  },
-  {
-    id: 'signin',
-    label: 'POST /auth/signin',
-    method: 'POST',
-    url: '<API_BASE_URL>/auth/signin',
-    description:
-      'Login email+password de una cuenta ya confirmada → mintea un PAT fresco (cada corrida '
-      + 'de CI / sesión de test). Scopes por defecto: atc:read, atc:write, run:execute '
-      + '(workspace:admin NO se mintea acá, ADR-0005). 200 OK → misma forma que confirm. '
-      + '401 → credenciales mal o cuenta sin confirmar (usá /auth/confirm primero).',
-    headers: [
-      { key: 'content-type', value: 'application/json' },
-    ],
-    body: `{
-  "email": "<see credentials source>",
-  "password": "<see credentials source>",
-  "pat_name": "ci-run",
-  "pat_expires_in_days": 7
-}`,
-    response: `{
-  "user": { "id": "<uuid>", "email": "<email>" },
-  "session": { "access_token": "<jwt>", "refresh_token": "<token>", "expires_at": 0, "token_type": "bearer" },
-  "pat": {
-    "token": "bk_pat_<prefix>.<secret>",
-    "id": "<uuid>",
-    "name": "ci-run",
-    "scopes": ["atc:read", "atc:write", "run:execute"],
-    "expires_at": "<iso-8601>"
-  },
-  "warning": "Store the PAT token now — it cannot be retrieved later."
-}`,
-    curl: `curl -X POST '<API_BASE_URL>/auth/signin' \\
-  -H 'content-type: application/json' \\
-  -d '{
-    "email": "<see credentials source>",
-    "password": "<see credentials source>",
-    "pat_name": "ci-run",
-    "pat_expires_in_days": 7
-  }'
-# 200 OK → misma forma que confirm.
-# 401 → credenciales mal o cuenta sin confirmar (usá /auth/confirm primero).`,
-  },
-  {
-    id: 'tokens-mint',
-    label: 'POST /tokens (hybrid)',
-    method: 'POST',
-    url: '<API_BASE_URL>/tokens',
-    description:
-      'UI → API BRIDGE (hybrid): ya logueado en el navegador (email+password o magic-link), '
-      + 'reusá la cookie de sesión para mintear un PAT sin re-autenticar — el mint NO toca la '
-      + 'sesión (ADR-0001). 201 Created → token se muestra UNA vez. Listar: GET /tokens. '
-      + 'Revocar: DELETE /tokens/{id}. Cookie + Bearer válidos a la vez para la misma cuenta.',
-    headers: [
-      { key: 'content-type', value: 'application/json' },
-      { key: 'Cookie', value: 'sb-<project-ref>-auth-token=<valor>' },
-    ],
-    body: `{
-  "name": "browser-hybrid",
-  "scopes": ["atc:read", "atc:write"]
-}`,
-    response: `{
-  "id": "<uuid>",
-  "token": "bk_pat_<prefix>.<secret>",
-  "name": "browser-hybrid",
-  "scopes": ["atc:read", "atc:write"],
-  "workspace_id": "<uuid|null>",
-  "expires_at": "<iso-8601|null>",
-  "created_at": "<iso-8601>",
-  "warning": "Store this token now — it cannot be retrieved later."
-}`,
-    curl: `curl -X POST '<API_BASE_URL>/tokens' \\
-  -H 'content-type: application/json' \\
-  --cookie 'sb-<project-ref>-auth-token=<valor>' \\
-  -d '{ "name": "browser-hybrid", "scopes": ["atc:read","atc:write"] }'
-# 201 Created → { id, token:"bk_pat_<prefix>.<secret>", scopes, warning }
-# token se muestra UNA vez. Listar: GET /tokens. Revocar: DELETE /tokens/{id}.`,
-  },
-];
-
-// ---------------------------------------------------------------------------
+const WEB = 'https://staging-upexbunkai.vercel.app';
+const lines = (...l: string[]) => l.join('\n');
 
 export const qaConfig: QaConfig = {
   lang: 'es',
-  project: {
-    name: 'Bunkai',
-    reposShape: 'mono',
-    backendRepo: 'https://github.com/upex-galaxy/upex-bunkai-tms',
-    frontendRepo: 'https://github.com/upex-galaxy/upex-bunkai-tms',
-  },
-  stack: {
-    framework: 'Next.js 15 (App Router)',
-    ui: 'shadcn/ui + Tailwind',
-    db: 'Supabase (PostgreSQL 17)',
-    orm: null,
-    auth: ['Email + password (primary)', 'OAuth GitHub / Google (BK-3, ADR-0008)', 'Magic link (secondary)', 'Supabase cookie', 'Bearer PAT'],
+  urls: {
+    web: WEB,
+    api: `${WEB}/api/v1`,
+    spec: `${WEB}/api/openapi`,
+    docs: `${WEB}/api/docs`,
+    login: `${WEB}/login`,
   },
   credentialsSource: {
-    label: 'Jira Epic',
-    url: 'https://jira.upexgalaxy.com/browse/BK-29',
+    label: 'BK-29 en Jira',
+    url: 'https://upexgalaxy74.atlassian.net/browse/BK-29',
   },
-  docs: {
-    ui: 'scalar',
-    route: '/api/docs',
-    specUrl: '/api/openapi',
+  prerequisites: [
+    'Tu repo de QA (el que trae `.mcp.json`, `dbhub.toml` y `scripts/api-login.ts`), con `bun install` hecho. Si no lo tenés, pedíselo a tu mentor.',
+    'Un harness: Claude Code, Codex, OpenCode o Pi.',
+    'Un email real que puedas leer: el registro manda un código.',
+    'Acceso a la épica BK-29 en Jira, donde están los valores de la base. Si Jira te pide login y no entrás, pedí acceso a tu mentor.',
+  ],
+  credentials: [
+    {
+      names: ['STAGING_USER_EMAIL', 'STAGING_USER_PASSWORD'],
+      purpose: 'Tu propia cuenta de staging. Las usa `bun run api:login:staging` para sacar tu token de API.',
+      source: 'own',
+    },
+    {
+      names: ['API_BASE_URL'],
+      purpose: 'Host de la API para el OpenAPI MCP y tus curl. Los paths del spec ya incluyen `/api/v1`.',
+      source: 'public',
+      value: WEB,
+    },
+    {
+      names: ['OPENAPI_SPEC_PATH'],
+      purpose: 'De dónde lee el OpenAPI MCP el contrato. Tiene que ser la URL completa.',
+      source: 'public',
+      value: `${WEB}/api/openapi`,
+    },
+    {
+      names: ['DBHUB_TYPE', 'DBHUB_HOST', 'DBHUB_PORT', 'DBHUB_DATABASE', 'DBHUB_USER', 'DBHUB_PASSWORD'],
+      purpose: 'Conexión del DBHub MCP a la base (rol de solo lectura o de escritura).',
+      source: 'bk29',
+    },
+    {
+      names: ['API_TOKEN_USER_STAGING'],
+      purpose: 'Tu token personal (PAT) para mandar `Authorization: Bearer`. Vive en `.auth/tokens.env`, no en `.env`.',
+      source: 'generated',
+    },
+  ],
+  steps: [
+    {
+      id: 'cuenta',
+      title: 'Creá tu usuario en staging',
+      body: 'Entrá a `/login`, escribí tu email y elegí crear contraseña. Te llega un código de 6 a 8 dígitos: pegalo. La primera vez la app te lleva a `/onboarding`, donde creás tu workspace y quedás como owner. Cada tester usa su propia cuenta.',
+      done: 'Ves tu workspace en la app.',
+    },
+    {
+      id: 'env',
+      title: 'Completá tu .env',
+      body: 'Los archivos de MCP de tu repo ya vienen listos y no se tocan. Solo llenás el `.env` de la raíz del repo: tu cuenta, los dos valores públicos y los seis `DBHUB_*` que copiás de BK-29. BK-29 trae `DBHUB_PORT=5432`: si tu red lo corta con `ECONNRESET`, usá `6543`. Si un valor tiene `#`, ponelo entre comillas simples.',
+      code: {
+        language: 'bash',
+        title: '.env',
+        code: lines(
+          'STAGING_USER_EMAIL=',
+          'STAGING_USER_PASSWORD=',
+          '',
+          `API_BASE_URL=${WEB}`,
+          `OPENAPI_SPEC_PATH=${WEB}/api/openapi`,
+          '',
+          'DBHUB_TYPE=postgres',
+          'DBHUB_HOST=',
+          'DBHUB_PORT=',
+          'DBHUB_DATABASE=',
+          'DBHUB_USER=',
+          'DBHUB_PASSWORD=',
+        ),
+      },
+      done: 'Lo comprobás en el paso 3.',
+    },
+    {
+      id: 'chequeo',
+      title: 'Chequeá las variables sin imprimir secretos',
+      body: 'varlock muestra cada variable por nombre y enmascara las sensibles. Si imprime `{}`, esas variables no están en `.env`. Nunca uses grep sobre `.env` ni `env | grep`: imprimen el password.',
+      code: {
+        language: 'bash',
+        code: lines(
+          'bunx varlock load --agent --filter \'DBHUB_*\'',
+          'bun run vars:env:check',
+        ),
+      },
+      done: 'Aparecen los seis `DBHUB_*` con el password enmascarado y `vars:env:check` termina sin errores (su lista INFO es normal).',
+    },
+    {
+      id: 'token',
+      title: 'Sacá tu token de API y probalo',
+      body: 'Este script es de tu repo de QA, no del de Bunkai. Inicia sesión con tu cuenta y guarda el PAT en `.auth/tokens.env`, que git ignora. El OpenAPI MCP no lleva token: el token es para tus curl.',
+      code: {
+        language: 'bash',
+        code: lines(
+          'bun run api:login:staging',
+          'source .auth/tokens.env && curl -s -H "Authorization: Bearer $API_TOKEN_USER_STAGING" \\',
+          `  ${WEB}/api/v1/me | jq '{email: .user.email, auth: .auth.source}'`,
+        ),
+      },
+      done: 'La respuesta muestra tu email y `"auth": "bearer"`.',
+    },
+    {
+      id: 'agente',
+      title: 'Abrí el agente pelado, desde la raíz del repo',
+      body: 'Cada servidor MCP carga `.env` solo al arrancar. No abras el agente con un loader ni hagas source `.env` antes. Después revisá el estado de los MCP como dice tu harness (sección 04).',
+      code: {
+        language: 'bash',
+        code: lines('claude    # o: codex, opencode, pi'),
+      },
+      done: 'dbhub y openapi aparecen conectados.',
+    },
+    {
+      id: 'db',
+      title: 'Primer chequeo de base de datos',
+      body: 'Pedile al agente que use dbhub. Debería llamar a `search_objects_primary` o `execute_sql_primary`.',
+      code: {
+        language: 'bash',
+        title: 'prompt',
+        code: lines(
+          'Usá dbhub: ¿con qué usuario estás conectado y cuántas tablas hay en el schema public?',
+        ),
+      },
+      done: 'Contesta `qa_inspector_ro` (o _rw) y un número de tablas.',
+    },
+    {
+      id: 'api',
+      title: 'Primer chequeo de API',
+      body: 'El OpenAPI MCP lee el contrato; las llamadas reales las hace con curl y tu token.',
+      code: {
+        language: 'bash',
+        title: 'prompt',
+        code: lines(
+          'Usá el MCP openapi: listá los endpoints de /api/v1/auth.',
+          'Después llamá GET /api/v1/me con curl y el token de .auth/tokens.env.',
+        ),
+      },
+      done: 'Lista las rutas de `/api/v1/auth` y el `GET /me` devuelve 200 con `"auth": "bearer"`.',
+    },
+    {
+      id: 'ui',
+      title: 'Primer chequeo de UI',
+      body: 'playwright-cli maneja un navegador real. En Claude Code, Codex y OpenCode el agente carga su skill solo.',
+      code: {
+        language: 'bash',
+        code: lines(
+          `playwright-cli open ${WEB}/login`,
+          'playwright-cli snapshot',
+          'playwright-cli close',
+        ),
+      },
+      done: 'El snapshot muestra la página de login con el campo `Email`.',
+    },
+  ],
+  harnessCommon: 'Los cuatro archivos ya vienen en tu repo de QA y no se editan. Los cuatro harness levantan dbhub y openapi con el mismo comando: `bun x -p varlock@1.20.0 varlock run --filter <sus variables> -- <servidor>`. Cada servidor lee `.env` cuando arranca, así que después de cambiar `.env` hay que cerrar y abrir el agente.',
+  harnesses: [
+    {
+      id: 'claude',
+      label: 'Claude Code',
+      file: '.mcp.json',
+      open: 'claude',
+      status: '`/mcp` dentro de la sesión, o `claude mcp list` en la terminal',
+      reload: 'Salí (`/exit`) y volvé a abrir claude.',
+      notes: [
+        'Sano: `/mcp` muestra `dbhub` y `openapi` como connected.',
+        'Un servidor del proyecto sin aprobar figura como Pending approval y no se conecta: aprobalo desde `/mcp`.',
+      ],
+    },
+    {
+      id: 'codex',
+      label: 'Codex',
+      file: '.codex/config.toml',
+      open: 'codex',
+      status: '`codex mcp list`',
+      reload: 'Cerrá y volvé a abrir codex.',
+      notes: [
+        'Sano: `codex mcp list` muestra `dbhub` y `openapi`. Si solo ves servidores globales, la carpeta no es de confianza.',
+        'Codex solo carga la config del proyecto si confiás en la carpeta: la primera vez que lo abrís en el repo, respondé que sí confiás.',
+        'Cada servidor tiene `startup_timeout_sec = 30`. La primera descarga de bun x puede tardar; si falla por timeout, reabrí.',
+        'Abrilo desde la raíz del repo: ahí resuelve `OPENAPI_SPEC_PATH` si es un archivo.',
+      ],
+    },
+    {
+      id: 'opencode',
+      label: 'OpenCode',
+      file: 'opencode.jsonc',
+      open: 'opencode',
+      status: '`opencode mcp list`',
+      reload: 'Cerrá y volvé a abrir opencode.',
+      notes: [
+        'Los servidores están bajo la clave mcp, con type "local" y el comando como lista.',
+        'Sano: `opencode mcp list` muestra `dbhub` y `openapi`. Si dice No MCP servers configured, no leyó el `opencode.jsonc` del repo.',
+        'Abrilo desde la raíz del repo para que encuentre `opencode.jsonc` y `.env`.',
+      ],
+    },
+    {
+      id: 'pi',
+      label: 'Pi',
+      file: '.pi/mcp.json',
+      open: 'pi',
+      status: '`pi mcp list` (sale con código 1 si un servidor falla)',
+      reload: '`/reload` dentro de la sesión.',
+      notes: [
+        'Sano: `pi mcp list` muestra los dos servidores sin error.',
+        'Pi solo lee `.pi/mcp.json` en un proyecto de confianza: corré `/trust` y después `/reload`.',
+        'Los servidores son deferred: el agente los encuentra con su búsqueda de tools, no aparecen todos de entrada.',
+      ],
+    },
+  ],
+  adminToken: {
+    why: 'Las rutas de administración de un workspace (miembros, invites, billing, Jira) piden el scope `workspace:admin` atado a ese workspace. signin y confirm lo rechazan con 403; solo `POST /api/v1/tokens` lo emite, y esa ruta exige la cookie de sesión. signin te da esa cookie sin navegador. Usá un workspace donde seas owner o admin.',
+    steps: [
+      {
+        title: 'Iniciá sesión y guardá la cookie (también crea un PAT mínimo que revocás en el paso 4)',
+        code: lines(
+          'mkdir -p .auth',
+          `bunx varlock run --filter STAGING_USER_EMAIL,STAGING_USER_PASSWORD -- sh -c 'curl -s -c .auth/bunkai-cookie.txt -H "Content-Type: application/json" -d "{\\"email\\":\\"$STAGING_USER_EMAIL\\",\\"password\\":\\"$STAGING_USER_PASSWORD\\",\\"pat_name\\":\\"cookie-bridge\\",\\"pat_scopes\\":[\\"atc:read\\"],\\"pat_expires_in_days\\":1}" ${WEB}/api/v1/auth/signin | jq "{pat_id: .pat.id}"'`,
+        ),
+        done: 'Imprime {"pat_id": "..."}: anotá ese id, es tu <PAT_ID>.',
+      },
+      {
+        title: 'Elegí el workspace',
+        code: `curl -s -b .auth/bunkai-cookie.txt ${WEB}/api/v1/workspaces | jq '.workspaces[] | {id, name, role}'`,
+        done: 'Ves tus workspaces con su rol. Copiá el id de uno donde seas owner o admin: es tu <WORKSPACE_ID>.',
+      },
+      {
+        title: 'Emití el PAT de ese workspace y guardalo sin imprimirlo (<WORKSPACE_ID> va en los dos lugares)',
+        code: lines(
+          'curl -s -b .auth/bunkai-cookie.txt -H "Content-Type: application/json" \\',
+          '  -d \'{"name":"qa-ws-admin","scopes":["atc:read","atc:write","run:execute","workspace:admin"],"workspace_id":"<WORKSPACE_ID>","expires_in_days":7}\' \\',
+          `  ${WEB}/api/v1/tokens | jq -r '"export API_TOKEN_WSADMIN_STAGING=" + .token, "export API_TOKEN_WSADMIN_ID=" + .id' > .auth/ws-admin.env`,
+          'source .auth/ws-admin.env && curl -s -H "Authorization: Bearer $API_TOKEN_WSADMIN_STAGING" \\',
+          `  ${WEB}/api/v1/workspaces/<WORKSPACE_ID> | jq '.workspace.name'`,
+        ),
+        done: 'Imprime el nombre del workspace. El token queda en .auth/ws-admin.env.',
+      },
+      {
+        title: 'Cuando termines: revocá los dos PAT, cerrá la sesión y borrá los archivos',
+        code: lines(
+          'source .auth/ws-admin.env',
+          'for id in <PAT_ID> "$API_TOKEN_WSADMIN_ID"; do',
+          `  curl -s -o /dev/null -w '%{http_code}\\n' -b .auth/bunkai-cookie.txt -X DELETE ${WEB}/api/v1/tokens/$id`,
+          'done',
+          `curl -s -o /dev/null -w '%{http_code}\\n' -b .auth/bunkai-cookie.txt -X POST ${WEB}/api/v1/auth/sign-out`,
+          'rm -f .auth/bunkai-cookie.txt .auth/ws-admin.env',
+        ),
+        done: 'Imprime 204, 204 y 200. Si un DELETE da 401, la cookie venció: repetí el paso 1 y volvé a revocar.',
+      },
+    ],
   },
-  api: {
-    baseUrl: '/api/v1',
-    loginEndpoint: '/api/v1/auth/signin',
-    tokenShape: '{ user, session, pat: { token: \'bk_pat_<prefix>.<secret>\', scopes, expires_at }, warning }',
-    loginHelper: null,
-    signupEndpoint: '/api/v1/auth/signup',
-    signinEndpoint: '/api/v1/auth/signin',
-    tokensEndpoint: '/api/v1/tokens',
-    cookieMintSnippet,
-    authMethods: [
-      { id: 'cookie', label: 'Cookie (browser)', snippet: cookieSnippet },
-      { id: 'bearer', label: 'Bearer PAT (headless)', snippet: bearerSnippet },
-      { id: 'signin', label: 'Signup / Signin (mint PAT)', snippet: signinSnippet },
+  troubleshooting: [
+    {
+      id: 'mcp',
+      title: 'Servidores MCP',
+      items: [
+        {
+          symptom: 'dbhub u openapi aparece failed, ✘ o desconectado',
+          cause: 'Falta una variable o tiene un formato inválido (varlock corta solo ese servidor), o la primera descarga de bun x tardó demasiado.',
+          fix: 'Revisá las variables con varlock, completá la que falta y reabrí el agente.',
+          code: 'bunx varlock load --agent --filter \'DBHUB_*\'',
+        },
+        {
+          symptom: 'Claude Code: el servidor figura como Pending approval',
+          cause: 'Los servidores de `.mcp.json` necesitan tu aprobación.',
+          fix: 'Abrí `/mcp` y aprobalo.',
+        },
+        {
+          symptom: 'codex mcp list no muestra dbhub ni openapi',
+          cause: 'La carpeta no está marcada como confiable.',
+          fix: 'Reabrí codex desde la raíz del repo, aceptá la confianza y revisá con `codex mcp list`.',
+        },
+        {
+          symptom: 'Codex: el servidor está en la lista pero falla al arrancar',
+          cause: 'La primera descarga de `bun x` superó los 30 s de `startup_timeout_sec`.',
+          fix: 'Cerrá y abrí codex: la segunda vez el paquete ya está en caché.',
+        },
+        {
+          symptom: 'Pi no ve ningún MCP',
+          cause: 'Proyecto sin confianza: Pi ignora `.pi/mcp.json`.',
+          fix: 'Corré `/trust` y `/reload`, y revisá con `pi mcp list`.',
+        },
+        {
+          symptom: 'opencode mcp list dice No MCP servers configured',
+          cause: 'Se abrió desde otra carpeta y no encontró `opencode.jsonc`.',
+          fix: 'Abrí opencode desde la raíz del repo y revisá con `opencode mcp list`.',
+        },
+        {
+          symptom: 'openapi termina apenas arranca (figura como failed en la lista de MCP)',
+          cause: '`OPENAPI_SPEC_PATH` es solo `/api/openapi`: se lee como archivo y no existe.',
+          fix: `Usá la URL completa: ${WEB}/api/openapi`,
+        },
+        {
+          symptom: 'invoke-api-endpoint del MCP devuelve 401',
+          cause: 'Es lo esperado: el OpenAPI MCP no lleva token.',
+          fix: 'Usá el MCP para leer el contrato y curl con tu token para llamar.',
+        },
+      ],
+    },
+    {
+      id: 'env',
+      title: 'Variables de entorno',
+      items: [
+        {
+          symptom: 'Cambié .env y el agente sigue igual',
+          cause: 'Cada servidor lee `.env` una sola vez, al arrancar.',
+          fix: 'Cerrá y abrí el agente.',
+        },
+        {
+          symptom: 'El valor de .env no se usa aunque está bien escrito',
+          cause: 'Una variable exportada en tu terminal le gana a `.env`.',
+          fix: '`bun run vars:env:check` la nombra; hacé unset de esa variable y reabrí el agente.',
+          code: 'bun run vars:env:check',
+        },
+        {
+          symptom: 'env | grep DBHUB sale vacío',
+          cause: 'Es correcto: nada carga `.env` en tu terminal, solo dentro de cada servidor MCP.',
+          fix: 'Chequeá con `varlock load --agent`. No uses grep sobre `.env`: imprime el password.',
+        },
+        {
+          symptom: 'Un password con # llega cortado',
+          cause: 'En `.env`, un # sin comillas empieza un comentario.',
+          fix: 'Poné el valor entre comillas simples.',
+        },
+      ],
+    },
+    {
+      id: 'db',
+      title: 'Base de datos',
+      items: [
+        {
+          symptom: 'ECONNRESET, Connection terminated o timeout al conectar',
+          cause: 'Tu red corta el puerto 5432 (pasa seguido desde Windows y redes corporativas).',
+          fix: 'Cambiá a `DBHUB_PORT=6543` (transaction pooler de Supabase, mismo host y usuario) y reabrí el agente. Si el 6543 también corta, probá sin VPN o desde otra red.',
+        },
+        {
+          // eslint-disable-next-line no-template-curly-in-string -- the literal placeholder is the error text a tester sees
+          symptom: 'password authentication failed, o el error muestra ${DBHUB_PASSWORD}',
+          cause: 'La variable está vacía: DBHub usa el texto literal en vez de fallar al arrancar.',
+          fix: 'Completá la variable con el valor de BK-29 y reabrí el agente.',
+        },
+        {
+          symptom: 'Tenant or user not found',
+          cause: 'Al usuario le falta el sufijo del proyecto.',
+          fix: '`DBHUB_USER` va con punto y project-ref, tal cual figura en BK-29.',
+        },
+        {
+          symptom: 'SELF_SIGNED_CERT_IN_CHAIN en un script tuyo',
+          cause: 'Node no trae la CA de Supabase.',
+          fix: 'Usá el certificado público de la sección 07.',
+        },
+        {
+          symptom: 'Ves datos de todos los workspaces',
+          cause: 'Los roles qa_inspector tienen BYPASSRLS: ven a todos los tenants.',
+          fix: 'Es esperado. Para probar aislamiento usá una sesión real de usuario (sección 07).',
+        },
+      ],
+    },
+    {
+      id: 'api',
+      title: 'Tokens y API',
+      items: [
+        {
+          symptom: '401 "Invalid token."',
+          cause: 'El PAT venció o fue revocado, o mandaste `session.access_token` en vez del PAT.',
+          fix: 'Corré de nuevo `bun run api:login:staging` y usá `API_TOKEN_USER_STAGING`.',
+        },
+        {
+          symptom: '403 "workspace:admin tokens cannot be issued via headless auth"',
+          cause: 'signin y confirm nunca emiten `workspace:admin`.',
+          fix: 'Seguí la sección 05.',
+        },
+        {
+          symptom: '403 "Personal access tokens cannot issue tokens. Use a browser session."',
+          cause: '`POST /api/v1/tokens` solo acepta la cookie de sesión.',
+          fix: 'Usá la cookie de la sección 05, no un Bearer.',
+        },
+        {
+          symptom: '403 en una ruta /workspaces/{id}/...',
+          cause: 'Tu PAT no tiene el scope que pide la ruta, o es de otro workspace.',
+          fix: 'Emití un PAT de ese workspace con el scope que falta (sección 05).',
+        },
+        {
+          symptom: '429 rate_limited',
+          cause: 'signin y confirm aceptan 10 intentos por minuto.',
+          fix: 'Esperá los segundos del header `Retry-After`.',
+        },
+        {
+          symptom: 'api:login:staging da 404 o guarda un token vacío',
+          cause: 'El adaptador de login de tu repo no está apuntado a Bunkai.',
+          fix: '`config/variables.ts` debe tener `loginEndpoint "/auth/signin"` y `scripts/api-login.project.ts` debe leer `pat.token`.',
+        },
+        {
+          symptom: 'Tu repo no tiene el script api:login:staging',
+          cause: 'El repo no es el de QA o quedó viejo.',
+          fix: 'Actualizalo con `bun sync`. Mientras tanto, los pasos 1 y 4 de la sección 05 te dan una sesión y un token sin ese script.',
+        },
+        {
+          symptom: 'El registro devuelve 422',
+          cause: 'Bunkai rechaza dominios reservados (example.com, .test, .local y similares).',
+          fix: 'Registrate con un email real.',
+        },
+      ],
+    },
+    {
+      id: 'windows',
+      title: 'Windows',
+      items: [
+        {
+          symptom: 'source o sh no existen',
+          cause: 'PowerShell y cmd no los tienen.',
+          fix: 'Corré los comandos de esta guía en Git Bash o WSL. En PowerShell, leé el token de `.auth/tokens.json` y usá `curl.exe`.',
+        },
+      ],
+    },
+  ],
+  reference: {
+    dbRoles: [
+      { name: 'qa_inspector_ro', access: 'SELECT sobre public. Es el rol por defecto.' },
+      { name: 'qa_inspector_rw', access: 'SELECT, INSERT, UPDATE y DELETE sobre public. Solo para preparar datos.' },
     ],
-    apiRequests,
-    patScopes: [
-      { scope: 'atc:read', purpose: 'Leer ATCs, steps, assertions, modules, user stories, AC — y, desde BK-499, TODA lectura de datos compartidos del workspace: reportes (coverage, traceability, runs report, heatmap, recovery cycles), bugs, runs, tests, activity y workspaces. NO cubre la bandeja personal (notificaciones, preferencias, /me), que no pide scope. (DEFAULT)' },
-      { scope: 'atc:write', purpose: 'TODA escritura de datos compartidos del workspace: ATCs, bugs (crear / asignar / cambiar status), tests (+ tags, reorder), user stories, acceptance criteria, modules, milestones, environments, test plans, imports, duplicar ATCs y —desde BK-499— crear projects. Son 27 handlers, no sólo ATCs. (DEFAULT)' },
-      { scope: 'run:execute', purpose: 'Ciclo de vida del run: iniciar (POST /runs), marcar pass/fail por step, abortar (POST /runs/{id}/abort) y finalizar (POST /runs/{id}/finish). (DEFAULT)' },
-      { scope: 'workspace:admin', purpose: 'Gestionar members, invites, metadata del workspace. NO es default — signin/confirm lo rechazan con 403 (ADR-0005); se mintea sólo vía POST /tokens con un workspace_id donde seas admin/owner. Consecuencia práctica: ningún PAT sacado por el rail headless puede tocar los endpoints de invites.' },
+    revokedSecretTables: ['access_token_secrets', 'magic_link_token_secrets', 'workspace_invite_secrets'],
+    scopes: [
+      { name: 'atc:read', onSignin: true, note: 'Lecturas.' },
+      { name: 'atc:write', onSignin: true, note: 'Altas, cambios y bajas.' },
+      { name: 'run:execute', onSignin: true, note: 'Ejecutar runs.' },
+      { name: 'workspace:admin', onSignin: false, note: 'Administrar un workspace. Solo vía POST /api/v1/tokens con workspace_id.' },
     ],
-    // La cookie de sesión del browser lleva TODAS las capabilities (no se le
-    // asignan scopes: es el usuario completo). El PAT lleva sólo las suyas. Por
-    // eso una llamada puede andar logueado en la UI y devolver 403 desde curl.
-    endpoints: [
-      { method: 'GET', path: '/api/v1/me', purpose: 'Identidad + lista de workspaces + workspace activo. Acepta cookie y Bearer.' },
-      { method: 'GET', path: '/api/v1/workspaces', purpose: 'Workspaces a los que pertenece el caller. Acepta cookie y Bearer.' },
-      { method: 'POST', path: '/api/v1/auth/check-email', purpose: 'Routing email-first → { exists, confirmed }. Decide password vs create.' },
-      { method: 'POST', path: '/api/v1/auth/signup', purpose: 'Crea cuenta SIN confirmar + dispara OTP por mail → 202. Sin session ni PAT.' },
-      { method: 'POST', path: '/api/v1/auth/confirm', purpose: 'Verifica el OTP del signup → session + PAT fresco.' },
-      { method: 'POST', path: '/api/v1/auth/signin', purpose: 'Login email+password (cuenta confirmada) → session + PAT fresco.' },
-      { method: 'POST', path: '/api/v1/auth/resend', purpose: 'Reenvía el OTP de confirmación (BK-181). Sólo pide email — no lleva password. 202.' },
-      { method: 'POST', path: '/api/v1/auth/magic-link', purpose: 'Dispara el mail de magic-link (login secundario "email me a link").' },
-      { method: 'GET', path: '/auth/oauth/{provider}', purpose: 'Inicia OAuth (github | google). Mintea el state CSRF y redirige al provider (ADR-0008).' },
-      { method: 'POST', path: '/api/v1/tokens', purpose: 'Mintea un PAT. COOKIE-ONLY — un PAT no puede mintear otro PAT (403 con Bearer). Token visible una sola vez.' },
-      { method: 'GET', path: '/api/v1/tokens', purpose: 'Lista PATs (sin secretos). Acepta cookie y Bearer.' },
-      { method: 'DELETE', path: '/api/v1/tokens/{id}', purpose: 'Revoca un PAT — no hay recuperación. COOKIE-ONLY (403 con Bearer).' },
-      { method: 'POST', path: '/api/v1/workspaces', purpose: 'Crea un workspace. Única escritura sin scope — es el bootstrap que un PAT nuevo necesita. Exige header Idempotency-Key (8–128 chars [A-Za-z0-9_-], p. ej. un UUID); sin él → 400 idempotency_key_required.' },
-      { method: 'GET', path: '/api/v1/workspaces/{id}/invites', purpose: 'Invites del workspace. Exige scope workspace:admin, que un PAT headless nunca tiene → 403.' },
-      { method: 'POST', path: '/api/v1/invites/accept', purpose: 'Acepta una invitación por token. 409 inviter_not_authorized si quien invitó ya no puede invitar (BK-1589).' },
-      { method: 'DELETE', path: '/api/v1/workspaces/{id}/membership', purpose: 'Abandona un workspace. COOKIE-ONLY (403 con Bearer).' },
-      { method: 'DELETE', path: '/api/v1/workspaces/{id}/members/{userId}', purpose: 'Quita a un compañero del workspace (BK-572): Owner o Admin, nunca a uno mismo (409, eso es Leave) ni un Admin a un Owner (403). En un solo acto revoca sus PATs de este workspace y sus invites pendientes, y desasigna sus Bugs. Exige scope workspace:admin.' },
-      { method: 'DELETE', path: '/api/v1/workspaces/{id}', purpose: 'Borra un workspace (BK-512): solo el Owner, COOKIE-ONLY (403 con Bearer). Es un borrado blando con 30 días para restaurarlo. Para probar que un borrado que falla a mitad de camino deja el workspace intacto (TC48), quien tiene el service role (el conductor) arma el failpoint workspace_delete.before_return para ESE workspace (fila en bunkai_test_failpoints, migración 0126); el estudiante solo aprieta Delete. Pasa si el request responde 500 (pestaña Network), el modal sigue abierto con un toast "test_failpoint" y, al recargar, el workspace sigue listado con su contenido y sus miembros sin cambios; después el conductor borra la fila. Ninguna sesión de usuario ni rol QA puede armarlo.' },
-      { method: 'POST', path: '/api/v1/me/active-workspace', purpose: 'Cambia el workspace activo. Es POST, no PUT. COOKIE-ONLY: un PAT no tiene workspace activo, pasá workspace_id en cada request.' },
-      { method: 'GET', path: '/api/v1/search', purpose: 'Búsqueda global del workspace. Exige scope atc:read.' },
-      { method: 'GET', path: '/api/v1/', purpose: 'Banner de discovery → { version, openapi, docs, status }. También responde OPTIONS (preflight CORS).' },
-      { method: 'GET', path: '/api/v1/health', purpose: 'Liveness probe.' },
-      { method: 'GET', path: '/api/openapi', purpose: 'Spec OpenAPI (JSON).' },
-      { method: 'GET', path: '/api/docs', purpose: 'Docs interactivas (Scalar UI).' },
+    authEndpoints: [
+      { method: 'POST', path: '/api/v1/auth/signup', auth: 'pública', purpose: 'Registro: 202, manda el código por email.' },
+      { method: 'POST', path: '/api/v1/auth/confirm', auth: 'pública', purpose: 'Confirma el código; devuelve sesión y PAT.' },
+      { method: 'POST', path: '/api/v1/auth/signin', auth: 'pública', purpose: 'Login: setea la cookie y devuelve un PAT global.' },
+      { method: 'GET', path: '/api/v1/me', auth: 'cookie o PAT', purpose: 'Quién sos y con qué auth llegaste.' },
+      { method: 'POST', path: '/api/v1/tokens', auth: 'solo cookie', purpose: 'Emite un PAT, opcionalmente atado a un workspace.' },
+      { method: 'GET', path: '/api/v1/tokens', auth: 'cookie o PAT', purpose: 'Lista tus PAT.' },
+      { method: 'DELETE', path: '/api/v1/tokens/{id}', auth: 'solo cookie', purpose: 'Revoca un PAT.' },
+      { method: 'POST', path: '/api/v1/auth/sign-out', auth: 'solo cookie', purpose: 'Cierra la sesión.' },
     ],
+    rlsProbe: 'Los roles qa_inspector no sirven para probar aislamiento entre tenants. Para eso iniciá sesión como el usuario B y pedí por API un recurso del workspace del usuario A: tiene que volver vacío o 403/404.',
+    rpcAccess: '`qa_inspector_rw` puede ejecutar casi todos los RPC de public, salvo cinco que leen `auth.users`. Cuidado con `bunkai_sweep_abandoned_runs`: no está limitado a un workspace y aborta runs inactivos de todos los tenants.',
   },
   db: {
-    engine: 'postgres',
-    tomlPath: 'dbhub.toml',
-    uriScheme: 'postgresql',
-    tomlBlock: dbTomlBlock,
-    uriBlock: dbUriBlock,
-    roles: [
-      { name: 'qa_inspector_ro', access: 'Solo lectura: SELECT sobre las tablas de public menos las 3 revocadas abajo. BYPASSRLS.' },
-      { name: 'qa_inspector_rw', access: 'Lectura + escritura: SELECT/INSERT/UPDATE/DELETE sobre las tablas de public menos las 3 revocadas abajo. BYPASSRLS.' },
-    ],
-    // Migración 0011 movió cada secreto a una tabla hermana 1:1 y 0012 DROPEÓ las
-    // columnas viejas (access_tokens.hash, workspace_invites.token_hash,
-    // magic_link_tokens.token_hash/ip_hash). Postgres no puede ocultar una sola
-    // columna cuando ya existe un GRANT de SELECT sobre la tabla, así que el
-    // aislamiento es a nivel TABLA, no a nivel columna.
-    revokedSecretTables: ['access_token_secrets', 'magic_link_token_secrets', 'workspace_invite_secrets'],
-    poolerNote: 'Conectá por el Session Pooler en el puerto 5432 (transacciones largas OK). NO uses el 6543 (transaction pooler, sin prepared statements). El usuario del pooler es punteado: <DBHUB_USER>.<project-ref> — host, user y ref viven en el .env (DBHUB_HOST, DBHUB_USER), nunca en esta página.',
     tlsCa: {
       fileName: 'supabase-root-2021-ca.crt',
       href: '/qa/supabase-root-2021-ca.crt',
       issuer: 'Supabase Root 2021 CA',
       validUntil: '2031-04-26',
       sha256: '80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA',
-      purpose: 'La base habla TLS y la cadena de su certificado termina en una CA propia de Supabase que el almacén de confianza de Node no trae. Un cliente Node, Playwright o un driver de Postgres sin ese certificado falla con SELF_SIGNED_CERT_IN_CHAIN; con el .crt verifica la conexión de verdad. DBHub y las extensiones SQL de VSCode no siempre lo necesitan: usalo si te da ese error.',
-      verified: 'Verificado contra el Session Pooler del proyecto (puerto 5432): sin el archivo la conexión falla con SELF_SIGNED_CERT_IN_CHAIN, y con él la cadena queda verificada y termina en Supabase Root 2021 CA con el fingerprint de abajo. El certificado es público, no un secreto.',
-      nodeEnv: `# Opción 1: variable de entorno al lanzar el proceso (Node, Playwright, scripts)
-NODE_EXTRA_CA_CERTS=/ruta/a/supabase-root-2021-ca.crt node tu-script.js`,
-      pgClient: `// Opción 2: cliente pg (node-postgres): la CA va en la opción ssl
-import fs from 'node:fs'
-import pg from 'pg'
-
-const client = new pg.Client({
-  host: process.env.DBHUB_HOST,
-  port: Number(process.env.DBHUB_PORT),
-  database: process.env.DBHUB_DATABASE,
-  user: process.env.DBHUB_USER,
-  password: process.env.DBHUB_PASSWORD,
-  ssl: { ca: fs.readFileSync('/ruta/a/supabase-root-2021-ca.crt', 'utf8') },
-})`,
-      lastResort: 'Último recurso, solo para destrabarte un rato: ssl: { rejectUnauthorized: false }. Eso APAGA la verificación del certificado, así que ya no sabés con quién estás hablando. No lo dejes en un script que commiteás.',
-      access: 'El acceso a la base es con el usuario SQL de solo lectura cuyas credenciales están en la épica BK-29. No es acceso al panel de Supabase: el certificado es lo único que necesitás de ese lado.',
+      purpose: 'Un cliente Node, Playwright o pg sin esta CA falla con SELF_SIGNED_CERT_IN_CHAIN. DBHub y las extensiones SQL no suelen necesitarla. El certificado es público.',
+      nodeEnv: 'NODE_EXTRA_CA_CERTS=/ruta/a/supabase-root-2021-ca.crt node tu-script.js',
+      pgClient: lines(
+        'import fs from \'node:fs\'',
+        'import pg from \'pg\'',
+        '',
+        'const client = new pg.Client({',
+        '  host: process.env.DBHUB_HOST,',
+        '  port: Number(process.env.DBHUB_PORT),',
+        '  database: process.env.DBHUB_DATABASE,',
+        '  user: process.env.DBHUB_USER,',
+        '  password: process.env.DBHUB_PASSWORD,',
+        '  ssl: { ca: fs.readFileSync(\'/ruta/a/supabase-root-2021-ca.crt\', \'utf8\') },',
+        '})',
+      ),
+      lastResort: 'Último recurso para destrabarte: ssl: { rejectUnauthorized: false }. Eso APAGA la verificación del certificado. No lo dejes en un script que commiteás.',
     },
-    rpcAccess: 'qa_inspector_rw puede ejecutar prácticamente todos los RPC de public: los de SECURITY INVOKER desde la migración 0085 y los de SECURITY DEFINER desde la 0086. Quedan fuera, con REVOKE explícito, las cinco funciones que leen auth.users (auth_email_status, bunkai_user_id_by_email, bunkai_resolve_activity_actors, bunkai_notification_digest_candidates, bunkai_request_workspace_deletion): auth guarda hashes de password y sesiones, y ese límite no se cruza. qa_inspector_ro recibe solo los DEFINER que no escriben (STABLE/IMMUTABLE), porque un DEFINER corre como postgres y saltearía su contrato de solo-lectura. Ojo con los RPC de mantenimiento: bunkai_sweep_abandoned_runs no está scopeado por workspace y aborta runs inactivos de TODOS los tenants — usá un threshold alto para acotar el radio.',
-    rlsProbe: 'Ojo: estas credenciales NO sirven para probar aislamiento multi-tenant — BYPASSRLS hace que vean todos los workspaces a la vez. La sonda cross-tenant va con una sesión authenticated real (JWT): logueate como usuario B e intentá SELECT en projects con un workspace_id del usuario A → esperá 0 filas. RLS está activo en cada tabla; auth.uid() maneja la membresía vía la familia bunkai_is_workspace_member.',
-  },
-  mcp: {
-    agents: ['claude', 'opencode'],
-    dbhub: { claude: dbhubClaude, opencode: dbhubOpencode },
-    openapi: { claude: openapiClaude, opencode: openapiOpencode },
-    postman: { claude: postmanClaude, opencode: postmanOpencode },
-  },
-  env: {
-    strategy: 'expansion',
-    activation: ['mcp-loader', 'varlock-run'],
-    slots: [
-      'DBHUB_TYPE',
-      'DBHUB_HOST',
-      'DBHUB_PORT',
-      'DBHUB_DATABASE',
-      'DBHUB_USER',
-      'DBHUB_PASSWORD',
-      'API_BASE_URL',
-      'OPENAPI_SPEC_PATH',
-      'API_TOKEN',
-      'POSTMAN_API_KEY',
-    ],
-  },
-  demoUsers: [
-    {
-      email: 'qa.bot@bunkai-test.dev',
-      note: 'QA bot headless — alta vía POST /auth/signup → /auth/confirm (OTP); passwords en el Epic BK-29.',
-    },
-  ],
-  playwright: {
-    loginTestIds: [
-      { id: 'login-email', purpose: 'Input de email (paso único email-first). OJO: el mismo testid existe también en el form de magic-link, así que una vez abierto ese toggle getByTestId("login-email") matchea DOS nodos y Playwright tira strict-mode violation. Scopeá por el form.' },
-      { id: 'login-continue', purpose: 'Botón "Continue" — dispara check-email y enruta.' },
-      { id: 'login-password', purpose: 'Input de password (steps de signin y create).' },
-      { id: 'login-signin', purpose: 'Botón de login para cuenta existente (email+password).' },
-      { id: 'login-create', purpose: 'Botón de alta para email nuevo (setea password).' },
-      { id: 'login-otp', purpose: 'Input del código OTP de 6-8 dígitos (step verify).' },
-      { id: 'login-verify', purpose: 'Botón "Verify" — confirma el OTP.' },
-      { id: 'login-resend', purpose: 'Reenvía el código OTP.' },
-      { id: 'login-magic-link-toggle', purpose: 'Toggle al login secundario por magic-link.' },
-      { id: 'login-submit', purpose: 'Submit del form de magic-link (el que revela el toggle de arriba).' },
-      { id: 'login-error', purpose: 'Nodo role="alert" donde aterriza el mensaje de error — el que necesita todo test negativo.' },
-      { id: 'oauth-github', purpose: 'Botón de login con GitHub (ADR-0008).' },
-      { id: 'oauth-google', purpose: 'Botón de login con Google (ADR-0008).' },
-    ],
-    scriptedFixture,
-    hybridBridge,
-    cliExample: playwrightCli,
-    agenticPrompts: [
-      'abrí /login, escribí qa.bot@bunkai-test.dev, dale Continue y sacá un screenshot del step de password',
-      'listá todos los empty states de la home',
-      'reportá un bug si algún texto visible desborda su contenedor',
-    ],
   },
 };
