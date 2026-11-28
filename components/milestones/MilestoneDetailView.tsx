@@ -234,7 +234,7 @@ export function MilestoneDetailView({ milestone, canEdit: canEditRole, readOnly 
             </div>
           )}
 
-          {readiness ? <MilestoneReadinessCard readiness={readiness} /> : <MilestoneReadinessUnavailable />}
+          {readiness ? <MilestoneReadinessCard readiness={readiness} readOnly={readOnly} /> : <MilestoneReadinessUnavailable />}
 
           {readiness && (
             <MilestoneAttachedPlans
