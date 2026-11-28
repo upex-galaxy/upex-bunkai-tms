@@ -120,7 +120,7 @@ export interface RemoveMemberResult {
 // the same early refusals as removal, in the order the RPC re-checks
 // (`bunkai_change_workspace_member_role`, migration 0144):
 //   role 422 -> visibility 404 -> caller role 403 -> self 409 -> target 404
-//   -> Owner target 403.
+//   (caller re-checked on an empty target read) -> Owner target 403.
 
 export const ROLE_CHANGE_INVALID_ROLE_MESSAGE = 'Role must be one of viewer, member or admin.';
 export const ROLE_CHANGE_NOT_ADMIN_MESSAGE = 'You must be an admin or owner of this workspace to change a teammate\'s role.';
@@ -151,24 +151,29 @@ export function parseRoleChangeBody(body: unknown): AssignableRole {
   return role;
 }
 
+async function activeRole(db: SupabaseClient<Database>, member: { workspaceId: string, userId: string }): Promise<string | null> {
+  const { data, error } = await db
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', member.workspaceId)
+    .eq('user_id', member.userId)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (error) {
+    throw new ApiError('internal_error', error.message);
+  }
+  return data?.role ?? null;
+}
+
 export async function assertRoleChangeAllowed(
   db: SupabaseClient<Database>,
   params: AssertRemovalAllowedParams,
 ): Promise<void> {
-  const { data: caller, error: callerError } = await db
-    .from('workspace_members')
-    .select('role')
-    .eq('workspace_id', params.workspaceId)
-    .eq('user_id', params.callerId)
-    .eq('status', 'active')
-    .maybeSingle();
-  if (callerError) {
-    throw new ApiError('internal_error', callerError.message);
-  }
-  if (!caller) {
+  const callerRole = await activeRole(db, { workspaceId: params.workspaceId, userId: params.callerId });
+  if (!callerRole) {
     notFound();
   }
-  if (roleRank(caller.role) < roleRank('admin')) {
+  if (roleRank(callerRole) < roleRank('admin')) {
     notAnAdmin();
   }
 
@@ -176,20 +181,16 @@ export async function assertRoleChangeAllowed(
     ownRoleRefusal();
   }
 
-  const { data: target, error: targetError } = await db
-    .from('workspace_members')
-    .select('role')
-    .eq('workspace_id', params.workspaceId)
-    .eq('user_id', params.targetId)
-    .eq('status', 'active')
-    .maybeSingle();
-  if (targetError) {
-    throw new ApiError('internal_error', targetError.message);
-  }
-  if (!target) {
+  const targetRole = await activeRole(db, { workspaceId: params.workspaceId, userId: params.targetId });
+  if (!targetRole) {
+    // A Member sees only their own row, so a caller lowered after the first read must get 403, not 404 (BK-2703).
+    const recheckedRole = await activeRole(db, { workspaceId: params.workspaceId, userId: params.callerId });
+    if (recheckedRole && roleRank(recheckedRole) < roleRank('admin')) {
+      notAnAdmin();
+    }
     notFound();
   }
-  if (!canChangeRole(caller.role, target.role)) {
+  if (!canChangeRole(callerRole, targetRole)) {
     ownerRoleRefusal();
   }
 }
