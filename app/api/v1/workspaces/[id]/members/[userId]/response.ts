@@ -11,7 +11,8 @@ import { canChangeRole, canRemoveRole, isAssignableRole, roleRank } from '@lib/w
 //
 // The route refuses early, in the SAME order the RPC re-checks
 // (`bunkai_remove_workspace_member`, migration 0114, BK-572 Q-D2):
-//   visibility 404 -> caller role 403 -> self 409 -> target 404 -> ladder 403.
+//   visibility 404 -> caller role 403 -> self 409 -> target 404 (caller
+//   re-checked on an empty target read) -> ladder 403.
 // The RPC does not trust this layer (ADR-0012): it repeats every check
 // itself, under a row lock, and the route maps its codes the same way.
 
@@ -23,6 +24,10 @@ export const REMOVAL_SOLE_OWNER_MESSAGE = 'A workspace must keep at least one Ow
 
 function notFound(): never {
   throw new ApiError('not_found', REMOVAL_NOT_FOUND_MESSAGE);
+}
+
+function removalNotAdmin(): never {
+  throw new ApiError('forbidden', REMOVAL_NOT_ADMIN_MESSAGE, { details: { reason: 'not_a_member' } });
 }
 
 function selfRefusal(workspaceId: string): never {
@@ -45,41 +50,28 @@ export async function assertRemovalAllowed(
   db: SupabaseClient<Database>,
   params: AssertRemovalAllowedParams,
 ): Promise<void> {
-  const { data: caller, error: callerError } = await db
-    .from('workspace_members')
-    .select('role')
-    .eq('workspace_id', params.workspaceId)
-    .eq('user_id', params.callerId)
-    .eq('status', 'active')
-    .maybeSingle();
-  if (callerError) {
-    throw new ApiError('internal_error', callerError.message);
-  }
-  if (!caller) {
+  const callerRole = await activeRole(db, { workspaceId: params.workspaceId, userId: params.callerId });
+  if (!callerRole) {
     notFound();
   }
-  if (roleRank(caller.role) < roleRank('admin')) {
-    throw new ApiError('forbidden', REMOVAL_NOT_ADMIN_MESSAGE, { details: { reason: 'not_a_member' } });
+  if (roleRank(callerRole) < roleRank('admin')) {
+    removalNotAdmin();
   }
 
   if (params.targetId.toLowerCase() === params.callerId.toLowerCase()) {
     selfRefusal(params.workspaceId);
   }
 
-  const { data: target, error: targetError } = await db
-    .from('workspace_members')
-    .select('role')
-    .eq('workspace_id', params.workspaceId)
-    .eq('user_id', params.targetId)
-    .eq('status', 'active')
-    .maybeSingle();
-  if (targetError) {
-    throw new ApiError('internal_error', targetError.message);
-  }
-  if (!target) {
+  const targetRole = await activeRole(db, { workspaceId: params.workspaceId, userId: params.targetId });
+  if (!targetRole) {
+    // A Member sees only their own row, so a caller lowered after the first read must get 403, not 404 (BK-2704).
+    const recheckedRole = await activeRole(db, { workspaceId: params.workspaceId, userId: params.callerId });
+    if (recheckedRole && roleRank(recheckedRole) < roleRank('admin')) {
+      removalNotAdmin();
+    }
     notFound();
   }
-  if (!canRemoveRole(caller.role, target.role)) {
+  if (!canRemoveRole(callerRole, targetRole)) {
     throw new ApiError('forbidden', REMOVAL_OWNER_MESSAGE, { details: { reason: 'cannot_remove_owner' } });
   }
 }
@@ -91,7 +83,7 @@ export function mapRemoveMemberError(error: { code?: string, message: string }, 
     throw new ApiError('unauthorized', 'You must be signed in to remove a teammate.');
   }
   if (error.code === '42501') {
-    throw new ApiError('forbidden', REMOVAL_NOT_ADMIN_MESSAGE, { details: { reason: 'not_a_member' } });
+    removalNotAdmin();
   }
   if (error.code === 'P0002') {
     notFound();
