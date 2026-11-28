@@ -148,7 +148,7 @@ export const qaConfig: QaConfig = {
     {
       id: 'env',
       title: 'Completá tu .env',
-      body: 'Los archivos de MCP de tu repo ya vienen listos y no se tocan. Solo llenás el `.env` de la raíz del repo: tu cuenta, los dos valores públicos y los seis `DBHUB_*` que copiás de BK-29.',
+      body: 'Los archivos de MCP de tu repo ya vienen listos y no se tocan. Solo llenás el `.env` de la raíz del repo: tu cuenta, los dos valores públicos y los seis `DBHUB_*` que copiás de BK-29. BK-29 trae `DBHUB_PORT=5432`: si tu red lo corta con `ECONNRESET`, usá `6543`. Si un valor tiene `#`, ponelo entre comillas simples.',
       code: {
         language: 'bash',
         title: '.env',
@@ -231,7 +231,7 @@ export const qaConfig: QaConfig = {
           'Después llamá GET /api/v1/me con curl y el token de .auth/tokens.env.',
         ),
       },
-      done: 'Lista las rutas de `/api/v1/auth` y el `GET /me` devuelve 200.',
+      done: 'Lista las rutas de `/api/v1/auth` y el `GET /me` devuelve 200 con `"auth": "bearer"`.',
     },
     {
       id: 'ui',
@@ -381,7 +381,7 @@ export const qaConfig: QaConfig = {
           fix: 'Abrí opencode desde la raíz del repo y revisá con `opencode mcp list`.',
         },
         {
-          symptom: 'openapi termina apenas arranca',
+          symptom: 'openapi termina apenas arranca (figura como failed en la lista de MCP)',
           cause: '`OPENAPI_SPEC_PATH` es solo `/api/openapi`: se lee como archivo y no existe.',
           fix: `Usá la URL completa: ${WEB}/api/openapi`,
         },
