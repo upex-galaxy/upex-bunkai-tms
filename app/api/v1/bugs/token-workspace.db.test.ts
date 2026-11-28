@@ -3,8 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it, mock, setDefaultTimeout } from 'bun:test';
 import { NextRequest } from 'next/server';
 
-// BK-2708: the single-Bug write routes bind a workspace-scoped token to the Bug's workspace.
-// Throwaway users, workspaces and tokens only; everything is deleted and recounted in afterAll.
+// Throwaway users, workspaces and tokens only: everything is deleted and recounted in afterAll.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -28,6 +27,7 @@ const PASSWORD = `Bk2708-${crypto.randomUUID()}`;
 const MISSING = '00000000-0000-4000-8000-000000000000';
 const createdUserIds: string[] = [];
 const createdWorkspaceIds: string[] = [];
+const seededBugIds: string[] = [];
 
 interface Fixture {
   userId: string
@@ -99,6 +99,7 @@ async function seedBug(): Promise<string> {
     evidence_urls: [],
     created_by: need().userId,
   }).select('id').single(), 'bug');
+  seededBugIds.push(row.id as string);
   return row.id as string;
 }
 
@@ -179,9 +180,12 @@ describeOrSkip('BK-2708: single-Bug write routes bind a workspace-scoped token t
     const { count: workspacesLeft } = await db.from('workspaces').select('id', { count: 'exact', head: true }).like('slug', `${PREFIX}%`);
     const { count: bugsLeft } = await db.from('bugs').select('id', { count: 'exact', head: true }).like('title', `${PREFIX}%`);
     const { count: tokensLeft } = await db.from('access_tokens').select('id', { count: 'exact', head: true }).like('name', `${PREFIX}%`);
-    console.log(`[bug-token-workspace] cleanup: ${workspacesLeft} workspaces, ${bugsLeft} Bugs, ${tokensLeft} tokens, ${failedUsers.length} users left`);
-    if (workspacesLeft !== 0 || bugsLeft !== 0 || tokensLeft !== 0 || failedUsers.length > 0) {
-      throw new Error(`[bug-token-workspace] cleanup left ${workspacesLeft} workspaces, ${bugsLeft} Bugs, ${tokensLeft} tokens and ${failedUsers.length} users behind.`);
+    const { count: eventsLeft } = seededBugIds.length === 0
+      ? { count: 0 }
+      : await db.from('activity_log').select('id', { count: 'exact', head: true }).eq('entity_type', 'bug').in('entity_id', seededBugIds);
+    console.log(`[bug-token-workspace] cleanup: ${workspacesLeft} workspaces, ${bugsLeft} Bugs, ${tokensLeft} tokens, ${eventsLeft} events, ${failedUsers.length} users left`);
+    if (workspacesLeft !== 0 || bugsLeft !== 0 || tokensLeft !== 0 || eventsLeft !== 0 || failedUsers.length > 0) {
+      throw new Error(`[bug-token-workspace] cleanup left ${workspacesLeft} workspaces, ${bugsLeft} Bugs, ${tokensLeft} tokens, ${eventsLeft} events and ${failedUsers.length} users behind.`);
     }
   }, 120_000);
 

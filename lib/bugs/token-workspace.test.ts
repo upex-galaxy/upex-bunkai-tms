@@ -2,9 +2,6 @@ import { ApiError } from '@lib/api/error-envelope';
 import { describe, expect, test } from 'bun:test';
 import { assertBugTokenWorkspace } from './token-workspace';
 
-// BK-2708 — the gate around the Bug read; the routes themselves are proven against the real
-// database in app/api/v1/bugs/token-workspace.db.test.ts.
-
 const BUG = '11111111-1111-4111-8111-111111111111';
 const WORKSPACE = '33333333-3333-4333-8333-333333333333';
 const OTHER = '44444444-4444-4444-8444-444444444444';
