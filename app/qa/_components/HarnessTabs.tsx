@@ -14,7 +14,7 @@ export function HarnessTabs({ items }: { items: { id: string, label: string, con
         ))}
       </TabsList>
       {items.map(item => (
-        <TabsContent key={item.id} value={item.id} data-testid={`qa-harness-panel-${item.id}`}>
+        <TabsContent key={item.id} value={item.id} forceMount className="data-[state=inactive]:hidden" data-testid={`qa-harness-panel-${item.id}`}>
           {item.content}
         </TabsContent>
       ))}
