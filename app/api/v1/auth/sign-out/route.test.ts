@@ -235,7 +235,7 @@ describe('BK-2447 POST /api/v1/auth/sign-out', () => {
   });
 
   it('answers 401 and keeps the session when a valid cookie arrives with an empty or malformed Bearer header', async () => {
-    for (const authorization of ['Bearer ', 'Bearer', 'Bearer    ', ' Bearer ', 'bearer ', 'BEARER', 'Bearer\t', 'Bearer not-a-pat', 'bearer not-a-pat', 'BEARER  not-a-pat', 'Bearer\tnot-a-pat']) {
+    for (const authorization of ['Bearer ', 'Bearer', 'Bearer    ', ' Bearer ', 'bearer ', 'BEARER', 'Bearer\t', 'Bearer not-a-pat', 'bearer not-a-pat', 'BEARER  not-a-pat', 'Bearer\tnot-a-pat', 'Bearer,not-a-pat']) {
       for (const body of ['{"revoke_pats": true}', '{"revoke_pats": "x"}', undefined]) {
         const { status, json } = await call(body, authorization);
         expect({ authorization, status, code: json.error?.code }).toEqual({ authorization, status: 401, code: 'unauthorized' });
