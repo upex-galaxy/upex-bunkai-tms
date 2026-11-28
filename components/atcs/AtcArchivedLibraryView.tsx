@@ -4,6 +4,7 @@ import type { AtcArchivedRow } from '@lib/atcs/library';
 import { revalidateAfterArchiveChange } from '@app/(app)/atcs/actions';
 import { AtcLibraryNoMatch, AtcLibrarySearchField, useAtcLibraryNarrowing } from '@components/atcs/AtcLibrarySearch';
 import { AtcLibraryErrorBlock, LayerChip } from '@components/atcs/AtcLibraryView';
+import { READ_ONLY_PROJECT_NOTE } from '@components/billing/ReadOnlyProjectNotice';
 import { Button } from '@components/ui/button';
 import { formatActivityTime } from '@lib/activity/view';
 import { restoreAtc } from '@lib/atcs/archive-client';
@@ -24,12 +25,15 @@ interface AtcArchivedLibraryViewProps {
   rows: AtcArchivedRow[]
   error: string | null
   canWrite: boolean
+  readOnlyProjectSlugs?: readonly string[]
 }
 
 export const ATC_ARCHIVED_EMPTY_TITLE = 'Nothing has been archived';
 export const ATC_ARCHIVED_EMPTY_BODY = 'No ATC in this workspace has been archived on its own.';
 
-export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLibraryViewProps) {
+const NO_READ_ONLY_PROJECTS: readonly string[] = [];
+
+export function AtcArchivedLibraryView({ rows, error, canWrite, readOnlyProjectSlugs = NO_READ_ONLY_PROJECTS }: AtcArchivedLibraryViewProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [restoringId, setRestoringId] = useState<string | null>(null);
@@ -107,6 +111,8 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
             {visible.map((row) => {
               const failure = failures[row.id];
               const restoring = restoringId === row.id;
+              const readOnly = readOnlyProjectSlugs.includes(row.projectSlug);
+              const notes = readOnly ? [...row.notes, READ_ONLY_PROJECT_NOTE] : row.notes;
               return (
                 <tr
                   key={row.id}
@@ -127,7 +133,7 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
                     >
                       {row.title}
                     </Link>
-                    {row.notes.map(note => (
+                    {notes.map(note => (
                       <span key={note} data-testid="atc-archived-note" className="block text-xs text-fg-3">{note}</span>
                     ))}
                     {failure !== undefined && (
@@ -151,7 +157,7 @@ export function AtcArchivedLibraryView({ rows, error, canWrite }: AtcArchivedLib
                     <span className="block font-mono text-fg-3" data-testid="atc-archived-at">{formatActivityTime(row.archivedAt)}</span>
                   </td>
                   <td className="px-6 py-1.5 text-right">
-                    {canWrite && (
+                    {canWrite && !readOnly && (
                       <Button
                         type="button"
                         size="sm"

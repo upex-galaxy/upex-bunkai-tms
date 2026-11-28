@@ -61,12 +61,12 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-async function render(props: { canWrite: boolean, rows?: typeof ROW[] }) {
+async function render(props: { canWrite: boolean, rows?: typeof ROW[], readOnlyProjectSlugs?: string[] }) {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(withSearch('', createElement(AtcArchivedLibraryView, { rows: props.rows ?? [ROW], error: null, canWrite: props.canWrite })));
+    root.render(withSearch('', createElement(AtcArchivedLibraryView, { rows: props.rows ?? [ROW], error: null, canWrite: props.canWrite, readOnlyProjectSlugs: props.readOnlyProjectSlugs })));
   });
   mounted.push({ container, root });
   return container;
@@ -106,6 +106,16 @@ describe('BK-571 — the archived view', () => {
     expect(byTestId(container, 'atc-archived-note')?.textContent).toContain('Module "auth" is archived.');
     expect(byTestId(container, 'atc-archived-by')?.textContent).toBe('qa@example.test');
     expect(byTestId(container, 'atc-restore')).toBeNull();
+  });
+
+  test('BK-2712: a row of a read-only project offers no restore and says why', async () => {
+    const other = { ...ROW, id: '22222222-2222-4222-8222-222222222222', projectSlug: 'api', notes: [] };
+    const container = await render({ canWrite: true, rows: [ROW, other], readOnlyProjectSlugs: ['web'] });
+    const [readOnlyRow, writableRow] = Array.from(container.querySelectorAll<HTMLElement>('[data-testid="atc-archived-row"]'));
+    expect(byTestId(readOnlyRow, 'atc-restore')).toBeNull();
+    expect(Array.from(readOnlyRow.querySelectorAll('[data-testid="atc-archived-note"]')).map(n => n.textContent)).toEqual(['Module "auth" is archived.', 'This project is read-only.']);
+    expect(byTestId(writableRow, 'atc-restore')).not.toBeNull();
+    expect(byTestId(writableRow, 'atc-archived-note')).toBeNull();
   });
 
   test('a failed restore names the failure and the same button retries it (AC-12)', async () => {
