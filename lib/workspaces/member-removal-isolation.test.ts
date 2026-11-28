@@ -463,11 +463,6 @@ describeOrSkip('BK-572 — remove a teammate (RPC + RLS ladder, real database)',
     expect(count).toBe(0);
   }, 60_000);
 
-  // LIMITATION: two HTTP calls are not guaranteed to overlap inside Postgres.
-  // When they do not, the second caller is already gone and fails at step 1
-  // with the same P0002, so these two tests prove the OUTCOME (one winner, one
-  // Owner left) but cannot, on their own, prove the FOR UPDATE lock. The lock
-  // and the post-lock re-validation are checked by review of 0114 step 4.
   it('the route check answers 403 not_a_member, never 404, to an Admin lowered between its caller and target reads', async () => {
     expect.hasAssertions();
     const seed = await seedWorkspace('race-route', { owner: 'owner', admin: 'admin', admin2: 'admin' });
@@ -503,6 +498,11 @@ describeOrSkip('BK-572 — remove a teammate (RPC + RLS ladder, real database)',
     expect(stillAdmin?.status).toBe(404);
   }, 60_000);
 
+  // LIMITATION: two HTTP calls are not guaranteed to overlap inside Postgres.
+  // When they do not, the second caller is already gone and fails at step 1
+  // with the same P0002, so these two tests prove the OUTCOME (one winner, one
+  // Owner left) but cannot, on their own, prove the FOR UPDATE lock. The lock
+  // and the post-lock re-validation are checked by review of 0114 step 4.
   it('two Admins removing each other at once: exactly one wins, the loser gets 404 (E2)', async () => {
     expect.hasAssertions();
     const seed = await seedWorkspace('race-admins', { owner: 'owner', admin: 'admin', admin2: 'admin' });
