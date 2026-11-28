@@ -120,7 +120,7 @@ export interface RemoveMemberResult {
 // the same early refusals as removal, in the order the RPC re-checks
 // (`bunkai_change_workspace_member_role`, migration 0144):
 //   role 422 -> visibility 404 -> caller role 403 -> self 409 -> target 404
-//   -> Owner target 403.
+//   (caller re-checked on an empty target read) -> Owner target 403.
 
 export const ROLE_CHANGE_INVALID_ROLE_MESSAGE = 'Role must be one of viewer, member or admin.';
 export const ROLE_CHANGE_NOT_ADMIN_MESSAGE = 'You must be an admin or owner of this workspace to change a teammate\'s role.';
@@ -151,12 +151,12 @@ export function parseRoleChangeBody(body: unknown): AssignableRole {
   return role;
 }
 
-async function activeRole(db: SupabaseClient<Database>, workspaceId: string, userId: string): Promise<string | null> {
+async function activeRole(db: SupabaseClient<Database>, member: { workspaceId: string, userId: string }): Promise<string | null> {
   const { data, error } = await db
     .from('workspace_members')
     .select('role')
-    .eq('workspace_id', workspaceId)
-    .eq('user_id', userId)
+    .eq('workspace_id', member.workspaceId)
+    .eq('user_id', member.userId)
     .eq('status', 'active')
     .maybeSingle();
   if (error) {
@@ -169,7 +169,7 @@ export async function assertRoleChangeAllowed(
   db: SupabaseClient<Database>,
   params: AssertRemovalAllowedParams,
 ): Promise<void> {
-  const callerRole = await activeRole(db, params.workspaceId, params.callerId);
+  const callerRole = await activeRole(db, { workspaceId: params.workspaceId, userId: params.callerId });
   if (!callerRole) {
     notFound();
   }
@@ -181,10 +181,10 @@ export async function assertRoleChangeAllowed(
     ownRoleRefusal();
   }
 
-  const targetRole = await activeRole(db, params.workspaceId, params.targetId);
+  const targetRole = await activeRole(db, { workspaceId: params.workspaceId, userId: params.targetId });
   if (!targetRole) {
     // A Member sees only their own row, so a caller lowered after the first read must get 403, not 404 (BK-2703).
-    const recheckedRole = await activeRole(db, params.workspaceId, params.callerId);
+    const recheckedRole = await activeRole(db, { workspaceId: params.workspaceId, userId: params.callerId });
     if (recheckedRole && roleRank(recheckedRole) < roleRank('admin')) {
       notAnAdmin();
     }

@@ -379,7 +379,7 @@ describeOrSkip('BK-2542 — change a teammate\'s role (RPC, real database)', () 
     const db = { from: (table: string) => lowerBeforeSecondRead(clients.admin2.from(table as 'workspace_members')) } as unknown as Parameters<typeof assertRoleChangeAllowed>[0];
 
     const refusal = await assertRoleChangeAllowed(db, { workspaceId: seed.workspaceId, callerId: users.admin2.id, targetId: users.admin.id }).then(() => null, (err: unknown) => err as { status?: number, details?: unknown });
-    expect(reads).toBeGreaterThanOrEqual(2);
+    expect(reads).toBe(3);
     expect({ status: refusal?.status, details: refusal?.details }).toEqual({ status: 403, details: { reason: 'not_an_admin' } });
 
     const stillAdmin = await assertRoleChangeAllowed(clients.admin, { workspaceId: seed.workspaceId, callerId: users.admin.id, targetId: users.outsider.id }).then(() => null, (err: unknown) => err as { status?: number });
