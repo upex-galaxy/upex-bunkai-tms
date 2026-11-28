@@ -86,13 +86,14 @@ function hasAuthCookie(jar: Jar): boolean {
   return [...jar.keys()].some(name => name.startsWith('sb-'));
 }
 
-async function send(jar: Jar, opts: { body?: string, bearer?: string } = {}): Promise<Response> {
+async function send(jar: Jar, opts: { body?: string, bearer?: string, authorization?: string } = {}): Promise<Response> {
   boundJar = jar;
   return POST(new NextRequest(ROUTE, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       ...(opts.bearer ? { authorization: `Bearer ${opts.bearer}` } : {}),
+      ...(opts.authorization === undefined ? {} : { authorization: opts.authorization }),
     },
     ...(opts.body === undefined ? {} : { body: opts.body }),
   }));
@@ -251,6 +252,24 @@ describeOrSkip('BK-2447 POST /api/v1/auth/sign-out (database)', () => {
 
     const garbage = await send(new Map(s1.jar), { body: '{"revoke_pats": true}', bearer: 'bk_pat_garbage' });
     expect(garbage.status).toBe(401);
+
+    expect(await revokedAt(pat.id)).toBeNull();
+    expect(await patAuthenticates(pat.token)).toBe(true);
+    expect(await sessionAlive(s1.jar)).toBe(true);
+  }, 20_000);
+
+  it('an empty Bearer header next to a valid cookie is 401, and the scheme is matched in any letter case', async () => {
+    const u1 = await newUser('empty-bearer');
+    const pat = await mint(u1.id, 'pat-empty-bearer');
+    const s1 = await signIn(u1.email);
+
+    for (const authorization of ['Bearer ', 'Bearer', 'bearer   ']) {
+      const response = await send(new Map(s1.jar), { body: '{"revoke_pats": true}', authorization });
+      expect({ authorization, status: response.status }).toEqual({ authorization, status: 401 });
+    }
+
+    const lowerCase = await send(new Map(s1.jar), { body: '{"revoke_pats": true}', authorization: `bearer ${pat.token}` });
+    expect(lowerCase.status).toBe(403);
 
     expect(await revokedAt(pat.id)).toBeNull();
     expect(await patAuthenticates(pat.token)).toBe(true);

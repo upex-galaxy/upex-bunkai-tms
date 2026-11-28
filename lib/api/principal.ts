@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 import { ALL_CAPABILITIES } from '@lib/api/capabilities';
 import { ApiError } from '@lib/api/error-envelope';
-import { requireBearerToken } from '@lib/api/middleware/bearer';
+import { bearerCredentials, requireBearerToken } from '@lib/api/middleware/bearer';
 import { mintUserJwt } from '@lib/api/user-jwt';
 import { env } from '@lib/env';
 import { createClient } from '@lib/supabase/server';
@@ -51,7 +51,7 @@ export async function resolveIdentity(request: NextRequest): Promise<Principal> 
   const authHeader = request.headers.get('authorization') ?? request.headers.get('Authorization');
 
   // Bearer first so an explicit PAT is never shadowed by a stale cookie.
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (bearerCredentials(authHeader) !== null) {
     const bearer = await requireBearerToken(request);
     return {
       userId: bearer.userId,

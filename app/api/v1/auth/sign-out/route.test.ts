@@ -97,16 +97,16 @@ const { POST } = await import('./route');
 
 interface Body { revoked_pats?: number, error?: { code?: string } }
 
-function signOutRequest(body?: string): NextRequest {
+function signOutRequest(body?: string, authorization?: string): NextRequest {
   return new NextRequest('https://app.test/api/v1/auth/sign-out', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...(authorization === undefined ? {} : { authorization }) },
     ...(body === undefined ? {} : { body }),
   });
 }
 
-async function call(body?: string): Promise<{ status: number, json: Body }> {
-  const response = await POST(signOutRequest(body));
+async function call(body?: string, authorization?: string): Promise<{ status: number, json: Body }> {
+  const response = await POST(signOutRequest(body, authorization));
   return { status: response.status, json: (await response.json()) as Body };
 }
 
@@ -232,6 +232,27 @@ describe('BK-2447 POST /api/v1/auth/sign-out', () => {
     expect(json.error?.code).toBe('internal_error');
     expect(json.revoked_pats).toBeUndefined();
     expect(state.calls).toEqual(['access_tokens:update:revoked_at|select:id', 'logout:global:access-jwt']);
+  });
+
+  it('answers 401 and keeps the session when a valid cookie arrives with an empty or malformed Bearer header', async () => {
+    for (const authorization of ['Bearer ', 'Bearer', 'Bearer    ', ' Bearer ', 'bearer ', 'BEARER', 'Bearer\t', 'Bearer not-a-pat', 'bearer not-a-pat', 'BEARER  not-a-pat', 'Bearer\tnot-a-pat', 'Bearer,not-a-pat']) {
+      for (const body of ['{"revoke_pats": true}', '{"revoke_pats": "x"}', undefined]) {
+        const { status, json } = await call(body, authorization);
+        expect({ authorization, status, code: json.error?.code }).toEqual({ authorization, status: 401, code: 'unauthorized' });
+        expect(json.revoked_pats).toBeUndefined();
+      }
+    }
+    expect(state.calls).toEqual([]);
+  });
+
+  it('keeps honouring the cookie when the Authorization header is empty or carries another scheme', async () => {
+    for (const authorization of ['', 'Basic dXNlcjpwYXNz', 'Bearerish not-a-pat']) {
+      state.calls = [];
+      const { status, json } = await call(undefined, authorization);
+      expect({ authorization, status }).toEqual({ authorization, status: 200 });
+      expect(json).toEqual({ revoked_pats: 0 });
+      expect(state.calls).toEqual(['signOut:local']);
+    }
   });
 
   it('answers 500 when ending the session fails on the default path', async () => {
