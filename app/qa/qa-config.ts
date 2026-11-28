@@ -185,7 +185,7 @@ export const qaConfig: QaConfig = {
     {
       id: 'token',
       title: 'Sacá tu token de API y probalo',
-      body: 'Este script es de tu repo de QA, no del de Bunkai. Inicia sesión con tu cuenta y guarda el PAT en `.auth/tokens.env`, que git ignora. El OpenAPI MCP no lleva token: el token es para tus curl. Si tu repo no tiene el script, los pasos 1 a 3 de la sección 05 te dan un token igual (y el 4 lo revoca).',
+      body: 'Este script es de tu repo de QA, no del de Bunkai. Inicia sesión con tu cuenta y guarda el PAT en `.auth/tokens.env`, que git ignora. El OpenAPI MCP no lleva token: el token es para tus curl. Si tu repo no tiene el script, los pasos 1 a 3 de la sección 05 te dan un token en `.auth/ws-admin.env`: en este paso y en el 7 usá `source .auth/ws-admin.env` y `$API_TOKEN_WSADMIN_STAGING` en lugar de `.auth/tokens.env` y `$API_TOKEN_USER_STAGING` (el paso 4 de la sección 05 lo revoca).',
       code: {
         language: 'bash',
         code: lines(
@@ -488,7 +488,7 @@ export const qaConfig: QaConfig = {
         {
           symptom: 'Tu repo no tiene el script api:login:staging',
           cause: 'El repo no es el de QA o quedó viejo.',
-          fix: 'Actualizalo con `bun sync`. Mientras tanto, los pasos 1 a 3 de la sección 05 te dan una sesión y un token sin ese script, y el paso 4 lo revoca.',
+          fix: 'Actualizalo con `bun sync`. Mientras tanto, los pasos 1 a 3 de la sección 05 te dan un token sin ese script, guardado en `.auth/ws-admin.env` como `API_TOKEN_WSADMIN_STAGING`; usalo donde la guía dice `API_TOKEN_USER_STAGING`. El paso 4 lo revoca.',
         },
         {
           symptom: 'El registro devuelve 422',
