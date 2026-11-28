@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { mapBugRpcError, throwBugNotFound } from '@lib/bugs/errors';
+import { assertBugTokenWorkspace } from '@lib/bugs/token-workspace';
 import { BugCorrectionBodySchema } from '@lib/bugs/validation';
 import { correctBug, getBugJson } from '@lib/supabase/rpc';
 
@@ -100,12 +101,13 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Bug id must be a UUID.');
   }
 
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const body = BugCorrectionBodySchema.parse(payload);
+  await assertBugTokenWorkspace(principal, bugId);
 
   const result = await performBugCorrection(db, {
     bugId,
