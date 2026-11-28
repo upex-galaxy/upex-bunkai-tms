@@ -82,6 +82,10 @@ function must<T>(result: { data: T, error: unknown }): NonNullable<T> {
   return result.data;
 }
 
+function expectNoPrivilege(error: { code?: string, message?: string } | null): void {
+  expect({ code: error?.code, privilege: /permission denied/.test(error?.message ?? '') }).toEqual({ code: '42501', privilege: true });
+}
+
 async function newActor(label: string): Promise<Actor> {
   const email = `${PREFIX}-${label}@bunkai.test`;
   const { data, error } = await service().auth.admin.createUser({ email, password: PASSWORD, email_confirm: true });
@@ -244,7 +248,7 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
       it(`the owner cannot set ${column} when requesting an export`, async () => {
         const before = await count('workspace_exports', 'workspace_id', fx.workspaceId);
         const { error } = await owner.db.from('workspace_exports').insert({ workspace_id: fx.workspaceId, requested_by: owner.id, ...extra() }).select('id');
-        expect(error?.code).toBe('42501');
+        expectNoPrivilege(error);
         expect(await count('workspace_exports', 'workspace_id', fx.workspaceId)).toBe(before);
       }, 20_000);
     }
@@ -257,7 +261,7 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
         archive_path: `${fx.workspaceId}/${crypto.randomUUID()}.zip`,
         expires_at: new Date(Date.now() + 86_400_000).toISOString(),
       }).select('id');
-      expect(error?.code).toBe('42501');
+      expectNoPrivilege(error);
       const resolved = await owner.db.rpc('bunkai_resolve_workspace_export_download', { p_workspace_id: fx.workspaceId });
       expect(resolved.error?.code).toBe('45801');
     }, 20_000);
@@ -265,9 +269,9 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
     it('the owner cannot change or delete an export row', async () => {
       const row = must(await service().from('workspace_exports').insert({ workspace_id: fx.workspaceId, requested_by: owner.id, status: 'failed', error_message: 'seed' }).select('id, status').single());
       const updated = await owner.db.from('workspace_exports').update({ status: 'completed' }).eq('id', row.id).select('id');
-      expect(updated.error?.code).toBe('42501');
+      expectNoPrivilege(updated.error);
       const deleted = await owner.db.from('workspace_exports').delete().eq('id', row.id).select('id');
-      expect(deleted.error?.code).toBe('42501');
+      expectNoPrivilege(deleted.error);
       expect(must(await service().from('workspace_exports').select('status').eq('id', row.id).single()).status).toBe('failed');
       must(await service().from('workspace_exports').delete().eq('id', row.id).select('id'));
     }, 20_000);
@@ -303,21 +307,21 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
         test_title: 'direct',
         finished_at: new Date().toISOString(),
       }).select('id');
-      expect(error?.code).toBe('42501');
+      expectNoPrivilege(error);
       expect(await count('runs', 'workspace_id', fx.workspaceId)).toBe(before);
     }, 20_000);
 
     it('a member cannot insert a run ATC row directly', async () => {
       const before = await count('run_atcs', 'run_id', fx.runId);
       const { error } = await member.db.from('run_atcs').insert({ run_id: fx.runId, atc_id: fx.atcId, position: 2, atc_title: 'direct', status: 'passed' }).select('id');
-      expect(error?.code).toBe('42501');
+      expectNoPrivilege(error);
       expect(await count('run_atcs', 'run_id', fx.runId)).toBe(before);
     }, 20_000);
 
     it('a member cannot insert a run step row directly', async () => {
       const before = await count('run_steps', 'run_atc_id', fx.runAtcId);
       const { error } = await member.db.from('run_steps').insert({ run_atc_id: fx.runAtcId, position: 1, content: 'direct', status: 'passed', executed_at: new Date().toISOString() }).select('id');
-      expect(error?.code).toBe('42501');
+      expectNoPrivilege(error);
       expect(await count('run_steps', 'run_atc_id', fx.runAtcId)).toBe(before);
     }, 20_000);
 
@@ -367,7 +371,7 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
         sync_state: 'synced',
         external_issue_key: 'BK-1',
       }).select('id');
-      expect(error?.code).toBe('42501');
+      expectNoPrivilege(error);
       expect(await count('bugs', 'workspace_id', fx.workspaceId)).toBe(before);
     }, 20_000);
 
@@ -405,7 +409,7 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
       it(`a member cannot set ${column} when enqueuing an import`, async () => {
         const before = await count('import_jobs', 'project_id', fx.projectId);
         const { error } = await member.db.from('import_jobs').insert({ workspace_id: fx.workspaceId, project_id: fx.projectId, jql: 'project = BK', ...extra }).select('id');
-        expect(error?.code).toBe('42501');
+        expectNoPrivilege(error);
         expect(await count('import_jobs', 'project_id', fx.projectId)).toBe(before);
       }, 20_000);
     }
@@ -450,7 +454,7 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
         const id = await seedNotification();
         const before = await readNotification(id);
         const { error } = await member.db.from('notifications').update(change()).eq('id', id).select('id');
-        expect(error?.code).toBe('42501');
+        expectNoPrivilege(error);
         expect(await readNotification(id)).toEqual(before);
       }, 20_000);
     }
@@ -458,9 +462,9 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
     it('the recipient cannot insert or delete a notification', async () => {
       const id = await seedNotification();
       const inserted = await member.db.from('notifications').insert({ workspace_id: fx.workspaceId, recipient_user_id: member.id, event_type: 'run_finished', entity_type: 'run' }).select('id');
-      expect(inserted.error?.code).toBe('42501');
+      expectNoPrivilege(inserted.error);
       const deleted = await member.db.from('notifications').delete().eq('id', id).select('id');
-      expect(deleted.error?.code).toBe('42501');
+      expectNoPrivilege(deleted.error);
       expect(await count('notifications', 'id', id)).toBe(1);
     }, 20_000);
 
@@ -487,7 +491,7 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
         response_snapshot: { forged: true },
         response_status: 200,
       }).select('id');
-      expect(error?.code).toBe('42501');
+      expectNoPrivilege(error);
       expect(await count('idempotency_keys', 'key', `${PREFIX}-direct`)).toBe(0);
     }, 20_000);
 
@@ -502,9 +506,9 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
         response_status: 201,
       }).select('id').single());
       const updated = await member.db.from('idempotency_keys').update({ response_snapshot: { ok: false }, response_status: 200 }).eq('id', row.id).select('id');
-      expect(updated.error?.code).toBe('42501');
+      expectNoPrivilege(updated.error);
       const deleted = await member.db.from('idempotency_keys').delete().eq('id', row.id).select('id');
-      expect(deleted.error?.code).toBe('42501');
+      expectNoPrivilege(deleted.error);
       const stored = must(await service().from('idempotency_keys').select('response_snapshot, response_status').eq('id', row.id).single());
       expect({ snapshot: stored.response_snapshot, status: stored.response_status }).toEqual({ snapshot: { ok: true }, status: 201 });
     }, 20_000);
@@ -532,7 +536,9 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
       db.from('notifications').insert({ workspace_id: fx.workspaceId, recipient_user_id: member.id, event_type: 'run_finished', entity_type: 'run' }).select('id'),
       db.from('idempotency_keys').insert({ user_id: member.id, endpoint: 'POST /api/v1/guard', key: `${PREFIX}-anon`, request_hash: 'hash' }).select('id'),
     ]);
-    expect(attempts.map(a => a.error?.code)).toEqual(Array.from({ length: 8 }, () => '42501'));
+    for (const attempt of attempts) {
+      expectNoPrivilege(attempt.error);
+    }
   }, 20_000);
 
   describe('workspaces.name', () => {
@@ -540,7 +546,7 @@ describeOrSkip('BK-2592 client writes the data API refuses (database)', () => {
       return must(await service().from('workspaces').select('name').eq('id', fx.workspaceId).single()).name;
     }
 
-    for (const [label, name] of [['longer than 80 characters', 'x'.repeat(81)], ['blank', '   ']] as const) {
+    for (const [label, name] of [['longer than 80 characters', 'x'.repeat(81)], ['blank', '   '], ['only tabs and line breaks', '\t\n\t']] as const) {
       it(`the owner cannot rename the workspace to a name that is ${label}`, async () => {
         const before = await readName();
         const { error } = await owner.db.from('workspaces').update({ name }).eq('id', fx.workspaceId).select('id');

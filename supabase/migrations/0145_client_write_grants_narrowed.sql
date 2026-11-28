@@ -29,8 +29,9 @@
 -- 2. Policies: the INSERT policies of runs, run_atcs, run_steps and bugs and the INSERT
 --    and UPDATE policies of idempotency_keys go with their grants. The export, import and
 --    notification policies stay as they are and now only ever see the granted columns.
--- 3. workspaces.name: 1 to 80 characters and not blank, as the create and rename routes
---    already require. Every existing row passes, so the check validates without a rewrite.
+-- 3. workspaces.name: at most 80 characters, at least one of them not whitespace, as the
+--    create and rename routes already require. Every existing row passes, so the check
+--    validates without a rewrite.
 --
 -- qa_inspector_rw keeps its grants (non-client QA tooling role, out of scope here).
 
@@ -61,7 +62,7 @@ begin
     where conrelid = 'public.workspaces'::regclass and conname = 'workspaces_name_length'
   ) then
     alter table public.workspaces
-      add constraint workspaces_name_length check (char_length(name) <= 80 and btrim(name) <> '');
+      add constraint workspaces_name_length check (char_length(name) <= 80 and name ~ '\S');
   end if;
 end;
 $$;
