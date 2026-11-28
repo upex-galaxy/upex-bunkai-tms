@@ -37,6 +37,8 @@ It passed shift-left and is ready. Take it and implement it.
 2. Dispatch a worker in its own worktree from `origin/staging` with `/sprint-development <KEY>`. Brief: one PR per story (Bunkai rule ONE-PR-PER-STORY), merge commit into `staging` when green and reviewed, migrations per `project.yaml`, design gate per `master-design-plan.md`, report the PR and merge SHA.
 3. On `worker_done`: verify the merge commit is an ancestor of `origin/staging` (after `git fetch`) and that Jira moved it to `Ready For QA`. Jira has not moved a merged story by itself in five of five cases (BK-601, BK-223, BK-217, BK-440, BK-441): when it is still `Ready For Dev` after the merge, walk `In Progress`, `In Review`, `Ready For QA` with `acli` and read each status back. Journal line.
 
+**Advanced status with no code.** A story can sit in `In Test` (or later) with nothing on `origin/staging`, which also blocks its dependents. Confirm it from git (every ref, the source tree, the PR list), tell the owners in the channel before starting so they can veto, build it as a G1 worker, and after the merge use the transition that exists from that status instead of waiting for someone to rewind the ticket.
+
 ## G2 · New defect
 
 A Defect `Open` (usually traced to a story that is now `BLOCKED`). Fix it as soon as possible.

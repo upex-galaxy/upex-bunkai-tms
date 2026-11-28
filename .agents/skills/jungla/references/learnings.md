@@ -287,3 +287,17 @@ Format: `## AAAA-MM-DD · <title>` then what happened, the evidence, and what to
 
 ## 2026-11-27 · A new day drops owner messages sent after the close
 - Phase 0 step 3 sets `last_seen_ts` to now on a new day, so a reply written between the 21:00 close and the 06:00 start (a veto on a held sign-off, an order) is never delivered. At this start a one-off pass before touching the state found none: `JUNGLA_MIN_RUNTIME=0 wait-jungla.sh <epoch of yesterday's close> 21:00 1 -` (it also rewrites `jira-seen.json`, so read its whole verdict line). Do that pass at every start; confirmed twice, change step 3 to keep `last_seen_ts`.
+
+## 2026-11-27 · A QA sign-off can follow an edit of the acceptance criteria
+- BK-513: four criteria were removed from the AC field hours before `QA Approved`, and the delivery comment named two. The synced numbering hid it (the rest were renumbered). `listJiraIssueChangelogs` showed both edits with the full previous text. Held, ruled on the ticket and sent to the tutor; two came back with executions two hours later and the story was signed. At every G3, read the changelog of the AC field for edits made since the delivery. First sighting: confirm before moving it into `ganks.md`.
+- BK-49 closed its security criterion on a verbal authorization that the comment itself called unconfirmed. Accepting a security risk is owner-reserved: held and asked in the channel.
+
+## 2026-11-27 · A story in an advanced status with no code (second time, promoted)
+- BK-226 showed `In Test` with no code and was found only because a shift-left of its dependent (BK-2097) checked git. Built from git truth after telling the owners, then `In Test` to `Ready For QA` in one transition. Together with BK-233 (2026-11-25) this is confirmed: **promoted** into `ganks.md`.
+
+## 2026-11-27 · A sibling check turns one security defect into the next
+- A BK-2447 shift-left note ("a revoked token may be un-revoked") was real: table-wide client grants with an ownership-only policy. Asking each fix worker to report sibling tables found the same shape on `workspaces` (plan and seats writable by the owner) and six more tables (BK-2592). Brief shape that worked: reproduce on throwaway data, inventory writers on `main` and `staging` (one database), column grants, `ask` before apply, one database test per refused write and per flow that must keep working. The repo is public: briefs say what GitHub text may describe.
+- The conductor's own gate check costs three calls: file sha256 on origin, writers on both branches and in `pg_proc`, live `md5(prosrc)` of every redefined function against its previous migration.
+
+## 2026-11-27 · Busy day shape
+- Seven Orca workers, one at a time, 18 to 52 minutes each, delivered nine pull requests and four migrations. A worker with three small defects in sequence took 45 minutes. Dispatching on the GANK line, instead of waiting for a slot, kept a worker busy most of the afternoon.
