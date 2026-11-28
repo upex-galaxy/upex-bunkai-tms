@@ -10,13 +10,13 @@
    db=supabase-postgres
    orm=none
    repos-shape=mono
-   mcp-config-files=mcp.json,opencode.jsonc
+   mcp-config-files=.mcp.json,.codex/config.toml,opencode.jsonc,.pi/mcp.json
    language=es
    publisher=jira-epic
-   credentials-source=https://jira.upexgalaxy.com/browse/BK-29
+   credentials-source=https://upexgalaxy74.atlassian.net/browse/BK-29
    default-branch=main
    adr=ADR-0007
-   generated=2026-06-24
+   generated=2026-11-27
    content-hash=sha256:9e9feb18046fdb3b22b18493f71d1032e7d24f91aa2d8df1487ffad91ee6f61b
 */
 
@@ -25,7 +25,7 @@ import { QaShell } from './_components/QaShell';
 import { qaConfig } from './qa-config';
 
 export const metadata: Metadata = {
-  title: 'Software Testability Guide for QA · Bunkai',
+  title: 'Guía QA: testear Bunkai en staging · Bunkai',
 };
 
 // Public teaching surface — no auth gate. The credentials themselves live in the

@@ -1,724 +1,410 @@
-import type { QaConfig } from '../qa-config';
+import type { ReactNode } from 'react';
+import type { CredentialRow, QaConfig } from '../qa-config';
 import { Badge } from '@components/ui/badge';
 import { buttonVariants } from '@components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@components/ui/card';
-import {
-  AlertTriangle,
-  Database,
-  ExternalLink,
-  FileJson,
-  KeyRound,
-  MousePointerClick,
-  Network,
-  Plug,
-  ShieldCheck,
-} from 'lucide-react';
-import { prepareQa } from '../_lib/prepare';
-import { ArchDiagram } from './ArchDiagram';
+import { cn } from '@lib/utils';
+import { BookOpen, Check, Download, ExternalLink, Info, KeyRound, OctagonAlert, TriangleAlert } from 'lucide-react';
+import Link from 'next/link';
+import { qaSections } from '../_lib/sections';
 import { CodeBlock } from './CodeBlock';
-import { EnvSetup } from './EnvSetup';
-import { RequestCards } from './RequestCards';
+import { CopyButton } from './CopyButton';
+import { HarnessTabs } from './HarnessTabs';
 import { Toc } from './Toc';
-import { TwoWayTabsApi, TwoWayTabsDb } from './TwoWayTabs';
 
-// ---------------------------------------------------------------------------
-// Section accent system. Literal class maps per hue so Tailwind's JIT keeps them.
-// ---------------------------------------------------------------------------
-const ACCENT = {
-  amber: { border: 'border-amber-500', icon: 'text-amber-600 dark:text-amber-400' },
-  slate: { border: 'border-slate-500', icon: 'text-slate-600 dark:text-slate-400' },
-  cyan: { border: 'border-cyan-500', icon: 'text-cyan-600 dark:text-cyan-400' },
-  emerald: { border: 'border-emerald-500', icon: 'text-emerald-600 dark:text-emerald-400' },
-  violet: { border: 'border-violet-500', icon: 'text-violet-600 dark:text-violet-400' },
-  pink: { border: 'border-pink-500', icon: 'text-pink-600 dark:text-pink-400' },
-  blue: { border: 'border-blue-500', icon: 'text-blue-600 dark:text-blue-400' },
-} as const;
-
-type Accent = keyof typeof ACCENT;
-
-function Section({ id, testid, icon, title, desc, accent, children }: {
-  id: string
-  testid: string
-  icon?: React.ReactNode
-  title: string
-  desc?: string
-  accent: Accent
-  children: React.ReactNode
-}) {
+function Section({ id, index, title, lede, children }: { id: string, index: number, title: string, lede?: string, children: ReactNode }) {
   return (
-    <Card id={id} data-testid={testid} className={`scroll-mt-20 border-l-4 ${ACCENT[accent].border}`}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          {icon && <span className={ACCENT[accent].icon}>{icon}</span>}
-          {title}
-        </CardTitle>
-        {desc && <CardDescription>{desc}</CardDescription>}
-      </CardHeader>
-      <CardContent className="space-y-4">{children}</CardContent>
-    </Card>
+    <section id={id} data-testid={`qa-section-${id}`} className="scroll-mt-20 border-t border-stroke-1 pt-8">
+      <p className="font-mono text-2xs uppercase tracking-widest text-accent">
+        {String(index).padStart(2, '0')}
+        {' · '}
+        {qaSections.find(s => s.id === id)?.label}
+      </p>
+      <h2 className="mt-1.5 text-xl font-bold tracking-tight text-fg-0">{title}</h2>
+      {lede && <p className="mt-1.5 max-w-[68ch] text-md text-fg-2"><Rich text={lede} /></p>}
+      <div className="mt-5 space-y-4">{children}</div>
+    </section>
   );
 }
 
-// Callout box with a hue accent — literal class maps so JIT keeps them.
 const CALLOUT = {
-  amber: 'border-amber-500 bg-amber-50 dark:bg-amber-950/30',
-  emerald: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30',
-  violet: 'border-violet-500 bg-violet-50 dark:bg-violet-950/30',
-  pink: 'border-pink-500 bg-pink-50 dark:bg-pink-950/30',
+  info: { box: 'border-accent/30 bg-accent-soft', icon: Info, iconClass: 'text-accent' },
+  warn: { box: 'border-signal-blocked/30 bg-signal-blocked-bg', icon: TriangleAlert, iconClass: 'text-signal-blocked' },
+  danger: { box: 'border-signal-fail/30 bg-signal-fail-bg', icon: OctagonAlert, iconClass: 'text-signal-fail' },
 } as const;
 
-function Callout({ hue, title, children }: {
-  hue: keyof typeof CALLOUT
-  title?: string
-  children: React.ReactNode
-}) {
+function Callout({ tone, children, testid }: { tone: keyof typeof CALLOUT, children: ReactNode, testid?: string }) {
+  const c = CALLOUT[tone];
+  const Icon = c.icon;
   return (
-    <div className={`rounded-2 border-l-4 p-3 text-sm ${CALLOUT[hue]}`}>
-      {title && <p className="mb-1 font-semibold text-fg-0">{title}</p>}
-      <div className="text-fg-2">{children}</div>
+    <div data-testid={testid} className={cn('flex gap-2.5 rounded-3 border p-3 text-base text-fg-1', c.box)}>
+      <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', c.iconClass)} aria-hidden />
+      <div className="min-w-0 space-y-1">{children}</div>
     </div>
   );
 }
 
-function TrinityCards() {
-  const cards = [
-    { hue: 'emerald' as const, icon: <Database className="h-5 w-5" />, title: 'DB · DBHub', anchor: '#db', text: 'Verificá datos directo en la base: DBHub MCP (read-only) o una URI en tu cliente SQL.' },
-    { hue: 'violet' as const, icon: <Plug className="h-5 w-5" />, title: 'API · OpenAPI / Postman', anchor: '#api', text: 'Invocá endpoints desde el agente con OpenAPI MCP, o armá suites formales con Postman.' },
-    { hue: 'pink' as const, icon: <MousePointerClick className="h-5 w-5" />, title: 'UI · Playwright', anchor: '#ui', text: 'Manejá el browser: regresión scripteada + exploración agéntica con el /playwright-cli.' },
-  ];
-  const ring = {
-    emerald: 'hover:border-emerald-500',
-    violet: 'hover:border-violet-500',
-    pink: 'hover:border-pink-500',
-  } as const;
-  const tint = {
-    emerald: 'text-emerald-600 dark:text-emerald-400',
-    violet: 'text-violet-600 dark:text-violet-400',
-    pink: 'text-pink-600 dark:text-pink-400',
-  } as const;
+function Code({ children }: { children: ReactNode }) {
+  return <code className="rounded-1 bg-surface-3 px-1 py-px font-mono text-sm text-fg-0">{children}</code>;
+}
+
+function Rich({ text }: { text: string }) {
+  return <>{text.split('`').map((part, i) => (i % 2 === 1 ? <Code key={i}>{part}</Code> : part))}</>;
+}
+
+function Bk29Link({ config, size = 'lg', testid }: { config: QaConfig, size?: 'sm' | 'lg', testid: string }) {
   return (
-    <div className="grid gap-3 md:grid-cols-3">
-      {cards.map(c => (
-        <a
-          key={c.title}
-          href={c.anchor}
-          className={`block rounded-2 border border-stroke-2 bg-surface-1 p-4 transition-colors duration-token ease-token ${ring[c.hue]}`}
-        >
-          <p className="flex items-center gap-2 text-sm font-semibold text-fg-0">
-            <span className={tint[c.hue]}>{c.icon}</span>
-            {c.title}
-          </p>
-          <p className="mt-2 text-sm text-fg-2">{c.text}</p>
-        </a>
-      ))}
-    </div>
+    <a
+      href={config.credentialsSource.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-testid={testid}
+      className={buttonVariants({ variant: 'primary', size })}
+    >
+      <KeyRound className="h-3.5 w-3.5" aria-hidden />
+      Valores en BK-29
+      <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
+    </a>
   );
 }
 
-const es = {
-  subtitle:
-    'Todo lo que podés ejercitar contra Bunkai ahora mismo — UI, API REST y base Supabase. Para QA manual y testers asistidos por IA, en las tres capas: DB, API y UI.',
-  credsTitle: '¿Necesitás las credenciales para hacer testing?',
-  credsDesc: 'Los valores reales (demo users, strings de conexión, secretos) viven en el destino de credenciales — nunca en esta página pública.',
-  credsCta: 'Abrir credenciales',
-  credsGap: 'No hay fuente de credenciales detectada — preguntá a tu lead.',
-  credsAsk: 'Si no tenés acceso, pedilo a tu instructor / lead / canal de Slack.',
-  archTitle: 'Arquitectura + Repos',
-  archDesc: 'Frontend → API → Database, con la capa de MCP debajo. Multi-tenant: cada fila scopeada por workspace está gateada por RLS de Postgres.',
-  trinityTitle: 'La Trifuerza del Testing + Setup de Env',
-  trinityDesc: 'UI (Playwright) + API (OpenAPI / Postman) + DB (DBHub) = Testing Completo.',
-  dbTitle: 'Backend testing: Database (dos caminos)',
-  dbDesc: 'Inspeccioná o mutá estado directo en la base con dos roles read-only/rw que tienen BYPASSRLS.',
-  apiTitle: 'Backend testing: API (dos caminos) + auth + docs',
-  apiDesc: 'Tres métodos de auth detectados, dos caminos de testing (OpenAPI MCP / Postman) y las docs interactivas.',
-  uiTitle: 'Frontend testing: Playwright (scripted + agéntico)',
-  uiDesc: 'Login primario email + password (email-first en /login); la regresión maneja esa UI y el puente UI→API es el camino híbrido (cookie → PAT).',
-  refTitle: 'Referencia rápida',
-  docsCta: 'Abrir docs',
+const SOURCE_LABEL: Record<CredentialRow['source'], string> = {
+  bk29: 'Valor en BK-29',
+  own: 'Tu cuenta',
+  public: 'Público',
+  generated: 'Lo genera api:login',
 };
 
+function CredentialCard({ row, config }: { row: CredentialRow, config: QaConfig }) {
+  return (
+    <li data-testid={`qa-credential-${row.source}`} className="rounded-3 border border-stroke-2 bg-surface-2 p-3.5 shadow-card">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {row.names.map(n => (
+          <span key={n} className="rounded-1 border border-stroke-2 bg-surface-1 px-1.5 py-0.5 font-mono text-sm text-fg-0">{n}</span>
+        ))}
+        <span className="flex-1" />
+        {row.source === 'bk29'
+          ? (
+              <a href={config.credentialsSource.url} target="_blank" rel="noopener noreferrer" data-testid="qa-credential-bk29-link" className="inline-flex items-center gap-1 font-mono text-2xs uppercase tracking-wider text-accent hover:text-accent-hi">
+                {SOURCE_LABEL.bk29}
+                <ExternalLink className="h-3 w-3" aria-hidden />
+              </a>
+            )
+          : <Badge variant="outline" className="font-mono text-2xs uppercase tracking-wider">{SOURCE_LABEL[row.source]}</Badge>}
+      </div>
+      <p className="mt-2 text-base text-fg-2"><Rich text={row.purpose} /></p>
+      {row.value && (
+        <div className="mt-2 flex items-center gap-2 rounded-2 border border-stroke-1 bg-surface-1 py-0.5 pl-2.5 pr-1">
+          <span className="min-w-0 flex-1 truncate font-mono text-sm text-fg-1">{row.value}</span>
+          <CopyButton code={row.value} />
+        </div>
+      )}
+    </li>
+  );
+}
+
+function Fact({ label, value, href }: { label: string, value: string, href?: string }) {
+  return (
+    <div className="flex items-center gap-3 border-b border-stroke-1 py-2 last:border-b-0">
+      <dt className="w-20 shrink-0 font-mono text-2xs uppercase tracking-wider text-fg-3">{label}</dt>
+      <dd className="min-w-0 flex-1 truncate font-mono text-sm text-fg-1">
+        {href ? <a href={href} target="_blank" rel="noopener noreferrer" className="hover:text-fg-0 hover:underline">{value}</a> : value}
+      </dd>
+      <CopyButton code={value} />
+    </div>
+  );
+}
+
+function Table({ head, rows, testid }: { head: string[], rows: ReactNode[][], testid?: string }) {
+  return (
+    <div className="overflow-x-auto rounded-3 border border-stroke-2" data-testid={testid}>
+      <table className="w-full min-w-[520px] text-left text-base">
+        <thead className="bg-surface-2">
+          <tr>
+            {head.map(h => <th key={h} className="px-3 py-2 font-mono text-2xs font-medium uppercase tracking-wider text-fg-3">{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t border-stroke-1 align-top">
+              {r.map((c, j) => <td key={j} className="px-3 py-2 text-fg-1">{c}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export async function QaShell({ config }: { config: QaConfig }) {
-  const t = es; // config.lang === 'es' — Spanish is the locked language.
-  const prepared = await prepareQa(config);
+  const { urls, reference, db } = config;
+  const harnessItems = config.harnesses.map(h => ({
+    id: h.id,
+    label: h.label,
+    content: (
+      <div className="space-y-3 rounded-3 border border-stroke-2 bg-surface-2 p-4">
+        <dl className="grid gap-x-4 gap-y-2 text-base sm:grid-cols-[8rem_1fr]">
+          <dt className="font-mono text-2xs uppercase tracking-wider text-fg-3 sm:pt-0.5">Archivo</dt>
+          <dd><Code>{h.file}</Code></dd>
+          <dt className="font-mono text-2xs uppercase tracking-wider text-fg-3 sm:pt-0.5">Abrir</dt>
+          <dd><Code>{h.open}</Code></dd>
+          <dt className="font-mono text-2xs uppercase tracking-wider text-fg-3 sm:pt-0.5">Estado MCP</dt>
+          <dd className="text-fg-1"><Rich text={h.status} /></dd>
+          <dt className="font-mono text-2xs uppercase tracking-wider text-fg-3 sm:pt-0.5">Tras cambiar .env</dt>
+          <dd className="text-fg-1"><Rich text={h.reload} /></dd>
+        </dl>
+        <ul className="space-y-1.5 border-t border-stroke-1 pt-3">
+          {h.notes.map(n => (
+            <li key={n} className="flex gap-2 text-base text-fg-2">
+              <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-fg-3" aria-hidden />
+              <Rich text={n} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    ),
+  }));
 
   return (
-    <div data-testid="qa-page" className="mx-auto max-w-7xl px-4 py-10">
-      {/* Hero */}
-      <header className="mb-10 text-center">
-        <div className="mb-2 font-mono text-xs font-semibold uppercase tracking-widest text-accent">
-          QA reference
+    <div data-testid="qa-page" className="min-h-screen bg-surface-0">
+      <header className="sticky top-0 z-20 border-b border-stroke-1 bg-surface-0/85 backdrop-blur">
+        <div className="mx-auto flex h-12 max-w-[1180px] items-center gap-3 px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2 text-fg-0">
+            <span className="flex h-6 w-6 items-center justify-center rounded-2 bg-accent font-jp text-sm text-white">分</span>
+            <span className="text-md font-semibold">Bunkai</span>
+          </Link>
+          <span className="font-mono text-2xs uppercase tracking-widest text-fg-3">Guía QA</span>
+          <span className="flex-1" />
+          <a href={urls.docs} target="_blank" rel="noopener noreferrer" data-testid="qa-docs-button" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden sm:inline-flex')}>
+            <BookOpen className="h-3.5 w-3.5" aria-hidden />
+            API docs
+          </a>
+          <Bk29Link config={config} size="sm" testid="qa-header-bk29" />
         </div>
-        <h1 data-testid="qa-title" className="text-2xl font-bold tracking-tight text-fg-0 md:text-3xl">
-          Software Testability Guide for QA
-        </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-md leading-relaxed text-fg-2">
-          {t.subtitle}
-        </p>
       </header>
 
-      <div className="lg:grid lg:grid-cols-[15rem_1fr] lg:gap-10">
-        {/* Sticky TOC rail (desktop) */}
-        <aside className="hidden lg:block">
-          <Toc className="sticky top-20" />
-        </aside>
+      <div className="mx-auto max-w-[1180px] px-4 pb-16 sm:px-6">
+        <div className="grid gap-10 lg:grid-cols-[13rem_minmax(0,1fr)]">
+          <aside className="hidden lg:block">
+            <Toc className="sticky top-20 pt-10" />
+          </aside>
 
-        <main className="min-w-0 space-y-8">
-          {/* §1 — Credentials CTA */}
-          <Card
-            id="credenciales"
-            data-testid="qa-credentials-card"
-            className="scroll-mt-20 border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950/30"
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <KeyRound className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                {t.credsTitle}
-              </CardTitle>
-              <CardDescription>{t.credsDesc}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {config.credentialsSource
-                ? (
-                    <a
-                      href={config.credentialsSource.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-testid="qa-credentials-button"
-                      className={buttonVariants({ variant: 'primary', size: 'lg' })}
-                    >
-                      <KeyRound className="h-5 w-5" />
-                      {t.credsCta}
-                      {' '}
-                      (
-                      {config.credentialsSource.label}
-                      )
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  )
-                : <p className="text-sm text-fg-3">{t.credsGap}</p>}
-              <p className="mt-3 text-xs text-fg-4">{t.credsAsk}</p>
-            </CardContent>
-          </Card>
-
-          {/* §2 — Architecture + Repos */}
-          <Section
-            id="arquitectura"
-            testid="qa-architecture-card"
-            icon={<Network className="h-5 w-5" />}
-            title={t.archTitle}
-            desc={t.archDesc}
-            accent="slate"
-          >
-            <ArchDiagram config={config} />
-          </Section>
-
-          {/* §3 — Trinity + Env setup */}
-          <Section
-            id="trifuerza"
-            testid="qa-section-trinity"
-            title={t.trinityTitle}
-            desc={t.trinityDesc}
-            accent="cyan"
-          >
-            <TrinityCards />
-            <EnvSetup config={config} />
-          </Section>
-
-          {/* §4 — DB testing */}
-          <Section
-            id="db"
-            testid="qa-section-database"
-            icon={<Database className="h-5 w-5" />}
-            title={t.dbTitle}
-            desc={t.dbDesc}
-            accent="emerald"
-          >
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">Roles de QA (BYPASSRLS)</p>
-              <ul className="grid gap-1 text-sm text-fg-2">
-                {config.db.roles.map(r => (
-                  <li key={r.name}>
-                    <code className="rounded bg-surface-2 px-1 text-fg-1">{r.name}</code>
-                    {' '}
-                    —
-                    {' '}
-                    {r.access}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <Callout hue="emerald" title="Material secreto sigue opaco">
-              <p>
-                Postgres no puede ocultar una sola columna cuando ya existe un GRANT de
-                SELECT sobre la tabla. Así que el secreto se mudó a tablas hermanas 1:1
-                (migración 0011) y las columnas viejas se dropearon (0012). Ambos roles
-                tienen REVOKE a nivel TABLA sobre
-                {' '}
-                {config.db.revokedSecretTables.map((c, i) => (
-                  <span key={c}>
-                    <code className="rounded bg-surface-2 px-1 text-fg-1">{c}</code>
-                    {i < config.db.revokedSecretTables.length - 1 ? ', ' : ''}
-                  </span>
-                ))}
-                {' '}
-                {' '}
-                — los hashes no se ven ni con BYPASSRLS. No busques
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">access_tokens.hash</code>
-                : esa columna ya no existe.
+          <main className="min-w-0 max-w-[820px] space-y-10">
+            <div className="pt-10" data-testid="qa-hero">
+              <p className="font-mono text-2xs uppercase tracking-widest text-accent">Testing en staging · UI, API y base de datos</p>
+              <h1 data-testid="qa-title" className="mt-2 text-2xl font-bold tracking-tight text-fg-0">Cómo testear Bunkai con un agente de IA</h1>
+              <p className="mt-2 max-w-[68ch] text-md text-fg-2">
+                Del cero a tu primer chequeo en las tres capas, con Claude Code, Codex, OpenCode o Pi. Esta página es pública: los valores de las credenciales viven solo en la épica BK-29 de Jira.
               </p>
-            </Callout>
-
-            <TwoWayTabsDb
-              agents={config.mcp.agents}
-              dbhub={prepared.mcp.dbhub}
-              tomlBlock={prepared.db.tomlBlock}
-              uriBlock={prepared.db.uriBlock}
-            />
-
-            <Callout hue="emerald" title="Session Pooler — qué puerto usar">
-              <p>{config.db.poolerNote}</p>
-            </Callout>
-
-            <div data-testid="qa-db-ca" className="space-y-3">
-              <Callout hue="emerald" title="Certificado CA de la base (TLS)">
-                <div className="space-y-2">
-                  <p>{config.db.tlsCa.purpose}</p>
-                  <p>{config.db.tlsCa.access}</p>
-                </div>
-              </Callout>
-              <div className="flex flex-wrap items-center gap-3">
-                <a
-                  href={config.db.tlsCa.href}
-                  download={config.db.tlsCa.fileName}
-                  data-testid="qa-db-ca-download"
-                  className={buttonVariants({ variant: 'default' })}
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                  Descargar
-                  {' '}
-                  {config.db.tlsCa.fileName}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Bk29Link config={config} testid="qa-credentials-button" />
+                <a href={urls.login} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: 'default', size: 'lg' })}>
+                  Abrir staging
+                  <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
                 </a>
-                <span data-testid="qa-db-ca-meta" className="text-xs text-fg-2">
-                  {config.db.tlsCa.issuer}
-                  {' '}
-                  · válido hasta
-                  {' '}
-                  {config.db.tlsCa.validUntil}
-                  {' '}
-                  · SHA-256
-                  {' '}
-                  <code className="break-all rounded bg-surface-2 px-1 text-fg-1">{config.db.tlsCa.sha256}</code>
-                </span>
               </div>
-              <p data-testid="qa-db-ca-verified" className="text-sm text-fg-2">{config.db.tlsCa.verified}</p>
-              <CodeBlock language="bash" code={config.db.tlsCa.nodeEnv} title="NODE_EXTRA_CA_CERTS" />
-              <CodeBlock language="ts" code={config.db.tlsCa.pgClient} title="cliente pg" />
-              <Callout hue="amber" title="Último recurso: rejectUnauthorized: false">
-                <p data-testid="qa-db-ca-last-resort">{config.db.tlsCa.lastResort}</p>
+              <dl data-testid="qa-facts" className="mt-6 rounded-3 border border-stroke-2 bg-surface-2 px-3.5 py-1 shadow-card">
+                <Fact label="Web" value={urls.web} href={urls.web} />
+                <Fact label="API" value={urls.api} />
+                <Fact label="OpenAPI" value={urls.spec} href={urls.spec} />
+                <Fact label="Docs" value={urls.docs} href={urls.docs} />
+              </dl>
+              <nav aria-label="En esta guía" className="mt-6 flex flex-wrap gap-1.5 lg:hidden" data-testid="qa-mobile-toc">
+                {qaSections.map((s, i) => (
+                  <a key={s.id} href={`#${s.id}`} className="rounded-1 border border-stroke-2 bg-surface-2 px-2 py-1 font-mono text-2xs text-fg-2 hover:text-fg-0">
+                    {String(i + 1).padStart(2, '0')}
+                    {' '}
+                    {s.label}
+                  </a>
+                ))}
+              </nav>
+            </div>
+
+            <Section id="antes" index={1} title="Antes de empezar">
+              <ul className="space-y-2" data-testid="qa-prerequisites">
+                {config.prerequisites.map(p => (
+                  <li key={p} className="flex gap-2.5 text-md text-fg-1">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-signal-pass" aria-hidden />
+                    <Rich text={p} />
+                  </li>
+                ))}
+              </ul>
+            </Section>
+
+            <Section id="credenciales" index={2} title="Qué credenciales necesitás" lede="Por nombre. Los valores de la base están en BK-29; el resto lo creás vos o es público.">
+              <ul className="space-y-2.5">
+                {config.credentials.map(row => <CredentialCard key={row.names[0]} row={row} config={config} />)}
+              </ul>
+              <Callout tone="warn">
+                <p>
+                  Nunca copies un valor de BK-29 fuera de tu
+                  <Code>.env</Code>
+                  : ni en un commit, ni en un chat, ni en una captura. El token de API es personal: no lo compartas.
+                </p>
               </Callout>
-            </div>
+            </Section>
 
-            <Callout hue="emerald" title="Funciones RPC — qué podés llamar">
-              <p>{config.db.rpcAccess}</p>
-            </Callout>
-
-            <Callout hue="emerald" title="Sonda de aislamiento (RLS)">
-              <p>{config.db.rlsProbe}</p>
-            </Callout>
-          </Section>
-
-          {/* §5 — API testing + auth + docs */}
-          <Section
-            id="api"
-            testid="qa-section-api"
-            icon={<Plug className="h-5 w-5" />}
-            title={t.apiTitle}
-            desc={t.apiDesc}
-            accent="violet"
-          >
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">Requests de auth (vista Postman / curl)</p>
-              <RequestCards requests={prepared.requests} />
-            </div>
-
-            <Callout hue="amber" title="Login primario: email + password (con OTP en el alta)">
-              <p>
-                El login primario en la UI de
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">/login</code>
-                {' '}
-                es email-first: un solo campo de email →
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/check-email</code>
-                {' '}
-                enruta a password (cuenta existente) o a alta. Una cuenta nueva confirma con un
-                OTP de 6-8 dígitos por mail (Resend) antes de quedar usable; el magic-link es un
-                fallback secundario ("o pedí un enlace por correo"). Para flujos headless provisioná
-                el QA bot vía
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signup</code>
-                {' '}
-                →
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/confirm</code>
-                , después
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signin</code>
-                {' '}
-                con email + password mintea PATs frescos. La forma del token es:
-                {' '}
-                <code className="break-all rounded bg-surface-2 px-1 text-fg-1">
-                  {config.api.tokenShape ?? '— preguntá a tu lead —'}
-                </code>
-                .
-              </p>
-            </Callout>
-
-            <Callout hue="violet" title="Camino híbrido — PAT desde una sesión de browser">
-              <p>
-                Ya logueado por la UI (email + password, o magic-link como fallback), reusás la
-                cookie de sesión para mintear un PAT sin re-autenticar — es el request
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">POST /tokens (hybrid)</code>
-                {' '}
-                de arriba (
-                <ShieldCheck className="inline h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-                {' '}
-                tab). La cookie del browser y el Bearer PAT de la misma cuenta conviven
-                independientes — ninguno revoca al otro (ADR-0001). Es el camino correcto para
-                cualquier usuario que automatice Bunkai desde una sesión de UI.
-              </p>
-            </Callout>
-
-            <Callout hue="violet" title="Higiene de tokens">
-              <p>
-                El token crudo se devuelve UNA vez. La DB guarda solo
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">sha256(secret)</code>
-                {' '}
-                + los primeros 12 chars como
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">token_prefix</code>
-                {' '}
-                (lookup O(1) por índice). Si lo perdés, revocá con
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">
-                  DELETE /tokens/
-                  {'{id}'}
-                </code>
-                {' '}
-                y minteá uno nuevo — no hay recuperación.
-              </p>
-            </Callout>
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">Scopes del PAT (inmutables por token)</p>
-              <ul className="grid gap-1 text-sm text-fg-2">
-                {config.api.patScopes.map(s => (
-                  <li key={s.scope}>
-                    <code className="rounded bg-surface-2 px-1 text-fg-1">{s.scope}</code>
-                    {' '}
-                    —
-                    {' '}
-                    {s.purpose}
+            <Section id="pasos" index={3} title="Paso a paso" lede="Hacelo en orden. Cada paso dice cómo sabés que salió bien.">
+              <ol className="space-y-6" data-testid="qa-steps">
+                {config.steps.map((step, i) => (
+                  <li key={step.id} id={`paso-${step.id}`} data-testid={`qa-step-${step.id}`} className="grid scroll-mt-20 grid-cols-[1.75rem_minmax(0,1fr)] gap-3">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-2 border border-stroke-2 bg-surface-3 font-mono text-sm font-semibold text-fg-0">{i + 1}</span>
+                    <div className="min-w-0 space-y-2.5">
+                      <h3 className="pt-0.5 text-lg font-semibold text-fg-0">{step.title}</h3>
+                      <p className="text-md text-fg-2"><Rich text={step.body} /></p>
+                      {step.code && <CodeBlock code={step.code.code} language={step.code.language} title={step.code.title} />}
+                      <p className="flex items-start gap-1.5 text-base text-fg-1">
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal-pass" aria-hidden />
+                        <span>
+                          <span className="font-medium text-signal-pass">Listo si: </span>
+                          <Rich text={step.done} />
+                        </span>
+                      </p>
+                    </div>
                   </li>
                 ))}
-              </ul>
-            </div>
+              </ol>
+            </Section>
 
-            <TwoWayTabsApi
-              agents={config.mcp.agents}
-              openapi={prepared.mcp.openapi}
-              postman={prepared.mcp.postman}
-            />
+            <Section id="harness" index={4} title="Tu harness" lede={config.harnessCommon}>
+              <HarnessTabs items={harnessItems} />
+            </Section>
 
-            {config.docs.route && (
-              <a
-                href={config.docs.route}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-testid="qa-docs-button"
-                className={buttonVariants({ variant: 'default' })}
-              >
-                <FileJson className="h-4 w-4" />
-                {t.docsCta}
-                {' '}
-                (
-                {config.docs.ui ?? 'API docs'}
-                )
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            )}
-          </Section>
+            <Section id="admin" index={5} title="Token de administrador de un workspace" lede={config.adminToken.why}>
+              <ol className="space-y-4" data-testid="qa-admin-steps">
+                {config.adminToken.steps.map((s, i) => (
+                  <li key={s.title} className="space-y-2">
+                    <p className="text-md text-fg-1">
+                      <span className="mr-1.5 font-mono text-sm text-fg-3">
+                        {i + 1}
+                        .
+                      </span>
+                      {s.title}
+                    </p>
+                    <CodeBlock code={s.code} language="bash" />
+                  </li>
+                ))}
+              </ol>
+              <Callout tone="info">
+                <p>
+                  Reemplazá
+                  <Code>{'<WORKSPACE_ID>'}</Code>
+                  {' '}
+                  y
+                  <Code>{'<PAT_ID>'}</Code>
+                  {' '}
+                  con los ids que te devolvieron los pasos 1 y 2. Ningún comando imprime un token: queda en
+                  <Code>.auth/</Code>
+                  , que no se commitea.
+                </p>
+              </Callout>
+            </Section>
 
-          {/* §6 — UI testing (Playwright) */}
-          <Section
-            id="ui"
-            testid="qa-section-ui"
-            icon={<MousePointerClick className="h-5 w-5" />}
-            title={t.uiTitle}
-            desc={t.uiDesc}
-            accent="pink"
-          >
-            <Callout hue="pink" title="El puente UI → API (headline)">
-              <p>
-                El login por la UI (email + password) establece una cookie de sesión, pero no te
-                entrega un PAT directo. El puente real entre testing de UI y de API es
-                {' '}
-                <strong className="text-fg-0">híbrido</strong>
-                : reusás la cookie de sesión del browser para mintear un PAT vía
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">POST /tokens</code>
-                , y después corrés los tests de API con Bearer. Cookie y PAT conviven
-                independientes (ADR-0001).
-              </p>
-            </Callout>
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">(a) Fixture híbrido — cookie → PAT → Bearer</p>
-              <CodeBlock language="typescript" code={config.playwright.hybridBridge} title="auth.fixture.ts" />
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">Regresión scripteada — login email-first (email + password)</p>
-              <CodeBlock language="typescript" code={config.playwright.scriptedFixture} title="login.spec.ts" />
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">
-                <code className="rounded bg-surface-2 px-1 text-fg-1">data-testid</code>
-                {' '}
-                del login
-              </p>
-              <div className="overflow-x-auto rounded-2 border border-stroke-2">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-surface-2 text-fg-2">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">data-testid</th>
-                      <th className="px-3 py-2 font-medium">Propósito</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {config.playwright.loginTestIds.map(s => (
-                      <tr key={s.id} className="border-t border-stroke-2">
-                        <td className="px-3 py-2">
-                          <code className="rounded bg-surface-2 px-1 text-fg-1">{s.id}</code>
-                        </td>
-                        <td className="px-3 py-2 text-fg-2">{s.purpose}</td>
-                      </tr>
+            <Section id="problemas" index={6} title="Problemas frecuentes" lede="Buscá el error que ves. Cada fila dice la causa y el arreglo.">
+              {config.troubleshooting.map(group => (
+                <div key={group.id} data-testid={`qa-trouble-${group.id}`} className="space-y-2">
+                  <h3 className="pt-2 font-mono text-2xs uppercase tracking-widest text-fg-3">{group.title}</h3>
+                  <ul className="space-y-2">
+                    {group.items.map(t => (
+                      <li key={t.symptom} className="rounded-3 border border-stroke-2 bg-surface-2 p-3.5">
+                        <p className="font-mono text-sm font-medium text-fg-0">{t.symptom}</p>
+                        <dl className="mt-2 grid gap-x-3 gap-y-1 text-base sm:grid-cols-[4.5rem_1fr]">
+                          <dt className="font-mono text-2xs uppercase tracking-wider text-fg-3 sm:pt-0.5">Causa</dt>
+                          <dd className="text-fg-2"><Rich text={t.cause} /></dd>
+                          <dt className="font-mono text-2xs uppercase tracking-wider text-signal-pass sm:pt-0.5">Arreglo</dt>
+                          <dd className="text-fg-1"><Rich text={t.fix} /></dd>
+                        </dl>
+                        {t.code && <div className="mt-2.5"><CodeBlock code={t.code} language="bash" /></div>}
+                      </li>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </ul>
+                </div>
+              ))}
+            </Section>
 
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">(b) Agéntico — playwright-cli (CLI + skill)</p>
-              <p className="text-sm text-fg-2">
-                No usamos el MCP de Playwright: el agente maneja el browser con el binario
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">playwright-cli</code>
-                . Es lo más eficiente en modo agéntico — menos tokens que el MCP, comandos
-                directos — y la skill
-                {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">/playwright-cli</code>
-                {' '}
-                se auto-carga al detectar esas llamadas.
-              </p>
-              <CodeBlock language="bash" code={config.playwright.cliExample} title="playwright-cli" />
-              <p className="mt-2 text-sm text-fg-2">Prompts de ejemplo que un agente puede correr:</p>
-              <ul className="grid gap-1 text-sm text-fg-2">
-                {config.playwright.agenticPrompts.map(p => (
-                  <li key={p} className="rounded-2 bg-surface-2 px-3 py-1.5 font-mono text-xs text-fg-1">
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <Callout hue="pink" title="Regla de decisión">
-              <p>
-                <strong className="text-fg-0">Scripted</strong>
-                {' '}
-                Playwright para regresión / CI;
-                {' '}
-                <strong className="text-fg-0">agéntico</strong>
-                {' '}
-                (playwright-cli) para exploración, caza de bugs y onboarding.
-              </p>
-            </Callout>
-          </Section>
-
-          {/* §7 — Quick reference */}
-          <Section
-            id="referencia"
-            testid="qa-section-reference"
-            title={t.refTitle}
-            accent="blue"
-          >
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">Demo users</p>
-              <ul className="grid gap-1 text-sm text-fg-2">
-                {config.demoUsers.map(u => (
-                  <li key={u.email}>
-                    <code className="rounded bg-surface-2 px-1 text-fg-1">{u.email}</code>
-                    {' '}
-                    —
-                    {' '}
-                    {u.note}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">Endpoints</p>
-              <div className="overflow-x-auto rounded-2 border border-stroke-2">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-surface-2 text-fg-2">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Método</th>
-                      <th className="px-3 py-2 font-medium">Path</th>
-                      <th className="px-3 py-2 font-medium">Propósito</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {config.api.endpoints.map(e => (
-                      <tr key={`${e.method} ${e.path}`} className="border-t border-stroke-2">
-                        <td className="px-3 py-2">
-                          <Badge variant="outline" className="font-mono">{e.method}</Badge>
-                        </td>
-                        <td className="px-3 py-2">
-                          <code className="whitespace-nowrap font-mono text-fg-1">{e.path}</code>
-                        </td>
-                        <td className="px-3 py-2 text-fg-2">{e.purpose}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <Callout hue="amber" title="Troubleshooting">
-              <ul className="ml-5 list-disc">
-                <li>
-                  <strong className="text-fg-0">401 / 403</strong>
-                  {' '}
-                  en un MCP → una var de
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">.env</code>
-                  {' '}
-                  no cargó. Salí del agente, corregí, reentrá (las vars se leen al spawnear).
-                </li>
-                <li>
-                  <strong className="text-fg-0">401</strong>
-                  {' '}
-                  en
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signin</code>
-                  {' '}
-                  → credenciales mal, o cuenta sin confirmar. Confirmá el OTP con
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/confirm</code>
-                  {' '}
-                  (alta vía
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signup</code>
-                  ) o usá el camino híbrido.
-                </li>
-                <li>
-                  <strong className="text-fg-0">403 al pedir un PAT con</strong>
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">workspace:admin</code>
-                  {' '}
-                  en
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signin</code>
-                  {' '}
-                  o
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/confirm</code>
-                  {' '}
-                  → es por diseño (ADR-0005), no un bug. Los rails headless no reciben
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">workspace_id</code>
-                  , así que no pueden satisfacer la regla "admin sólo dentro de un workspace
-                  donde sos admin/owner". Sacá ese scope del array (o omití
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">pat_scopes</code>
-                  {' '}
-                  entero y te quedan los tres defaults). Si de verdad necesitás un PAT admin:
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">POST /api/v1/tokens</code>
-                  {' '}
-                  con cookie de sesión y un
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">workspace_id</code>
+            <Section id="referencia" index={7} title="Referencia">
+              <h3 className="text-lg font-semibold text-fg-0">Roles de la base</h3>
+              <Table
+                testid="qa-ref-roles"
+                head={['Rol', 'Permisos']}
+                rows={reference.dbRoles.map(r => [<Code key="n">{r.name}</Code>, r.access])}
+              />
+              <Callout tone="warn">
+                <p>
+                  Los dos roles tienen BYPASSRLS: ven los datos de todos los workspaces. Las tablas de secretos están revocadas:
+                  {reference.revokedSecretTables.map((t, i) => (
+                    <span key={t}>
+                      {i > 0 && ', '}
+                      <Code>{t}</Code>
+                    </span>
+                  ))}
                   .
-                </li>
-                <li>
-                  <strong className="text-fg-0">403 con Bearer en un endpoint que anda en el browser</strong>
-                  {' '}
-                  → o el endpoint es cookie-only (
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">POST /tokens</code>
-                  ,
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">
-                    DELETE /tokens/
-                    {'{id}'}
-                  </code>
-                  ,
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">POST /me/active-workspace</code>
-                  ,
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">
-                    DELETE /workspaces/
-                    {'{id}'}
-                    /membership
-                  </code>
-                  ), o a tu PAT le falta el scope. El mensaje distingue: "cannot ... Use a
-                  browser session" es lo primero;
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">Missing required capability</code>
-                  {' '}
-                  es lo segundo. La cookie lleva TODAS las capabilities, por eso el mismo
-                  request anda logueado en la UI.
-                </li>
-                <li>
-                  <strong className="text-fg-0">DBHub auth críptico</strong>
-                  {' '}
-                  → un slot
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">DBHUB_*</code>
-                  {' '}
-                  falta (sustituye el literal). Verificá lo que ve el MCP con
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">bunx varlock run -- env | grep '^DBHUB' | cut -d= -f1</code>
-                  {' '}
-                  (solo nombres; un
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">env | grep DBHUB</code>
-                  {' '}
-                  pelado sale vacío: el loader le pasa el
-                  {' '}
-                  <code className="rounded bg-surface-2 px-1 text-fg-1">.env</code>
-                  {' '}
-                  a cada proceso MCP, no al agente ni a tu terminal).
-                </li>
-              </ul>
-            </Callout>
-          </Section>
-        </main>
-      </div>
+                </p>
+                <p><Rich text={reference.rlsProbe} /></p>
+              </Callout>
+              <Callout tone="danger">
+                <p><Rich text={reference.rpcAccess} /></p>
+              </Callout>
 
-      <footer className="mt-12 flex items-center gap-2 border-t border-stroke-2 pt-4 text-xs text-fg-4">
-        <AlertTriangle className="h-3.5 w-3.5" />
-        Esta página es pública — nunca printeamos credenciales reales acá. Los valores
-        sensibles viven en el destino de credenciales.
-      </footer>
+              <h3 className="pt-2 text-lg font-semibold text-fg-0">Scopes de un PAT</h3>
+              <Table
+                testid="qa-ref-scopes"
+                head={['Scope', 'Lo da signin', 'Para qué']}
+                rows={reference.scopes.map(s => [
+                  <Code key="n">{s.name}</Code>,
+                  s.onSignin ? <span key="y" className="text-signal-pass">Sí</span> : <span key="n" className="text-signal-fail">No</span>,
+                  s.note,
+                ])}
+              />
+
+              <h3 className="pt-2 text-lg font-semibold text-fg-0">Endpoints de auth</h3>
+              <Table
+                testid="qa-ref-endpoints"
+                head={['Método', 'Ruta', 'Auth', 'Qué hace']}
+                rows={reference.authEndpoints.map(e => [
+                  <Badge key="m" variant="outline" className="font-mono">{e.method}</Badge>,
+                  <Code key="p">{e.path}</Code>,
+                  e.auth,
+                  e.purpose,
+                ])}
+              />
+
+              <h3 className="pt-2 text-lg font-semibold text-fg-0">Certificado de la base (TLS)</h3>
+              <div data-testid="qa-db-ca" className="space-y-3 rounded-3 border border-stroke-2 bg-surface-2 p-4">
+                <p className="text-base text-fg-2">{db.tlsCa.purpose}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <a href={db.tlsCa.href} download data-testid="qa-db-ca-download" className={buttonVariants({ variant: 'default' })}>
+                    <Download className="h-3.5 w-3.5" aria-hidden />
+                    {db.tlsCa.fileName}
+                  </a>
+                  <span data-testid="qa-db-ca-meta" className="font-mono text-2xs text-fg-3">
+                    {db.tlsCa.issuer}
+                    {' · vence '}
+                    {db.tlsCa.validUntil}
+                  </span>
+                </div>
+                <p className="break-all font-mono text-2xs text-fg-3">
+                  SHA-256
+                  {' '}
+                  {db.tlsCa.sha256}
+                </p>
+                <CodeBlock code={db.tlsCa.nodeEnv} language="bash" />
+                <CodeBlock code={db.tlsCa.pgClient} language="typescript" title="pg-client.ts" />
+                <Callout tone="danger" testid="qa-db-ca-last-resort">
+                  <p>{db.tlsCa.lastResort}</p>
+                </Callout>
+              </div>
+            </Section>
+
+            <footer className="flex flex-wrap items-center gap-3 border-t border-stroke-1 pt-6 text-sm text-fg-3">
+              <span>Página pública: nunca muestra un valor de credencial.</span>
+              <span className="flex-1" />
+              <a href={config.credentialsSource.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hi" data-testid="qa-footer-bk29">
+                {config.credentialsSource.label}
+              </a>
+            </footer>
+          </main>
+        </div>
+      </div>
     </div>
   );
 }
