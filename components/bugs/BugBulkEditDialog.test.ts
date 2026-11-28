@@ -141,6 +141,27 @@ describe('aC22: the outcome report', () => {
     expect(closed).toBe(1);
   });
 
+  test('the report keeps naming the request after the list narrows the selection', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const props = {
+      projectId: 'p1',
+      change: { field: 'status', status: 'resolved' } as BugBulkChange,
+      onWritten: (r: BugBulkEditReport) => { written.push(r); },
+      onUnknown: () => { unknowns += 1; },
+      onClose: () => { closed += 1; },
+    };
+    act(() => { root.render(createElement(BugBulkEditDialog, { ...props, items: ITEMS, hiddenCount: 2 })); });
+    mounted.push({ container, root });
+    await flush();
+    await click(byId(container, 'bugs-bulk-apply'));
+    act(() => { root.render(createElement(BugBulkEditDialog, { ...props, items: ITEMS.slice(0, 1), hiddenCount: 0 })); });
+    await flush();
+    expect(byId(container, 'bugs-bulk-count')?.textContent).toBe('3 Bugs');
+    expect(byId(container, 'bugs-bulk-dialog-hidden')?.textContent).toContain('2 of them');
+  });
+
   test('a double confirm sends one write, and Cancel is disabled while writing', async () => {
     let release: () => void = () => {};
     respond = async body => body.dry_run

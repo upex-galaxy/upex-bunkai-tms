@@ -63,11 +63,12 @@ export function BugBulkEditDialog({
 }: BugBulkEditDialogProps) {
   const [phase, setPhase] = useState<Phase>({ kind: 'previewing' });
   const applyingRef = useRef(false);
-  const requestRef = useRef({ projectId, items, change });
+  // The request is fixed when the dialog opens: the selection narrows after a write.
+  const [request] = useState(() => ({ projectId, items, change, hiddenCount }));
 
   useEffect(() => {
     let current = true;
-    void runBugBulkEdit(requestRef.current, { dryRun: true }).then((result) => {
+    void runBugBulkEdit(request, { dryRun: true }).then((result) => {
       if (!current) { return; }
       setPhase(result.ok
         ? { kind: 'preview', report: result.report }
@@ -92,7 +93,7 @@ export function BugBulkEditDialog({
     setPhase({ kind: 'applying' });
     onSubmittingChange?.(true);
 
-    const result = await runBugBulkEdit(requestRef.current, { dryRun: false });
+    const result = await runBugBulkEdit(request, { dryRun: false });
     applyingRef.current = false;
     onSubmittingChange?.(false);
 
@@ -106,9 +107,9 @@ export function BugBulkEditDialog({
     }
     onWritten(result.report);
     setPhase({ kind: 'done', report: result.report });
-  }, [onSubmittingChange, onUnknown, onWritten]);
+  }, [onSubmittingChange, onUnknown, onWritten, request]);
 
-  const showCloseWarning = isIrreversibleBugBulkChange(change) && phase.kind !== 'done' && phase.kind !== 'failed';
+  const showCloseWarning = isIrreversibleBugBulkChange(request.change) && phase.kind !== 'done' && phase.kind !== 'failed';
 
   return (
     <div
@@ -126,17 +127,17 @@ export function BugBulkEditDialog({
       </div>
 
       <p className="m-0 mb-3 text-sm text-fg-1">
-        <span data-testid="bugs-bulk-change" className="font-semibold text-fg-0">{describeBugBulkChange(change)}</span>
+        <span data-testid="bugs-bulk-change" className="font-semibold text-fg-0">{describeBugBulkChange(request.change)}</span>
         {' on '}
-        <span data-testid="bugs-bulk-count" className="font-semibold text-fg-0">{pluralBugs(items.length)}</span>
+        <span data-testid="bugs-bulk-count" className="font-semibold text-fg-0">{pluralBugs(request.items.length)}</span>
         .
       </p>
 
-      {hiddenCount > 0 && (
+      {request.hiddenCount > 0 && (
         <p data-testid="bugs-bulk-dialog-hidden" className="m-0 mb-3 text-xs text-fg-2">
-          {hiddenCount === 1
+          {request.hiddenCount === 1
             ? '1 of them is not shown in the current list.'
-            : `${hiddenCount} of them are not shown in the current list.`}
+            : `${request.hiddenCount} of them are not shown in the current list.`}
         </p>
       )}
 
