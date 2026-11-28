@@ -77,6 +77,8 @@ interface ProjectExplorerProps {
   selectedTestId?: string | null
   // Set only for a read-only project: whose restore path the empty tree shows.
   readOnlyAudience?: ReadOnlyAudience | null
+  // BK-2712: Remove stays on a read-only project, whose lock never refuses a DELETE. Omitted = false.
+  canRemoveEnvironments?: boolean
 }
 
 interface CreateTarget {
@@ -157,6 +159,7 @@ export function ProjectExplorer({
   selectedAtcId,
   selectedTestId,
   readOnlyAudience = null,
+  canRemoveEnvironments = false,
 }: ProjectExplorerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -516,7 +519,7 @@ export function ProjectExplorer({
                         >
                           <Server size={12} className="shrink-0 text-fg-3" />
                           <span className="min-w-0 flex-1 truncate">{env.name}</span>
-                          {canCreate && (
+                          {(canCreate || canRemoveEnvironments) && (
                             <button
                               type="button"
                               data-testid={`environment-menu-${env.id}`}
@@ -532,15 +535,17 @@ export function ProjectExplorer({
                               data-testid={`environment-menu-popover-${env.id}`}
                               className="absolute right-2 top-6 z-30 w-32 rounded-2 border border-stroke-2 bg-surface-1 p-1 shadow-pop"
                             >
-                              <button
-                                type="button"
-                                data-testid={`environment-rename-${env.id}`}
-                                onClick={() => { setRenameEnv(env); setEnvMenuId(null); }}
-                                className="flex w-full items-center gap-2 rounded-1 px-2 py-1 text-left text-xs text-fg-1 hover:bg-surface-2"
-                              >
-                                <Pencil size={11} className="text-fg-3" />
-                                Rename
-                              </button>
+                              {canCreate && (
+                                <button
+                                  type="button"
+                                  data-testid={`environment-rename-${env.id}`}
+                                  onClick={() => { setRenameEnv(env); setEnvMenuId(null); }}
+                                  className="flex w-full items-center gap-2 rounded-1 px-2 py-1 text-left text-xs text-fg-1 hover:bg-surface-2"
+                                >
+                                  <Pencil size={11} className="text-fg-3" />
+                                  Rename
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 data-testid={`environment-remove-${env.id}`}
