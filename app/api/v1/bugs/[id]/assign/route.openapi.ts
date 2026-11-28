@@ -37,7 +37,7 @@ registry.registerPath({
     200: { description: 'Bug assignment updated. Returns the updated Bug.', content: { 'application/json': { schema: z.object({ bug: BugDetailSchema }) } } },
     400: { description: 'Malformed id (not a UUID) or malformed JSON body (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Missing atc:write scope, or a workspace member without write access (`forbidden`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:write scope, a workspace member without write access (`forbidden`), or a token scoped to another workspace than the bug\'s (`token_workspace_mismatch`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Bug not found — also returned for a caller who is not even a member of the bug\'s workspace (non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed — the requested assignee is not an active member of this workspace (`assignee_not_workspace_member`), or is a view-only member (`assignee_view_only`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },

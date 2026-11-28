@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { mapBugRpcError } from '@lib/bugs/errors';
+import { assertBugTokenWorkspace } from '@lib/bugs/token-workspace';
 import { BugAssignBodySchema } from '@lib/bugs/validation';
 import { assignBug } from '@lib/supabase/rpc';
 
@@ -54,12 +55,13 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Bug id must be a UUID.');
   }
 
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const body = BugAssignBodySchema.parse(payload);
+  await assertBugTokenWorkspace(principal, bugId);
 
   const bug = await performBugAssign(db, { bugId, assigneeUserId: body.assignee_user_id });
 
