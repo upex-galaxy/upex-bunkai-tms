@@ -2,17 +2,21 @@
 
 import type { BugsListItemResponse, BugsListPageResponse } from '@app/api/v1/bugs/list-response';
 import type { BugRecord } from '@components/bugs/BugFormDialog';
+import type { BugBulkChange, BugBulkEditReport } from '@lib/bugs/bulk-edit';
 import type { BugSeverity, BugStatus } from '@lib/bugs/constants';
 import type { BugsListFilters } from '@lib/bugs/filter-params';
 import type { BugAggregates } from '@lib/bugs/list-view';
 import type { SavedViewState } from '@lib/saved-views/state';
 import type { ReactNode } from 'react';
+import { BugBulkEditBar } from '@components/bugs/BugBulkEditBar';
+import { BugBulkEditOverlay } from '@components/bugs/BugBulkEditDialog';
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
 import { BugsHeatmapView } from '@components/bugs/BugsHeatmapView';
 import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { Select } from '@components/ui/select';
+import { refusedBugIds } from '@lib/bugs/bulk-edit';
 import {
   BUG_SEVERITY_LABEL,
   BUG_SEVERITY_VALUES,
@@ -313,6 +317,10 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
+  // BK-2098 — the bulk selection, by id, so it outlives filters and paging (P9).
+  const [selected, setSelected] = useState<ReadonlyMap<string, { version: number }>>(() => new Map());
+  const [bulkChange, setBulkChange] = useState<BugBulkChange | null>(null);
+
   // At most one request is ever useful: a newer one always supersedes
   // whatever is in flight.
   const inFlight = useRef<AbortController | null>(null);
@@ -560,6 +568,54 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
     }
   };
 
+  const canSelect = canManageBugs && view === 'list';
+  const loadedIds = items.map(item => item.id);
+  const loadedSelectedCount = loadedIds.filter(id => selected.has(id)).length;
+  const hiddenSelectedCount = selected.size - loadedSelectedCount;
+  const headerCheckState: 'none' | 'some' | 'all' = loadedSelectedCount === 0
+    ? 'none'
+    : loadedSelectedCount === loadedIds.length ? 'all' : 'some';
+
+  const toggleSelected = (item: BugsListItemResponse) => {
+    setSelected((current) => {
+      const next = new Map(current);
+      if (next.has(item.id)) { next.delete(item.id); }
+      else { next.set(item.id, { version: item.content_version }); }
+      return next;
+    });
+  };
+
+  const toggleLoaded = () => {
+    setSelected((current) => {
+      const next = new Map(current);
+      if (headerCheckState === 'all') {
+        for (const item of items) { next.delete(item.id); }
+      }
+      else {
+        for (const item of items) {
+          if (!next.has(item.id)) { next.set(item.id, { version: item.content_version }); }
+        }
+      }
+      return next;
+    });
+  };
+
+  // The version the user sees now: a reloaded row carries the newer one.
+  const bulkItems = [...selected.entries()].map(([id, entry]) => ({
+    id,
+    version: items.find(item => item.id === id)?.content_version ?? entry.version,
+  }));
+
+  const handleBulkWritten = (report: BugBulkEditReport) => {
+    const refused = new Set(refusedBugIds(report));
+    setSelected(current => new Map([...current].filter(([id]) => refused.has(id))));
+    void runQuery({ moduleId, statuses, severities }, startRequest());
+  };
+
+  const handleBulkUnknown = () => {
+    void runQuery({ moduleId, statuses, severities }, startRequest());
+  };
+
   const rows = items.map(formatBugListRow);
   const state = resolveBugsListViewState({ error: error !== null, rowCount: rows.length, filtersActive });
 
@@ -746,6 +802,15 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                 </div>
               )}
 
+              {canSelect && selected.size > 0 && (
+                <BugBulkEditBar
+                  count={selected.size}
+                  hiddenCount={hiddenSelectedCount}
+                  onClear={() => setSelected(new Map())}
+                  onReview={setBulkChange}
+                />
+              )}
+
               <Card className="overflow-hidden">
                 {state === 'error' && (
                   <div data-testid="bugs-list-error" className="flex flex-col items-start gap-3 p-4">
@@ -803,6 +868,15 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                       <table className="w-full border-collapse">
                         <thead>
                           <tr>
+                            {canSelect && (
+                              <th scope="col" className="w-8 border-b border-stroke-2 bg-surface-1 px-3 py-2 text-left">
+                                <LoadedRowsCheckbox
+                                  state={headerCheckState}
+                                  disabled={items.length === 0}
+                                  onToggle={toggleLoaded}
+                                />
+                              </th>
+                            )}
                             {['Bug', 'Title', 'Module', 'Severity', 'Status', 'Assignee', 'Run'].map(column => (
                               <th
                                 key={column}
@@ -832,6 +906,18 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                                 data-testid={`bugs-list-row-${row.id}`}
                                 className="transition-colors duration-token ease-token hover:bg-surface-3"
                               >
+                                {canSelect && (
+                                  <td className="w-8 border-t border-stroke-1 px-3 py-1.5">
+                                    <input
+                                      type="checkbox"
+                                      data-testid="bugs-list-row-select"
+                                      aria-label={`Select ${row.title}`}
+                                      checked={selected.has(item.id)}
+                                      onChange={() => toggleSelected(item)}
+                                      className="size-3.5 cursor-pointer accent-accent"
+                                    />
+                                  </td>
+                                )}
                                 <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
                                   {/* BK-337 — the Bug cell opens the defect detail record. */}
                                   <Link
@@ -1000,6 +1086,18 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
         </div>
       </div>
 
+      {bulkChange && (
+        <BugBulkEditOverlay
+          projectId={projectId}
+          items={bulkItems}
+          change={bulkChange}
+          hiddenCount={hiddenSelectedCount}
+          onWritten={handleBulkWritten}
+          onUnknown={handleBulkUnknown}
+          onClose={() => setBulkChange(null)}
+        />
+      )}
+
       {createOpen && (
         <BugFormDialog
           open
@@ -1013,6 +1111,26 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
         />
       )}
     </div>
+  );
+}
+
+// BK-2098 — the header checkbox speaks about the LOADED rows only (P9).
+function LoadedRowsCheckbox({ state, disabled, onToggle }: { state: 'none' | 'some' | 'all', disabled: boolean, onToggle: () => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) { ref.current.indeterminate = state === 'some'; }
+  }, [state]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      data-testid="bugs-list-select-all"
+      aria-label="Select all loaded Bugs"
+      checked={state === 'all'}
+      disabled={disabled}
+      onChange={onToggle}
+      className="size-3.5 cursor-pointer accent-accent"
+    />
   );
 }
 
