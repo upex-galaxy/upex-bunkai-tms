@@ -54,7 +54,7 @@ registry.registerPath({
     200: { description: 'Saved (or nothing to save). Returns the current defect and whether anything changed.', content: { 'application/json': { schema: z.object({ bug: BugDetailSchema, changed: z.boolean() }) } } },
     400: { description: 'Malformed id (not a UUID) or malformed JSON body (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Missing atc:write scope, or a workspace member without write access, such as a Viewer (`forbidden`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:write scope, a workspace member without write access, such as a Viewer (`forbidden`), or a token scoped to another workspace than the bug\'s (`token_workspace_mismatch`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Bug not found, also returned for a caller who is not a member of the bug\'s workspace (non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'The defect changed since `expected_version` was read (`conflict`, `details.reason: bug_changed`). `details.current` carries the current defect.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed: the title or severity breaks the filing rules, a field outside the four is present, or no field was sent.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },

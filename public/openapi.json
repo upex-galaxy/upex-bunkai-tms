@@ -12829,7 +12829,7 @@
             }
           },
           "403": {
-            "description": "Missing atc:write scope, or a workspace member without write access (`forbidden`).",
+            "description": "Missing atc:write scope, a workspace member without write access (`forbidden`), or a token scoped to another workspace than the bug's (`token_workspace_mismatch`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -13109,7 +13109,7 @@
             }
           },
           "403": {
-            "description": "Missing atc:write scope, or a workspace member without write access, such as a Viewer (`forbidden`).",
+            "description": "Missing atc:write scope, a workspace member without write access, such as a Viewer (`forbidden`), or a token scoped to another workspace than the bug's (`token_workspace_mismatch`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -13223,7 +13223,7 @@
             }
           },
           "403": {
-            "description": "Missing atc:write scope, or a workspace member without write access (`forbidden`).",
+            "description": "Missing atc:write scope, a workspace member without write access (`forbidden`), or a token scoped to another workspace than the bug's (`token_workspace_mismatch`).",
             "content": {
               "application/json": {
                 "schema": {
