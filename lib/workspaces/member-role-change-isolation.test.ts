@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { SQL } from 'bun';
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { assertRoleChangeAllowed } from '@/app/api/v1/workspaces/[id]/members/[userId]/response';
 
 // BK-2542 — DB-integration proof for bunkai_change_workspace_member_role
 // (migration 0144, ADR-0022) against the REAL database: the ladder, every
@@ -348,6 +349,41 @@ describeOrSkip('BK-2542 — change a teammate\'s role (RPC, real database)', () 
     const roles = [(await memberRow(seed.workspaceId, 'admin'))?.role, (await memberRow(seed.workspaceId, 'admin2'))?.role].sort();
     expect(roles).toEqual(['admin', 'member']);
     expect((await events(seed.workspaceId, 'member.role_changed')).length).toBe(1);
+  }, 60_000);
+
+  it('the route check answers 403 not_an_admin, never 404, to an Admin lowered between its caller and target reads', async () => {
+    expect.hasAssertions();
+    const seed = await seedWorkspace('race-route', { owner: 'owner', admin: 'admin', admin2: 'admin' });
+    let reads = 0;
+    const lowerBeforeSecondRead = (builder: object): object => new Proxy(builder, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver) as unknown;
+        if (typeof value !== 'function') {
+          return value;
+        }
+        if (prop === 'maybeSingle') {
+          return async () => {
+            reads += 1;
+            if (reads === 2) {
+              must(await service().from('workspace_members').update({ role: 'member' }).eq('workspace_id', seed.workspaceId).eq('user_id', users.admin2.id).select('role').single(), 'lower admin2');
+            }
+            return (value as () => unknown).call(target);
+          };
+        }
+        return (...args: unknown[]) => {
+          const next = (value as (...a: unknown[]) => unknown).apply(target, args);
+          return next !== null && typeof next === 'object' && 'eq' in next ? lowerBeforeSecondRead(next) : next;
+        };
+      },
+    });
+    const db = { from: (table: string) => lowerBeforeSecondRead(clients.admin2.from(table as 'workspace_members')) } as unknown as Parameters<typeof assertRoleChangeAllowed>[0];
+
+    const refusal = await assertRoleChangeAllowed(db, { workspaceId: seed.workspaceId, callerId: users.admin2.id, targetId: users.admin.id }).then(() => null, (err: unknown) => err as { status?: number, details?: unknown });
+    expect(reads).toBeGreaterThanOrEqual(2);
+    expect({ status: refusal?.status, details: refusal?.details }).toEqual({ status: 403, details: { reason: 'not_an_admin' } });
+
+    const stillAdmin = await assertRoleChangeAllowed(clients.admin, { workspaceId: seed.workspaceId, callerId: users.admin.id, targetId: users.outsider.id }).then(() => null, (err: unknown) => err as { status?: number });
+    expect(stillAdmin?.status).toBe(404);
   }, 60_000);
 
   it('a lowered Admin is refused administration at once and regains it when raised again', async () => {
