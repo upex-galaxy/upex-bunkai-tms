@@ -169,6 +169,7 @@ cookies.txt
 
 # ----- 2026-10-30 (sync) -----
 .playwright/output
+.playwright/.playwright/
 .playwright-cli/
 storage-state-*.json
 .playwright/profiles/
