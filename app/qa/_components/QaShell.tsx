@@ -288,7 +288,7 @@ export async function QaShell({ config }: { config: QaConfig }) {
                 ))}
               </ol>
               <Callout tone="info">
-                <p><Rich text="Ningún comando imprime un token: quedan en `.auth/`, que git ignora. Ejecutalos desde la raíz de tu repo de QA." /></p>
+                <p><Rich text="Ningún comando imprime un token: quedan en `.auth/`, que git ignora. Ejecutalos desde la raíz de tu repo de QA. Necesitás `curl` y `jq`; en Windows, usá Git Bash o WSL." /></p>
               </Callout>
             </Section>
 

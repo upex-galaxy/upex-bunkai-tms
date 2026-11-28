@@ -148,7 +148,7 @@ export const qaConfig: QaConfig = {
     {
       id: 'env',
       title: 'Completá tu .env',
-      body: 'Los archivos de MCP de tu repo ya vienen listos y no se tocan. Solo llenás `.env`: tu cuenta, los dos valores públicos y los seis `DBHUB_*` que copiás de BK-29.',
+      body: 'Los archivos de MCP de tu repo ya vienen listos y no se tocan. Solo llenás el `.env` de la raíz del repo: tu cuenta, los dos valores públicos y los seis `DBHUB_*` que copiás de BK-29.',
       code: {
         language: 'bash',
         title: '.env',
@@ -180,7 +180,7 @@ export const qaConfig: QaConfig = {
           'bun run vars:env:check',
         ),
       },
-      done: 'Aparecen los seis `DBHUB_*` con el password enmascarado y `vars:env:check` no marca errores.',
+      done: 'Aparecen los seis `DBHUB_*` con el password enmascarado y `vars:env:check` termina sin errores (su lista INFO es normal).',
     },
     {
       id: 'token',
@@ -248,7 +248,7 @@ export const qaConfig: QaConfig = {
       done: 'El snapshot muestra la página de login con el campo `Email`.',
     },
   ],
-  harnessCommon: 'Los cuatro harness levantan dbhub y openapi con el mismo comando: `bun x -p varlock@1.20.0 varlock run --filter <sus variables> -- <servidor>`. Cada servidor lee `.env` cuando arranca, así que después de cambiar `.env` hay que cerrar y abrir el agente.',
+  harnessCommon: 'Los cuatro archivos ya vienen en tu repo de QA y no se editan. Los cuatro harness levantan dbhub y openapi con el mismo comando: `bun x -p varlock@1.20.0 varlock run --filter <sus variables> -- <servidor>`. Cada servidor lee `.env` cuando arranca, así que después de cambiar `.env` hay que cerrar y abrir el agente.',
   harnesses: [
     {
       id: 'claude',
@@ -271,7 +271,7 @@ export const qaConfig: QaConfig = {
       reload: 'Cerrá y volvé a abrir codex.',
       notes: [
         'Sano: `codex mcp list` muestra `dbhub` y `openapi`. Si solo ves servidores globales, la carpeta no es de confianza.',
-        'Codex solo carga la config del proyecto si confiás en la carpeta: aceptá el aviso de confianza la primera vez.',
+        'Codex solo carga la config del proyecto si confiás en la carpeta: la primera vez que lo abrís en el repo, respondé que sí confiás.',
         'Cada servidor tiene `startup_timeout_sec = 30`. La primera descarga de bun x puede tardar; si falla por timeout, reabrí.',
         'Abrilo desde la raíz del repo: ahí resuelve `OPENAPI_SPEC_PATH` si es un archivo.',
       ],
@@ -338,7 +338,7 @@ export const qaConfig: QaConfig = {
           `  curl -s -o /dev/null -w '%{http_code}\\n' -b .auth/bunkai-cookie.txt -X DELETE ${WEB}/api/v1/tokens/$id`,
           'done',
           `curl -s -o /dev/null -w '%{http_code}\\n' -b .auth/bunkai-cookie.txt -X POST ${WEB}/api/v1/auth/sign-out`,
-          'rm .auth/bunkai-cookie.txt .auth/ws-admin.env',
+          'rm -f .auth/bunkai-cookie.txt .auth/ws-admin.env',
         ),
         done: 'Imprime 204, 204 y 200. Si un DELETE da 401, la cookie venció: repetí el paso 1 y volvé a revocar.',
       },
@@ -364,6 +364,11 @@ export const qaConfig: QaConfig = {
           symptom: 'codex mcp list no muestra dbhub ni openapi',
           cause: 'La carpeta no está marcada como confiable.',
           fix: 'Reabrí codex desde la raíz del repo, aceptá la confianza y revisá con `codex mcp list`.',
+        },
+        {
+          symptom: 'Codex: el servidor está en la lista pero falla al arrancar',
+          cause: 'La primera descarga de `bun x` superó los 30 s de `startup_timeout_sec`.',
+          fix: 'Cerrá y abrí codex: la segunda vez el paquete ya está en caché.',
         },
         {
           symptom: 'Pi no ve ningún MCP',
@@ -479,6 +484,11 @@ export const qaConfig: QaConfig = {
           symptom: 'api:login:staging da 404 o guarda un token vacío',
           cause: 'El adaptador de login de tu repo no está apuntado a Bunkai.',
           fix: '`config/variables.ts` debe tener `loginEndpoint "/auth/signin"` y `scripts/api-login.project.ts` debe leer `pat.token`.',
+        },
+        {
+          symptom: 'Tu repo no tiene el script api:login:staging',
+          cause: 'El repo no es el de QA o quedó viejo.',
+          fix: 'Actualizalo con `bun sync`. Mientras tanto, los pasos 1 y 4 de la sección 05 te dan una sesión y un token sin ese script.',
         },
         {
           symptom: 'El registro devuelve 422',
