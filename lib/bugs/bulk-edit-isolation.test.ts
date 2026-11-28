@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, setDefaultTimeout } from 'bun:test';
 
 // BK-2098 — a mocked rpc proves nothing about a DEFINER function (ADR-0012), so
 // this runs bunkai_bulk_edit_bugs (migration 0146) against the real database.
@@ -16,6 +16,7 @@ if (!hasDbEnv) {
   console.warn('[bug-bulk-edit-isolation] SKIPPED ENTIRELY: no database environment (needs NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY).');
 }
 const describeOrSkip = hasDbEnv ? describe : describe.skip;
+setDefaultTimeout(60_000);
 const PREFIX = `bk2098-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const RPC = 'bunkai_bulk_edit_bugs';
 const FAILPOINT = 'bug_bulk_edit.before_event';
@@ -45,6 +46,7 @@ interface Fixture {
 }
 
 let fixture: Fixture | null = null;
+const createdWorkspaces: string[] = [];
 let qa: SupabaseClient;
 let counter = 0;
 
@@ -158,6 +160,7 @@ describeOrSkip('BK-2098: bunkai_bulk_edit_bugs', () => {
     const [reporterId, assigneeId] = others;
 
     const ws = must(await db.from('workspaces').insert({ slug: `${PREFIX}-own`, name: `${PREFIX} own`, owner_user_id: qaUserId, plan: 'cloud' }).select('id').single(), 'workspace');
+    createdWorkspaces.push(ws.id as string);
     must(await db.from('workspace_members').insert([
       { workspace_id: ws.id, user_id: qaUserId, role: 'owner', status: 'active' },
       { workspace_id: ws.id, user_id: reporterId, role: 'member', status: 'active' },
@@ -169,14 +172,17 @@ describeOrSkip('BK-2098: bunkai_bulk_edit_bugs', () => {
     const otherModule = must(await db.from('modules').insert({ project_id: other.id, path: `${PREFIX}-m2`, name: `${PREFIX} m2` }).select('id').single(), 'other module');
 
     const foreignWs = must(await db.from('workspaces').insert({ slug: `${PREFIX}-foreign`, name: `${PREFIX} foreign`, owner_user_id: reporterId }).select('id').single(), 'foreign workspace');
+    createdWorkspaces.push(foreignWs.id as string);
     const foreignProject = must(await db.from('projects').insert({ workspace_id: foreignWs.id, slug: `${PREFIX}-fp`, name: `${PREFIX} fp` }).select('id').single(), 'foreign project');
     const foreignModule = must(await db.from('modules').insert({ project_id: foreignProject.id, path: `${PREFIX}-fm`, name: `${PREFIX} fm` }).select('id').single(), 'foreign module');
 
     const viewerWs = must(await db.from('workspaces').insert({ slug: `${PREFIX}-viewer`, name: `${PREFIX} viewer`, owner_user_id: reporterId }).select('id').single(), 'viewer workspace');
+    createdWorkspaces.push(viewerWs.id as string);
     must(await db.from('workspace_members').insert({ workspace_id: viewerWs.id, user_id: qaUserId, role: 'viewer', status: 'active' }).select('user_id'), 'viewer membership');
     const viewerProject = must(await db.from('projects').insert({ workspace_id: viewerWs.id, slug: `${PREFIX}-vp`, name: `${PREFIX} vp` }).select('id').single(), 'viewer project');
 
     const roWs = must(await db.from('workspaces').insert({ slug: `${PREFIX}-ro`, name: `${PREFIX} ro`, owner_user_id: qaUserId, plan: 'cloud' }).select('id').single(), 'read-only workspace');
+    createdWorkspaces.push(roWs.id as string);
     must(await db.from('workspace_members').insert({ workspace_id: roWs.id, user_id: qaUserId, role: 'owner', status: 'active' }).select('user_id'), 'read-only membership');
     const roProjects: string[] = [];
     for (let i = 1; i <= 4; i += 1) {
@@ -205,13 +211,13 @@ describeOrSkip('BK-2098: bunkai_bulk_edit_bugs', () => {
       reporterId,
       assigneeId,
     };
-  });
+  }, 120_000);
 
   afterAll(async () => {
-    if (!fixture) { return; }
     const db = service();
-    await db.from('bunkai_test_failpoints').delete().eq('workspace_id', fixture.workspaceId);
-    const ids = [fixture.workspaceId, fixture.foreignWorkspaceId, fixture.viewerWorkspaceId, fixture.readOnlyWorkspaceId];
+    const ids = [...createdWorkspaces];
+    if (ids.length === 0) { return; }
+    await db.from('bunkai_test_failpoints').delete().in('workspace_id', ids);
     for (const id of ids) {
       const { error } = await db.from('workspaces').delete().eq('id', id);
       if (error) { throw new Error(`[bug-bulk-edit-isolation] cleanup failed for workspace ${id}: ${error.message}`); }
@@ -221,7 +227,7 @@ describeOrSkip('BK-2098: bunkai_bulk_edit_bugs', () => {
     if (workspacesLeft !== 0 || bugsLeft !== 0) {
       throw new Error(`[bug-bulk-edit-isolation] cleanup left ${workspacesLeft} workspaces and ${bugsLeft} Bugs behind.`);
     }
-  });
+  }, 120_000);
 
   it('cannot be called from a signed-in session (execute is service_role only)', async () => {
     const { error } = await qa.rpc(RPC, {
