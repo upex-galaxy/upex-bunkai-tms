@@ -59,6 +59,8 @@ export interface WorkbenchData {
   canConfigure?: boolean
   readOnly?: boolean
   readOnlyAudience?: ReadOnlyAudience
+  // Member and above, kept on a read-only project: its lock never refuses a DELETE.
+  canRemoveEnvironments?: boolean
 }
 
 interface WorkbenchContextValue extends WorkbenchData {
@@ -175,6 +177,7 @@ export function WorkbenchProvider({
   canConfigure = false,
   readOnly = false,
   readOnlyAudience = 'other',
+  canRemoveEnvironments = false,
 }: WorkbenchData & { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -361,6 +364,7 @@ export function WorkbenchProvider({
     canConfigure,
     readOnly,
     readOnlyAudience,
+    canRemoveEnvironments,
     view,
     setView,
     openTabs,
@@ -397,6 +401,7 @@ export function WorkbenchProvider({
     canConfigure,
     readOnly,
     readOnlyAudience,
+    canRemoveEnvironments,
     view,
     openTabs,
     activeAtcId,

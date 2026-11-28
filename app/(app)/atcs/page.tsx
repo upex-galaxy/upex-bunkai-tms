@@ -5,6 +5,7 @@ import { AtcLibrarySkeleton, AtcLibraryView, AtcLibraryViewToggle } from '@compo
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { fetchArchivedAtcs, fetchAtcLibrary } from '@lib/atcs/library';
 import { parseQueryParams, queryKey } from '@lib/atcs/library-search';
+import { loadReadOnlyProjectSlugs } from '@lib/billing/read-only-projects';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -95,8 +96,10 @@ async function AtcArchivedLibrarySection() {
       }
     }
 
-    const rows: AtcArchivedRow[] = workspaceId === null ? [] : await fetchArchivedAtcs(supabase, workspaceId);
-    return <AtcArchivedLibraryView rows={rows} error={null} canWrite={canWrite} />;
+    const [rows, readOnlyProjectSlugs]: [AtcArchivedRow[], string[]] = workspaceId === null
+      ? [[], []]
+      : await Promise.all([fetchArchivedAtcs(supabase, workspaceId), loadReadOnlyProjectSlugs(supabase, workspaceId)]);
+    return <AtcArchivedLibraryView rows={rows} error={null} canWrite={canWrite} readOnlyProjectSlugs={readOnlyProjectSlugs} />;
   }
   catch (err) {
     return <AtcArchivedLibraryView rows={[]} error={err instanceof Error ? err.message : 'ATC_ARCHIVED_INDEX_FAILED'} canWrite={false} />;

@@ -40,7 +40,7 @@ export function MilestoneReadinessUnavailable() {
   );
 }
 
-export function MilestoneReadinessCard({ readiness }: { readiness: MilestoneReadiness }) {
+export function MilestoneReadinessCard({ readiness, readOnly = false }: { readiness: MilestoneReadiness, readOnly?: boolean }) {
   const state = readinessState(readiness);
 
   if (state !== 'progress') {
@@ -52,7 +52,9 @@ export function MilestoneReadinessCard({ readiness }: { readiness: MilestoneRead
         >
           <LineChart size={16} className="shrink-0" />
           {state === 'no-plans'
-            ? 'No readiness yet — attach at least one test plan and its progress rolls up here.'
+            ? readOnly
+              ? 'No readiness yet — no test plan is attached.'
+              : 'No readiness yet — attach at least one test plan and its progress rolls up here.'
             : 'No readiness yet — the attached test plans have no tests.'}
         </div>
       </Card>

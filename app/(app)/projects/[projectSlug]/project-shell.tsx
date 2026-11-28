@@ -52,6 +52,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
     canConfigure,
     readOnly,
     readOnlyAudience = 'other',
+    canRemoveEnvironments,
     view,
     setView,
     openTabs,
@@ -159,6 +160,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
               environments={environments}
               canCreate={canCreate}
               canConfigure={canConfigure}
+              canRemoveEnvironments={canRemoveEnvironments}
               selectedAtcId={activeAtcId}
               selectedTestId={activeTestId}
               readOnlyAudience={readOnly ? readOnlyAudience : null}

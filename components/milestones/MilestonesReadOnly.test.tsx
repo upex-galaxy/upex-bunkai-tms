@@ -140,3 +140,17 @@ describe('MilestoneDetailView on a read-only project (BK-2541)', () => {
     expect(has(html, 'milestone-detail-read-only-note')).toBe(false);
   });
 });
+
+describe('MilestoneReadinessCard on a read-only project (BK-2712)', () => {
+  it('states that no plan is attached instead of inviting an attach the server refuses', () => {
+    const html = renderDetail({ canEdit: true, readOnly: true, readiness: NO_PLANS });
+    expect(has(html, 'milestone-readiness-empty')).toBe(true);
+    expect(html).toContain('No readiness yet — no test plan is attached.');
+    expect(html).not.toContain('attach at least one test plan');
+  });
+
+  it('keeps the invitation on a writable project', () => {
+    const html = renderDetail({ canEdit: true, readOnly: false, readiness: NO_PLANS });
+    expect(html).toContain('No readiness yet — attach at least one test plan and its progress rolls up here.');
+  });
+});

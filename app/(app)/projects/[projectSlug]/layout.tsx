@@ -80,6 +80,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
   // BK-1619 — owner / admin only: the import dialog links to Settings > Jira for
   // them, and stays text-only for everyone else. A UX hint; the API is the authority.
   let canConfigure = false;
+  let canRemoveEnvironments = false;
   let readOnlyAudience: ReadOnlyAudience = 'other';
   if (user) {
     const { data: membership } = await supabase
@@ -89,6 +90,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       .eq('user_id', user.id)
       .maybeSingle();
     canCreate = membership != null && membership.role !== 'viewer';
+    canRemoveEnvironments = canCreate;
     canConfigure = membership != null && (membership.role === 'owner' || membership.role === 'admin');
     if (membership?.role === 'owner' || membership?.role === 'admin') {
       readOnlyAudience = membership.role;
@@ -176,6 +178,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       canConfigure={canConfigure}
       readOnly={readOnly}
       readOnlyAudience={readOnlyAudience}
+      canRemoveEnvironments={canRemoveEnvironments}
     >
       {children}
     </ProjectShell>
