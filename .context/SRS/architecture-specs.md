@@ -106,7 +106,7 @@ erDiagram
 
 | Entity | Key columns | Notes |
 |---|---|---|
-| `workspaces` | `id`, `slug`, `name`, `owner_user_id`, `plan` | Tenant root. Plan ∈ {community, cloud, enterprise} (license gate). Clients may only rename a workspace they own: `authenticated` holds UPDATE on `name` alone and no INSERT or DELETE; creation, plan, seats and deletion state go through the SECURITY DEFINER functions and the service role (migration `0143`). |
+| `workspaces` | `id`, `slug`, `name`, `owner_user_id`, `plan` | Tenant root. Plan ∈ {community, cloud, enterprise} (license gate). Clients may only rename a workspace they own: `authenticated` holds UPDATE on `name` alone and no INSERT or DELETE; creation, plan, seats and deletion state go through the SECURITY DEFINER functions and the service role (migration `0143`). The name is 1 to 80 characters and not blank, checked by the database (migration `0145`). |
 | `workspace_members` | `workspace_id`, `user_id`, `role`, `status` | RBAC. |
 | `projects` | `id`, `workspace_id`, `slug`, `name` | App-under-test. |
 | `modules` | `id`, `project_id`, `parent_module_id`, `path` (materialized) | Tree. Depth ≤ 6. |
@@ -118,10 +118,10 @@ erDiagram
 | `atc_acceptance_criteria` | `atc_id`, `acceptance_criterion_id` | M:N. |
 | `tests` | `id`, `project_id`, `module_id` (nullable), `title`, `tags[]` | Chain owner. |
 | `test_steps` | `test_id`, `atc_id`, `position` | The chain. |
-| `runs` | `id`, `test_id`, `environment`, `executor_type`, `executor_identity`, `status`, `started_at`, `finished_at`, `idempotency_key` | Run header. |
+| `runs` | `id`, `test_id`, `environment`, `executor_type`, `executor_identity`, `status`, `started_at`, `finished_at`, `idempotency_key` | Run header. Clients never write `runs`, `run_atcs` or `run_steps` directly: every run row comes from the SECURITY DEFINER run functions (migration `0145`). |
 | `run_atcs` | `id`, `run_id`, `atc_id`, `position`, `status` | Per-ATC roll-up. |
 | `run_steps` | `id`, `run_atc_id`, `atc_step_id`, `status`, `duration_ms`, `notes`, `evidence_url`, `error_message` | Per-step result. |
-| `bugs` | `id`, `project_id`, `module_id`, `atc_id?`, `run_id?`, `title`, `severity`, `status`, `description`, `steps_to_reproduce`, `evidence_urls[]`, `external_id?` | Native defect. |
+| `bugs` | `id`, `project_id`, `module_id`, `atc_id?`, `run_id?`, `title`, `severity`, `status`, `description`, `steps_to_reproduce`, `evidence_urls[]`, `external_id?` | Native defect. Clients never write `bugs` directly: filing, assignment, correction and status go through the SECURITY DEFINER bug functions (migration `0145`). |
 | `environments` | `project_id`, `name`, `web_url`, `api_url` | Run targeting. |
 | `integrations` | `project_id`, `kind`, `config` (jsonb), `secrets_ref` | Jira, GitHub, etc. |
 | `access_tokens` | `id`, `user_id`, `workspace_id?`, `name`, `token_prefix`, `scopes`, `expires_at`, `revoked_at`, `last_used_at`, `created_at` | Bearer auth (PAT). Carries **no** secret material: the `hash` column was dropped in migration `0012`. Revocation is `revoked_at` (soft). Clients may only revoke their own active token: `authenticated` holds UPDATE on `revoked_at` alone and no INSERT or DELETE, and a trigger makes a revocation final for every role (migration `0142`). |
@@ -130,7 +130,7 @@ erDiagram
 | `workspace_invite_secrets` | `invite_id`, `token_hash` | 1:1 sibling of `workspace_invites`. Same isolation contract. Migration `0011`. |
 | `activity_log` | `id`, `actor_id`, `action`, `entity_type`, `entity_id`, `payload_summary` | Audit-light. |
 | `feature_flags` | `workspace_id?`, `project_id?`, `key`, `enabled` | Phase 2 gates. |
-| `idempotency_keys` | `key`, `endpoint`, `response_snapshot`, `expires_at` | 24h TTL. |
+| `idempotency_keys` | `key`, `endpoint`, `response_snapshot`, `expires_at` | 24h TTL. Written by the service role only (migration `0145`). |
 
 > **No static SQL schemas in this file.** Use Supabase MCP (`db_mcp`) at runtime to read the live schema; the migration files (Supabase migrations or Drizzle if introduced) are the source of truth. Schema synthesis from this ERD is the responsibility of `/project-bootstrap`.
 
