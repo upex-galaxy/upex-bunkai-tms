@@ -145,7 +145,7 @@ export function WorkspaceBugsView({ workspaceId, projects, initialPage, initialE
   useEffect(() => {
     if (focusFootAfterAppend.current && cursor === null) {
       focusFootAfterAppend.current = false;
-      footRef.current?.focus();
+      footRef.current?.focus({ preventScroll: true });
     }
   }, [cursor]);
 

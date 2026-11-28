@@ -244,7 +244,7 @@ export function RunHistoryView({ testId, repositoryUrl = null, initialPage, init
   useEffect(() => {
     if (focusFootAfterAppend.current && cursor === null) {
       focusFootAfterAppend.current = false;
-      footRef.current?.focus();
+      footRef.current?.focus({ preventScroll: true });
     }
   }, [cursor]);
 

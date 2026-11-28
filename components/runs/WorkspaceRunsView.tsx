@@ -163,7 +163,7 @@ export function WorkspaceRunsView({ workspaceId, projects, environments, initial
   useEffect(() => {
     if (focusFootAfterAppend.current && cursor === null) {
       focusFootAfterAppend.current = false;
-      footRef.current?.focus();
+      footRef.current?.focus({ preventScroll: true });
     }
   }, [cursor]);
 
