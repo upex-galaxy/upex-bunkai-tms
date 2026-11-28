@@ -264,6 +264,29 @@ export async function bulkEditAtcs(supabase: Client, args: BulkEditAtcsArgs) {
   });
 }
 
+// BK-2098 — bulk-edit status or severity on up to 200 Bugs of one Project
+// (migration 0146, ADR-0029). Execute is granted to service_role only, so this
+// runs through the API route's admin client with the actor named explicitly.
+export interface BulkEditBugsArgs {
+  actorUserId: string
+  projectId: string
+  items: Array<{ id: string, version: number | null }>
+  field: 'status' | 'severity'
+  change: Record<string, unknown>
+  dryRun?: boolean
+}
+
+export async function bulkEditBugs(supabase: Client, args: BulkEditBugsArgs) {
+  return supabase.rpc('bunkai_bulk_edit_bugs', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_items: args.items as unknown as Json,
+    p_field: args.field,
+    p_change: args.change as unknown as Json,
+    p_dry_run: args.dryRun ?? false,
+  });
+}
+
 // BK-23 — deep-copy an ATC (header + ordered steps/assertions + AC bindings)
 // into a new ATC with a fresh slug and version = 1. `title` is optional; when
 // omitted the RPC defaults the copy's title to `<source> (copy)`. Same

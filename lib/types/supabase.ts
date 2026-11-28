@@ -2705,6 +2705,17 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_bulk_edit_bugs: {
+        Args: {
+          p_actor_user_id: string
+          p_change: Json
+          p_dry_run?: boolean
+          p_field: string
+          p_items: Json
+          p_project_id: string
+        }
+        Returns: Json
+      }
       bunkai_bulk_edit_test_tags: {
         Args: {
           p_actor_user_id: string
