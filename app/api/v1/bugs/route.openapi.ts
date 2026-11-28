@@ -113,6 +113,7 @@ const BugAssigneeSchema = z
 const BugListItemSchema = BugSchema
   .extend({
     assignee: BugAssigneeSchema.nullable().describe('Resolved display info for `assignee_user_id`, or null when unassigned.'),
+    content_version: z.number().int().min(1).describe('BK-2098 — the content version, bumped only by an effective correction or a bulk severity change. Send it back as the item `version` of POST /api/v1/bugs/bulk-edit so a stale severity edit is refused.'),
   })
   .openapi('BugListItem');
 

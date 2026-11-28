@@ -125,6 +125,7 @@ export interface BugsListRpcRow {
   // 0054_bug_assignment_status.sql (Slice 1). Raw pass-through; the wire
   // ITEM below additionally carries a resolved `assignee` display object.
   assignee_user_id: string | null
+  content_version: number
   created_by: string | null
   created_at: string
   updated_at: string

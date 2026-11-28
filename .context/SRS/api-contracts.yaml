@@ -762,6 +762,44 @@ paths:
                 properties:
                   data: { type: array, items: { $ref: '#/components/schemas/Bug' } }
 
+
+  /bugs/bulk-edit:
+    post:
+      tags: [Bugs]
+      summary: Bulk-edit status or severity on up to 200 Bugs of one Project
+      description: >
+        BK-2098 (ADR-0029) — one field per request, `status` or `severity`, on
+        up to 200 items of one Project; a repeated id counts once with the lowest
+        version sent. Status follows the single-Bug lifecycle per Bug (held stage
+        unchanged, next stage changes, further ahead `status_transition_skipped`,
+        behind `status_transition_backward`). Severity: equal is unchanged, a
+        sent version that is not `content_version` is `stale_version`. Ids of
+        another Project or workspace are `not_found`. Partial success is normal;
+        `dry_run` is an advisory preview with no write. Status changes write
+        `bug.status_changed` and notify as a single change; severity changes
+        write `bug.corrected` and notify nobody; both carry `bulk: true`. The
+        generated contract in `public/openapi.json` is authoritative.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [project_id, field, change, items]
+              properties:
+                project_id: { type: string, format: uuid }
+                field: { type: string, enum: [status, severity] }
+                change: { type: object, additionalProperties: false, description: 'Exactly one key named after field: status (open, in_progress, resolved, closed) or severity (P1 to P4)' }
+                items: { type: array, minItems: 1, maxItems: 200, items: { type: object, additionalProperties: false, required: [id], properties: { id: { type: string, format: uuid }, version: { type: integer, minimum: 1, nullable: true } } } }
+                dry_run: { type: boolean, default: false }
+      responses:
+        '200': { description: Per-Bug report }
+        '400': { description: Malformed JSON }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Missing atc:write, a viewer (insufficient_role), or a token scoped to another workspace (token_workspace_mismatch) }
+        '404': { description: Unknown Project or not a member of its workspace }
+        '422': { description: Invalid body, or project_read_only (dry run included) }
   /projects/{project_id}/defect-heatmap:
     get:
       tags: [Bugs]

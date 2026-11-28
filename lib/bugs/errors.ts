@@ -147,6 +147,38 @@ export function mapBugRpcError(
   }
 }
 
+// BK-2098 — bunkai_bulk_edit_bugs (0146). A non-member and an unknown Project
+// share one 404; only a member without write access gets the 403. Raw database
+// text never reaches the response.
+export function mapBugBulkEditError(error: { code?: string, message: string }): never {
+  throwIfProjectReadOnly(error);
+  switch (error.code) {
+    case 'P0002':
+      throw new ApiError('not_found', 'Project not found.', {
+        details: { reason: 'not_found' },
+      });
+    case '42501':
+      if (/permission denied for function/i.test(error.message)) {
+        console.error('bunkai_bulk_edit_bugs is not executable by this client', error);
+        throw new ApiError('internal_error', 'Failed to bulk-edit Bugs.');
+      }
+      throw new ApiError('forbidden', 'You need write access to this workspace to edit its Bugs.', {
+        details: { reason: 'insufficient_role' },
+      });
+    case '45319':
+      throw new ApiError('validation_failed', 'The selection must hold between 1 and 200 Bugs, each with a valid id.', {
+        details: { reason: 'bulk_selection_invalid' },
+      });
+    case '45320':
+      throw new ApiError('validation_failed', 'The requested change is not valid.', {
+        details: { reason: 'bulk_change_invalid' },
+      });
+    default:
+      console.error('bunkai_bulk_edit_bugs RPC failed', error);
+      throw new ApiError('internal_error', 'Failed to bulk-edit Bugs.');
+  }
+}
+
 // BK-337 — the ONE non-disclosing 404 for "this Bug does not exist, or
 // exists but is outside a workspace the caller belongs to." Extracted so the
 // mapper's own P0002/'bug' case AND `GET /api/v1/bugs/{id}`'s null-composer

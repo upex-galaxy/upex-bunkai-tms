@@ -3542,9 +3542,14 @@
             "properties": {
               "assignee": {
                 "$ref": "#/components/schemas/BugAssignee"
+              },
+              "content_version": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "BK-2098 — the content version, bumped only by an effective correction or a bulk severity change. Send it back as the item `version` of POST /api/v1/bugs/bulk-edit so a stale severity edit is refused."
               }
             },
-            "required": ["assignee"]
+            "required": ["assignee", "content_version"]
           }
         ]
       },
@@ -3757,6 +3762,190 @@
           }
         },
         "required": ["status"]
+      },
+      "BugBulkEditReport": {
+        "type": "object",
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "field": {
+            "type": "string",
+            "enum": ["status", "severity"]
+          },
+          "requested": {
+            "type": "integer",
+            "description": "Distinct Bugs processed (a repeated id counts once)."
+          },
+          "changed": {
+            "type": "integer",
+            "description": "With `dry_run`, how many WOULD change."
+          },
+          "unchanged": {
+            "type": "integer",
+            "description": "Already held the requested value: a success, no version bump, no event, no notification."
+          },
+          "refused": {
+            "type": "integer"
+          },
+          "outcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BugBulkEditOutcome"
+            }
+          }
+        },
+        "required": ["dry_run", "field", "requested", "changed", "unchanged", "refused", "outcomes"]
+      },
+      "BugBulkEditOutcome": {
+        "type": "object",
+        "properties": {
+          "bug_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": ["string", "null"],
+            "description": "`null` when `not_found`."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": ["changed", "unchanged", "refused"]
+          },
+          "reason": {
+            "type": ["string", "null"],
+            "enum": [
+              "stale_version",
+              "status_transition_skipped",
+              "status_transition_backward",
+              "not_found",
+              "write_failed",
+              null
+            ],
+            "description": "Set only when `outcome` is `refused`."
+          },
+          "status": {
+            "type": ["string", "null"],
+            "enum": ["open", "in_progress", "resolved", "closed", null],
+            "description": "The Bug's status after the call, or the status it would have for a dry run. `null` when `not_found`."
+          },
+          "severity": {
+            "type": ["string", "null"],
+            "enum": ["P1", "P2", "P3", "P4", null],
+            "description": "The Bug's severity after the call, or the severity it would have for a dry run. `null` when `not_found`."
+          },
+          "version": {
+            "type": ["integer", "null"],
+            "description": "The Bug's `content_version` after the call, or the one it would have for a dry run. `null` when `not_found`."
+          }
+        },
+        "required": ["bug_id", "title", "outcome", "reason", "status", "severity", "version"]
+      },
+      "BugBulkEditRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "project_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "version": {
+                      "type": ["integer", "null"],
+                      "minimum": 1,
+                      "default": null
+                    }
+                  },
+                  "required": ["id"],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 200
+              },
+              "dry_run": {
+                "type": "boolean",
+                "default": false
+              },
+              "field": {
+                "type": "string",
+                "enum": ["status"]
+              },
+              "change": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["open", "in_progress", "resolved", "closed"]
+                  }
+                },
+                "required": ["status"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["project_id", "items", "field", "change"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "project_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "version": {
+                      "type": ["integer", "null"],
+                      "minimum": 1,
+                      "default": null
+                    }
+                  },
+                  "required": ["id"],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 200
+              },
+              "dry_run": {
+                "type": "boolean",
+                "default": false
+              },
+              "field": {
+                "type": "string",
+                "enum": ["severity"]
+              },
+              "change": {
+                "type": "object",
+                "properties": {
+                  "severity": {
+                    "type": "string",
+                    "enum": ["P1", "P2", "P3", "P4"]
+                  }
+                },
+                "required": ["severity"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["project_id", "items", "field", "change"],
+            "additionalProperties": false
+          }
+        ]
       },
       "ProjectEnvironmentRenameResponse": {
         "type": "object",
@@ -13055,6 +13244,93 @@
           },
           "422": {
             "description": "Validation failed — the target status skips a lifecycle stage (`status_transition_skipped`), or moves backward / stays the same (`status_transition_backward`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bugs/bulk-edit": {
+      "post": {
+        "tags": ["Bugs"],
+        "summary": "Bulk-edit status or severity on up to 200 Bugs of one Project",
+        "description": "Bearer `atc:write` (or cookie session); member role or higher. ONE field per request, `status` or `severity`, on up to 200 items of one Project; a repeated id is evaluated once with the lowest version sent. Each Bug is processed on its own: partial success is the normal shape and the report lists one outcome per distinct Bug. **Status** follows the single-Bug lifecycle (open -> in_progress -> resolved -> closed): the stage already held is `unchanged`, the next stage changes, a stage further ahead is refused `status_transition_skipped` and an earlier one `status_transition_backward`; `version` is ignored. Each changed Bug writes `bug.status_changed` (`previous_status`, `status`, `assignee_user_id`, `bulk: true`) and notifies its reporter and assignee exactly as a single change does. **Severity** accepts P1 to P4: an equal value is `unchanged` whatever version is sent; otherwise a sent `version` that is not the Bug's `content_version` refuses it `stale_version`, and no version skips the check. Each changed Bug bumps `content_version` and writes `bug.corrected` (`title`, `changes.severity`, `bulk: true`), with no notification. A Bug of another Project or workspace and an unknown id are both `not_found`. A failure inside one Bug's write refuses that Bug `write_failed` and keeps the others. `dry_run: true` runs the same evaluation with no lock, no write, no event and no notification; it is advisory, because a concurrent edit can still change the outcome of the real call.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BugBulkEditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-Bug report (possibly with refusals).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BugBulkEditReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body is not valid JSON (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, a viewer of the workspace (`details.reason: insufficient_role`), or a token scoped to another workspace (`token_workspace_mismatch`). Nothing was written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Project is unknown or the caller is not a member of its workspace (non-disclosing). Nothing was written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (an id or `project_id` that is not a UUID, an empty or over-200 selection, a field other than status or severity, a change with both or with extra keys, a value outside the vocabulary), or `project_read_only` for a Project over its workspace plan's limit, dry run included. Nothing was written.",
             "content": {
               "application/json": {
                 "schema": {
