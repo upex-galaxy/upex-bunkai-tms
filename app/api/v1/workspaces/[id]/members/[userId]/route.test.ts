@@ -119,6 +119,41 @@ describe('assertRemovalAllowed — early refusals, in the RPC order (BK-572 Q-D2
     expect(err.message).toBe(REMOVAL_NOT_FOUND_MESSAGE);
   });
 
+  it('403 not_a_member, never 404, when the caller is lowered between the caller and target reads (BK-2704)', async () => {
+    for (const [recheckRole, status] of [['member', 403], ['viewer', 403], [null, 404], ['admin', 404]] as const) {
+      const asked: string[] = [];
+      let callerReads = 0;
+      const db = {
+        from: () => {
+          let userId = '';
+          const chain = {
+            select: () => chain,
+            eq: (column: string, value: string) => {
+              if (column === 'user_id') {
+                userId = value;
+                asked.push(value);
+              }
+              return chain;
+            },
+            maybeSingle: async () => {
+              if (userId !== CALLER) {
+                return { data: null, error: null };
+              }
+              callerReads += 1;
+              const role = callerReads === 1 ? 'admin' : recheckRole;
+              return { data: role === null ? null : { role }, error: null };
+            },
+          };
+          return chain;
+        },
+      } as unknown as SupabaseClient<Database>;
+      const err = await refusal(assertRemovalAllowed(db, params));
+      expect({ recheckRole, status: err.status }).toEqual({ recheckRole, status });
+      expect(err.details).toEqual(status === 403 ? { reason: 'not_a_member' } : undefined);
+      expect(asked).toEqual([CALLER, TARGET, CALLER]);
+    }
+  });
+
   it('403 cannot_remove_owner when an Admin targets an Owner (AC-02, AC-17)', async () => {
     const err = await refusal(assertRemovalAllowed(fakeDb({ [CALLER]: { role: 'admin' }, [TARGET]: { role: 'owner' } }), params));
     expect(err.status).toBe(403);
