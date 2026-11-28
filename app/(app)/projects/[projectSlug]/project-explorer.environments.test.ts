@@ -79,6 +79,7 @@ describe('BK-2712 environment menu on a read-only project', () => {
   test('offers Remove, which the server allows, and not Rename, which it refuses', async () => {
     const container = await render({ canCreate: false, canRemoveEnvironments: true });
 
+    expect(byTestId(container, 'environment-menu-env-1')).not.toBeNull();
     await openMenu(container);
 
     expect(byTestId(container, 'environment-remove-env-1')).not.toBeNull();

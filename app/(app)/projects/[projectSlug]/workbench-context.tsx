@@ -59,7 +59,7 @@ export interface WorkbenchData {
   canConfigure?: boolean
   readOnly?: boolean
   readOnlyAudience?: ReadOnlyAudience
-  // BK-2712: member and above, kept on a read-only project, whose lock never refuses a DELETE.
+  // Member and above, kept on a read-only project: its lock never refuses a DELETE.
   canRemoveEnvironments?: boolean
 }
 

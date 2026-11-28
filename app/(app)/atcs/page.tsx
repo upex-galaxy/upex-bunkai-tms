@@ -96,8 +96,9 @@ async function AtcArchivedLibrarySection() {
       }
     }
 
-    const rows: AtcArchivedRow[] = workspaceId === null ? [] : await fetchArchivedAtcs(supabase, workspaceId);
-    const readOnlyProjectSlugs = workspaceId === null ? [] : await loadReadOnlyProjectSlugs(supabase, workspaceId);
+    const [rows, readOnlyProjectSlugs]: [AtcArchivedRow[], string[]] = workspaceId === null
+      ? [[], []]
+      : await Promise.all([fetchArchivedAtcs(supabase, workspaceId), loadReadOnlyProjectSlugs(supabase, workspaceId)]);
     return <AtcArchivedLibraryView rows={rows} error={null} canWrite={canWrite} readOnlyProjectSlugs={readOnlyProjectSlugs} />;
   }
   catch (err) {

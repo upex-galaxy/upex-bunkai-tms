@@ -77,7 +77,7 @@ interface ProjectExplorerProps {
   selectedTestId?: string | null
   // Set only for a read-only project: whose restore path the empty tree shows.
   readOnlyAudience?: ReadOnlyAudience | null
-  // BK-2712: Remove stays on a read-only project, whose lock never refuses a DELETE. Omitted = false.
+  // Remove stays on a read-only project: its lock never refuses a DELETE.
   canRemoveEnvironments?: boolean
 }
 
